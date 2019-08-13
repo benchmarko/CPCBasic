@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cpcbasic.css" />
+<title id="title">CPC Basic v0.01</title>
+</head>
+
+<body>
+	<fieldset class="flexBox">
+		<legend>
+			<span id="specialLegend" class="legendButton" title="Show/Hide CPC Basic advanced">CPC Basic</span>
+			<button id="reloadButton" title="Reload page with URL parameter settings">Reload</button>
+			<button id="helpButton" title="Help">Help</button>
+		</legend>
+		<div id="specialArea" class="area">
+			<button id="executeButton" title="Parse and run script">Run</button>
+			<button id="stopButton" title="Stop/escape/break running script">Stop</button>
+			<button id="contButton" title="Continue script">Continue</button>
+		</div>
+	</fieldset>
+	<fieldset class="flexBox clearLeft">
+		<legend>
+			<span id="inputLegend" class="legendButton" title="Show/Hide BASIC">BASIC</span>
+			<select id="exampleSelect" title="Load Example">
+			</select>
+		</legend>
+		<div id="inputArea" class="area">
+			<textarea id="inputText" rows="15" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+			<div>
+				<button id="saveButton" title="Save input to local storage" disabled>Save</button>
+				<button id="deleteButton" title="Delete input from local storage" disabled>Del</button>
+				<button id="undoButton" title="Undo changes" disabled>Undo</button>
+				<button id="redoButton" title="Redo changes" disabled>Redo</button>
+			</div>
+		</div>
+	</div>
+	</fieldset>
+	<fieldset class="flexBox">
+		<legend>
+			<span id="outputLegend" class="legendButton" title="Show/Hide JavaScript">JavaScript</span>
+		</legend>
+		<div id="outputArea" class="area">
+			<textarea id="outputText" placeholder="Use input field, press 'Run'" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" readonly></textarea>
+		</div>
+	</fieldset>
+	<fieldset class="flexBox">
+		<legend>
+			<span id="resultLegend" class="legendButton" title="Show/Hide BASIC Console">BASIC Console</span>
+		</legend>
+		<div id="resultArea" class="area">
+			<textarea id="resultText" placeholder="" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" readonly></textarea>
+		</div>
+	</fieldset>
+	<!--
+	<fieldset class="flexBox">
+			<legend>
+				<span id="variableLegend" class="legendButton" title="Show/Hide Variables">Variables</span>
+				<select id="varSelect" title="Select variable">
+				</select>
+			</legend>
+			<div id="variableArea" class="area">
+				<div class="field">
+					<label id="varLabel" for="varInput" class="label" title="Variable Name"></label>
+					<input id="varInput" value="" min="0" max="9999" step="1" type="text" placeholder="value">
+				</div>
+			</div>
+	</fieldset>
+	-->
+	<fieldset class="flexBox clearLeft">
+		<legend>
+			<span id="cpcLegend" class="legendButton" title="Show/Hide CPC">CPC</span>
+		</legend>
+		<div id="cpcArea" class="area">
+			<div class="canvas" id="cpcCanvas"></div>
+		</div>
+	</fieldset>
+	<fieldset class="flexBox clearLeft" id="consoleBox" hidden>
+		<legend id="consoleLegend" class="legendButton" title="Show/Hide Console log">Console log</legend>
+		<div id="consoleArea" class="area">
+			<textarea id="consoleText" rows="12" cols="40"></textarea>
+		</div>
+	</fieldset>
+<script src="BasicParser.js"></script>
+<script src="Utils.js"></script>
+<script src="cpcbasic.js"></script>
+</body>
+</html>
