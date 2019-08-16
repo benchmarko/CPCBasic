@@ -138,7 +138,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	pos: "f",
 	print: "c", // print also with spc(), tab(), using
 	rad: "c",
-	randomitze: "c",
+	randomize: "c",
 	read: "c",
 	release: "c",
 	rem: "c",
@@ -238,11 +238,6 @@ BasicParser.prototype = {
 			isNotQuotes = function (c) {
 				return c !== "" && !isQuotes(c);
 			},
-			/*
-			isNotApostrophe = function (c) {
-				return c !== "" && !isApostrophe(c);
-			},
-			*/
 			isIdentifierStart = function (c) {
 				return c !== "" && (/[A-Za-z]/).test(c); // cannot use complete [A-Za-z]+[\w]*[$%!]
 			},
@@ -255,16 +250,6 @@ BasicParser.prototype = {
 			isStream = function (c) {
 				return (/[#]/).test(c);
 			},
-			/*
-			isFormatter = function (c) {
-				return (/[:]/).test(c);
-			},
-			*/
-			/*
-			isNotFormatter = function (c) {
-				return c !== "" && (/[0#.]/).test(c);
-			},
-			*/
 			isNotNewLine = function (c) {
 				return c !== "" && c !== "\n";
 			},
@@ -337,8 +322,6 @@ BasicParser.prototype = {
 				sToken = sChar;
 				sChar = advance();
 				if (sChar.toLowerCase() === "x") { // binary?
-					//sToken = sChar;
-					//sChar = advance();
 					sToken += advanceWhile(isBin2);
 					addToken("binnumber", sToken, iStartPos);
 				} else if (isHex2(sChar)) { // hex
@@ -348,12 +331,11 @@ BasicParser.prototype = {
 					throw new BasicParser.ErrorObject("Number expected", sToken, iStartPos);
 				}
 			} else if (isQuotes(sChar)) {
-				sChar = ""; //TTT
+				sChar = "";
 				sToken = advanceWhileEscape(isNotQuotes);
 				if (!isQuotes(sChar)) {
 					throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
 				}
-				//sToken += sChar; //TTT
 				addToken("string", sToken, iStartPos + 1);
 				sChar = advance();
 			} else if (isIdentifierStart(sChar)) {
@@ -378,14 +360,7 @@ BasicParser.prototype = {
 				} else {
 					addToken("identifier", sToken, iStartPos);
 				}
-				/*
-				if ((/^(and|else|goto|if|not|or|then|xor)$/).test(sToken)) { //TTT
-					addToken(sToken, 0, iStartPos); // like operator
-				} else {
-					addToken("identifier", sToken, iStartPos);
-				}
-				*/
-			} else if (isStream(sChar)) { //stream can be an expression
+			} else if (isStream(sChar)) { // stream can be an expression
 				addToken(sChar, 0, iStartPos);
 				sChar = advance();
 			} else if (isComparison(sChar)) {
@@ -413,12 +388,10 @@ BasicParser.prototype = {
 			oToken,
 
 			fnEqualAsAssign = function () {
-				//oSymbols["="].lbp = 10;
 				oSymbols["="] = oSymbols["(=)"];
 			},
 
 			fnEqualAsComparison = function () {
-				//oSymbols["="].lbp = 30;
 				oSymbols["="] = oSymbols["(==)"];
 			},
 
@@ -441,48 +414,23 @@ BasicParser.prototype = {
 				return oSymbol;
 			},
 
-			/*
-			interpretToken = function () {
-				var oSym;
-
-				if (!oToken) {
-					return null; // maybe EOF
-				}
-				oSym = oSymbols[oToken.type];
-				oToken = Object.create(oSym);
-				oToken.type = oSym.type;
-				oToken.value = oSym.value;
-				oToken.pos = oSym.pos;
-				return oToken;
-			},
-			*/
-
-			/*
-			token = function () {
-				return interpretToken(aTokens[iIndex]);
-			},
-			*/
-
 			advance = function (id) {
 				var t, oSym;
 
 				if (id && oToken.type !== id) {
 					throw new BasicParser.ErrorObject("Expected", id, oToken.pos);
-					//oToken.error("Expected '" + id + "'."); //TTT
 				}
 				if (iIndex >= aTokens.length) {
 					oToken = oSymbols["(end)"];
-					return oToken; //TTT
+					return oToken;
 				}
 				t = aTokens[iIndex];
 				iIndex += 1;
-				//return oToken;
-				//oToken = interpretoToken;
 				oSym = oSymbols[t.type];
 
 				if (!oSym) {
 					Utils.console.error("parse: Undefined object: type=" + t.type + " t=%o", t);
-					oSym = {}; //TTT just to continue
+					oSym = {}; // just to continue
 				}
 				oToken = Object.create(oSym);
 				oToken.type = t.type;
@@ -528,34 +476,10 @@ BasicParser.prototype = {
 				}
 				v = expression(0);
 				if (v.type !== "assign" && v.type !== "call" && v.type !== "def" && v.type !== "(") {
-					//v.error("Bad expression statement.");
 					throw new BasicParser.ErrorObject("Bad expression statement", t.value, t.pos);
 				}
-				/*
-				if (oToken.type === ":") {
-					advance(); // ":" or "(eol)"
-				}
-				*/
 				return v;
 			},
-
-			/*
-			statements = function () {
-				var a = [],
-					s;
-
-				while (true) {
-					if (oToken.type === "(eol)" || oToken.type === "(end)") { //TTT
-						break;
-					}
-					s = statement();
-					if (s) {
-						a.push(s);
-					}
-				}
-				return a.length === 0 ? null : a.length === 1 ? a[0] : a;
-			},
-			*/
 
 			statements = function (sStopType) {
 				var aStatements = [],
@@ -574,15 +498,6 @@ BasicParser.prototype = {
 				}
 				return aStatements;
 			},
-
-			/*
-			block = function () {
-				var t = oToken;
-
-				//advance("{"); //TTT
-				return t.std();
-			},
-			*/
 
 			line = function () {
 				var t = oToken,
@@ -640,7 +555,7 @@ BasicParser.prototype = {
 
 				if (iCount) {
 					aArgs.push(expression(0));
-					while (oToken.type === ",") { //TTT  || oToken.type === ";")
+					while (oToken.type === ",") {
 						advance();
 						aArgs.push(expression(0));
 					}
@@ -658,7 +573,6 @@ BasicParser.prototype = {
 		symbol(",");
 		symbol(")");
 		symbol("]");
-		//symbol("?");
 
 		symbol("else");
 		symbol("step");
@@ -704,16 +618,6 @@ BasicParser.prototype = {
 				};
 				*/
 
-			//sName = oName.value.toUpperCase();
-			/*
-			switch (sName) {
-			case "MODE":
-				break;
-			default:
-				break;
-			}
-			*/
-
 			if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 				if (oToken.type !== "(") { // Fnxxx name without ()?
 					oValue = {
@@ -727,7 +631,7 @@ BasicParser.prototype = {
 			}
 
 			if (oToken.type === "(") {
-				if (aTokens[iIndex].type === ")") { //TTT
+				if (aTokens[iIndex].type === ")") {
 					advance();
 				} else {
 					do {
@@ -751,52 +655,8 @@ BasicParser.prototype = {
 			} else {
 				oValue = oName;
 			}
-			/*
-			else if (sName === "MODE") { //TTT
-				aArgs.push(expression(0));
-				while (oToken.type === ",") {
-					advance(",");
-					aArgs.push(expression(0));
-				}
-				return {
-					type: "call",
-					args: aArgs,
-					name: oName.value,
-					pos: aTokens[iParseIndex - 1].pos
-				};
-			} else if (sName === "PRINT") { //TTT
-				aArgs.push(expression(0));
-				while (oToken.type === "," || oToken.type === ";") {
-					advance(oToken.type);
-					aArgs.push(expression(0));
-				}
-				return {
-					type: "call",
-					args: aArgs,
-					name: oName.value,
-					pos: aTokens[iParseIndex - 1].pos
-				};
-			} else if (sName === "STOP") { //TTT
-				aArgs = [];
-				return {
-					type: "call",
-					args: aArgs,
-					name: oName.value,
-					pos: aTokens[iParseIndex - 1].pos
-				};
-			}
-			*/
 			return oValue;
 		});
-		/*
-		symbol("keyword", function (oName) {
-			var iParseIndex = iIndex,
-				aArgs = [];
-
-			//TODO
-			return oName;
-		});
-		*/
 
 		symbol("(", function () {
 			var iParseIndex = iIndex,
@@ -839,21 +699,6 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		/*
-		// sort of suffix function
-		symbol("formatter", null, 3, function (left) {
-			var oFormatterToken = tokens[iIndex - 1]; // fast hack
-
-			return {
-				type: "formatter",
-				value: oFormatterToken.value,
-				left: left,
-				pos: oFormatterToken.pos
-			};
-		});
-		*/
-
-
 		symbol("fix", function () {
 			return fnCreateCall("fix", 1);
 		});
@@ -862,8 +707,20 @@ BasicParser.prototype = {
 			return fnCreateCall("hex$", 2);
 		});
 
+		symbol("inkey$", function () {
+			return fnCreateCall("inkey$", 0);
+		});
+
 		symbol("int", function () {
 			return fnCreateCall("int", 1);
+		});
+
+		symbol("rnd", function () {
+			return fnCreateCall("rnd", 1); // 0 or 1 parameters
+		});
+
+		symbol("space$", function () {
+			return fnCreateCall("space$", 1);
 		});
 
 		symbol("str$", function () {
@@ -878,7 +735,7 @@ BasicParser.prototype = {
 			return fnCreateCall("time", 0);
 		});
 
-		infix("^", 90, 80); //TTT
+		infix("^", 90, 80);
 
 		prefix("-", 80);
 
@@ -892,8 +749,6 @@ BasicParser.prototype = {
 		infix("+", 40);
 		infix("-", 40);
 
-		//infixr("=", 30);
-		//infix("%", 50);
 		infixr("<>", 30);
 		infixr("<", 30);
 		infixr("<=", 30);
@@ -914,31 +769,8 @@ BasicParser.prototype = {
 		infix("=", 10, 20, function (left) {
 			var oObj;
 
-			/*
-			if (left.type === "call") {
-				for (i = 0; i < left.args.length; i += 1) {
-					if (left.args[i].type !== "identifier") {
-						throw new BasicParser.ErrorObject("Invalid argument " + (i + 1) + " for function", left.name, left.pos);
-					}
-				}
-				oObj = {
-					type: "def",
-					name: left.name,
-					args: left.args,
-					value: expression(0),
-					pos: left.pos
-				};
-			*/
-			//if (oSymbols["="].lbp === 10) { // equal used as assign
 			if (oSymbols["="] === oSymbols["(=)"]) {
-				if (left.type === "call") { //TODO: only in DEF FN context!
-					/*
-					for (i = 0; i < left.args.length; i += 1) {
-						if (left.args[i].type !== "identifier") {
-							throw new BasicParser.ErrorObject("Invalid argument " + (i + 1) + " for function", left.name, left.pos);
-						}
-					}
-					*/
+				if (left.type === "call") { // TODO: only in DEF FN context!
 					oObj = {
 						type: "def",
 						name: left.name,
@@ -946,7 +778,7 @@ BasicParser.prototype = {
 						value: expression(0),
 						pos: left.pos
 					};
-				} else if (left.type === "identifier") { //TTT
+				} else if (left.type === "identifier") {
 					oObj = {
 						type: "assign",
 						name: left.value,
@@ -1007,23 +839,18 @@ BasicParser.prototype = {
 			oValue.name = oToken.value;
 			advance();
 
-			if (oToken.type === "=") { //no args?
-				advance();
+			if (oToken.type === "(") { // args?
+				advance("(");
+				oValue.args.push(expression(0));
+				while (oToken.type === ",") {
+					advance(",");
+					oValue.args.push(expression(0));
+				}
+				advance(")");
 			}
-
-			//TODO: get optional args
+			advance("=");
 
 			oValue.value = expression(0);
-
-			/*
-			oValue = {
-				type: "def",
-				name: left.name,
-				args: left.args,
-				value: expression(0),
-				pos: left.pos
-			};
-			*/
 			return oValue;
 		});
 
@@ -1078,9 +905,9 @@ BasicParser.prototype = {
 			oValue.left = expression(0);
 			fnEqualAsAssign();
 			advance("then");
-			oValue.right = statements("else"); //block();
+			oValue.right = statements("else");
 			if (oToken.type === "else") {
-				advance("else"); // TTT
+				advance("else");
 				oValue.third = oToken.type === "if" ? statement() : statements();
 			} else {
 				oValue.third = null;
@@ -1125,13 +952,22 @@ BasicParser.prototype = {
 				if (oToken.type !== "identifier") {
 					throw new BasicParser.ErrorObject("Extected identifier at", oToken.type, oToken.pos);
 				}
-				oValue.args.push({ //TTT
+				oValue.args.push({
 					type: "identifier",
 					value: oToken.value
 				});
 				advance();
 			} while ((oToken.type === ",") && advance());
 			return oValue;
+		});
+
+		stmt("locate", function () { // 2 or 3 parameters
+			var iCount = 2;
+
+			if (oToken.type === "#") { // stream
+				iCount = 3;
+			}
+			return fnCreateCall("locate", iCount);
 		});
 
 		stmt("mode", function () {
@@ -1150,16 +986,10 @@ BasicParser.prototype = {
 					value: oToken.value
 				});
 				advance();
-				/*
-				if (oToken.type !== "identifier") {
-					throw new BasicParser.ErrorObject("Extected identifier at", oToken.type, oToken.pos);
-				}
-				*/
 				if (oToken.type === ",") {
 					advance();
 				}
 			}
-			//return fnCreateCall("next", 1); // zero or more args
 			return oValue;
 		});
 
@@ -1168,7 +998,14 @@ BasicParser.prototype = {
 				type: "on"
 			};
 
-			//TODO
+			if (oToken.type === "break") {
+				advance("break");
+				oValue.Type = "onBreak"; // cont, gosub..., stop
+				if (oToken.type === "gosub") {
+					// TODO
+				}
+			}
+			// TODO
 			oValue.left = expression(0);
 			if (oToken.type === "gosub") {
 				advance("gosub");
@@ -1185,7 +1022,6 @@ BasicParser.prototype = {
 				bTrailingSemicolon = false,
 				t;
 
-			//while (oToken.type === "string" || oToken.type === "number" || oToken.type === "identifier" || oToken.type === "call" || oToken.type === ";" || oToken.type === ",") { // stop at ":", "(eol), "(end)), also at keyword
 			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
 				if (oToken.type === "using") {
 					advance("using");
@@ -1206,7 +1042,6 @@ BasicParser.prototype = {
 					break;
 				} else if (oToken.type === ";") {
 					advance();
-					//continue;
 				} else if (oToken.type === ",") { // default tab, simulate tab...
 					aArgs.push({
 						type: "call",
@@ -1226,14 +1061,7 @@ BasicParser.prototype = {
 					bTrailingSemicolon = (oToken.type === ";");
 				}
 			}
-			/*
-				if (oExpression)
-			aArgs.push(expression(0));
-			while (oToken.type === "," || oToken.type === ";") {
-				advance();
-				aArgs.push(expression(0));
-			}
-			*/
+
 			if (!bTrailingSemicolon) {
 				aArgs.push({
 					type: "string",
@@ -1250,6 +1078,10 @@ BasicParser.prototype = {
 
 		oSymbols["?"] = oSymbols.print; // ? is same as print
 
+		stmt("randomize", function () { // 0 or 1 parameters
+			return fnCreateCall("randomize", 1);
+		});
+
 		stmt("return", function () {
 			return fnCreateCall("return", 0);
 		});
@@ -1262,11 +1094,11 @@ BasicParser.prototype = {
 			return fnCreateCall("wait", 3); // 2 or 3 parameters
 		});
 
-		stmt("wend", function () { // TTT while end
-			//return fnCreateCall("wend", 0);
+		stmt("wend", function () {
 			var oValue = {
 				type: "wend"
 			};
+
 			return oValue;
 		});
 
@@ -1279,28 +1111,8 @@ BasicParser.prototype = {
 			oValue.left = expression(0);
 			fnEqualAsAssign();
 
-			/*
-			var oValue;
-			fnEqualAsComparison();
-			//oValue.left = expression(0);
-			oValue = fnCreateCall("while", 1);
-			fnEqualAsAssign();
-
-			//oValue.right = block();
-			*/
 			return oValue;
 		});
-
-		/*
-		stmt("?", function () { // like print
-			var oValue = {};
-
-			oValue.left = statement(); //expression(0);
-			advance(")"); //TTT
-			oValue.type = "statement";
-			return oValue;
-		});
-		*/
 
 		// line
 		iIndex = 0;
@@ -1312,6 +1124,7 @@ BasicParser.prototype = {
 		return aParseTree;
 	},
 
+
 	//
 	// evaluate
 	//
@@ -1320,69 +1133,54 @@ BasicParser.prototype = {
 			sOutput = "",
 			mOperators = {
 				"+": function (a, b) {
-					//return Number(a) + Number(b);
 					return a + " + " + b;
 				},
 				"-": function (a, b) {
 					if (b === undefined) {
-						return -a; //TTT
+						return "-" + a;
 					}
-					//return a - b;
 					return a + " - " + b;
 				},
 				"*": function (a, b) {
-					//return a * b;
 					return a + " * " + b;
 				},
 				"/": function (a, b) {
-					//return a / b;
 					return a + " / " + b;
 				},
 				"^": function (a, b) {
-					//return Math.pow(a, b);
 					return "Math.pow(" + a + " , " + b + ")";
 				},
 				and: function (a, b) {
-					//return a & b; // eslint-disable-line no-bitwise
 					return a + " & " + b;
 				},
 				or: function (a, b) {
-					//return a | b; // eslint-disable-line no-bitwise
 					return a + " | " + b;
 				},
 				xor: function (a, b) {
-					//return a ^ b; // eslint-disable-line no-bitwise
 					return a + " ^ " + b;
 				},
 				not: function (a) {
-					//return !a;
 					return "!" + a;
 				},
 				mod: function (a, b) {
 					return a + " % " + b;
 				},
 				">": function (a, b) {
-					//return a > b;
 					return a + " > " + b;
 				},
 				"<": function (a, b) {
-					//return a < b;
 					return a + " < " + b;
 				},
 				">=": function (a, b) {
-					//return a >= b;
 					return a + " >= " + b;
 				},
 				"<=": function (a, b) {
-					//return a <= b;
 					return a + " <= " + b;
 				},
 				"=": function (a, b) {
-					//return a == b; //TTT
 					return a + " == " + b;
 				},
 				"<>": function (a, b) {
-					//return a != b; //TTT
 					return a + " != " + b;
 				},
 				"#": function (a) {
@@ -1415,14 +1213,7 @@ BasicParser.prototype = {
 				}
 			},
 
-			/*
-			fnAdaptFunctionName = function (sName) {
-				return that.options.ignoreFuncCase ? sName.toLowerCase() : sName;
-			},
-			*/
-
 			fnAdaptVariableName = function (sName) {
-				//return that.options.ignoreVarCase ? sName.toLowerCase() : sName;
 				sName = sName.toLowerCase();
 				if (Utils.stringEndsWith(sName, "!")) { // real number?
 					sName = sName.slice(0, -1) + "R"; // "!" => "R"
@@ -1440,11 +1231,6 @@ BasicParser.prototype = {
 				}
 				if (node.type === "number") {
 					value = node.value;
-					/*
-					if (value >= 0) {
-						value = " " + value; //TTT only for print
-					}
-					*/
 				} else if (node.type === "string") {
 					value = '"' + node.value + '"';
 				} else if (node.type === "binnumber") {
@@ -1455,13 +1241,12 @@ BasicParser.prototype = {
 					value = "0x" + ((value.length) ? value : "0"); // &->0x
 				} else if (mOperators[node.type]) {
 					if (node.left) {
-						//value = mOperators[node.type](parseNode(node.left), parseNode(node.right));
 						value = parseNode(node.left);
-						if (mOperators[node.left.type]) { //TTT binary operator?
+						if (mOperators[node.left.type]) { // binary operator?
 							value = "(" + value + ")";
 						}
 						value2 = parseNode(node.right);
-						if (mOperators[node.right.type]) { //TTT binary operator?
+						if (mOperators[node.right.type]) { // binary operator?
 							value2 = "(" + value2 + ")";
 						}
 						value = mOperators[node.type](value, value2);
@@ -1469,19 +1254,9 @@ BasicParser.prototype = {
 						value = mOperators[node.type](parseNode(node.right));
 					}
 				} else if (node.type === "identifier") {
-					//oVars = aFunctionScope[aFunctionScope.length - 1];
 					sName = fnAdaptVariableName(node.value); // here we use node.value
-					/*
-					value = (oVars && oVars.hasOwnProperty(sName)) ? oVars[sName] : variables[sName];
-					if (value === undefined) {
-						//throw new BasicParser.ErrorObject("Variable is undefined", node.value, node.pos);
-						Utils.console.log("Variable is undefined: " + node.value + " " + node.pos);
-						value = 0; //TTT
-					}
-					*/
 					value = sName;
 				} else if (node.type === "array") {
-					//oVars = aFunctionScope[aFunctionScope.length - 1];
 					aNodeArgs = [];
 					for (i = 0; i < node.args.length; i += 1) {
 						aNodeArgs[i] = parseNode(node.args[i]);
@@ -1494,17 +1269,10 @@ BasicParser.prototype = {
 						for (i = 0; i < node.args.length; i += 1) {
 							value += parseNode(node.args[i]) + ",";
 						}
-						//TTT
 					} else {
 						value = parseNode(node.value);
 					}
 					sName = fnAdaptVariableName(node.name);
-					/*
-					variables[sName] = value; // set new value
-					if (String(parseFloat(value)) !== String(value)) { //TTT
-						value = '"' + value + '"'; // value is not a number
-					}
-					*/
 					value = "var " + sName + " = " + value;
 				} else if (node.type === "call") {
 					aNodeArgs = []; // do not modify node.args here (could be a parameter of defined function)
@@ -1523,21 +1291,7 @@ BasicParser.prototype = {
 						aNodeArgs[i] = parseNode(node.args[i]);
 					}
 					sName = fnAdaptVariableName(node.name);
-					value = "var " + sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; }; ";
-
-					/*
-					mFunctions[sName] = function () { // varargs
-						var oArgs = {};
-
-						for (i = 0; i < node.args.length; i += 1) {
-							oArgs[node.args[i].value] = arguments[i];
-						}
-						//aFunctionScope.push(oArgs);
-						value = parseNode(node.value);
-						//aFunctionScope.pop();
-						return value;
-					};
-					*/
+					value = "var " + sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
 				} else if (node.type === "function") { // FNxxx function call
 					aNodeArgs = [];
 					for (i = 0; i < node.args.length; i += 1) {
@@ -1548,19 +1302,18 @@ BasicParser.prototype = {
 				} else if (node.type === "for") {
 					sName = "f" + that.iForIndex;
 					value = "/* for() */ " + parseNode(node.left) + "; var " + node.left.name + "Step = " + parseNode(node.third) + "; o.goto(\"" + sName + "a2\"); break;";
-					value += "\ncase " + "\"" + sName + "\": ";
+					value += "\ncase \"" + sName + "\": ";
 
 					value += node.left.name + " += " + node.left.name + "Step;";
-					value += "\ncase " + "\"" + sName + "a2\": ";
+					value += "\ncase \"" + sName + "a2\": ";
 					value2 = parseNode(node.right);
 					value += "if (" + node.left.name + "Step > 0 && " + node.left.name + " > " + value2 + " || " + node.left.name + "Step < 0 && " + node.left.name + " < " + value2 + ") { o.goto(\"" + sName + "e\"); break; }";
 					that.iForIndex += 1;
 				} else if (node.type === "label") {
-					//value = "case " + node.value + ": o.setLine(" + node.value + ");";
 					value = "case " + node.value + ":";
 					for (i = 0; i < node.left.length; i += 1) {
 						value += " " + parseNode(node.left[i]);
-						if (!Utils.stringEndsWith(value, "}") && !Utils.stringEndsWith(value, ":")) {
+						if (!Utils.stringEndsWith(value, "}") && !Utils.stringEndsWith(value, ":") && !Utils.stringEndsWith(value, ";")) {
 							value += ";";
 						}
 					}
@@ -1580,15 +1333,17 @@ BasicParser.prototype = {
 				} else if (node.type === "next") {
 					that.iForIndex -= 1;
 					sName = "f" + that.iForIndex;
-					value = "/* next() */ o.goto(\"" + sName + "\"); break;\ncase " + "\"" + sName + "e\"" + ":";
+					value = "/* next() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
+				} else if (node.type === "on") {
+					Utils.console.log("on"); // TODO
+					value = " /* on(" + "" + ") */ "; //TTT
 				} else if (node.type === "wend") {
 					that.iWhileIndex -= 1;
 					sName = "w" + that.iWhileIndex;
-					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase " + "\"" + sName + "e\"" + ":";
-
+					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 				} else if (node.type === "while") {
 					sName = "w" + that.iWhileIndex;
-					value = "\ncase " + "\"" + sName + "\": if (!(" + parseNode(node.left) + ")) { o.goto(\"" + sName + "e\"); break; }";
+					value = "\ncase \"" + sName + "\": if (!(" + parseNode(node.left) + ")) { o.goto(\"" + sName + "e\"); break; }";
 					that.iWhileIndex += 1;
 
 				/*
@@ -1643,7 +1398,7 @@ BasicParser.prototype = {
 
 					for (i = 0; i < arguments.length; i += 1) {
 						if (s !== "") {
-							s += ";";
+							s += "; ";
 						}
 						s += "o.defint(" + String(arguments[i]) + ")";
 					}
@@ -1655,7 +1410,7 @@ BasicParser.prototype = {
 
 					for (i = 0; i < arguments.length; i += 1) {
 						if (s !== "") {
-							s += ";";
+							s += "; ";
 						}
 						s += "o.dim(" + String(arguments[i]) + ")";
 					}
@@ -1663,7 +1418,7 @@ BasicParser.prototype = {
 				},
 				end: function () {
 					Utils.console.log("end");
-					return "o.end(); break"; //TTT: how to allow cont?
+					return "o.end(); break"; // TODO: how to allow cont?
 				},
 				fix: function (x) {
 					return "Math.trunc(" + x + ")"; // (ES6: Math.trunc)
@@ -1678,26 +1433,39 @@ BasicParser.prototype = {
 					iWidth = iWidth || 0;
 					return "o.iLine = o.hex$(" + n + ", " + iWidth + "); break";
 				},
+				inkey$: function () {
+					return "o.inkey$()";
+				},
 				input: function () { // varargs
-					var s, i, // = "o.print(" + String(arguments[0]) + ")",
-						aArgs = [];
+					var s = "",
+						i, sMsg;
 
-					for (i = 0; i < arguments.length; i += 1) {
-						aArgs.push(arguments[i]);
-						//s += "o.input(" + String(arguments[i]) + ")";
+					sMsg = arguments[0];
+					for (i = 1; i < arguments.length; i += 1) {
+						if (s !== "") {
+							s += "; ";
+						}
+						s += "var " + arguments[i] + " = o.input(" + sMsg + ", \"" + arguments[i] + "\")";
 					}
-					s = "o.input(" + aArgs.join(",") + ")";
-					var person = prompt("Please enter your name", "Mickey"); //TODO
-					//if (person != null) {
 					return s;
 				},
 				"int": function (x) {
 					return "Math.floor(" + x + ")";
 				},
+				locate: function (iStream, x, y) { // TODO XXXoptional args 1: iStream
+					iStream = iStream || 0;
+					return "o.locate(" + iStream + ", " + x + ", " + y + ")";
+				},
 				mode: function (n) {
 					Utils.console.log("mode=", n);
 					return "o.mode(" + n + ")";
 				},
+				/*
+				on: function (n) {
+					Utils.console.log("on=", n); // TODO
+					return "o.on(" + n + ")";
+				},
+				*/
 				next: function () { // varargs
 					var	s = "",
 						i;
@@ -1711,27 +1479,25 @@ BasicParser.prototype = {
 					return s;
 				},
 				print: function () { // varargs
-					var	aArgs = [], //s = "",
+					var	aArgs = [],
 						i;
 
 					for (i = 0; i < arguments.length; i += 1) {
 						aArgs.push(String(arguments[i]));
 					}
-					//aArgs.push('"\\n"');
-					/*
-					for (i = 0; i < arguments.length; i += 1) {
-						//s += String(arguments[i]);
-						if (s !== "") {
-							s += "; ";
-						}
-						s += "o.print(" + String(arguments[i]) + " + \"\\n\"" + ")";
-					}
-					*/
-
 					return "o.print(" + aArgs.join(", ") + ")";
+				},
+				randomize: function (n) { // optional args 1: n
+					return "o.randomize(" + n + ");";
 				},
 				"return": function () {
 					return "o.return(); break";
+				},
+				rnd: function (n) { // optional args 1: n
+					return "o.rnd(" + n + ");";
+				},
+				space$: function (n) {
+					return "\" \".repeat(" + n + ")";
 				},
 				stop: function () {
 					Utils.console.log("stop");
@@ -1825,32 +1591,6 @@ BasicParser.prototype = {
 				// random() random number between [0,1)
 				random: Math.random,
 
-				// gcd(a, b) greatest common divisor of a and b (Euclid)
-				gcd: function (a, b) {
-					var h;
-
-					while (b !== 0) {
-						h = a % b;
-						a = b;
-						b = h;
-					}
-					return a;
-				},
-
-				// fib(x) xth Fibonacci number
-				fib: function (x) {
-					var a = 0,
-						b = 1,
-						i, h;
-
-					for (i = 1; i <= x; i += 1) {
-						h = a;
-						a = b;
-						b = h + b;
-					}
-					return a;
-				},
-
 				// deg() switch do degrees mode (default, ignored, we always use degrees)
 				deg: function () {
 					Utils.console.log("deg() ignored.");
@@ -1912,10 +1652,6 @@ BasicParser.prototype = {
 			aTokens = this.lex(input);
 			aParseTree = this.parse(aTokens);
 			sOutput = this.evaluate(aParseTree, variables, mFunctions);
-			//oOut.text = "function simulate(oVm) {\nvar o.iLine = -1;\nvar o.iGoto = 0;\nwhile (o.iLine !== o.iGoto) {\no.iLine = o.iGoto;\nswitch (o.iLine) {\ncase 0:\n" + sOutput + "\n" + "default: o.vmDefault(o.iLine); break;\n}}}";
-			//oOut.text = "function simulate(oVm) {\nwhile (o.iLine !== o.iGoto) {\no.iLine = o.iGoto;\nswitch (o.iLine) {\ncase 0:\n" + sOutput + "\ndefault: o.vmDefault(o.iLine); break;\n}}}";
-			//oOut.text = "function simulate(oVm) {\nwhile (o.iLine >= 0) {\nswitch (o.iLine) {\ncase 0:\n" + sOutput + "\ndefault: o.vmDefault(); break;\n}}}";
-			//oOut.text = "function simulate(oVm) {\nwhile (!o.bStop) {\nswitch (o.iLine) {\ncase 0:\n" + sOutput + " o.bStop = true; break;\ndefault: o.vmDefault(); o.stop(); break;\n}}}";
 			oOut.text = "while (!o.bStop) {\nswitch (o.iLine) {\ncase 0:\n" + sOutput + " o.bStop = true; break;\ndefault: o.vmDefault(); o.stop(); break;\n}}";
 		} catch (e) {
 			oOut.error = e;
