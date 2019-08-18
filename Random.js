@@ -12,6 +12,10 @@ if (typeof require !== "undefined") {
 }
 */
 
+//
+// Random number generator taken from:
+// Raj Jain: The Art of Computer Systems Performance Analysis, John Wiley & Sons, 1991, page 442-444
+//
 function Random(nSeed) {
 	this.init(nSeed);
 }
@@ -28,7 +32,7 @@ Random.prototype = {
 			x = this.x; // last random value
 
 		x = a * (x % q) - r * ((x / q) | 0); // eslint-disable-line no-bitwise
-		// (x / q) | 0 is x div q
+		// we use "| 0" to get an integer div result
 		if (x <= 0) {
 			x += m; // x is new random number
 		}

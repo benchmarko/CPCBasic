@@ -61,28 +61,26 @@ var cpcBasicExternalConfig, // eslint-disable-line vars-on-top
 				sInput,
 				oInitialConfig,	iDebug;
 
-			Object.assign(oStartConfig, cpcBasicExternalConfig || {}); // merge external config from gcconfig.js
+			Object.assign(oStartConfig, cpcBasicExternalConfig || {}); // merge external config from cpcconfig.js (TODO)
 			oInitialConfig = Object.assign({}, oStartConfig); // save config
 			this.fnParseUri(oStartConfig); // modify config with URL parameters
 			this.model = new Model(oStartConfig, oInitialConfig);
 			this.view = new View({});
 
-			//Utils.console.changeLog(this.model.getProperty("showConsole") ? this.view.getArea("consoleArea") : null);
 			iDebug = Number(this.model.getProperty("debug"));
 			Utils.debug = iDebug;
 
 			that.controller = new Controller(this.model, this.view);
 
 			sInput=String.raw`10 rem
-90 for i=1 to 10:print i: next i
-95 stop
-100 rem Test1
+100 rem test1
 110 'wait 0,0
 120 'clear
 130 mode 2:'comment
-131 cls: cls#0: a=2: cls #(a*3)
-140 a=0
-150 print a;: a=a+1: if a < 5 then goto 150 else print
+135 cls: cls#0: a=2: cls #(a*3)
+140 for i=0 to 4:print i;: next i: print
+150 a=0
+160 print a;: a=a+1: if a < 5 then goto 160 else print
 180 'a=0: while a<5: print a;: a=a+1: wend: print
 185 'a=0: while a<5: if a=3 or 3=a then print "three" else print "not three:";a;: wend
 187 a=0: s$="": while a<5: s$=s$+str$(a)+":": a=a+1: b=0: while b<3: b=b+1: s$=s$+str$(b): wend: s$=s$+" ": wend: print s$

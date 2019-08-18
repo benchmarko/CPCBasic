@@ -1,4 +1,4 @@
-// BasicParser.js - PArse Locomotive BASIC 1.1 for Amstrad CPC 6128
+// BasicParser.js - Parse Locomotive BASIC 1.1 for Amstrad CPC 6128
 //
 
 "use strict";
@@ -8,7 +8,6 @@ var Utils;
 if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
-
 
 // [ https://www.codeproject.com/Articles/345888/How-to-write-a-simple-interpreter-in-JavaScript ; test online: http://jsfiddle.net/h3xwj/embedded/result/ ]
 //
@@ -20,8 +19,7 @@ if (typeof require !== "undefined") {
 // http://stevehanov.ca/blog/?id=92
 // http://stevehanov.ca/qb.js/qbasic.js
 //
-// http://www.csidata.com/custserv/onlinehelp/vbsdocs/vbs232.htm  (operator precedence) ??
-//
+// http://www.csidata.com/custserv/onlinehelp/vbsdocs/vbs232.htm  (operator precedence) ?
 // How to write a simple interpreter in JavaScript
 // Peter_Olson, 30 Oct 2014
 function BasicParser(options) {
@@ -29,6 +27,27 @@ function BasicParser(options) {
 }
 
 BasicParser.mKeywords = { // c=command, f=function, o=operator
+	// TODO: test for number of function parameters?
+	/*
+	abs: "f n",
+	after: "c n N",
+	and: "o",
+	asc: "f t",
+	atn: "f n",
+	auto: "c N N",
+	bin$: "f n N",
+	border: "c n;n",
+	"break": "x", //TTT
+	call: "c 1 2",
+	cat: "c 0 0",
+	chain: "c 1 2", // chain, chain merge
+	chr$: "f 1 1",
+	cint: "f 1 1",
+	clear: "c 0 0", // clear, clear input
+	clg: "c 0 1",
+	closein: "c 0 0",
+	closeout: "c 0 0",
+	*/
 	abs: "f",
 	after: "c",
 	and: "o",
@@ -37,12 +56,13 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	auto: "c",
 	bin$: "f",
 	border: "c",
+	"break": "x", //TTT
 	call: "c",
 	cat: "c",
-	chain: "c",
+	chain: "c", // chain, chain merge
 	chr$: "f",
 	cint: "f",
-	clear: "c",
+	clear: "c", // clear, clear input
 	clg: "c",
 	closein: "c",
 	closeout: "c",
@@ -67,7 +87,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	drawr: "c",
 	edit: "c",
 	ei: "c",
-	"else": "c",
+	"else": "x",
 	end: "c",
 	ent: "c",
 	env: "c",
@@ -80,7 +100,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	exp: "f",
 	fill: "c",
 	fix: "f",
-	fn: "c", // def fn??? TTT
+	fn: "x", // def fn??? TTT
 	"for": "c",
 	frame: "c",
 	fre: "f",
@@ -160,11 +180,11 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	speed: "c", // speed ink, speed key, speed write
 	sq: "f",
 	sqr: "f",
-	step: "c", // for ... to ... step
+	step: "x", // for ... to ... step
 	stop: "c",
 	str$: "f",
 	string$: "f",
-	swap: "c", // window swap
+	swap: "x", // window swap
 	symbol: "c", // symbol, symbol after
 	tab: "f",
 	tag: "c",
@@ -172,14 +192,14 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	tan: "f",
 	test: "f",
 	testr: "f",
-	then: "c", // if...then
+	then: "x", // if...then
 	time: "f",
-	to: "c", // for...to
+	to: "x", // for...to
 	troff: "c",
 	tron: "c",
 	unt: "f",
 	upper$: "f",
-	using: "c", // print using
+	using: "x", // print using
 	val: "f",
 	vpos: "f",
 	wait: "c",
@@ -198,10 +218,14 @@ BasicParser.prototype = {
 	init: function (options) {
 		this.options = options || {}; // ignoreFuncCase, ignoreVarCase
 	},
+	oStack: { //TODO
+		f: [], // for
+		w: [] // while
+	},
 	iForIndex: 0,
 	iWhileIndex: 0,
 
-	lex: function (input) {
+	lex: function (input) { // eslint-disable-line complexity
 		var isComment = function (c) { // isApostrophe
 				return (/[']/).test(c);
 			},
@@ -217,7 +241,7 @@ BasicParser.prototype = {
 			isDigit = function (c) {
 				return (/[0-9]/).test(c);
 			},
-			isHexOrBin = function (c) {
+			isHexOrBin = function (c) { // bin: &X, hex: & or &H
 				return (/[&]/).test(c);
 			},
 			isBin2 = function (c) {
@@ -272,21 +296,6 @@ BasicParser.prototype = {
 				} while (fn(sChar));
 				return sToken2;
 			},
-			advanceWhileEscape = function (fn) {
-				var sToken2 = "";
-
-				do {
-					if (sChar === "\\") {
-						sChar = advance();
-						if (sChar === "n") {
-							sChar = "\n";
-						}
-					}
-					sToken2 += sChar;
-					sChar = advance();
-				} while (fn(sChar));
-				return sToken2;
-			},
 			addToken = function (type, value, iPos) {
 				aTokens.push({
 					type: type,
@@ -324,18 +333,24 @@ BasicParser.prototype = {
 				if (sChar.toLowerCase() === "x") { // binary?
 					sToken += advanceWhile(isBin2);
 					addToken("binnumber", sToken, iStartPos);
-				} else if (isHex2(sChar)) { // hex
-					sToken += advanceWhile(isHex2);
-					addToken("hexnumber", sToken, iStartPos);
-				} else {
-					throw new BasicParser.ErrorObject("Number expected", sToken, iStartPos);
+				} else { // hex
+					if (sChar.toLowerCase() === "h") { // optional h
+						sChar = advance();
+					}
+					if (isHex2(sChar)) {
+						sToken += advanceWhile(isHex2);
+						addToken("hexnumber", sToken, iStartPos);
+					} else {
+						throw new BasicParser.ErrorObject("Number expected", sToken, iStartPos);
+					}
 				}
 			} else if (isQuotes(sChar)) {
 				sChar = "";
-				sToken = advanceWhileEscape(isNotQuotes);
+				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
 					throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
 				}
+				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 				addToken("string", sToken, iStartPos + 1);
 				sChar = advance();
 			} else if (isIdentifierStart(sChar)) {
@@ -356,6 +371,7 @@ BasicParser.prototype = {
 						}
 					} else {
 						addToken(sToken, 0, iStartPos);
+						//addToken(BasicParser.mKeywords[sToken], sToken, iStartPos);
 					}
 				} else {
 					addToken("identifier", sToken, iStartPos);
@@ -549,11 +565,35 @@ BasicParser.prototype = {
 				x.std = f;
 				return x;
 			},
-			fnCreateCall = function (sName, iCount) {
+
+			fnGetArgsInParenthesis = function () {
+				var aArgs = [];
+
+				if (oToken.type === "(") {
+					if (aTokens[iIndex].type === ")") {
+						advance("(");
+					} else {
+						do {
+							advance();
+							aArgs.push(expression(0));
+						} while (oToken.type === ",");
+						if (oToken.type !== ")") {
+							throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", aTokens[iIndex - 2].value, aTokens[iIndex - 1].pos);
+						}
+					}
+					advance(); //TTT
+				}
+				return aArgs;
+			},
+
+			fnCreateCmdCall = function (sName, iCount) {
 				var aArgs = [],
 					iParseIndex = iIndex;
 
-				if (iCount) {
+				sName = sName || aTokens[iParseIndex - 2].type;
+				// TODO check parameter count here
+				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
+				//if (iCount) {
 					aArgs.push(expression(0));
 					while (oToken.type === ",") {
 						advance();
@@ -566,7 +606,40 @@ BasicParser.prototype = {
 					name: sName,
 					pos: aTokens[iParseIndex - 2].pos
 				};
+			},
+			fnCreateFuncCall = function (sName) {
+				var oValue = {
+					type: "call",
+					args: null,
+					name: sName || aTokens[iIndex - 2].type,
+					pos: aTokens[iIndex - 2].pos
+				};
+
+				oValue.args = fnGetArgsInParenthesis();
+				return oValue;
+			},
+			fnGenerateKeywordSymbols = function () {
+				var sKey, sValue,
+					fnFunc = function () {
+						return fnCreateFuncCall();
+					},
+					fnCmd = function () {
+						return fnCreateCmdCall();
+					};
+
+				for (sKey in BasicParser.mKeywords) {
+					if (BasicParser.mKeywords.hasOwnProperty(sKey)) {
+						sValue = BasicParser.mKeywords[sKey];
+						if (sValue.charAt(0) === "f") {
+							symbol(sKey, fnFunc);
+						} else if (sValue.charAt(0) === "c") {
+							stmt(sKey, fnCmd);
+						}
+					}
+				}
 			};
+
+		fnGenerateKeywordSymbols();
 
 		symbol(":");
 		symbol(";");
@@ -574,6 +647,7 @@ BasicParser.prototype = {
 		symbol(")");
 		symbol("]");
 
+		symbol("break");
 		symbol("else");
 		symbol("step");
 		symbol("then");
@@ -600,28 +674,13 @@ BasicParser.prototype = {
 		});
 		symbol("identifier", function (oName) {
 			var iParseIndex = iIndex,
-				aArgs = [],
 				sName = oName.value,
 				oValue;
-				/*
-				fnCollectArgs = function () {
-					while (oToken.type === ",") {
-						advance(",");
-						aArgs.push(expression(0));
-					}
-					return {
-						type: "call",
-						args: aArgs,
-						name: oName.value,
-						pos: aTokens[iParseIndex - 1].pos
-					};
-				};
-				*/
 
 			if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 				if (oToken.type !== "(") { // Fnxxx name without ()?
 					oValue = {
-						type: "function",
+						type: "fn",
 						args: [],
 						name: sName,
 						pos: aTokens[iParseIndex - 1].pos
@@ -631,26 +690,16 @@ BasicParser.prototype = {
 			}
 
 			if (oToken.type === "(") {
-				if (aTokens[iIndex].type === ")") {
-					advance();
-				} else {
-					do {
-						advance();
-						aArgs.push(expression(0));
-					} while (oToken.type === ",");
-					if (oToken.type !== ")") {
-						throw new BasicParser.ErrorObject("Expected closing parenthesis for array or function call", aTokens[iParseIndex - 1].value, aTokens[iParseIndex].pos);
-					}
-				}
-				advance();
 				oValue = {
 					type: "array",
-					args: aArgs,
+					args: null,
 					name: sName,
 					pos: aTokens[iParseIndex - 1].pos
 				};
+				oValue.args = fnGetArgsInParenthesis();
+
 				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
-					oValue.type = "function"; // FNxxx in e.g. print
+					oValue.type = "fn"; // FNxxx in e.g. print
 				}
 			} else {
 				oValue = oName;
@@ -697,42 +746,6 @@ BasicParser.prototype = {
 			}
 			advance();
 			return oValue;
-		});
-
-		symbol("fix", function () {
-			return fnCreateCall("fix", 1);
-		});
-
-		symbol("hex$", function () { // 1 or 2
-			return fnCreateCall("hex$", 2);
-		});
-
-		symbol("inkey$", function () {
-			return fnCreateCall("inkey$", 0);
-		});
-
-		symbol("int", function () {
-			return fnCreateCall("int", 1);
-		});
-
-		symbol("rnd", function () {
-			return fnCreateCall("rnd", 1); // 0 or 1 parameters
-		});
-
-		symbol("space$", function () {
-			return fnCreateCall("space$", 1);
-		});
-
-		symbol("str$", function () {
-			return fnCreateCall("str$", 1);
-		});
-
-		symbol("tab", function () {
-			return fnCreateCall("tab", 1);
-		});
-
-		symbol("time", function () {
-			return fnCreateCall("time", 0);
 		});
 
 		infix("^", 90, 80);
@@ -790,7 +803,7 @@ BasicParser.prototype = {
 						type: "assign",
 						name: left.name,
 						args: left.args,
-						right: expression(0),
+						value: expression(0),
 						pos: left.pos
 					};
 				} else {
@@ -809,23 +822,6 @@ BasicParser.prototype = {
 		});
 		oSymbols["(=)"] = oSymbols["="];
 
-		stmt("call", function () {
-			return fnCreateCall("call", 1);
-		});
-
-		stmt("clear", function () {
-			return fnCreateCall("clear", 0);
-		});
-
-		stmt("cls", function () { // 0 or 1 parameters
-			var iCount = 0;
-
-			if (oToken.type === "#") { // stream
-				iCount = 1;
-			}
-			return fnCreateCall("cls", iCount);
-		});
-
 		stmt("def", function () {
 			var oValue = {
 				type: "def",
@@ -839,31 +835,11 @@ BasicParser.prototype = {
 			oValue.name = oToken.value;
 			advance();
 
-			if (oToken.type === "(") { // args?
-				advance("(");
-				oValue.args.push(expression(0));
-				while (oToken.type === ",") {
-					advance(",");
-					oValue.args.push(expression(0));
-				}
-				advance(")");
-			}
+			oValue.args = fnGetArgsInParenthesis();
 			advance("=");
 
 			oValue.value = expression(0);
 			return oValue;
-		});
-
-		stmt("defint", function () {
-			return fnCreateCall("defint", 999);
-		});
-
-		stmt("dim", function () {
-			return fnCreateCall("dim", 999);
-		});
-
-		stmt("end", function () {
-			return fnCreateCall("end", 0);
 		});
 
 		stmt("for", function () {
@@ -886,14 +862,6 @@ BasicParser.prototype = {
 			}
 
 			return oValue;
-		});
-
-		stmt("gosub", function () {
-			return fnCreateCall("gosub", 1);
-		});
-
-		stmt("goto", function () {
-			return fnCreateCall("goto", 1);
 		});
 
 		stmt("if", function () {
@@ -961,19 +929,6 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		stmt("locate", function () { // 2 or 3 parameters
-			var iCount = 2;
-
-			if (oToken.type === "#") { // stream
-				iCount = 3;
-			}
-			return fnCreateCall("locate", iCount);
-		});
-
-		stmt("mode", function () {
-			return fnCreateCall("mode", 1);
-		});
-
 		stmt("next", function () {
 			var oValue = {
 				type: "next",
@@ -1009,7 +964,7 @@ BasicParser.prototype = {
 			oValue.left = expression(0);
 			if (oToken.type === "gosub") {
 				advance("gosub");
-				oValue.value = fnCreateCall("gosub", 1);
+				oValue.value = fnCreateCmdCall("gosub", 1);
 			}
 
 			return oValue;
@@ -1020,37 +975,48 @@ BasicParser.prototype = {
 				oValue,
 				iParseIndex = iIndex,
 				bTrailingSemicolon = false,
-				t;
+				reFormat = /!|&|\\ *\\|#+\.?#*[+-]?/,
+				t, aFormat;
 
 			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
 				if (oToken.type === "using") {
 					advance("using");
 					t = expression(0); // format
+					aFormat = t.value.split(reFormat);
+					aFormat.shift(); // remove one arg
 					oValue = {
 						type: "call",
 						name: "using",
 						args: [t]
 					};
-					if (oToken.type === ";") {
-						advance();
-					}
-					t = expression(0); // value
-					oValue.args.push(t);
 
+					// get number of parameters depending on format
+					while (aFormat.length) {
+						aFormat.shift();
+						if (oToken.type === ";") {
+							advance(";");
+						}
+						t = expression(0); // value
+						oValue.args.push(t);
+					}
 					aArgs.push(oValue);
-				} else if (BasicParser.mKeywords[oToken.type] && BasicParser.mKeywords[oToken.type] !== "f") { // stop also at keyword which is not a function
+
+				} else if (BasicParser.mKeywords[oToken.type] && BasicParser.mKeywords[oToken.type].charAt(0) !== "f") { // stop also at keyword which is not a function
 					break;
 				} else if (oToken.type === ";") {
 					advance();
 				} else if (oToken.type === ",") { // default tab, simulate tab...
 					aArgs.push({
 						type: "call",
+						/*
 						args: [
 							{
 								type: "number",
-								value: -2
+								value: null // null is special
 							}
 						],
+						*/
+						args: [], // special: we use no args to get tab with current zone
 						name: "tab",
 						pos: aTokens[iParseIndex - 2].pos
 					});
@@ -1077,22 +1043,6 @@ BasicParser.prototype = {
 		});
 
 		oSymbols["?"] = oSymbols.print; // ? is same as print
-
-		stmt("randomize", function () { // 0 or 1 parameters
-			return fnCreateCall("randomize", 1);
-		});
-
-		stmt("return", function () {
-			return fnCreateCall("return", 0);
-		});
-
-		stmt("stop", function () {
-			return fnCreateCall("stop", 0);
-		});
-
-		stmt("wait", function () {
-			return fnCreateCall("wait", 3); // 2 or 3 parameters
-		});
 
 		stmt("wend", function () {
 			var oValue = {
@@ -1223,136 +1173,155 @@ BasicParser.prototype = {
 				return sName;
 			},
 
-			parseNode = function (node) {
+			fnParseArgs = function (aArgs) {
+				var aNodeArgs = [], // do not modify node.args here (could be a parameter of defined function)
+					i;
+
+				for (i = 0; i < aArgs.length; i += 1) {
+					aNodeArgs[i] = parseNode(aArgs[i]);
+				}
+				return aNodeArgs;
+			},
+
+			fnParseFor = function (node) {
+				var sVarName, sLabel, value, value2;
+
+				sVarName = fnAdaptVariableName(node.left.name);
+				//sLabel = that.oStack.f.push(); //"f" + that.iForIndex;
+				sLabel = "f" + that.iForIndex;
+				value = "/* for() */ " + parseNode(node.left) + "; var " + sVarName + "Step = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "a2\"); break;";
+				value += "\ncase \"" + sLabel + "\": ";
+
+				value += sVarName + " += " + sVarName + "Step;";
+				value += "\ncase \"" + sLabel + "a2\": ";
+				value2 = parseNode(node.right);
+				value += "if (" + sVarName + "Step > 0 && " + sVarName + " > " + value2 + " || " + sVarName + "Step < 0 && " + sVarName + " < " + value2 + ") { o.goto(\"" + sLabel + "e\"); break; }";
+				that.iForIndex += 1;
+				return value;
+			},
+
+			parseNode = function (node) { // eslint-disable-line complexity
 				var i, value, value2, sName, aNodeArgs;
 
 				if (Utils.debug > 3) {
 					Utils.console.debug("evaluate: parseNode node=%o type=" + node.type + " name=" + node.name + " value=" + node.value + " left=%o right=%o args=%o", node, node.left, node.right, node.args);
 				}
-				if (node.type === "number") {
+				switch (node.type) {
+				case "number":
 					value = node.value;
-				} else if (node.type === "string") {
+					break;
+				case "string":
 					value = '"' + node.value + '"';
-				} else if (node.type === "binnumber") {
+					break;
+				case "binnumber":
 					value = node.value.slice(2);
 					value = "0b" + ((value.length) ? value : "0"); // &x->0b; 0b is ES6
-				} else if (node.type === "hexnumber") {
+					break;
+				case "hexnumber":
 					value = node.value.slice(1);
 					value = "0x" + ((value.length) ? value : "0"); // &->0x
-				} else if (mOperators[node.type]) {
-					if (node.left) {
-						value = parseNode(node.left);
-						if (mOperators[node.left.type]) { // binary operator?
-							value = "(" + value + ")";
-						}
-						value2 = parseNode(node.right);
-						if (mOperators[node.right.type]) { // binary operator?
-							value2 = "(" + value2 + ")";
-						}
-						value = mOperators[node.type](value, value2);
-					} else {
-						value = mOperators[node.type](parseNode(node.right));
-					}
-				} else if (node.type === "identifier") {
-					sName = fnAdaptVariableName(node.value); // here we use node.value
-					value = sName;
-				} else if (node.type === "array") {
-					aNodeArgs = [];
-					for (i = 0; i < node.args.length; i += 1) {
-						aNodeArgs[i] = parseNode(node.args[i]);
-					}
+					break;
+				case "identifier":
+					value = fnAdaptVariableName(node.value); // here we use node.value
+					break;
+				case "array":
+					aNodeArgs = fnParseArgs(node.args);
 					sName = fnAdaptVariableName(node.name);
 					value = sName + "[" + aNodeArgs.join(", ") + "]";
-				} else if (node.type === "assign") {
-					if (node.args) { // array?
-						value = "";
-						for (i = 0; i < node.args.length; i += 1) {
-							value += parseNode(node.args[i]) + ",";
-						}
-					} else {
-						value = parseNode(node.value);
-					}
+					break;
+				case "assign":
 					sName = fnAdaptVariableName(node.name);
-					value = "var " + sName + " = " + value;
-				} else if (node.type === "call") {
-					aNodeArgs = []; // do not modify node.args here (could be a parameter of defined function)
-					for (i = 0; i < node.args.length; i += 1) {
-						aNodeArgs[i] = parseNode(node.args[i]);
+					if (node.args) { // array?
+						aNodeArgs = fnParseArgs(node.args);
+						sName += "[" + aNodeArgs.join(", ") + "]";
+						value = "";
+					} else {
+						value = "var ";
 					}
+					value += sName + " = " + parseNode(node.value);
+					break;
+				case "call":
+					aNodeArgs = fnParseArgs(node.args);
 					sName = node.name;
 					if (mFunctions[sName] === undefined) {
-						throw new BasicParser.ErrorObject("Function is undefined", sName, node.pos);
+						if (Utils.debug > 1) {
+							Utils.console.debug("NOTE: Generating default call for function ", sName, " pos ", node.pos);
+						}
+						value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
+					} else {
+						checkArgs(sName, aNodeArgs, node.pos);
+						value = mFunctions[sName].apply(node, aNodeArgs);
 					}
-					checkArgs(sName, aNodeArgs, node.pos);
-					value = mFunctions[sName].apply(node, aNodeArgs);
-				} else if (node.type === "def") {
-					aNodeArgs = []; // do not modify node.args here (could be a parameter of defined function)
-					for (i = 0; i < node.args.length; i += 1) {
-						aNodeArgs[i] = parseNode(node.args[i]);
-					}
+					break;
+				case "def":
+					aNodeArgs = fnParseArgs(node.args);
 					sName = fnAdaptVariableName(node.name);
 					value = "var " + sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
-				} else if (node.type === "function") { // FNxxx function call
-					aNodeArgs = [];
-					for (i = 0; i < node.args.length; i += 1) {
-						aNodeArgs[i] = parseNode(node.args[i]);
-					}
+					break;
+				case "fn": // FNxxx function call
+					aNodeArgs = fnParseArgs(node.args);
 					sName = fnAdaptVariableName(node.name);
 					value = sName + "(" + aNodeArgs.join(", ") + ")";
-				} else if (node.type === "for") {
-					sName = "f" + that.iForIndex;
-					value = "/* for() */ " + parseNode(node.left) + "; var " + node.left.name + "Step = " + parseNode(node.third) + "; o.goto(\"" + sName + "a2\"); break;";
-					value += "\ncase \"" + sName + "\": ";
-
-					value += node.left.name + " += " + node.left.name + "Step;";
-					value += "\ncase \"" + sName + "a2\": ";
-					value2 = parseNode(node.right);
-					value += "if (" + node.left.name + "Step > 0 && " + node.left.name + " > " + value2 + " || " + node.left.name + "Step < 0 && " + node.left.name + " < " + value2 + ") { o.goto(\"" + sName + "e\"); break; }";
-					that.iForIndex += 1;
-				} else if (node.type === "label") {
+					break;
+				case "for":
+					value = fnParseFor(node);
+					break;
+				case "label":
+					aNodeArgs = fnParseArgs(node.left);
 					value = "case " + node.value + ":";
-					for (i = 0; i < node.left.length; i += 1) {
-						value += " " + parseNode(node.left[i]);
-						if (!Utils.stringEndsWith(value, "}") && !Utils.stringEndsWith(value, ":") && !Utils.stringEndsWith(value, ";")) {
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						value += " " + aNodeArgs[i];
+						if (!(/[}:;]$/).test(value)) { // does not end with "}" ":" ";"
 							value += ";";
 						}
 					}
-				} else if (node.type === "if") { // statement
-					value = "if (" + parseNode(node.left) + ") { ";
-					for (i = 0; i < node.right.length; i += 1) {
-						value += parseNode(node.right[i]) + ";";
-					}
-					value += " }";
+					break;
+				case "if":
+					aNodeArgs = fnParseArgs(node.right);
+					value = "if (" + parseNode(node.left) + ") { " + aNodeArgs.join(";") + "; }";
 					if (node.third) {
-						value += " else { ";
-						for (i = 0; i < node.third.length; i += 1) {
-							value += parseNode(node.third[i]) + ";";
-						}
-						value += " }";
+						aNodeArgs = fnParseArgs(node.third);
+						value += " else { " + aNodeArgs.join(";") + "; }";
 					}
-				} else if (node.type === "next") {
+					break;
+				case "next":
 					that.iForIndex -= 1;
 					sName = "f" + that.iForIndex;
 					value = "/* next() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
-				} else if (node.type === "on") {
+					break;
+				case "on":
 					Utils.console.log("on"); // TODO
 					value = " /* on(" + "" + ") */ "; //TTT
-				} else if (node.type === "wend") {
+					break;
+				case "wend":
 					that.iWhileIndex -= 1;
 					sName = "w" + that.iWhileIndex;
 					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
-				} else if (node.type === "while") {
+					break;
+				case "while":
 					sName = "w" + that.iWhileIndex;
 					value = "\ncase \"" + sName + "\": if (!(" + parseNode(node.left) + ")) { o.goto(\"" + sName + "e\"); break; }";
 					that.iWhileIndex += 1;
-
-				/*
-				} else if (node.type === "goto") { // statement
-					value = "o.iLine = " + parseNode(node.left) + "; break"; //TTT
-				*/
-				} else {
-					Utils.console.error("parseNode node=%o unknown type=" + node.type, node);
-					value = node;
+					break;
+				default:
+					if (mOperators[node.type]) {
+						if (node.left) {
+							value = parseNode(node.left);
+							if (mOperators[node.left.type]) { // binary operator?
+								value = "(" + value + ")";
+							}
+							value2 = parseNode(node.right);
+							if (mOperators[node.right.type]) { // binary operator?
+								value2 = "(" + value2 + ")";
+							}
+							value = mOperators[node.type](value, value2);
+						} else {
+							value = mOperators[node.type](parseNode(node.right));
+						}
+					} else {
+						Utils.console.error("parseNode node=%o unknown type=" + node.type, node);
+						value = node;
+					}
 				}
 				return value;
 			},
@@ -1381,61 +1350,58 @@ BasicParser.prototype = {
 	},
 	calculate: function (input, variables) {
 		var mFunctions = {
-				call: function (n) {
-					return "o.call(" + n + ")";
-				},
-				clear: function () {
-					Utils.console.log("clear");
-					return "o.clear()";
-				},
-				cls: function (iStream) { // optional args 1: iStream
-					iStream = iStream || 0;
-					return "o.cls(" + iStream + ")";
-				},
 				defint: function () { // varargs
-					var	s = "",
-						i;
+					var	aArgs = [],
+						sName, i;
 
+					/*
 					for (i = 0; i < arguments.length; i += 1) {
 						if (s !== "") {
 							s += "; ";
 						}
 						s += "o.defint(" + String(arguments[i]) + ")";
 					}
-					return s;
+					*/
+					for (i = 0; i < arguments.length; i += 1) {
+						sName = arguments[i];
+						aArgs.push("o.dim(\"" + sName + "\")");
+					}
+					return aArgs.join("; ");
 				},
 				dim: function () { // varargs
-					var	s = "",
-						i;
+					var	aArgs = [],
+						sName, sName2, iBracket, i;
 
+					/*
 					for (i = 0; i < arguments.length; i += 1) {
 						if (s !== "") {
 							s += "; ";
 						}
 						s += "o.dim(" + String(arguments[i]) + ")";
 					}
-					return s;
+					*/
+					for (i = 0; i < arguments.length; i += 1) {
+						sName = arguments[i];
+						iBracket = sName.indexOf("[");
+						if (iBracket >= 0) {
+							sName2 = sName.substring(0, iBracket);
+						}
+						aArgs.push("o.dim(\"" + sName + "\"); " + "var " + sName2 + " = []");
+					}
+					return aArgs.join("; ");
 				},
 				end: function () {
 					Utils.console.log("end");
 					return "o.end(); break"; // TODO: how to allow cont?
 				},
-				fix: function (x) {
-					return "Math.trunc(" + x + ")"; // (ES6: Math.trunc)
-				},
+
 				gosub: function (n) {
 					return "o.gosub(" + n + "); break";
 				},
 				"goto": function (n) {
 					return "o.goto(" + n + "); break";
 				},
-				hex$: function (n, iWidth) { // optional args 1: iWidth
-					iWidth = iWidth || 0;
-					return "o.iLine = o.hex$(" + n + ", " + iWidth + "); break";
-				},
-				inkey$: function () {
-					return "o.inkey$()";
-				},
+
 				input: function () { // varargs
 					var s = "",
 						i, sMsg;
@@ -1449,23 +1415,6 @@ BasicParser.prototype = {
 					}
 					return s;
 				},
-				"int": function (x) {
-					return "Math.floor(" + x + ")";
-				},
-				locate: function (iStream, x, y) { // TODO XXXoptional args 1: iStream
-					iStream = iStream || 0;
-					return "o.locate(" + iStream + ", " + x + ", " + y + ")";
-				},
-				mode: function (n) {
-					Utils.console.log("mode=", n);
-					return "o.mode(" + n + ")";
-				},
-				/*
-				on: function (n) {
-					Utils.console.log("on=", n); // TODO
-					return "o.on(" + n + ")";
-				},
-				*/
 				next: function () { // varargs
 					var	s = "",
 						i;
@@ -1478,170 +1427,13 @@ BasicParser.prototype = {
 					}
 					return s;
 				},
-				print: function () { // varargs
-					var	aArgs = [],
-						i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						aArgs.push(String(arguments[i]));
-					}
-					return "o.print(" + aArgs.join(", ") + ")";
-				},
-				randomize: function (n) { // optional args 1: n
-					return "o.randomize(" + n + ");";
-				},
 				"return": function () {
 					return "o.return(); break";
-				},
-				rnd: function (n) { // optional args 1: n
-					return "o.rnd(" + n + ");";
-				},
-				space$: function (n) {
-					return "\" \".repeat(" + n + ")";
 				},
 				stop: function () {
 					Utils.console.log("stop");
 					return "o.stop(); break"; //TTT: how to allow cont?
-				},
-				str$: function (n) {
-					return "String(" + n + ")";
-				},
-				tab: function (n) {
-					return "o.tab(" + n + ")";
-				},
-				time: function () {
-					Utils.console.log("time");
-					return "o.time()";
-				},
-				using: function (format, expr) { // print using
-					return "o.using(" + format + ", " + expr + ")";
-				},
-				wait: function (iPort, iMask, iInv) { // optional args 1: iInv
-					iInv = iInv || 0;
-					return "o.wait(" + iPort + ", " + iMask + ", " + iInv + ")";
-				},
-				wend: function () {
-					return "o.wend()";
 				}
-
-				/*
-				// concat(s1, s2, ...) concatenate strings (called by operator [..] )
-				concat: function () { // varargs
-					var	s = "",
-						i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						s += String(arguments[i]);
-					}
-					return s;
-				},
-
-				// sin(d) sine of d (d in degrees)
-				sin: function (degrees) {
-					return Math.sin(Utils.toRadians(degrees));
-				},
-
-				// cos(d) cosine of d (d in degrees)
-				cos: function (degrees) {
-					return Math.cos(Utils.toRadians(degrees));
-				},
-
-				// tan(d) tangent of d (d in degrees)
-				tan: function (degrees) {
-					return Math.tan(Utils.toRadians(degrees));
-				},
-
-				// asin(x) arcsine of x (returns degrees)
-				asin: function (x) {
-					return Utils.toDegrees(Math.asin(x));
-				},
-
-				// acos(x) arccosine of x (returns degrees)
-				acos: function (x) {
-					return Utils.toDegrees(Math.acos(x));
-				},
-
-				// atan(x) arctangent of x (returns degrees)
-				atan: function (x) {
-					return Utils.toDegrees(Math.atan(x));
-				},
-				abs: Math.abs,
-
-				// round(x) round to the nearest integer
-				round: Math.round,
-
-				// ceil(x) round upwards to the nearest integer
-				ceil: Math.ceil,
-
-				// floor(x) round downwards to the nearest integer
-				floor: Math.floor,
-				"int": function (x) { return (x > 0) ? Math.floor(x) : Math.ceil(x); }, // ES6: Math.trunc
-				// mod: or should it be... https://stackoverflow.com/questions/4467539/javascript-modulo-not-behaving
-				mod: function (a, b) { return a % b; },
-				log: Math.log,
-				exp: Math.exp,
-				sqrt: Math.sqrt,
-
-				// max(x, y, ...)
-				max: Math.max,
-
-				// min(x, y, ...)
-				min: Math.min,
-
-				// random() random number between [0,1)
-				random: Math.random,
-
-				// deg() switch do degrees mode (default, ignored, we always use degrees)
-				deg: function () {
-					Utils.console.log("deg() ignored.");
-				},
-
-				// rad() switch do radians mode (not supported, we always use degrees)
-				rad: function () {
-					Utils.console.warn("rad() not supported.");
-				},
-
-				// len(s) length of string
-				len: function (s) {
-					return String(s).length;
-				},
-
-				// mid(s, index, len) substr with positions starting with 1
-				mid: function (s, start, length) {
-					return String(s).substr(start - 1, length);
-				},
-
-				// uc (toUpperCase)  beware: toUpperCase converts 'ß' to 'SS'!
-				uc: function (s) {
-					return String(s).toUpperCase();
-				},
-
-				// lc (toLowerCase)
-				lc: function (s) {
-					return String(s).toLowerCase();
-				},
-				parse: function (s) {
-					var oVars = {},
-						oOut, oErr, iEndPos;
-
-					oOut = new BasicParser().calculate(s, oVars);
-					if (oOut.error) {
-						oErr = oOut.error;
-						iEndPos = oErr.pos + String(oErr.value).length;
-						oOut.text = oErr.message + ": '" + oErr.value + "' (pos " + oErr.pos + "-" + iEndPos + ")";
-					}
-					return oOut.text;
-				},
-				// assert(c1, c2) (assertEqual: c1 === c2)
-				assert: function (a, b) {
-					if (a !== b) {
-						throw new BasicParser.ErrorObject("Assertion failed: '" + a + " != " + b + "'", "assert", this.pos);
-					}
-				},
-				cls: function () {
-					return null; // clear output trigger
-				}
-				*/
 			},
 			oOut = {
 				text: ""
