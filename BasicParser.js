@@ -27,7 +27,7 @@ function BasicParser(options) {
 }
 
 BasicParser.mKeywords = { // c=command, f=function, o=operator
-	// TODO: test for number of function parameters?
+	// TODO: test for function parameter count?
 	/*
 	abs: "f n",
 	after: "c n N",
@@ -218,12 +218,13 @@ BasicParser.prototype = {
 	init: function (options) {
 		this.options = options || {}; // ignoreFuncCase, ignoreVarCase
 	},
-	oStack: { //TODO
+	oStack: {
 		f: [], // for
 		w: [] // while
 	},
-	iForIndex: 0,
-	iWhileIndex: 0,
+	iGosubCount: 0,
+	iForCount: 0,
+	iWhileCount: 0,
 
 	lex: function (input) { // eslint-disable-line complexity
 		var isComment = function (c) { // isApostrophe
@@ -566,6 +567,19 @@ BasicParser.prototype = {
 				return x;
 			},
 
+			fnGetArgs = function () {
+				var aArgs = [];
+
+				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
+					aArgs.push(expression(0));
+					while (oToken.type === ",") {
+						advance();
+						aArgs.push(expression(0));
+					}
+				}
+				return aArgs;
+			},
+
 			fnGetArgsInParenthesis = function () {
 				var aArgs = [];
 
@@ -586,14 +600,18 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
-			fnCreateCmdCall = function (sName, iCount) {
-				var aArgs = [],
-					iParseIndex = iIndex;
+			fnCreateCmdCall = function (sName) {
+				var oValue = {
+					type: "call",
+					args: null,
+					name: sName || aTokens[iIndex - 2].type,
+					pos: aTokens[iIndex - 2].pos
+				};
 
-				sName = sName || aTokens[iParseIndex - 2].type;
 				// TODO check parameter count here
+				oValue.args = fnGetArgs();
+				/*
 				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
-				//if (iCount) {
 					aArgs.push(expression(0));
 					while (oToken.type === ",") {
 						advance();
@@ -606,7 +624,10 @@ BasicParser.prototype = {
 					name: sName,
 					pos: aTokens[iParseIndex - 2].pos
 				};
+				*/
+				return oValue;
 			},
+
 			fnCreateFuncCall = function (sName) {
 				var oValue = {
 					type: "call",
@@ -864,6 +885,16 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("gosub", function () {
+			var oValue = {
+				type: "gosub"
+			};
+
+			oValue.left = expression(0);
+
+			return oValue;
+		});
+
 		stmt("if", function () {
 			var oValue = {
 				type: "if"
@@ -950,9 +981,12 @@ BasicParser.prototype = {
 
 		stmt("on", function () {
 			var oValue = {
-				type: "on"
+				type: "on",
+				args: null,
+				pos: iIndex - 1
 			};
 
+			/*
 			if (oToken.type === "break") {
 				advance("break");
 				oValue.Type = "onBreak"; // cont, gosub..., stop
@@ -960,11 +994,38 @@ BasicParser.prototype = {
 					// TODO
 				}
 			}
+			*/
+
 			// TODO
 			oValue.left = expression(0);
+			//oLeft = expression(0);
 			if (oToken.type === "gosub") {
 				advance("gosub");
-				oValue.value = fnCreateCmdCall("gosub", 1);
+				oValue.name = "onGosub";
+				//oValue = fnCreateCmdCall("onGosub");
+				oValue.args = fnGetArgs();
+				/*
+				{
+					type: "call",
+					args: aArgs,
+					name: sName,
+					pos: aTokens[iParseIndex - 2].pos
+				};
+				oValue.args.unshift(oLeft);
+				*/
+			} else if (oToken.type === "goto") {
+				advance("goto");
+				oValue.name = "onGoto";
+				oValue.args = fnGetArgs();
+				//oValue = fnCreateCmdCall("onGoto");
+				//oValue.args.unshift(oLeft);
+			} else {
+				/*
+				oValue = {
+					type: "on", //TTT
+					left: oLeft
+				};
+				*/
 			}
 
 			return oValue;
@@ -1188,7 +1249,7 @@ BasicParser.prototype = {
 
 				sVarName = fnAdaptVariableName(node.left.name);
 				//sLabel = that.oStack.f.push(); //"f" + that.iForIndex;
-				sLabel = "f" + that.iForIndex;
+				sLabel = "f" + that.iForCount;
 				value = "/* for() */ " + parseNode(node.left) + "; var " + sVarName + "Step = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "a2\"); break;";
 				value += "\ncase \"" + sLabel + "\": ";
 
@@ -1196,7 +1257,30 @@ BasicParser.prototype = {
 				value += "\ncase \"" + sLabel + "a2\": ";
 				value2 = parseNode(node.right);
 				value += "if (" + sVarName + "Step > 0 && " + sVarName + " > " + value2 + " || " + sVarName + "Step < 0 && " + sVarName + " < " + value2 + ") { o.goto(\"" + sLabel + "e\"); break; }";
-				that.iForIndex += 1;
+				that.oStack.f.push(that.iForCount);
+				that.iForCount += 1;
+				return value;
+			},
+
+			fnParseOn = function (node) {
+				var aNodeArgs, i, sName, sLabel, value;
+
+				aNodeArgs = fnParseArgs(node.args);
+				i = parseNode(node.left);
+				aNodeArgs.unshift(i);
+				sName = node.name;
+				//value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
+				//value = "/* on(" + i + ") */  o." + sName + "(" + aNodeArgs.join(", ") + ")";
+				if (sName === "onGosub") {
+					sLabel = "g" + that.iGosubCount;
+					that.iGosubCount += 1;
+					aNodeArgs.unshift('"' + sLabel + '"');
+					value = "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
+				} else if (sName === "onGoto") {
+					value = "o." + sName + "(" + aNodeArgs.join(", ") + "); break";
+				} else { //TODO
+					value = "/* on(" + i + ") */  o." + sName + "(" + aNodeArgs.join(", ") + ")";
+				}
 				return value;
 			},
 
@@ -1266,6 +1350,13 @@ BasicParser.prototype = {
 				case "for":
 					value = fnParseFor(node);
 					break;
+				case "gosub":
+					sName = "g" + that.iGosubCount;
+					that.iGosubCount += 1;
+
+					value = 'o.gosub("' + sName + '", ' + parseNode(node.left) + '); break; \ncase "' + sName + '":';
+					//that.oStack.g.push(that.iGosubCount); // not needed
+					break;
 				case "label":
 					aNodeArgs = fnParseArgs(node.left);
 					value = "case " + node.value + ":";
@@ -1285,23 +1376,45 @@ BasicParser.prototype = {
 					}
 					break;
 				case "next":
-					that.iForIndex -= 1;
-					sName = "f" + that.iForIndex;
+					//that.iForIndex -= 1;
+					i = that.oStack.f.pop();
+					sName = "f" + i;
 					value = "/* next() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					break;
 				case "on":
-					Utils.console.log("on"); // TODO
-					value = " /* on(" + "" + ") */ "; //TTT
+					value = fnParseOn(node);
+					/*
+					aNodeArgs = fnParseArgs(node.args);
+					i = parseNode(node.left);
+					aNodeArgs.unshift(i);
+					sName = node.name;
+					//value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
+					//value = "* on(" + i + ") *  o." + sName + "(" + aNodeArgs.join(", ") + ")";
+					if (sName === "onGosub") {
+						sName = "g" + that.iGosubCount;
+						aNodeArgs.unshift('"' + sName + '"');
+						value = "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sName + '":';
+					} else if (sName === "onGoto") {
+						value = "o." + sName + "(" + aNodeArgs.join(", ") + "); break";
+					} else { //TODO
+						value = "/ * on(" + i + ") * /  o." + sName + "(" + aNodeArgs.join(", ") + ")";
+					}
+					*/
+					break;
+				case "return":
+					value = "o.return(); break;";
 					break;
 				case "wend":
-					that.iWhileIndex -= 1;
-					sName = "w" + that.iWhileIndex;
+					//that.iWhileIndex -= 1;
+					i = that.oStack.w.pop();
+					sName = "w" + i;
 					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					break;
 				case "while":
-					sName = "w" + that.iWhileIndex;
+					sName = "w" + that.iWhileCount;
 					value = "\ncase \"" + sName + "\": if (!(" + parseNode(node.left) + ")) { o.goto(\"" + sName + "e\"); break; }";
-					that.iWhileIndex += 1;
+					that.oStack.w.push(that.iWhileCount);
+					that.iWhileCount += 1;
 					break;
 				default:
 					if (mOperators[node.type]) {
@@ -1395,9 +1508,11 @@ BasicParser.prototype = {
 					return "o.end(); break"; // TODO: how to allow cont?
 				},
 
+				/*
 				gosub: function (n) {
 					return "o.gosub(" + n + "); break";
 				},
+				*/
 				"goto": function (n) {
 					return "o.goto(" + n + "); break";
 				},

@@ -82,11 +82,25 @@ CommonEventHandler.prototype = {
 		this.toogleHidden("cpcArea", "showCpc");
 	},
 
-	onExecuteButtonClick: function () {
+	onParseButtonClick: function () {
 		var sInput = this.view.getAreaValue("inputText");
 
-		this.model.initVariables();
-		this.controller.fnCalculate2(sInput);
+		//this.model.initVariables();
+		this.controller.fnParse(sInput);
+	},
+
+	onRunButtonClick: function () {
+		var sInput = this.view.getAreaValue("outputText");
+
+		//this.model.initVariables();
+		this.controller.fnRun(sInput);
+	},
+
+	onParseRunButtonClick: function () {
+		var sInput = this.view.getAreaValue("inputText");
+
+		//this.model.initVariables();
+		this.controller.fnParseRun(sInput);
 	},
 
 	fnEncodeUriParam: function (params) {

@@ -25,7 +25,8 @@ CpcVm.prototype = {
 		this.bStop = false;
 		this.sOut = "";
 		// this.iStartTime = Date.now();
-		this.v = {};
+		this.v = {}; // TODO
+		this.oGosubStack = [];
 		this.bDeg = false;
 		this.iHimem = 42619; // example
 		this.iPos = 1; // current text position in line
@@ -308,7 +309,10 @@ CpcVm.prototype = {
 		return 42245; // TTT
 	},
 
-	// gosub
+	gosub: function (retLabel, n) {
+		this.iLine = n;
+		this.oGosubStack.push(retLabel);
+	},
 
 	"goto": function (n) {
 		this.iLine = n;
@@ -496,9 +500,14 @@ CpcVm.prototype = {
 
 	// on error goto
 
-	// on n gosub
+	onGosub: function (retLabel, n) { // varargs
+		this.iLine = arguments[n + 1]; // n=1...; start with argument 2
+		this.oGosubStack.push(retLabel);
+	},
 
-	// on n goto
+	onGoto: function (n) { // varargs
+		this.iLine = arguments[n];
+	},
 
 	// on sq gosub
 
@@ -548,7 +557,7 @@ CpcVm.prototype = {
 		return "[Not implemented yet: poke]";
 	},
 
-	pos: function (iStream) {
+	pos: function (/* iStream */) {
 		return this.iPos; // TODO
 	},
 
@@ -615,7 +624,11 @@ CpcVm.prototype = {
 		return "[Not implemented yet: resume]";
 	},
 
-	// return
+	"return": function () {
+		var retLabel = this.oGosubStack.pop();
+
+		this.iLine = retLabel;
+	},
 
 	right$: function (s, iLen) {
 		return s.slice(-iLen);

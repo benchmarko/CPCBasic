@@ -32,36 +32,11 @@ Controller.prototype = {
 		this.mVm = new CpcVm();
 	},
 
-	fnExec: function (sScript) {
-		var oVm = this.mVm,
-			sOut = oVm.sOut,
-			fn, rc;
-
-		try {
-			fn = new Function("o", sScript); // eslint-disable-line no-new-func
-		} catch (e) {
-			sOut += "\n" + String(e) + "\n" + String(e.stack) + "\n";
-			Utils.console.error(e);
-		}
-
-		oVm.vmInit();
-		try {
-			rc = fn(oVm);
-			sOut = oVm.sOut;
-			if (rc) {
-				sOut += rc;
-			}
-		} catch (e) {
-			sOut += "\n" + String(e) + "\n";
-		}
-		return sOut;
-	},
-
-	fnCalculate2: function (sInput) {
+	fnParse: function (sInput) {
 		var oVariables = this.model.getAllVariables(), // current variables
-			sResult = "",
 			oParseOptions, oOutput, oError, iEndPos, sOutput;
 
+		//this.view.setAreaValue("outputText", "");
 		oParseOptions = {
 			ignoreVarCase: true
 		};
@@ -79,10 +54,54 @@ Controller.prototype = {
 		}
 		this.view.setAreaValue("outputText", sOutput);
 
+		/*
 		this.mVm.sOut = this.view.getAreaValue("resultText");
 		if (!oOutput.error) {
-			sResult += this.fnExec(sOutput);
+			sResult += this.fnRun(sOutput);
 		}
 		this.view.setAreaValue("resultText", sResult);
+		*/
+		return oOutput;
+	},
+
+	fnRun: function (sScript) {
+		var oVm = this.mVm,
+			sOut = oVm.sOut,
+			fn, rc;
+
+		try {
+			fn = new Function("o", sScript); // eslint-disable-line no-new-func
+		} catch (e) {
+			sOut += "\n" + String(e) + "\n" + String(e.stack) + "\n";
+			Utils.console.error(e);
+		}
+
+		if (fn) {
+			this.mVm.sOut = this.view.getAreaValue("resultText");
+			oVm.vmInit();
+			try {
+				rc = fn(oVm);
+				sOut = oVm.sOut;
+				if (rc) {
+					sOut += rc;
+				}
+			} catch (e) {
+				sOut += "\n" + String(e) + "\n";
+			}
+		}
+		this.view.setAreaValue("resultText", sOut);
+		return sOut;
+	},
+
+	fnParseRun: function (sInput) {
+		var oOutput, sScript;
+
+		oOutput = this.fnParse(sInput);
+
+		if (!oOutput.error) {
+			sScript = this.view.getAreaValue("outputText");
+			this.fnRun(sScript);
+		}
 	}
+
 };
