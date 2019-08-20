@@ -15,11 +15,11 @@
 			<button id="helpButton" title="Help">Help</button>
 		</legend>
 		<div id="specialArea" class="area">
+			<button id="parseRunButton" title="Parse and run script">Parse&Run</button>
 			<button id="parseButton" title="Parse BASIC script">Parse</button>
 			<button id="runButton" title="Run JavaScript">Run</button>
-			<button id="parseRunButton" title="Parse and run script">Parse&Run</button>
-			<button id="stopButton" title="Stop/escape/break running script">Stop</button>
-			<button id="contButton" title="Continue script">Continue</button>
+			<button id="stopButton" title="Stop/escape/break running script" disabled>Stop</button>
+			<button id="contButton" title="Continue script" disabled>Continue</button>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
@@ -44,7 +44,7 @@
 			<span id="outputLegend" class="legendButton" title="Show/Hide JavaScript">JavaScript</span>
 		</legend>
 		<div id="outputArea" class="area">
-			<textarea id="outputText" placeholder="Use input field, press 'Run'" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+			<textarea id="outputText" placeholder="Use input field, press 'Parse&Run'" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox">
@@ -52,7 +52,7 @@
 			<span id="resultLegend" class="legendButton" title="Show/Hide BASIC Console">BASIC Console</span>
 		</legend>
 		<div id="resultArea" class="area">
-			<textarea id="resultText" placeholder="" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" readonly></textarea>
+			<textarea id="resultText" placeholder="" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">

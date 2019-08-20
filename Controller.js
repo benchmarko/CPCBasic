@@ -18,6 +18,8 @@ function Controller(oModel, oView) {
 
 Controller.prototype = {
 	init: function (oModel, oView) {
+		var sExample;
+
 		this.model = oModel;
 		this.view = oView;
 		this.commonEventHandler = new CommonEventHandler(oModel, oView, this);
@@ -28,19 +30,73 @@ Controller.prototype = {
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
+		sExample = oModel.getProperty("example");
+		oView.setSelectValue("exampleSelect", sExample);
 
 		this.mVm = new CpcVm();
+
+		this.fnSetExampleSelectOptions();
+		this.commonEventHandler.onExampleSelectChange();
+	},
+
+	// Also called from example files xxxxx.js
+	fnAddItem: function (sKey, input) { // optional sKey
+		var sInput, oExample;
+
+		//sInput = Utils.stringTrimLeft(input);
+		sInput = input.trim();
+
+		if (!sKey) {
+			sKey = this.model.getProperty("example");
+		}
+		oExample = this.model.getExample(sKey);
+		if (!oExample) {
+			oExample = this.fnCreateNewExample({
+				key: sKey
+			});
+			sKey = oExample.key;
+			this.model.setExample(oExample);
+			Utils.console.log("fnAddItem: Creating new example: " + sKey);
+		}
+		oExample.key = sKey; // maybe changed
+		oExample.script = sInput;
+		oExample.loaded = true;
+		Utils.console.log("fnAddItem: " + sKey);
+		return sKey;
+	},
+
+	fnSetExampleSelectOptions: function () {
+		var sSelect = "exampleSelect",
+			aItems = [],
+			sExample = this.model.getProperty("example"),
+			oAllExamples = this.model.getAllExamples(),
+			sKey, oExample, oItem;
+
+		for (sKey in oAllExamples) {
+			if (oAllExamples.hasOwnProperty(sKey)) {
+				oExample = oAllExamples[sKey];
+				oItem = {
+					value: oExample.key,
+					title: (oExample.key + ": " + oExample.title).substr(0, 160)
+				};
+				oItem.text = oItem.title.substr(0, 34);
+				if (oExample.key === sExample) {
+					oItem.selected = true;
+				}
+				aItems.push(oItem);
+			}
+		}
+		this.view.setSelectOptions(sSelect, aItems);
 	},
 
 	fnParse: function (sInput) {
-		var oVariables = this.model.getAllVariables(), // current variables
-			oParseOptions, oOutput, oError, iEndPos, sOutput;
+		var oParseOptions, oOutput, oError, iEndPos, sOutput;
 
 		//this.view.setAreaValue("outputText", "");
 		oParseOptions = {
 			ignoreVarCase: true
 		};
-		oOutput = new BasicParser(oParseOptions).calculate(sInput, oVariables);
+		oOutput = new BasicParser(oParseOptions).calculate(sInput, {});
 		if (oOutput.error) {
 			oError = oOutput.error;
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);

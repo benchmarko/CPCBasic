@@ -85,22 +85,23 @@ CommonEventHandler.prototype = {
 	onParseButtonClick: function () {
 		var sInput = this.view.getAreaValue("inputText");
 
-		//this.model.initVariables();
 		this.controller.fnParse(sInput);
 	},
 
 	onRunButtonClick: function () {
 		var sInput = this.view.getAreaValue("outputText");
 
-		//this.model.initVariables();
 		this.controller.fnRun(sInput);
 	},
 
 	onParseRunButtonClick: function () {
 		var sInput = this.view.getAreaValue("inputText");
 
-		//this.model.initVariables();
 		this.controller.fnParseRun(sInput);
+	},
+
+	onHelpButtonClick: function () {
+		window.open("https://github.com/benchmarko/CPCBasic/#readme");
 	},
 
 	fnEncodeUriParam: function (params) {
@@ -121,6 +122,46 @@ CommonEventHandler.prototype = {
 		var oChanged = Utils.getChangedParameters(this.model.getAllProperties(), this.model.getAllInitialProperties());
 
 		window.location.search = "?" + this.fnEncodeUriParam(oChanged); // jQuery.param(oChanged, true)
+	},
+
+	onExampleSelectChange: function () {
+		var that = this,
+			sExample = this.view.getSelectValue("exampleSelect"),
+			sUrl, oExample,
+
+			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
+				var sInput;
+
+				if (!bSuppressLog) {
+					Utils.console.log("Example " + sUrl + " loaded");
+				}
+
+				oExample = that.model.getExample(sExample);
+				sInput = oExample.script;
+				that.view.setAreaValue("inputText", sInput);
+				that.view.setAreaValue("outputText", "");
+			},
+			fnExampleError = function () {
+				Utils.console.log("Example " + sUrl + " error");
+				that.view.setAreaValue("inputText", "");
+				that.view.setAreaValue("outputText", "Cannot load example: " + sExample);
+			};
+
+		this.model.setProperty("example", sExample);
+		this.view.setSelectTitleFromSelectedOption("exampleSelect");
+		oExample = this.model.getExample(sExample); // already loaded
+		if (oExample && oExample.loaded) {
+			fnExampleLoaded("", true);
+		} else if (sExample && oExample) { // need to load
+			this.view.setAreaValue("inputText", "#loading " + sExample + "...");
+			this.view.setAreaValue("outputText", "waiting...");
+
+			sUrl = this.model.getProperty("exampleDir") + "/" + sExample + ".js";
+			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
+		} else {
+			this.view.setAreaValue("inputText", "");
+			this.model.setProperty("example", "");
+		}
 	}
 };
 

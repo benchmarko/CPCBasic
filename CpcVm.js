@@ -38,6 +38,9 @@ CpcVm.prototype = {
 		this.bStop = true;
 	},
 
+	vmNotImplemented: function (sName) {
+		Utils.console.warn("Not implemented: " + sName);
+	},
 	/*
 	zformat: function (s, length) {
 		var i;
@@ -92,7 +95,7 @@ CpcVm.prototype = {
 	},
 
 	after: function () {
-		return "[Not implemented yet: after]";
+		this.vmNotImplemented("after");
 	},
 
 	// and
@@ -106,7 +109,7 @@ CpcVm.prototype = {
 	},
 
 	auto: function () {
-		return "[Not implemented yet: auto]";
+		this.vmNotImplemented("auto");
 	},
 
 	bin$: function (n, iPad) {
@@ -114,7 +117,7 @@ CpcVm.prototype = {
 	},
 
 	border: function () {
-		return "[Not implemented yet: border]";
+		this.vmNotImplemented("border");
 	},
 
 	// break
@@ -128,11 +131,11 @@ CpcVm.prototype = {
 	},
 
 	cat: function () {
-		return "[Not implemented yet: cat]";
+		this.vmNotImplemented("cat");
 	},
 
 	chain: function () {
-		return "[Not implemented yet: chain, chain merge]";
+		this.vmNotImplemented("chain, chain merge");
 	},
 
 	chr$: function (n) {
@@ -144,23 +147,23 @@ CpcVm.prototype = {
 	},
 
 	clear: function () {
-		return "[Not implemented yet: clear]";
+		this.vmNotImplemented("clear");
 	},
 
 	clearInput: function () {
-		return "[Not implemented yet: clearInput]";
+		this.vmNotImplemented("clearInput");
 	},
 
 	clg: function () {
-		return "[Not implemented yet: clg]";
+		this.vmNotImplemented("clg");
 	},
 
 	closein: function () {
-		return "[Not implemented yet: closein]";
+		this.vmNotImplemented("closein");
 	},
 
 	closeout: function () {
-		return "[Not implemented yet: closeout]";
+		this.vmNotImplemented("closeout");
 	},
 
 	cls: function (n) {
@@ -170,11 +173,11 @@ CpcVm.prototype = {
 	},
 
 	cont: function () {
-		return "[Not implemented yet: cont]";
+		this.vmNotImplemented("cont");
 	},
 
 	copychr$: function () {
-		return "[Not implemented yet: copychr$]";
+		this.vmNotImplemented("copychr$");
 	},
 
 	cos: function (n) {
@@ -186,29 +189,29 @@ CpcVm.prototype = {
 	},
 
 	cursor: function () {
-		return "[Not implemented yet: cursor]";
+		this.vmNotImplemented("cursor");
 	},
 
 	data: function () {
-		return "[Not implemented yet: data]";
+		this.vmNotImplemented("data");
 	},
 
 	dec$: function () {
-		return "[Not implemented yet: dec$]";
+		this.vmNotImplemented("dec$");
 	},
 
 	// def fn
 
 	defint: function () {
-		return "[Not implemented yet: defint]";
+		this.vmNotImplemented("defint");
 	},
 
 	defreal: function () {
-		return "[Not implemented yet: defreal]";
+		this.vmNotImplemented("defreal");
 	},
 
 	defstr: function () {
-		return "[Not implemented yet: defstr]";
+		this.vmNotImplemented("defstr");
 	},
 
 	deg: function () {
@@ -216,7 +219,7 @@ CpcVm.prototype = {
 	},
 
 	"delete": function () {
-		return "[Not implemented yet: delete]";
+		this.vmNotImplemented("delete");
 	},
 
 	derr: function () {
@@ -224,27 +227,27 @@ CpcVm.prototype = {
 	},
 
 	di: function () {
-		return "[Not implemented yet: di]";
+		this.vmNotImplemented("di");
 	},
 
 	dim: function () {
-		return "[Not implemented yet: dim]";
+		this.vmNotImplemented("dim");
 	},
 
 	draw: function () {
-		return "[Not implemented yet: draw]";
+		this.vmNotImplemented("draw");
 	},
 
 	drawr: function () {
-		return "[Not implemented yet: drawr]";
+		this.vmNotImplemented("drawr");
 	},
 
 	edit: function () {
-		return "[Not implemented yet: edit]";
+		this.vmNotImplemented("edit");
 	},
 
 	ei: function () {
-		return "[Not implemented yet: ei]";
+		this.vmNotImplemented("ei");
 	},
 
 	// else
@@ -254,35 +257,35 @@ CpcVm.prototype = {
 	},
 
 	ent: function () {
-		return "[Not implemented yet: ent]";
+		this.vmNotImplemented("ent");
 	},
 
 	env: function () {
-		return "[Not implemented yet: env]";
+		this.vmNotImplemented("env");
 	},
 
 	eof: function () {
-		return "[Not implemented yet: eof]";
+		this.vmNotImplemented("eof");
 	},
 
 	erase: function () {
-		return "[Not implemented yet: erase]";
+		this.vmNotImplemented("erase");
 	},
 
 	erl: function () {
-		return "[Not implemented yet: erl]";
+		this.vmNotImplemented("erl");
 	},
 
 	err: function () {
-		return "[Not implemented yet: err]";
+		this.vmNotImplemented("err");
 	},
 
 	error: function () {
-		return "[Not implemented yet: error]";
+		this.vmNotImplemented("error");
 	},
 
 	every: function () {
-		return "[Not implemented yet: every]";
+		this.vmNotImplemented("every");
 	},
 
 	exp: function (n) {
@@ -290,7 +293,7 @@ CpcVm.prototype = {
 	},
 
 	fill: function () {
-		return "[Not implemented yet: fill]";
+		this.vmNotImplemented("fill");
 	},
 
 	fix: function (n) {
@@ -302,7 +305,7 @@ CpcVm.prototype = {
 	// for
 
 	frame: function () {
-		return "[Not implemented yet: frame]";
+		this.vmNotImplemented("frame");
 	},
 
 	fre: function (/* n */) {
@@ -319,11 +322,11 @@ CpcVm.prototype = {
 	},
 
 	graphicsPaper: function () {
-		return "[Not implemented yet: graphicsPaper]";
+		this.vmNotImplemented("graphicsPaper");
 	},
 
 	graphicsPen: function () {
-		return "[Not implemented yet: graphicsPen]";
+		this.vmNotImplemented("graphicsPen");
 	},
 
 	hex$: function (n, iPad) {
@@ -337,19 +340,19 @@ CpcVm.prototype = {
 	// if
 
 	ink: function () {
-		return "[Not implemented yet: ink]";
+		this.vmNotImplemented("ink");
 	},
 
 	inkey: function () {
-		return "[Not implemented yet: inkey]";
+		this.vmNotImplemented("inkey");
 	},
 
 	inkey$: function () {
-		return "[Not implemented yet: inkey$]";
+		this.vmNotImplemented("inkey$");
 	},
 
 	inp: function () {
-		return "[Not implemented yet: inp]";
+		this.vmNotImplemented("inp");
 	},
 
 	input: function (sMsg, sVar) {
@@ -376,15 +379,15 @@ CpcVm.prototype = {
 	},
 
 	joy: function () {
-		return "[Not implemented yet: joy]";
+		this.vmNotImplemented("joy");
 	},
 
 	key: function () {
-		return "[Not implemented yet: key]";
+		this.vmNotImplemented("key");
 	},
 
 	keyDef: function () {
-		return "[Not implemented yet: keyDef]";
+		this.vmNotImplemented("keyDef");
 	},
 
 	left$: function (s, iLen) {
@@ -401,7 +404,7 @@ CpcVm.prototype = {
 	},
 
 	let: function () {
-		return "[Not implemented yet: let]";
+		this.vmNotImplemented("let");
 	},
 
 	lineInput: function (sMsg, sVar) { // sVar must be string variable
@@ -417,15 +420,15 @@ CpcVm.prototype = {
 	},
 
 	list: function () {
-		return "[Not implemented yet: list]";
+		this.vmNotImplemented("list");
 	},
 
 	load: function () {
-		return "[Not implemented yet: load]";
+		this.vmNotImplemented("load");
 	},
 
 	locate: function () {
-		return "[Not implemented yet: locate]";
+		this.vmNotImplemented("locate");
 		//Utils.console.log("locate: ", n, x, y, "(not implemented)");
 	},
 
@@ -442,7 +445,7 @@ CpcVm.prototype = {
 	},
 
 	mask: function () {
-		return "[Not implemented yet: mask]";
+		this.vmNotImplemented("mask");
 	},
 
 	max: function () { // varargs
@@ -454,7 +457,7 @@ CpcVm.prototype = {
 	},
 
 	merge: function () {
-		return "[Not implemented yet: merge]";
+		this.vmNotImplemented("merge");
 	},
 
 	mid$: function (s, iStart, iLen) { // as function
@@ -462,7 +465,7 @@ CpcVm.prototype = {
 	},
 
 	mid$Cmd: function () {
-		return "[Not implemented yet: mid$ as cmd]";
+		this.vmNotImplemented("mid$ as cmd");
 	},
 
 	min: function () { // varargs
@@ -477,15 +480,15 @@ CpcVm.prototype = {
 	},
 
 	move: function () {
-		return "[Not implemented yet: move]";
+		this.vmNotImplemented("move");
 	},
 
 	mover: function () {
-		return "[Not implemented yet: mover]";
+		this.vmNotImplemented("mover");
 	},
 
 	"new": function () {
-		return "[Not implemented yet: new]";
+		this.vmNotImplemented("new");
 	},
 
 	// next
@@ -512,33 +515,33 @@ CpcVm.prototype = {
 	// on sq gosub
 
 	openin: function () {
-		return "[Not implemented yet: openin]";
+		this.vmNotImplemented("openin");
 	},
 
 	openout: function () {
-		return "[Not implemented yet: openout]";
+		this.vmNotImplemented("openout");
 	},
 
 	// or
 
 	origin: function () {
-		return "[Not implemented yet: origin]";
+		this.vmNotImplemented("origin");
 	},
 
 	out: function () {
-		return "[Not implemented yet: out]";
+		this.vmNotImplemented("out");
 	},
 
 	paper: function () {
-		return "[Not implemented yet: paper]";
+		this.vmNotImplemented("paper");
 	},
 
 	peek: function () {
-		return "[Not implemented yet: peek]";
+		this.vmNotImplemented("peek");
 	},
 
 	pen: function () {
-		return "[Not implemented yet: pen]";
+		this.vmNotImplemented("pen");
 	},
 
 	pi: function () {
@@ -546,15 +549,15 @@ CpcVm.prototype = {
 	},
 
 	plot: function () {
-		return "[Not implemented yet: plot]";
+		this.vmNotImplemented("plot");
 	},
 
 	plotr: function () {
-		return "[Not implemented yet: plotr]";
+		this.vmNotImplemented("plotr");
 	},
 
 	poke: function () {
-		return "[Not implemented yet: poke]";
+		this.vmNotImplemented("poke");
 	},
 
 	pos: function (/* iStream */) {
@@ -599,29 +602,29 @@ CpcVm.prototype = {
 	},
 
 	read: function () {
-		return "[Not implemented yet: read]";
+		this.vmNotImplemented("read");
 	},
 
 	release: function () {
-		return "[Not implemented yet: release]";
+		this.vmNotImplemented("release");
 	},
 
 	// rem
 
 	remain: function () {
-		return "[Not implemented yet: remain]";
+		this.vmNotImplemented("remain");
 	},
 
 	renum: function () {
-		return "[Not implemented yet: renum]";
+		this.vmNotImplemented("renum");
 	},
 
 	restore: function () {
-		return "[Not implemented yet: restore]";
+		this.vmNotImplemented("restore");
 	},
 
 	resume: function () { // resume, resume n, resume next
-		return "[Not implemented yet: resume]";
+		this.vmNotImplemented("resume");
 	},
 
 	"return": function () {
@@ -662,11 +665,11 @@ CpcVm.prototype = {
 	},
 
 	run: function () {
-		return "[Not implemented yet: run]";
+		this.vmNotImplemented("run");
 	},
 
 	save: function () {
-		return "[Not implemented yet: save]";
+		this.vmNotImplemented("save");
 	},
 
 	sgn: function (n) {
@@ -678,7 +681,7 @@ CpcVm.prototype = {
 	},
 
 	sound: function () {
-		return "[Not implemented yet: sound]";
+		this.vmNotImplemented("sound");
 	},
 
 	space$: function (n) {
@@ -690,11 +693,11 @@ CpcVm.prototype = {
 	},
 
 	speed: function () { // speed ink, speed key, speed write
-		return "[Not implemented yet: speed]";
+		this.vmNotImplemented("speed");
 	},
 
 	sq: function () {
-		return "[Not implemented yet: sq]";
+		this.vmNotImplemented("sq");
 	},
 
 	sqr: function (n) {
@@ -721,11 +724,11 @@ CpcVm.prototype = {
 	// swap (window swap)
 
 	symbol: function () {
-		return "[Not implemented yet: symbol]";
+		this.vmNotImplemented("symbol");
 	},
 
 	symbolAfter: function () {
-		return "[Not implemented yet: symbolAfter]";
+		this.vmNotImplemented("symbolAfter");
 	},
 
 	tab: function (n) {
@@ -736,11 +739,11 @@ CpcVm.prototype = {
 	},
 
 	tag: function () {
-		return "[Not implemented yet: tag]";
+		this.vmNotImplemented("tag");
 	},
 
 	tagoff: function () {
-		return "[Not implemented yet: tagoff]";
+		this.vmNotImplemented("tagoff");
 	},
 
 	tan: function (n) {
@@ -748,11 +751,11 @@ CpcVm.prototype = {
 	},
 
 	test: function () {
-		return "[Not implemented yet: test]";
+		this.vmNotImplemented("test");
 	},
 
 	testr: function () {
-		return "[Not implemented yet: testr]";
+		this.vmNotImplemented("testr");
 	},
 
 	// then
@@ -764,11 +767,11 @@ CpcVm.prototype = {
 	// to
 
 	troff: function () {
-		return "[Not implemented yet: troff]";
+		this.vmNotImplemented("troff");
 	},
 
 	tron: function () {
-		return "[Not implemented yet: tron]";
+		this.vmNotImplemented("tron");
 	},
 
 	unt: function (n) {
@@ -816,7 +819,7 @@ CpcVm.prototype = {
 	},
 
 	vpos: function () {
-		return "[Not implemented yet: vpos]";
+		this.vmNotImplemented("vpos");
 	},
 
 	wait: function (iPort /* , iMask, iInv */) {
@@ -830,29 +833,29 @@ CpcVm.prototype = {
 	// while
 
 	width: function () {
-		return "[Not implemented yet: width]";
+		this.vmNotImplemented("width");
 	},
 
 	window: function () {
-		return "[Not implemented yet: window]";
+		this.vmNotImplemented("window");
 	},
 
 	windowSwap: function () {
-		return "[Not implemented yet: windowSwap]";
+		this.vmNotImplemented("windowSwap");
 	},
 
 	write: function () {
-		return "[Not implemented yet: write]";
+		this.vmNotImplemented("write");
 	},
 
 	// xor
 
 	xpos: function () {
-		return "[Not implemented yet: xpos]";
+		this.vmNotImplemented("xpos");
 	},
 
 	ypos: function () {
-		return "[Not implemented yet: ypos]";
+		this.vmNotImplemented("ypos");
 	},
 
 	zone: function (n) {

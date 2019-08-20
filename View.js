@@ -42,6 +42,62 @@ View.prototype = {
 		return this;
 	},
 
+	setSelectOptions: function (sId, aOptions) {
+		var select, i, oItem, option;
+
+		select = document.getElementById(sId);
+		for (i = 0; i < aOptions.length; i += 1) {
+			oItem = aOptions[i];
+			if (i >= select.length) {
+				option = document.createElement("option");
+				option.value = oItem.value;
+				option.text = oItem.text;
+				option.title = oItem.title;
+				select.add(option);
+			} else {
+				option = select.options[i];
+				if (option.value !== oItem.value) {
+					option.value = oItem.value;
+				}
+				if (option.text !== oItem.text) {
+					if (Utils.debug > 1) {
+						Utils.console.debug("setSelectOptions: " + sId + ": text changed for index " + i + ": " + oItem.text);
+					}
+					option.text = oItem.text;
+					option.title = oItem.title;
+				}
+			}
+			if (oItem.selected) { // multi-select
+				option.selected = oItem.selected;
+			}
+		}
+		// remove additional select options
+		select.options.length = aOptions.length;
+		return this;
+	},
+	getSelectValue: function (sId) {
+		var select = document.getElementById(sId);
+
+		return select.value;
+	},
+	setSelectValue: function (sId, sValue) {
+		var select = document.getElementById(sId);
+
+		if (sValue) {
+			select.value = sValue;
+		}
+		return this;
+	},
+	setSelectTitleFromSelectedOption: function (sId) {
+		var select = document.getElementById(sId),
+			iSelectedIndex = select.selectedIndex,
+			sTitle;
+
+		sTitle = (iSelectedIndex >= 0) ? select.options[iSelectedIndex].title : "";
+		select.title = sTitle;
+		return this;
+	},
+
 	fnSetSelectionRange: function (textarea, selectionStart, selectionEnd) {
 		var fullText, scrollHeight, scrollTop, textareaHeight;
 
