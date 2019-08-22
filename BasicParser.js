@@ -210,7 +210,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	write: "c",
 	xor: "o",
 	xpos: "f",
-	ypos: "d",
+	ypos: "f",
 	zone: "c"
 };
 

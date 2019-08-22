@@ -11,15 +11,16 @@ if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
 
-function CpcVm(options) {
+function CpcVm(options, oCanvas) {
 	this.iStartTime = Date.now();
 	this.oRandom = new Random();
 	this.lastRnd = 0.1; // TODO this.oRandom.random();
 	this.vmInit(options);
+	this.oCanvas = oCanvas;
 }
 
 CpcVm.prototype = {
-	vmInit: function (options) {
+	vmInit: function (options, oCanvas) {
 		this.options = options || {};
 		this.iLine = 0;
 		this.bStop = false;
@@ -167,9 +168,9 @@ CpcVm.prototype = {
 	},
 
 	cls: function (n) {
-		n = n || 0;
-		Utils.console.log("cls: " + n);
+		//n = n || 0;
 		this.sOut = "";
+		this.oCanvas.cls();
 	},
 
 	cont: function () {
@@ -234,12 +235,23 @@ CpcVm.prototype = {
 		this.vmNotImplemented("dim");
 	},
 
-	draw: function () {
-		this.vmNotImplemented("draw");
+	draw: function (x, y) {
+		//this.vmNotImplemented("draw");
+		this.oCanvas.addPath({
+			t: "l",
+			x: x,
+			y: y
+		});
 	},
 
-	drawr: function () {
-		this.vmNotImplemented("drawr");
+	drawr: function (x, y) {
+		//this.vmNotImplemented("drawr");
+		this.oCanvas.addPath({
+			t: "l",
+			x: x,
+			y: y,
+			r: true
+		});
 	},
 
 	edit: function () {
@@ -293,7 +305,11 @@ CpcVm.prototype = {
 	},
 
 	fill: function () {
-		this.vmNotImplemented("fill");
+		//this.vmNotImplemented("fill");
+		this.oCanvas.addPath({
+			t: "f",
+			c: "red"
+		});
 	},
 
 	fix: function (n) {
@@ -475,16 +491,27 @@ CpcVm.prototype = {
 	// mod
 
 	mode: function (n) {
-		Utils.console.log("mode: " + n);
-		this.sOut = "";
+		//this.sOut = "";
+		this.cls();
 	},
 
-	move: function () {
-		this.vmNotImplemented("move");
+	move: function (x, y) {
+		//this.vmNotImplemented("move");
+		this.oCanvas.addPath({
+			t: "m",
+			x: x,
+			y: y
+		});
 	},
 
-	mover: function () {
-		this.vmNotImplemented("mover");
+	mover: function (x, y) {
+		//this.vmNotImplemented("mover");
+		this.oCanvas.addPath({
+			t: "m",
+			x: x,
+			y: y,
+			r: true
+		});
 	},
 
 	"new": function () {
@@ -548,12 +575,23 @@ CpcVm.prototype = {
 		return Math.PI; // or: 3.14159265
 	},
 
-	plot: function () {
-		this.vmNotImplemented("plot");
+	plot: function (x, y) {
+		//this.vmNotImplemented("plot");
+		this.oCanvas.addPath({
+			t: "p",
+			x: x,
+			y: y
+		});
 	},
 
-	plotr: function () {
-		this.vmNotImplemented("plotr");
+	plotr: function (x, y) {
+		//this.vmNotImplemented("plotr");
+		this.oCanvas.addPath({
+			t: "p",
+			x: x,
+			y: y,
+			r: true
+		});
 	},
 
 	poke: function () {
@@ -851,11 +889,11 @@ CpcVm.prototype = {
 	// xor
 
 	xpos: function () {
-		this.vmNotImplemented("xpos");
+		return this.oCanvas.getXpos();
 	},
 
 	ypos: function () {
-		this.vmNotImplemented("ypos");
+		return this.oCanvas.getYpos();
 	},
 
 	zone: function (n) {

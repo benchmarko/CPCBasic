@@ -4,11 +4,12 @@
 
 "use strict";
 
-var Utils, BasicParser, CpcVm;
+var Utils, BasicParser, Canvas, CpcVm;
 
 if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 	BasicParser = require("./BasicParser.js"); // eslint-disable-line global-require
+	Canvas = require("./Canvas.js"); // eslint-disable-line global-require
 	CpcVm = require("./CpcVm.js"); // eslint-disable-line global-require
 }
 
@@ -28,12 +29,23 @@ Controller.prototype = {
 		oView.setHidden("inputArea", !oModel.getProperty("showInput"));
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
+
+		// make sure canvas is not hidden (allows to get width, height)
+		this.oCanvas = new Canvas({
+			//zoom: mConfig.zoom,
+			//mapType: sMapType2,
+			mapDivId: "cpcCanvas",
+			//onload: fnMapLoaded,
+			//onGetInfoWindowContent: fnGetInfoWindowContent,
+			view: this.view
+		});
+
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
 		sExample = oModel.getProperty("example");
 		oView.setSelectValue("exampleSelect", sExample);
 
-		this.mVm = new CpcVm();
+		this.mVm = new CpcVm({}, this.oCanvas);
 
 		this.fnSetExampleSelectOptions();
 		this.commonEventHandler.onExampleSelectChange();
@@ -159,5 +171,4 @@ Controller.prototype = {
 			this.fnRun(sScript);
 		}
 	}
-
 };

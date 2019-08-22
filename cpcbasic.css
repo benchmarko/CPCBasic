@@ -17,8 +17,8 @@ body {
 
 .canvas {
 	width: 640px;
-	height: 200px;
-	background-color: #E6E6E6;
+	height: 400px;
+	background-color: blue;
 }
 
 @media (max-width: 480px) {

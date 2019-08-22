@@ -25,5 +25,12 @@ cpcBasic.addItem("",  String.raw`
 340 print "a" "b" "c": 'abc
 350 print "a";"b";"c": 'abc
 360 print "a","b","c": 'a        b           c   [zone 13]
-900 print "ok"
+990 rem
+1000 'cls
+1010 print "stairs"
+1020 move 0,350:for n=1 to 8
+1030 drawr 50,0
+1040 drawr 0,-50
+1050 next:move 348,0:fill 3
+9000 print "ok"
 `);
