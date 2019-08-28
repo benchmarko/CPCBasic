@@ -9,6 +9,38 @@ function Canvas(options) {
 }
 
 Canvas.prototype = {
+
+	// http://www.cpcwiki.eu/index.php/CPC_Palette
+	mColors: [
+		"#000000", //  0 Black
+		"#000080", //  1 Blue
+		"#0000FF", //  2 Bright Blue
+		"#800000", //  3 Red
+		"#800080", //  4 Magenta
+		"#8000FF", //  5 Mauve
+		"#FF0000", //  6 Bright Red
+		"#FF0080", //  7 Purple
+		"#FF00FF", //  8 Bright Magenta
+		"#008000", //  9 Green
+		"#008080", // 10 Cyan
+		"#0080FF", // 11 Sky Blue
+		"#808000", // 12 Yellow
+		"#808080", // 13 White
+		"#8080FF", // 14 Pastel Blue
+		"#FF8000", // 15 Orange
+		"#FF8080", // 16 Pink
+		"#FF80FF", // 17 Pastel Magenta
+		"#00FF00", // 18 Bright Green
+		"#00FF80", // 19 Sea Green
+		"#00FFFF", // 20 Bright Cyan
+		"#80FF00", // 21 Lime
+		"#80FF80", // 22 Pastel Green
+		"#80FFFF", // 23 Pastel Cyan
+		"#FFFF00", // 24 Bright Yellow
+		"#FFFF80", // 25 Pastel Yellow
+		"#FFFFFF" //  26 Bright White
+	],
+
 	init: function (options) {
 		var sMapDivId, oView, mapDiv, bHidden, iWidth, iHeight, canvas, context;
 
@@ -48,40 +80,107 @@ Canvas.prototype = {
 		this.aPath = [];
 
 		canvas = document.createElement("CANVAS");
-		canvas.width = iWidth;
-		canvas.height = iHeight;
-		canvas.id = "simpleCanvas0";
+		canvas.width = iWidth - 4; // - border
+		canvas.height = iHeight - 4;
+		canvas.id = "cpcCanvas1";
 		canvas.style.position = "absolute";
-		canvas.style.backgroundColor = "blue";
+
+		this.iFgColor = 24;
+		this.iBgColor = 1;
+
+		canvas.style.backgroundColor = this.mColors[this.iBgColor];
 		canvas.style.opacity = 1;
 		mapDiv.appendChild(canvas);
 		this.canvas = canvas;
 
 		context = canvas.getContext("2d");
-		context.strokeStyle = "yellow";
+		context.strokeStyle = this.mColors[this.iFgColor];
 		context.lineWidth = 1;
 
 		// get Cartesian coordinate system with the origin in the bottom left corner (moved by 1 pixel to the right)
 		context.translate(1, iHeight);
 		context.scale(1, -1);
 
+		canvas.style.borderWidth = "2px";
+		canvas.style.borderColor = "#888888"; //TTT
+		canvas.style.borderStyle = "solid";
+
+		/* TTT howto?
+		mapDiv.style.width = iWidth + 10;
+		mapDiv.style.height = iHeight + 10;
+		*/
+
+		this.aKeyBuffer = [];
+
 		if (this.options.onload) {
 			this.options.onload(this);
 		}
-		document.getElementById(sMapDivId).addEventListener("click", this.onSimpleCanvas2Click.bind(this), false);
+		//document.getElementById(sMapDivId).addEventListener("click", this.onCpcCanvasClick.bind(this), false);
+		//mapDiv.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
+		canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
+		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("resize", this.fnDebounce(this.resize.bind(this), 200, false), false);
+		window.addEventListener("click", this.onWindowClick.bind(this), false);
 	},
-	onSimpleCanvas2Click: function (event) {
+	onCpcCanvasClick: function (event) {
 		var oTarget = event.target,
+			canvas = oTarget;
+			/*
 			x = event.clientX - oTarget.offsetLeft + window.scrollX, // x,y are relative to the canvas
 			y = event.clientY - oTarget.offsetTop + window.scrollY;
+			*/
 
-		Utils.console.log("onSimpleCanvas2Click: x=" + x + ", y=" + y);
-		if (event.stopPropagation) {
-			event.stopPropagation();
-		} else {
-			event.cancelBubble = true;
+		canvas.style.borderColor = "#008800"; //TTT
+		canvas.focus(); //TTT
+		this.bHasFocus = true;
+
+		//Utils.console.log("onCpcCanvasClick: x=" + x + ", y=" + y);
+		event.stopPropagation();
+	},
+	onWindowClick: function (event) {
+		this.bHasFocus = false;
+		this.canvas.style.borderColor = "#888888"; //TTT
+	},
+	fnCanvasKeydown: function (event) {
+		var mSpecialChars = {
+			37: 75, // left
+			38: 72, // up
+			39: 77, // right
+			40: 80 // down
+		};
+
+		if (Utils.debug > 0) {
+			// https://www.w3schools.com/jsref/obj_keyboardevent.asp
+			Utils.console.log("fnCanvasKeydown: keyCode=" + event.keyCode, event);
 		}
+
+		if (event.keyCode in mSpecialChars) {
+			this.aKeyBuffer.push(0);
+			this.aKeyBuffer.push(mSpecialChars[event.keyCode]);
+		} else {
+			this.aKeyBuffer.push(event.keyCode);
+		}
+	},
+
+	getKeyFromBuffer: function () {
+		var iKeyCode;
+
+		if (this.aKeyBuffer.length) {
+			iKeyCode = this.aKeyBuffer.shift();
+		} else {
+			iKeyCode = -1;
+		}
+		return iKeyCode;
+	},
+
+	onWindowKeydown: function (event) {
+		if (this.bHasFocus) {
+			//Utils.console.log("onWindowKeydown: event=", event);
+			this.fnCanvasKeydown(event);
+			event.preventDefault();
+			return false;
+		}
+		return undefined;
 	},
 	fnDebounce: function (func, wait, immediate) {
 		var timeout,
@@ -257,6 +356,7 @@ Canvas.prototype = {
 			context = canvas.getContext("2d");
 
 		this.clearPath();
+		context.fillStyle = this.mColors[this.iBgColor];
 		context.clearRect(0, 0, canvas.width, canvas.height);
 	}
 

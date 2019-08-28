@@ -78,6 +78,10 @@ CommonEventHandler.prototype = {
 		this.toogleHidden("resultArea", "showResult");
 	},
 
+	onVariableLegendClick: function () {
+		this.toogleHidden("variableArea", "showVariable");
+	},
+
 	onCpcLegendClick: function () {
 		this.toogleHidden("cpcArea", "showCpc");
 	},
@@ -94,6 +98,14 @@ CommonEventHandler.prototype = {
 		this.controller.fnRun(sInput);
 	},
 
+	onStopButtonClick: function () {
+		this.controller.fnStop();
+	},
+
+	onContinueButtonClick: function () {
+		this.controller.fnContinue();
+	},
+
 	onParseRunButtonClick: function () {
 		var sInput = this.view.getAreaValue("inputText");
 
@@ -102,6 +114,10 @@ CommonEventHandler.prototype = {
 
 	onHelpButtonClick: function () {
 		window.open("https://github.com/benchmarko/CPCBasic/#readme");
+	},
+
+	onOutputTextChange: function () { // TODO
+		this.controller.fnInvalidateScript();
 	},
 
 	fnEncodeUriParam: function (params) {

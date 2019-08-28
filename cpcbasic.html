@@ -19,7 +19,7 @@
 			<button id="parseButton" title="Parse BASIC script">Parse</button>
 			<button id="runButton" title="Run JavaScript">Run</button>
 			<button id="stopButton" title="Stop/escape/break running script" disabled>Stop</button>
-			<button id="contButton" title="Continue script" disabled>Continue</button>
+			<button id="continueButton" title="Continue script" disabled>Continue</button>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
@@ -53,6 +53,19 @@
 		</legend>
 		<div id="resultArea" class="area">
 			<textarea id="resultText" placeholder="" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+		</div>
+	</fieldset>
+	<fieldset class="flexBox">
+		<legend>
+			<span id="variableLegend" class="legendButton" title="Show/Hide Variables">Variables</span>
+			<select id="varSelect" title="Select variable">
+			</select>
+		</legend>
+		<div id="variableArea" class="area">
+			<div class="field">
+				<label id="varLabel" for="varInput" class="label" title="Variable Name"></label>
+				<input id="varInput" value="" type="text" placeholder="value">
+			</div>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">

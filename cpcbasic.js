@@ -17,6 +17,7 @@ var cpcBasicExternalConfig, // eslint-disable-line vars-on-top
 			showInput: true,
 			showOutput: true,
 			showResult: true,
+			showVariable: true,
 			showCpc: true
 		},
 		model: null,

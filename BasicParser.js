@@ -224,6 +224,7 @@ BasicParser.prototype = {
 	},
 	iGosubCount: 0,
 	iIfCount: 0,
+	iStopCount: 0,
 	iForCount: 0, // stack needed
 	iWhileCount: 0, // stack needed
 
@@ -870,6 +871,14 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("frame", function () {
+			var oValue = {
+				type: "frame"
+			};
+
+			return oValue;
+		});
+
 		stmt("gosub", function () {
 			var oValue = {
 				type: "gosub"
@@ -1069,6 +1078,14 @@ BasicParser.prototype = {
 
 		oSymbols["?"] = oSymbols.print; // ? is same as print
 
+		stmt("stop", function () {
+			var oValue = {
+				type: "stop"
+			};
+
+			return oValue;
+		});
+
 		stmt("wend", function () {
 			var oValue = {
 				type: "wend"
@@ -1188,14 +1205,50 @@ BasicParser.prototype = {
 				}
 			},
 
-			fnAdaptVariableName = function (sName) {
+			fnAdaptVariableName = function (sName, iArrayIndices) {
 				sName = sName.toLowerCase();
 				if (Utils.stringEndsWith(sName, "!")) { // real number?
 					sName = sName.slice(0, -1) + "R"; // "!" => "R"
 				} else if (Utils.stringEndsWith(sName, "%")) { // integer number?
 					sName = sName.slice(0, -1) + "I";
 				}
+				if (iArrayIndices) {
+					sName += "A".repeat(iArrayIndices);
+				}
 				return sName;
+			},
+
+			/*
+			fnCreateNDimArray = function (length) {
+				var arr = new Array(length || 0),
+					i = length,
+					args;
+
+				if (arguments.length > 1) {
+					args = Array.prototype.slice.call(arguments, 1);
+					while (i) {
+						i -= 1;
+						arr[length - 1 - i] = fnCreateNDimArray.apply(this, args);
+					}
+				}
+				return arr;
+			},
+			*/
+
+			fnGetVarDefault = function (sName) {
+				var iArrayIndices = sName.split("A").length - 1,
+					bIsString = sName.includes("$"),
+					value, aValue, i;
+
+				value = bIsString ? "" : 0;
+				if (iArrayIndices) {
+					aValue = [];
+					for (i = 0; i < 10; i += 1) {
+						aValue.push(value);
+					}
+					value = aValue;
+				}
+				return value;
 			},
 
 			fnParseArgs = function (aArgs) {
@@ -1238,14 +1291,18 @@ BasicParser.prototype = {
 			},
 
 			fnParseFor = function (node) {
-				var sVarName, sLabel, value, value2;
+				var sVarName, sLabel, value, value2, sStepName;
 
 				sVarName = fnAdaptVariableName(node.left.name);
 				sLabel = "f" + that.iForCount;
 				that.oStack.f.push(that.iForCount);
 				that.iForCount += 1;
 
-				value = "/* for() */ " + parseNode(node.left) + "; var " + sVarName + "Step = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+				sStepName = sVarName + "Step";
+				variables[sStepName] = 0; //TTT
+
+				//value = "/* for() */ " + parseNode(node.left) + "; var " + sVarName + "Step = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+				value = "/* for() */ " + parseNode(node.left) + "; " + sVarName + "Step = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
 				value += "\ncase \"" + sLabel + "\": ";
 
 				value += sVarName + " += " + sVarName + "Step;";
@@ -1300,22 +1357,31 @@ BasicParser.prototype = {
 					break;
 				case "identifier":
 					value = fnAdaptVariableName(node.value); // here we use node.value
+					variables[value] = fnGetVarDefault(value); //Utils.stringEndsWith(value, "$") ? "" : 0;
 					break;
 				case "array":
 					aNodeArgs = fnParseArgs(node.args);
-					sName = fnAdaptVariableName(node.name);
-					value = sName + "[" + aNodeArgs.join(", ") + "]";
+					sName = fnAdaptVariableName(node.name, aNodeArgs.length);
+					//value = sName + "[" + aNodeArgs.join(", ") + "]";
+					value = sName + aNodeArgs.map(function (val) {
+						return "[" + val + "]";
+					}).join("");
 					break;
 				case "assign":
-					sName = fnAdaptVariableName(node.name);
 					if (node.args) { // array?
 						aNodeArgs = fnParseArgs(node.args);
-						sName += "[" + aNodeArgs.join(", ") + "]";
-						value = "";
+						sName = fnAdaptVariableName(node.name, aNodeArgs.length);
+						//value = "[" + aNodeArgs.join(", ") + "]";
+						value = aNodeArgs.map(function (val) {
+							return "[" + val + "]";
+						}).join("");
 					} else {
-						value = "var ";
+						sName = fnAdaptVariableName(node.name);
+						value = "";
 					}
-					value += sName + " = " + parseNode(node.value);
+
+					value = sName + value + " = " + parseNode(node.value);
+					variables[sName] = fnGetVarDefault(sName); //Utils.stringEndsWith(sName, "$") ? "" : 0;
 					break;
 				case "call":
 					aNodeArgs = fnParseArgs(node.args);
@@ -1333,7 +1399,9 @@ BasicParser.prototype = {
 				case "def":
 					aNodeArgs = fnParseArgs(node.args);
 					sName = fnAdaptVariableName(node.name);
-					value = "var " + sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
+					//value = "var " + sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
+					value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
+					variables[sName] = 0; //TTT
 					break;
 				case "fn": // FNxxx function call
 					aNodeArgs = fnParseArgs(node.args);
@@ -1342,6 +1410,11 @@ BasicParser.prototype = {
 					break;
 				case "for":
 					value = fnParseFor(node);
+					break;
+				case "frame": //TTT
+					sName = "s" + that.iStopCount; // use also stopcount for frame? TTT
+					that.iStopCount += 1;
+					value = "o.frame(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
 				case "gosub":
 					sName = "g" + that.iGosubCount;
@@ -1371,6 +1444,11 @@ BasicParser.prototype = {
 					break;
 				case "return":
 					value = "o.return(); break;";
+					break;
+				case "stop": //TTT
+					sName = "s" + that.iStopCount;
+					that.iStopCount += 1;
+					value = "o.stop(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
 				case "wend":
 					i = that.oStack.w.pop();
@@ -1428,6 +1506,28 @@ BasicParser.prototype = {
 		}
 		return sOutput;
 	},
+
+	fnVariables: function (oVariables, bSetInFunc) {
+		var sVars = "",
+			aVariables, aVmVariables;
+
+		aVariables = Object.keys(oVariables);
+		if (aVariables.length) {
+			aVmVariables = aVariables.map(function (key) {
+				return key + ": o.v." + key;
+			});
+
+			if (bSetInFunc) {
+				sVars = "var {" + aVariables.join(", ") + "} = o.v;\n";
+				//  ??? ({ a, b } = { a: v.a, b: v.b })
+			} else {
+				sVars = "({" + aVmVariables.join(", ") + "} = {" + aVariables.join(", ") + "});\n";
+			}
+		}
+
+		return sVars;
+	},
+
 	calculate: function (input, variables) {
 		var mFunctions = {
 				defint: function () { // varargs
@@ -1444,13 +1544,13 @@ BasicParser.prototype = {
 					*/
 					for (i = 0; i < arguments.length; i += 1) {
 						sName = arguments[i];
-						aArgs.push("o.dim(\"" + sName + "\")");
+						aArgs.push("o.defint(\"" + sName + "\")");
 					}
 					return aArgs.join("; ");
 				},
 				dim: function () { // varargs
 					var	aArgs = [],
-						sName, sName2, iBracket, i;
+						sName, aName, sName2, iBracket, i;
 
 					/*
 					for (i = 0; i < arguments.length; i += 1) {
@@ -1462,17 +1562,27 @@ BasicParser.prototype = {
 					*/
 					for (i = 0; i < arguments.length; i += 1) {
 						sName = arguments[i];
+						aName = sName.split(/\[|\]\[|\]/);
+						aName.pop(); // remove empty last element
+						sName = aName.shift();
+
+						/*
 						iBracket = sName.indexOf("[");
 						if (iBracket >= 0) {
-							sName2 = sName.substring(0, iBracket);
+							sName2 = sName.substring(0, iBracket); // without brackets
 						}
-						aArgs.push("o.dim(\"" + sName + "\"); var " + sName2 + " = []");
+						*/
+						//aArgs.push("o.dim(\"" + sName + "\"); var " + sName2 + " = []");
+						//aArgs.push("o.dim(\"" + sName + "\")");
+						//aArgs.push("o.dim(" + aName.join(", ") + ")");
+						aArgs.push(sName + " = o.dim(" + aName.join(", ") + ")");
 					}
 					return aArgs.join("; ");
 				},
 				end: function () {
-					Utils.console.log("end");
-					return "o.end(); break"; // TODO: how to allow cont?
+					//Utils.console.log("end");
+					//return "o.end(); break"; // TODO: how to allow cont?
+					return "o.stop(\"end\"); break"; // end same as stop
 				},
 
 				/*
@@ -1480,6 +1590,10 @@ BasicParser.prototype = {
 					return "o.gosub(" + n + "); break";
 				},
 				*/
+				error: function (n) {
+					return "o.error(" + n + "); break";
+				},
+
 				"goto": function (n) {
 					return "o.goto(" + n + "); break";
 				},
@@ -1511,11 +1625,12 @@ BasicParser.prototype = {
 				},
 				"return": function () {
 					return "o.return(); break";
-				},
-				stop: function () {
-					Utils.console.log("stop");
-					return "o.stop(); break"; //TTT: how to allow cont?
 				}
+				/*
+				stop: function () {
+					return "o.stop(); break";
+				}
+				*/
 			},
 			oOut = {
 				text: ""
@@ -1526,7 +1641,9 @@ BasicParser.prototype = {
 			aTokens = this.lex(input);
 			aParseTree = this.parse(aTokens);
 			sOutput = this.evaluate(aParseTree, variables, mFunctions);
-			oOut.text = "while (!o.bStop) {\nswitch (o.iLine) {\ncase 0:\n" + sOutput + " o.bStop = true; break;\ndefault: o.vmDefault(); o.stop(); break;\n}}";
+			oOut.text = this.fnVariables(variables, true);
+			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n" + sOutput + "\ncase \"end\": o.vmStop(\"end\", 90); break;\ndefault: o.error(8); o.goto(\"end\"); break;\n}}\n";
+			oOut.text += this.fnVariables(variables, false);
 		} catch (e) {
 			oOut.error = e;
 		}

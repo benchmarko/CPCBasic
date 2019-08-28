@@ -30,6 +30,13 @@ View.prototype = {
 		return this.setHidden(sId, !this.getHidden(sId));
 	},
 
+	setDisabled: function (sId, bDisabled) {
+		var element = document.getElementById(sId);
+
+		element.disabled = bDisabled;
+		return this;
+	},
+
 	getAreaValue: function (sId) {
 		var area = document.getElementById(sId);
 
