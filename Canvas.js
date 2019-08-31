@@ -11,7 +11,7 @@ function Canvas(options) {
 Canvas.prototype = {
 
 	// http://www.cpcwiki.eu/index.php/CPC_Palette
-	mColors: [
+	aColors: [
 		"#000000", //  0 Black
 		"#000080", //  1 Blue
 		"#0000FF", //  2 Bright Blue
@@ -41,8 +41,17 @@ Canvas.prototype = {
 		"#FFFFFF" //  26 Bright White
 	],
 
+	aDefaultInks: [ // mode 0,1,2: ink 0-15
+		[1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, "1,24", "16,11"], // eslint-disable-line array-element-newline
+		[1, 24, 20, 6, 1, 24, 20, 6, 1, 24, 20, 6, 1, 24, 20, 6], // eslint-disable-line array-element-newline
+		[1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24] // eslint-disable-line array-element-newline
+	],
+
+	aCurrentInks: [],
+
 	init: function (options) {
-		var sMapDivId, oView, mapDiv, bHidden, iWidth, iHeight, canvas, context;
+		var iBorder = 2,
+			iWidth, iHeight, canvas, ctx;
 
 		this.options = Object.assign({
 			//markerStyle: "green",
@@ -51,96 +60,126 @@ Canvas.prototype = {
 			//zoom: 0 // not used
 		}, options);
 
-		sMapDivId = this.options.mapDivId;
-		oView = this.options.view;
-		mapDiv = document.getElementById(sMapDivId);
-
-		bHidden = oView.getHidden(sMapDivId);
-		oView.setHidden(sMapDivId, false); // make sure canvas is not hidden (allows to get width, height)
-		iWidth = mapDiv.clientWidth;
-		iHeight = mapDiv.clientHeight;
-		oView.setHidden(sMapDivId, bHidden); // restore hidden
-		Utils.console.log("SimpleMap: width=" + iWidth + " height=" + iHeight + " created");
-
+		/*
 		this.oPixelMap = {
 			width: iWidth,
-			height: iHeight,
-			scaleWidth: 8 / 10, //TTT
-			scaleHeight: 8 / 10
-			// will be extended by width, height; and latBottom, latTop, lngLeft, lngRight in fitBounds()
+			height: iHeight
 		};
-
-		/*
-		this.mElements = {
-			path: [],
-			marker: []
-		};
-		*/
-
-		this.aPath = [];
-
-		canvas = document.createElement("CANVAS");
-		canvas.width = iWidth - 4; // - border
-		canvas.height = iHeight - 4;
-		canvas.id = "cpcCanvas1";
-		canvas.style.position = "absolute";
-
-		this.iFgColor = 24;
-		this.iBgColor = 1;
-
-		canvas.style.backgroundColor = this.mColors[this.iBgColor];
-		canvas.style.opacity = 1;
-		mapDiv.appendChild(canvas);
-		this.canvas = canvas;
-
-		context = canvas.getContext("2d");
-		context.strokeStyle = this.mColors[this.iFgColor];
-		context.lineWidth = 1;
-
-		// get Cartesian coordinate system with the origin in the bottom left corner (moved by 1 pixel to the right)
-		context.translate(1, iHeight);
-		context.scale(1, -1);
-
-		canvas.style.borderWidth = "2px";
-		canvas.style.borderColor = "#888888"; //TTT
-		canvas.style.borderStyle = "solid";
-
-		/* TTT howto?
-		mapDiv.style.width = iWidth + 10;
-		mapDiv.style.height = iHeight + 10;
 		*/
 
 		this.aKeyBuffer = [];
 
+		this.aPath = [];
+		this.iPath = 0;
+
+		this.xPos = 0;
+		this.yPos = 0;
+
+		this.iMode = 1;
+
+		this.iFgColor = 24;
+		this.iBgColor = 1;
+
+		canvas = document.getElementById("cpcCanvas");
+		//iWidth = 640; // canvas.width;
+		//iHeight = 400; // canvas.height;
+
+		//sCpcDivId = this.options.cpcDivId;
+		//oView = this.options.view;
+		//cpcDiv = document.getElementById(sCpcDivId);
+
+		//bHidden = oView.getHidden(sCpcDivId);
+		//oView.setHidden(sCpcDivId, false);
+
+		// make sure canvas is not hidden (allows to get width, height, set style)
+		iWidth = canvas.width; // cpcDiv.clientWidth;
+		iHeight = canvas.height; // cpcDiv.clientHeight;
+		canvas.style.borderWidth = iBorder + "px";
+		canvas.style.borderColor = "#888888"; //TTT
+		canvas.style.borderStyle = "solid";
+
+		//oView.setHidden(sCpcDivId, bHidden); // restore hidden
+		//Utils.console.log("CpcCanvas: width=" + iWidth + " height=" + iHeight + " created");
+
+		/*
+		if (!canvas) {
+			sCpcDivId = this.options.cpcDivId;
+			oView = this.options.view;
+			cpcDiv = document.getElementById(sCpcDivId);
+
+			bHidden = oView.getHidden(sCpcDivId);
+			oView.setHidden(sCpcDivId, false); // make sure canvas is not hidden (allows to get width, height)
+			iWidth = cpcDiv.clientWidth;
+			iHeight = cpcDiv.clientHeight;
+			oView.setHidden(sCpcDivId, bHidden); // restore hidden
+			Utils.console.log("CpcCanvas: width=" + iWidth + " height=" + iHeight + " created");
+
+			canvas = document.createElement("CANVAS");
+			canvas.style.borderWidth = iBorder + "px";
+			canvas.style.borderColor = "#888888"; //TTT
+			canvas.style.borderStyle = "solid";
+			canvas.width = iWidth - iBorder * 2;
+			canvas.height = iHeight - iBorder * 2;
+			canvas.id = "cpcCanvas1";
+			canvas.style.position = "absolute";
+			canvas.style.opacity = 1;
+			cpcDiv.appendChild(canvas);
+		} else {
+			iWidth = canvas.width;
+			iHeight = canvas.height;
+		}
+		*/
+
+		this.canvas = canvas;
+		canvas.style.backgroundColor = this.aColors[this.iBgColor];
+
+		this.iWidth = iWidth;
+		this.iHeight = iHeight;
+
+		ctx = canvas.getContext("2d");
+		ctx.strokeStyle = this.aColors[this.iFgColor];
+		//ctx.lineWidth = 1;
+
+		// get Cartesian coordinate system with the origin in the bottom left corner (moved by 1 pixel to the right)
+		ctx.translate(1, iHeight);
+		ctx.scale(1, -1);
+
+		/*
+		// test
+		o = 0.5;
+		ctx.beginPath();
+		ctx.moveTo(o, o);
+		ctx.lineTo(iWidth - o, o);
+		ctx.lineTo(iWidth - o, iHeight - o);
+		ctx.lineTo(o, iHeight - o);
+		ctx.lineTo(o, o);
+		ctx.stroke();
+		*/
+
 		if (this.options.onload) {
 			this.options.onload(this);
 		}
-		//document.getElementById(sMapDivId).addEventListener("click", this.onCpcCanvasClick.bind(this), false);
-		//mapDiv.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
 		canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("resize", this.fnDebounce(this.resize.bind(this), 200, false), false);
 		window.addEventListener("click", this.onWindowClick.bind(this), false);
 	},
+
 	onCpcCanvasClick: function (event) {
 		var oTarget = event.target,
 			canvas = oTarget;
-			/*
-			x = event.clientX - oTarget.offsetLeft + window.scrollX, // x,y are relative to the canvas
-			y = event.clientY - oTarget.offsetTop + window.scrollY;
-			*/
 
 		canvas.style.borderColor = "#008800"; //TTT
-		canvas.focus(); //TTT
+		canvas.focus();
 		this.bHasFocus = true;
-
-		//Utils.console.log("onCpcCanvasClick: x=" + x + ", y=" + y);
 		event.stopPropagation();
 	},
+
 	onWindowClick: function (event) {
 		this.bHasFocus = false;
 		this.canvas.style.borderColor = "#888888"; //TTT
 	},
+
 	fnCanvasKeydown: function (event) {
 		var mSpecialChars = {
 			37: 75, // left
@@ -160,6 +199,9 @@ Canvas.prototype = {
 		} else {
 			this.aKeyBuffer.push(event.keyCode);
 		}
+		if (this.options.fnOnKeyDown) {
+			this.options.fnOnKeyDown(this.aKeyBuffer);
+		}
 	},
 
 	getKeyFromBuffer: function () {
@@ -171,6 +213,10 @@ Canvas.prototype = {
 			iKeyCode = -1;
 		}
 		return iKeyCode;
+	},
+
+	clearInput: function () {
+		this.aKeyBuffer.length = 0;
 	},
 
 	onWindowKeydown: function (event) {
@@ -204,38 +250,28 @@ Canvas.prototype = {
 		};
 	},
 	resize: function () {
-		var sMapDivId = this.options.mapDivId,
+		var sCpcDivId = this.options.cpcDivId,
 			oView = this.options.view,
-			bHidden = oView.getHidden(sMapDivId),
-			mapDiv, iWidth, iHeight, i, canvas;
+			bHidden = oView.getHidden(sCpcDivId),
+			cpcDiv, iWidth, iHeight, i, canvas;
 
 		if (bHidden) {
 			return; // canvas is hidden
 		}
-		mapDiv = document.getElementById(sMapDivId); // mapCanvas-simple
-		iWidth = mapDiv.clientWidth;
-		iHeight = mapDiv.clientHeight;
-		if (iWidth !== this.oPixelMap.width || iHeight !== this.oPixelMap.height) {
+		cpcDiv = document.getElementById(sCpcDivId);
+		iWidth = cpcDiv.clientWidth;
+		iHeight = cpcDiv.clientHeight;
+		if (iWidth !== this.iWidth || iHeight !== this.iHeight) {
 			Utils.console.log("Canvas.resize width=" + iWidth + " height=" + iHeight);
-			for (i = 0; i < this.aCanvas.length; i += 1) {
-				canvas = this.aCanvas[i];
-				if (canvas.width !== iWidth) {
-					this.oPixelMap.width = iWidth;
-					canvas.width = iWidth;
-				}
-				if (canvas.height !== iHeight) {
-					this.oPixelMap.height = iHeight;
-					canvas.height = iHeight;
-				}
+			canvas = this.canvas;
+			if (canvas.width !== iWidth) { //TTT
+				//this.iWidth = iWidth;
+				//canvas.width = iWidth;
 			}
-			for (i = 0; i < this.mElements.path.length; i += 1) {
-				this.privDrawPath(this.mElements.path[i]);
+			if (canvas.height !== iHeight) {
+				//this.iHeight = iHeight;
+				//canvas.height = iHeight;
 			}
-			/*
-			for (i = 0; i < this.mElements.marker.length; i += 1) {
-				this.privDrawMarker(this.mElements.marker[i]);
-			}
-			*/
 		}
 	},
 	setZoom: function (zoom) {
@@ -254,26 +290,16 @@ Canvas.prototype = {
 	},
 
 
-	privDrawPath: function (path, bRemove) {
-		var context, i, oPos,
-			//xPos, yPos,
+	privDrawPath: function (path, iStart, bRemove) {
+		var ctx, i, oPos,
 			canvas = this.canvas;
 
 		if (path.length) {
-			context = canvas.getContext("2d");
-
-			/*
-			context.fillStyle = "green"; //TTT
-			context.fillRect(10, 10, 150, 100);
-			*/
+			ctx = canvas.getContext("2d");
 
 			if (!bRemove) {
-				//context.save();
-				//context.translate((canvas.width - this.oPixelMap.width * this.oPixelMap.scaleWidth) / 2, (canvas.height - this.oPixelMap.height * this.oPixelMap.scaleHeight) / 2);
-				//context.strokeStyle = pathStyle.strokeColor;
-				//context.lineWidth = pathStyle.strokeWidth;
-				context.beginPath();
-				for (i = 0; i < path.length; i += 1) {
+				ctx.beginPath();
+				for (i = iStart; i < path.length; i += 1) {
 					oPos = path[i];
 					if (oPos.r) { // convert relative to absolute
 						oPos.x += this.xPos;
@@ -282,99 +308,91 @@ Canvas.prototype = {
 					}
 
 					if (oPos.t === "f") {
-						context.fillStyle = oPos.c;
-						context.fill();
+						ctx.fillStyle = oPos.c;
+						ctx.fill();
 					} else {
+						ctx.moveTo(this.xPos, this.yPos); // current position
 						this.xPos = oPos.x;
 						this.yPos = oPos.y;
-						if (oPos.t === "m") {
-							context.moveTo(this.xPos, this.yPos);
+						if (oPos.t === "m" || oPos.t === "t") {
+							ctx.moveTo(this.xPos + 0.5, this.yPos + 0.5);
 						} else if (oPos.t === "l") {
-							context.lineTo(this.xPos, this.yPos);
+							ctx.lineTo(this.xPos + 0.5, this.yPos + 0.5);
 						} else { // "p"?
-							context.moveTo(this.xPos, this.yPos); //TTT
+							ctx.moveTo(this.xPos - 1 + 0.5, this.yPos - 1 + 0.5); //TTT
+							ctx.lineTo(this.xPos + 0.5, this.yPos + 0.5);
 						}
 					}
 				}
-				context.stroke();
-				//context.restore();
-				//this.xPos = xPos;
-				//this.yPos = yPos;
+				ctx.stroke();
 			} else {
-				context.clearRect(0, 0, canvas.width, canvas.height); // we simply clear all
+				ctx.clearRect(0, 0, canvas.width, canvas.height); // we simply clear all
 			}
 		}
 	},
-	/*
-	privDrawMarker: function (marker, bRemove) {
-		var context, oPos,
-			strokeStyle = this.options.markerStyle,
-			fillStyle = this.options.textStyle,
-			iRadius = 10,
-			iLineWidth = 1,
-			canvas = this.aCanvas[1];
 
-		oPos = this.myConvertGeoToPixel(marker.getPosition(), this.oPixelMap);
+	testPixel: function (xPos, yPos) {
+		var ctx = this.canvas.getContext("2d"),
+			imageData, pixelData, iRed, iGreen, iBlue, iColor;
 
-		context = canvas.getContext("2d");
-		context.save();
-		context.translate((canvas.width - this.oPixelMap.width * this.oPixelMap.scaleWidth) / 2, (canvas.height - this.oPixelMap.height * this.oPixelMap.scaleHeight) / 2);
-		if (!bRemove) {
-			context.strokeStyle = strokeStyle;
-			context.lineWidth = iLineWidth;
-			context.textAlign = "center";
-			context.textBaseline = "middle";
-			context.font = "14px sans-serif";
-			context.fillStyle = fillStyle;
-
-			context.beginPath();
-			context.arc(oPos.x, oPos.y, iRadius, 0, 2 * Math.PI);
-			context.fillText(marker.getLabel(), oPos.x, oPos.y);
-			context.stroke();
-		} else {
-			iRadius += Math.ceil(iLineWidth / 2);
-			context.clearRect(oPos.x - iRadius, oPos.y - iRadius, iRadius * 2, iRadius * 2);
-		}
-		context.restore();
-	}
-	*/
+		imageData = ctx.getImageData(xPos + 0.5, this.iHeight - (yPos + 0.5), 1, 1);
+		pixelData = imageData.data;
+		iRed = pixelData[0];
+		iGreen = pixelData[1];
+		iBlue = pixelData[2];
+		iColor = iRed * 65536 + iGreen * 256 + iBlue;
+		//sColor = "#" + Number(iColor).toString(16);
+		return iColor;
+	},
 
 	clearPath: function () {
 		this.aPath.length = 0;
+		this.iPath = 0;
 	},
 
 	addPath: function (path) {
+		var iColor, iTmp,
+			sColor = 0;
+
 		this.aPath.push(path);
 
 		if (path.t !== "m") {
-			this.privDrawPath(this.aPath); //TTT
+			this.privDrawPath(this.aPath, this.iPath); // draw new element
+			this.iPath = this.aPath.length;
+			if (path.t === "t") {
+				iColor = this.testPixel(this.xPos, this.yPos);
+				sColor = "#" + Number(iColor).toString(16).toUpperCase(); //TTT
+				iTmp = this.aColors.indexOf(sColor);
+				if (iTmp >= 0) {
+					iColor = this.aCurrentInks.indexOf(iTmp);
+				}
+			}
 		}
+		return iColor; // should return pen
 	},
 
 	cls: function () {
 		var canvas = this.canvas,
-			context = canvas.getContext("2d");
+			ctx = canvas.getContext("2d");
 
 		this.clearPath();
-		context.fillStyle = this.mColors[this.iBgColor];
-		context.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+	},
+
+	mode: function (iMode) {
+		var ctx = this.canvas.getContext("2d"),
+			mLineWidth = [
+				4,
+				2,
+				1
+			];
+
+		this.cls();
+		this.iMode = iMode;
+		this.aCurrentInks = this.aDefaultInks[iMode].slice();
+		this.xPos = 0;
+		this.yPos = 0;
+
+		ctx.lineWidth = mLineWidth[iMode];
 	}
-
-	/*
-	addPath: function (path) {
-		if (path && path.length) {
-			this.mElements.path.push(path);
-			this.privDrawPath(path); // new path
-		}
-	},
-	removePath: function (path) {
-		var idx;
-
-		idx = this.mElements.path.indexOf(path);
-		if (idx >= 0) {
-			this.mElements.path.splice(idx, 1);
-			this.privDrawPath(path, true); // old path: background (draw over old path)
-		}
-	},
-	*/
 };

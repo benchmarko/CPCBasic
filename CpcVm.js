@@ -21,12 +21,12 @@ function CpcVm(options, oCanvas) {
 
 CpcVm.prototype = {
 	vmInit: function (options) {
+		var i;
+
 		this.options = options || {};
 
-		this.iTimeoutHandle = null;
-		this.iTicks = 0;
 		this.iNextFrameTime = Date.now() + this.iFrameTimeMs;
-		this.iLoopCount = 0;
+		//this.iLoopCount = 0;
 
 		this.iLine = 0;
 
@@ -35,6 +35,13 @@ CpcVm.prototype = {
 		this.iStopPriority = 0;
 
 		this.sOut = "";
+
+		this.aData = [];
+		this.iData = 0;
+		this.oDataLineIndex = {
+			0: 0 // for line 0: index 0
+		};
+
 		this.iErr = 0;
 		this.iErl = 0;
 		// this.iStartTime = Date.now();
@@ -42,22 +49,39 @@ CpcVm.prototype = {
 		this.bDeg = false;
 		this.iHimem = 42619; // example
 
-		this.iPaper = 0;
-		this.iPen = 1;
+		this.aTimer = []; // timer 0..3
+		for (i = 0; i < 4; i += 1) {
+			this.aTimer.push({
+				iId: i,
+				iLine: 0,
+				iRepeat: 0,
+				iInterval: 0,
+				bActive: false,
+				iNextTime: 0
+			});
+		}
 
-		this.iPos = 1; // current text position in line
+		this.aWindow = [];
+		for (i = 0; i < 8; i += 1) {
+			this.aWindow.push({ // depends on mode
+				iId: i,
+				iLeft: 0,
+				iRight: 0,
+				iTop: 0,
+				iBottom: 0,
+				iPos: 0, // current text position in line
+				iVpos: 0,
+				iPaper: 0,
+				iPen: 1
+			});
+		}
+
 		this.iZone = 13;
 
 		this.v = options.variables || {};
 	},
 
 	iFrameTimeMs: 1000 / 50, // 50 Hz
-
-	mDefaultInks: [ // mode 0,1,2: ink 0-15
-		[1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, "1,24", "16,11"], // eslint-disable-line array-element-newline
-		[1, 24, 20, 6, 1, 24, 20, 6, 1, 24, 20, 6, 1, 24, 20, 6], // eslint-disable-line array-element-newline
-		[1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24] // eslint-disable-line array-element-newline
-	],
 
 	/*
 	vmDefault: function () {
@@ -76,7 +100,7 @@ CpcVm.prototype = {
 				"Improper argument", // 5
 				"Overflow", // 6
 				"Memory full", // 7
-				"Line does not exist", //TTT 8 //iErl
+				"Line does not exist", // 8
 				"Subscript out of range", // 9
 				"Array already dimensioned", // 10
 				"Division by zero", // 11
@@ -101,83 +125,102 @@ CpcVm.prototype = {
 				"Unexpected WEND", // 30
 				"File not open", // 31,
 				"Broken in", // 32
-				"Unknown error" //TTT 33ff iErr
+				"Unknown error" // 33...
 			],
-			sError = aErrors[iErr] || aErrors[aErrors.length - 1]; //"Unknown error: " + iErr;
+			sError = aErrors[iErr] || aErrors[aErrors.length - 1]; // Unknown error
 
 		return sError;
 	},
 
-	vmLoopCondition: function () {
-		var iMaxLoops = 1000;
+	vmCheckTimer: function (iTime) {
+		var oTimer, i;
 
-		//var t1 = Date.now(); //TTT
-
-		this.iLoopCount += 1;
-		if (this.iLoopCount >= iMaxLoops) {
-			//this.bStop = true;
-			//TTT this.iLoopCount = 0;
-			this.vmStop("counter", 20);
+		for (i = 3; i >= 0; i -= 1) {
+			oTimer = this.aTimer[i];
+			if (oTimer.bActive && iTime > oTimer.iNextTime) {
+				this.gosub(this.iLine, oTimer.iLine);
+				if (!oTimer.bRepeat) { // not repeating
+					oTimer.bActive = false;
+				} else {
+					oTimer.iNextTime += oTimer.iInterval * 1000 / 50; //TTT
+				}
+			}
 		}
-		return !this.bStop; // && this.iLoopCount < 1000;
 	},
 
 	vmCheckNextFrame: function () {
-		var //iTimeInFrameMS = 1000 / 50,
-			iTime = Date.now(),
+		var iTime = Date.now(),
 			iDelta,
 			iTimeUntilFrame;
 
-		//iD= iTime - this.iLastFrameTime;
-		//this.iLastFrameTime = iTime; //TTT
-
 		if (iTime > this.iNextFrameTime) {
-			//iDelta %= this.iTimeInFrame;
 			iDelta = iTime - this.iNextFrameTime;
 			if (iDelta > this.iFrameTimeMs) {
 				this.iNextFrameTime += this.iFrameTimeMs * Math.ceil(iDelta / this.iFrameTimeMs);
 			} else {
 				this.iNextFrameTime += this.iFrameTimeMs;
 			}
-			//Utils.console.log("DEBUG: vmGetTimeUntilFrame: TEST: this.iNextFrameTime=", this.iNextFrameTime - iTime);
+			this.vmCheckTimer(iTime);
 		}
 
 		iTimeUntilFrame = this.iNextFrameTime - iTime;
-		/*
-		if (iTime < 0) {
-			Utils.console.log("DEBUG: vmGetTimeUntilFrame: TEST: iTime=" + iTime);
-			iTime = -1;
-		}
-		*/
-		//if (Utils.debug > 1) {
-		//	Utils.console.log("DEBUG: vmGetTimeUntilFrame: iTime=" + iTime);
-		//}
 		return iTimeUntilFrame;
 	},
 
-	/*
-	vmTimeHandler1: function () {
-		this.iTicks += 1;
+	vmLoopCondition: function () {
+		var iTime = Date.now();
 
-		if (this.iTicks % 6 === 0) {
-			//this.bStop = true; //TTT
-			this.iLastFrameTime = Date.now();
-			this.vmStop("timer", 30);
-		}
-	},
-	*/
-
-	vmStartTimer: function () {
-		//TTT this.iTimeHandle = setInterval(this.vmTimeHandler1.bind(this), 1000 / 300);
-	},
-
-	vmStopTimer: function () {
 		/*
-		if (this.iTimeHandle !== null) {
-			clearInterval(this.iTimeHandle);
-			this.iTimeHandle = null;
+		var iMaxLoops = 1000;
+
+		this.iLoopCount += 1;
+		if (this.iLoopCount >= iMaxLoops) {
+			this.vmStop("counter", 20);
 		}
 		*/
+		if (iTime > this.iNextFrameTime) {
+			this.vmStop("timer", 20);
+		}
+		return !this.bStop;
+	},
+
+	fnGetVarDefault: function (sName) {
+		var iArrayIndices = sName.split("A").length - 1,
+			bIsString = sName.includes("$"),
+			value, aValue, i;
+
+		value = bIsString ? "" : 0;
+		if (iArrayIndices) {
+			aValue = [];
+			for (i = 0; i <= 10; i += 1) { // arrays without declaration
+				aValue.push(value);
+			}
+			value = aValue;
+		}
+		return value;
+	},
+
+	fnCreateNDimArray: function (length) {
+		var arr = new Array(length || 0),
+			initVal = this.initVal, //TTT
+			i,
+			aArgs;
+
+
+		length = length || 0;
+		for (i = 0; i < length; i += 1) {
+			arr[i] = initVal;
+		}
+
+		i = length;
+		if (arguments.length > 1) {
+			aArgs = Array.prototype.slice.call(arguments, 1);
+			while (i) {
+				i -= 1;
+				arr[length - 1 - i] = this.fnCreateNDimArray.apply(this, aArgs);
+			}
+		}
+		return arr;
 	},
 
 	vmInitVariables: function () {
@@ -186,7 +229,7 @@ CpcVm.prototype = {
 
 		for (i = 0; i < aVariables.length; i += 1) {
 			sName = aVariables[i];
-			this.v[sName] = Utils.stringEndsWith(sName, "$") ? "" : 0;
+			this.v[sName] = this.fnGetVarDefault(sName); //Utils.stringEndsWith(sName, "$") ? "" : 0;
 		}
 	},
 
@@ -206,23 +249,9 @@ CpcVm.prototype = {
 	vmNotImplemented: function (sName) {
 		Utils.console.warn("Not implemented: " + sName);
 	},
-	/*
-	zformat: function (s, length) {
-		var i;
 
-		s = String(s);
-		for (i = s.length; i < length; i += 1) {
-			s = "0" + s;
-		}
-		return s;
-	},
-	*/
-
-	// TEST:
-	// e: iPrecision ? parseFloat(arg).toExponential(iPrecision) : parseFloat(arg).toExponential()
-	// f: iPrecision ? parseFloat(arg).toFixed(iPrecision) : parseFloat(arg)
-	// g: iPrecision ? String(Number(arg.toPrecision(iPrecision))) : parseFloat(arg)
-	vmUsingFormat1: function (sFormat, arg) { // TODO
+	// not complete
+	vmUsingFormat1: function (sFormat, arg) {
 		var sPadChar = " ",
 			iPadLen, sPad, aFormat,
 			sStr;
@@ -259,8 +288,16 @@ CpcVm.prototype = {
 		return Math.abs(n);
 	},
 
-	after: function () {
-		this.vmNotImplemented("after");
+	afterGosub: function (iInterval, iTimer, iLine) {
+		var oTimer = this.aTimer[iTimer];
+
+		oTimer.iInterval = iInterval;
+		oTimer.iLine = iLine;
+		oTimer.bRepeat = false;
+		oTimer.bActive = true;
+		oTimer.iNextTime = Date.now() + iInterval;
+		//this.vmNotImplemented("everyGosub");
+		//this.vmNotImplemented("afterGosub");
 	},
 
 	// and
@@ -281,19 +318,23 @@ CpcVm.prototype = {
 		return (n >>> 0).toString(2).padStart(iPad || 16, 0); // eslint-disable-line no-bitwise
 	},
 
-	border: function () {
+	border: function (iInk1, iInk2) { // ink2 optional
 		this.vmNotImplemented("border");
 	},
 
 	// break
 
 	call: function (n) { // TODO adr + parameters
-		Utils.console.log("call: " + n);
-		if (n === 0xbd19) {
-			//this.bStop = true; // TODO HOWTO?
+		if (n === 0xbd19) { // frame
 			this.frame();
+		} else if (n === 0xbb18) { // wait for any key
+			if (this.inkey$() === "") { // no key?
+				//TODO: wait for key
+				this.vmStop("key", 30); //TODO
+			}
+		} else {
+			Utils.console.log("Ignored: call ", n);
 		}
-		Utils.console.log("call end: " + n);
 	},
 
 	cat: function () {
@@ -313,11 +354,12 @@ CpcVm.prototype = {
 	},
 
 	clear: function () {
-		this.vmNotImplemented("clear");
+		this.vmInitVariables();
+		this.rad();
 	},
 
 	clearInput: function () {
-		this.vmNotImplemented("clearInput");
+		this.oCanvas.clearInput();
 	},
 
 	clg: function () {
@@ -332,17 +374,18 @@ CpcVm.prototype = {
 		this.vmNotImplemented("closeout");
 	},
 
-	cls: function (n) {
-		//n = n || 0;
+	cls: function (iStream) {
+		iStream = iStream || 0;
 		this.sOut = "";
-		this.oCanvas.cls();
+		this.oCanvas.cls(); //TTT
 	},
 
 	cont: function () {
 		this.vmNotImplemented("cont");
 	},
 
-	copychr$: function () {
+	copychr$: function (iStream) {
+		iStream = iStream || 0;
 		this.vmNotImplemented("copychr$");
 	},
 
@@ -358,8 +401,17 @@ CpcVm.prototype = {
 		this.vmNotImplemented("cursor");
 	},
 
-	data: function () {
-		this.vmNotImplemented("data");
+	data: function () { // varargs
+		var iLine, i;
+
+		iLine = arguments[0]; // line number
+		if (!this.oDataLineIndex[iLine]) {
+			this.oDataLineIndex[iLine] = this.aData.length; // current index
+		}
+		// append data
+		for (i = 1; i < arguments.length; i += 1) {
+			this.aData.push(arguments[i]);
+		}
 	},
 
 	dec$: function () {
@@ -396,30 +448,21 @@ CpcVm.prototype = {
 		this.vmNotImplemented("di");
 	},
 
-	fnCreateNDimArray: function (length) {
-		var arr = new Array(length || 0),
-			i = length,
-			args;
+	dim: function (sVar) { // varargs
+		var aArgs = [],
+			bIsString = sVar.includes("$"),
+			varDefault = (bIsString) ? "" : 0,
+			i;
 
-		if (arguments.length > 1) {
-			args = Array.prototype.slice.call(arguments, 1);
-			while (i) {
-				i -= 1;
-				arr[length - 1 - i] = this.fnCreateNDimArray.apply(this, args);
-			}
+		//aArgs = Array.prototype.slice.call(arguments, 0);
+		for (i = 1; i < arguments.length; i += 1) {
+			aArgs.push(arguments[i] + 1); // for basic we have sizes +1
 		}
-		return arr;
-	},
-
-	dim: function () { // varargs
-		var args;
-
-		args = Array.prototype.slice.call(arguments, 0);
-		return this.fnCreateNDimArray.apply(this, args);
+		this.initVal = varDefault; //TTT fast hack
+		return this.fnCreateNDimArray.apply(this, aArgs);
 	},
 
 	draw: function (x, y) {
-		//this.vmNotImplemented("draw");
 		this.oCanvas.addPath({
 			t: "l",
 			x: x,
@@ -428,7 +471,6 @@ CpcVm.prototype = {
 	},
 
 	drawr: function (x, y) {
-		//this.vmNotImplemented("drawr");
 		this.oCanvas.addPath({
 			t: "l",
 			x: x,
@@ -447,11 +489,9 @@ CpcVm.prototype = {
 
 	// else
 
-	/*
-	end: function () {
-		this.stop(); //TTT
+	end: function (sLabel) {
+		this.stop(sLabel);
 	},
-	*/
 
 	ent: function () {
 		this.vmNotImplemented("ent");
@@ -484,12 +524,34 @@ CpcVm.prototype = {
 		this.iErl = this.iLine;
 
 		sError = this.vmGetError(iErr);
-		this.sOut += sError + "\n";
+		this.sOut += sError + " in " + this.iErl + "\n";
 		this.vmStop("error", 50);
 	},
 
-	every: function () {
-		this.vmNotImplemented("every");
+	/*
+	everyGosub: function (iInterval) { // varargs
+		var iTimer = 0,
+			iLine;
+
+		if (arguments.length > 2) {
+			iTimer = arguments[1];
+			iLine = arguments[2];
+		} else {
+			iLine = arguments[1];
+		}
+		this.vmNotImplemented("everyGosub");
+	},
+	*/
+
+	everyGosub: function (iInterval, iTimer, iLine) {
+		var oTimer = this.aTimer[iTimer];
+
+		oTimer.iInterval = iInterval;
+		oTimer.iLine = iLine;
+		oTimer.bRepeat = true;
+		oTimer.bActive = true;
+		oTimer.iNextTime = Date.now() + iInterval;
+		//this.vmNotImplemented("everyGosub");
 	},
 
 	exp: function (n) {
@@ -497,10 +559,9 @@ CpcVm.prototype = {
 	},
 
 	fill: function () {
-		//this.vmNotImplemented("fill");
 		this.oCanvas.addPath({
-			t: "f",
-			c: "red"
+			t: "f", // type: fill
+			c: "red" //TODO
 		});
 	},
 
@@ -513,16 +574,11 @@ CpcVm.prototype = {
 	// for
 
 	frame: function () {
-		//this.vmNotImplemented("frame");
-		if (!this.iFrameCount) {
-			this.iFrameCount = 0;
-		}
-		this.iFrameCount += 1; //TTT
 		this.vmStop("frame", 40);
 	},
 
 	fre: function (/* n */) {
-		return 42245; // TTT
+		return 42245; // example
 	},
 
 	gosub: function (retLabel, n) {
@@ -556,8 +612,9 @@ CpcVm.prototype = {
 		this.vmNotImplemented("ink");
 	},
 
-	inkey: function () {
+	inkey: function (n) {
 		this.vmNotImplemented("inkey");
+		return -1; //TTT
 	},
 
 	inkey$: function () {
@@ -577,7 +634,7 @@ CpcVm.prototype = {
 		this.vmNotImplemented("inp");
 	},
 
-	input: function (sMsg, sVar) {
+	input: function (iStream, sMsg, sVar) {
 		var sInput;
 
 		Utils.console.log("input:");
@@ -585,6 +642,9 @@ CpcVm.prototype = {
 		sInput = window.prompt(sMsg + " " + sVar); // eslint-disable-line no-alert
 		if (sInput === null) {
 			sInput = "";
+		}
+		if (sVar.indexOf("$") < 0) { //TTT no string?
+			sInput = Number(sInput);
 		}
 		return sInput;
 	},
@@ -613,11 +673,6 @@ CpcVm.prototype = {
 	},
 
 	left$: function (s, iLen) {
-		/*
-		if (s.length < iLen) {
-			s = s.repeat(Math.ceil(iLen / s.length || 1));
-		}
-		*/
 		return s.substr(0, iLen);
 	},
 
@@ -629,7 +684,7 @@ CpcVm.prototype = {
 		this.vmNotImplemented("let");
 	},
 
-	lineInput: function (sMsg, sVar) { // sVar must be string variable
+	lineInput: function (iStream, sMsg, sVar) { // sVar must be string variable
 		var sInput;
 
 		Utils.console.log("lineInput:");
@@ -697,12 +752,11 @@ CpcVm.prototype = {
 	// mod
 
 	mode: function (n) {
-		//this.sOut = "";
-		this.cls();
+		this.sOut = "";
+		this.oCanvas.mode(n);
 	},
 
 	move: function (x, y) {
-		//this.vmNotImplemented("move");
 		this.oCanvas.addPath({
 			t: "m",
 			x: x,
@@ -711,7 +765,6 @@ CpcVm.prototype = {
 	},
 
 	mover: function (x, y) {
-		//this.vmNotImplemented("mover");
 		this.oCanvas.addPath({
 			t: "m",
 			x: x,
@@ -771,6 +824,7 @@ CpcVm.prototype = {
 
 	peek: function () {
 		this.vmNotImplemented("peek");
+		return 0;
 	},
 
 	pen: function () {
@@ -778,11 +832,10 @@ CpcVm.prototype = {
 	},
 
 	pi: function () {
-		return Math.PI; // or: 3.14159265
+		return Math.PI; // or less precise: 3.14159265
 	},
 
-	plot: function (x, y) {
-		//this.vmNotImplemented("plot");
+	plot: function (x, y) { // TODO: up to 4 parameters
 		this.oCanvas.addPath({
 			t: "p",
 			x: x,
@@ -791,7 +844,6 @@ CpcVm.prototype = {
 	},
 
 	plotr: function (x, y) {
-		//this.vmNotImplemented("plotr");
 		this.oCanvas.addPath({
 			t: "p",
 			x: x,
@@ -804,23 +856,24 @@ CpcVm.prototype = {
 		this.vmNotImplemented("poke");
 	},
 
-	pos: function (/* iStream */) {
-		return this.iPos; // TODO
+	pos: function (iStream) {
+		iStream = iStream || 0;
+		return this.aWindow[iStream].iPos;
 	},
 
-	print: function () {
-		var sStr,
-			i, iLf;
+	print: function (iStream) { // varargs
+		var oWin = this.aWindow[iStream],
+			sStr, i, iLf;
 
-		for (i = 0; i < arguments.length; i += 1) {
+		for (i = 1; i < arguments.length; i += 1) {
 			sStr = String(arguments[i]);
 			this.sOut += sStr;
 
 			iLf = sStr.indexOf("\n");
 			if (iLf >= 0) {
-				this.iPos = sStr.length - iLf; // TODO: tab in same print is already called, should depend on what is already printed
+				oWin.iPos = sStr.length - iLf; // TODO: tab in same print is already called, should depend on what is already printed
 			} else {
-				this.iPos += sStr.length;
+				oWin.iPos += sStr.length;
 			}
 		}
 		//this.sOut += s;
@@ -845,8 +898,19 @@ CpcVm.prototype = {
 		this.oRandom.init(n);
 	},
 
-	read: function () {
-		this.vmNotImplemented("read");
+	read: function (sVar) {
+		var item = 0;
+
+		if (this.iData < this.aData.length) {
+			item = this.aData[this.iData];
+			this.iData += 1;
+			if (sVar.indexOf("$") < 0) { //TTT no string?
+				item = Number(item);
+			}
+		} else {
+			this.error(4); // DATA exhausted
+		}
+		return item;
 	},
 
 	release: function () {
@@ -855,16 +919,29 @@ CpcVm.prototype = {
 
 	// rem
 
-	remain: function () {
-		this.vmNotImplemented("remain");
+	remain: function (iTimer) {
+		var oTimer = this.aTimer[iTimer],
+			iTime = 0;
+
+		if (oTimer.bActive) {
+			iTime = oTimer.iNextTime - Date.now();
+			iTime /= 1000 / 50;
+			oTimer.bActive = false;
+		}
+		return iTime;
 	},
 
 	renum: function () {
 		this.vmNotImplemented("renum");
 	},
 
-	restore: function () {
-		this.vmNotImplemented("restore");
+	restore: function (iLine) {
+		iLine = iLine || 0;
+		if (iLine in this.oDataLineIndex) {
+			this.iData = this.oDataLineIndex[iLine];
+		} else {
+			this.error(8); // Line does not exist
+		}
 	},
 
 	resume: function () { // resume, resume n, resume next
@@ -874,6 +951,9 @@ CpcVm.prototype = {
 	"return": function () {
 		var retLabel = this.oGosubStack.pop();
 
+		if (retLabel === undefined) {
+			this.error(3); // Unexpected Return [in <line>]
+		}
 		this.iLine = retLabel;
 	},
 
@@ -908,6 +988,14 @@ CpcVm.prototype = {
 		// TEST: or to avoid rounding errors: return Number(Math.round(value + "e" + iDecimals) + "e-" + iDecimals); // https://www.jacklmoore.com/notes/rounding-in-javascript/
 	},
 
+	rsxBasic: function () {
+		this.vmNotImplemented("|BASIC");
+	},
+
+	rsxCpm: function () {
+		this.vmNotImplemented("|CPM");
+	},
+
 	run: function () {
 		this.vmNotImplemented("run");
 	},
@@ -936,8 +1024,16 @@ CpcVm.prototype = {
 		return " ".repeat(n);
 	},
 
-	speed: function () { // speed ink, speed key, speed write
-		this.vmNotImplemented("speed");
+	speedInk: function () {
+		this.vmNotImplemented("speedInk");
+	},
+
+	speedKey: function () {
+		this.vmNotImplemented("speedKey");
+	},
+
+	speedWrite: function () {
+		this.vmNotImplemented("speedWrite");
 	},
 
 	sq: function () {
@@ -983,11 +1079,13 @@ CpcVm.prototype = {
 		return " ".repeat(n); // TODO: adapt spaces for next tab position
 	},
 
-	tag: function () {
+	tag: function (iStream) {
+		iStream = iStream || 0;
 		this.vmNotImplemented("tag");
 	},
 
-	tagoff: function () {
+	tagoff: function (iStream) {
+		iStream = iStream || 0;
 		this.vmNotImplemented("tagoff");
 	},
 
@@ -995,12 +1093,23 @@ CpcVm.prototype = {
 		return Math.tan((this.bDeg) ? Utils.toRadians(n) : n);
 	},
 
-	test: function () {
-		this.vmNotImplemented("test");
+	test: function (x, y) {
+		//this.vmNotImplemented("test");
+		return this.oCanvas.addPath({
+			t: "t",
+			x: x,
+			y: y
+		});
 	},
 
-	testr: function () {
-		this.vmNotImplemented("testr");
+	testr: function (x, y) {
+		//this.vmNotImplemented("testr");
+		return this.oCanvas.addPath({
+			t: "t",
+			x: x,
+			y: y,
+			r: true
+		});
 	},
 
 	// then
@@ -1035,13 +1144,6 @@ CpcVm.prototype = {
 			s = "",
 			aFormat, i;
 
-		/*
-		if (sFormat.charAt(0) === "\\") { // string format with spaces?
-			aFormat = [sFormat]; // or: t.value.split()
-		} else {
-			aFormat = sFormat.split(" ");
-		}
-		*/
 		aFormat = sFormat.split(reFormat);
 		i = 1;
 		while (aFormat.length) {
@@ -1051,20 +1153,16 @@ CpcVm.prototype = {
 			}
 			i += 1;
 		}
-		/*
-		for (i = 0; i < arguments.length - 1; i += 1) {
-			s += aFormat[i * 2] + this.vmUsingFormat1(aFormat[i * 2 + 1], arguments[i + 1]);
-		}
-		*/
 		return s;
 	},
 
 	val: function (s) {
-		return parseFloat(s); //TODO
+		return parseFloat(s);
 	},
 
-	vpos: function () {
-		this.vmNotImplemented("vpos");
+	vpos: function (iStream) { //TTT
+		iStream = iStream || 0;
+		return this.aWindow[iStream].iVpos;
 	},
 
 	wait: function (iPort /* , iMask, iInv */) {
@@ -1081,15 +1179,24 @@ CpcVm.prototype = {
 		this.vmNotImplemented("width");
 	},
 
-	window: function () {
-		this.vmNotImplemented("window");
+	window: function (iStream, iLeft, iRight, iTop, iBottom) {
+		var oWin = this.aWindow[iStream];
+
+		oWin.left = Math.min(iLeft, iRight);
+		oWin.right = Math.max(iLeft, iRight);
+		oWin.top = Math.max(iTop, iBottom);
+		oWin.bottom = Math.min(iTop, iBottom);
+		//this.vmNotImplemented("window");
 	},
 
-	windowSwap: function () {
-		this.vmNotImplemented("windowSwap");
+	windowSwap: function (iStream1, iStream2) {
+		var oTemp = this.aWindow[iStream1];
+
+		this.aWindow[iStream1] = this.aWindow[iStream2];
+		this.aWindow[iStream2] = oTemp;
 	},
 
-	write: function () {
+	write: function (iStream) { // varargs
 		this.vmNotImplemented("write");
 	},
 

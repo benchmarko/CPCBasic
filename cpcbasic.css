@@ -15,13 +15,6 @@ body {
 	clear: left;
 }
 
-.canvas {
-	width: 644px;  /* including border */
-	height: 404px;
-	/* border: 5px solid green; */
-	/* background-color: blue; */
-}
-
 @media (max-width: 480px) {
 	.canvas {
 		width: 330px;
@@ -73,15 +66,4 @@ body {
 
 .invalid {
 	border-color: red;
-}
-
-
-.leaflet-parking-icon {
-	background: lightgray;
-	border: 1px solid #666;
-}
-
-.leaflet-location-icon {
-	background: lightblue;
-	border: 1px solid #666;
 }

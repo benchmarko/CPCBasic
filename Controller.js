@@ -31,16 +31,13 @@ Controller.prototype = {
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
 
-		// make sure canvas is not hidden (allows to get width, height)
+		//bHidden = oView.getHidden("cpcArea");
+		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
-			//zoom: mConfig.zoom,
-			//mapType: sMapType2,
-			mapDivId: "cpcCanvas",
-			//onload: fnMapLoaded,
-			//onGetInfoWindowContent: fnGetInfoWindowContent,
+			cpcDivId: "cpcArea",
 			view: this.view
 		});
-
+		//oView.setHidden("cpcArea", bHidden); // restore hidden
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
 		sExample = oModel.getProperty("example");
@@ -59,7 +56,6 @@ Controller.prototype = {
 	fnAddItem: function (sKey, input) { // optional sKey
 		var sInput, oExample;
 
-		//sInput = Utils.stringTrimLeft(input);
 		sInput = input.trim();
 
 		if (!sKey) {
@@ -105,7 +101,7 @@ Controller.prototype = {
 		this.view.setSelectOptions(sSelect, aItems);
 	},
 
-	fnSetVarSelectOptions: function (sSelect, oVariables) { //TTT
+	fnSetVarSelectOptions: function (sSelect, oVariables) {
 		var aItems = [],
 			oItem, sKey, sValue;
 
@@ -127,10 +123,108 @@ Controller.prototype = {
 		this.fnScript = null;
 	},
 
+	fnRunPart1: function () {
+		var oVm = this.oVm,
+			iLength;
+
+		if (this.iTimeoutHandle !== null) {
+			clearTimeout(this.iTimeoutHandle);
+			this.iTimeoutHandle = null;
+		}
+		iLength = oVm.sOut.length;
+		oVm.bStop = false;
+		try {
+			this.fnScript(oVm);
+		} catch (e) {
+			oVm.sOut += "\n" + String(e) + "\n";
+			oVm.error(2); // Syntax Error
+		}
+		if (oVm.sOut.length !== iLength) {
+			this.view.setAreaValue("resultText", oVm.sOut);
+		}
+		this.fnRunStart1();
+	},
+
+	fnOnKeyDown: function () {
+		var sKey;
+
+		this.oCanvas.options.fnOnKeyDown = null; //TTT
+		sKey = this.oCanvas.getKeyFromBuffer();
+		Utils.console.log("Wait for key: " + sKey);
+		this.fnRunStart1(); // continue
+	},
+
+	fnRunStart1: function () {
+		var iTimeUntilFrame,
+			iTimeOut = 0;
+
+		iTimeUntilFrame = this.oVm.vmCheckNextFrame();
+		if (this.oVm.bStop) {
+			if (this.oVm.sStopLabel === "end" || this.oVm.sStopLabel === "stop" || this.oVm.sStopLabel === "break" || this.oVm.iErr) {
+				this.view.setDisabled("runButton", false);
+				this.view.setDisabled("stopButton", true);
+				this.view.setDisabled("continueButton", this.oVm.sStopLabel === "end");
+				this.fnSetVarSelectOptions("varSelect", this.oVariables);
+				return;
+			} else if (this.oVm.sStopLabel === "frame") {
+				this.oVm.sStopLabel = "";
+				this.oVm.iStopPriority = 0;
+				iTimeOut = iTimeUntilFrame; // wait until next frame
+			} else if (this.oVm.sStopLabel === "key") {
+				this.oVm.sStopLabel = "";
+				this.oVm.iStopPriority = 0;
+				this.oCanvas.options.fnOnKeyDown = this.fnOnKeyDown.bind(this); //TTT
+				//TTT wait until keypress
+				return;
+			} else if (this.oVm.sStopLabel === "timer") {
+				//TTT
+			}
+		}
+
+		this.iTimeoutHandle = setTimeout(this.fnRunPart1.bind(this), iTimeOut);
+	},
+
+	fnRun: function (sScript) {
+		var oVm = this.oVm;
+
+		if (!this.fnScript) {
+			oVm.vmInit({
+				variables: this.oVariables
+			});
+			this.oVm.clear(); //TTT init variables
+			try {
+				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
+			} catch (e) {
+				Utils.console.error(e);
+				this.fnScript = null;
+			}
+		} else {
+			oVm.vmInitVariables();
+		}
+
+		if (this.fnScript) {
+			this.oVm.sOut = this.view.getAreaValue("resultText");
+			oVm.bStop = false;
+			oVm.sStopLabel = "";
+			oVm.iStopPriority = 0;
+			oVm.iLine = 0;
+
+			this.iTimeoutHandle = null;
+
+
+			this.view.setDisabled("runButton", true);
+			this.view.setDisabled("stopButton", false);
+			this.view.setDisabled("continueButton", true);
+			this.fnRunStart1();
+		}
+		if (Utils.debug > 1) {
+			Utils.console.debug("DEBUG: End of fnRun");
+		}
+	},
+
 	fnParse: function (sInput) {
 		var oParseOptions, oOutput, oError, iEndPos, sOutput;
 
-		//this.view.setAreaValue("outputText", "");
 		oParseOptions = {
 			ignoreVarCase: true
 		};
@@ -149,119 +243,9 @@ Controller.prototype = {
 		}
 		this.view.setAreaValue("outputText", sOutput);
 
-		/*
-		this.oVm.sOut = this.view.getAreaValue("resultText");
-		if (!oOutput.error) {
-			sResult += this.fnRun(sOutput);
-		}
-		this.view.setAreaValue("resultText", sResult);
-		*/
-
 		this.fnInvalidateScript();
 		this.fnSetVarSelectOptions("varSelect", this.oVariables);
 		return oOutput;
-	},
-
-	/*
-	fnRunStop1: function () {
-		this.oVm.stopTimer();
-	},
-	*/
-
-	fnRunStart1: function () {
-		var iTimeUntilFrame,
-			iTime = 0;
-
-		iTimeUntilFrame = this.oVm.vmCheckNextFrame();
-		if (this.oVm.bStop) {
-			if (this.oVm.sStopLabel === "end" || this.oVm.sStopLabel === "stop" || this.oVm.sStopLabel === "break" || this.oVm.iErr) {
-				this.oVm.vmStopTimer();
-				this.view.setDisabled("runButton", false);
-				this.view.setDisabled("stopButton", true);
-				this.view.setDisabled("continueButton", this.oVm.sStopLabel === "end");
-				this.fnSetVarSelectOptions("varSelect", this.oVariables);
-				return;
-			} else if (this.oVm.sStopLabel === "frame") {
-				this.oVm.sStopLabel = "";
-				this.oVm.iStopPriority = 0;
-				iTime = iTimeUntilFrame;
-				//Utils.console.log("fnRunStart1: " + iTime + " " + this.oVm.iFrameCount, Date.now() - this.oVm.iStartTime);
-			}
-		}
-
-		this.iTimeoutHandle = setTimeout(this.fnRunPart1.bind(this), iTime); //TTT
-	},
-
-	fnRunPart1: function () {
-		var oVm = this.oVm,
-			iLength;
-
-		/*
-		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: fnRunPart1");
-		}
-		*/
-		if (this.iTimeoutHandle !== null) {
-			clearTimeout(this.iTimeoutHandle);
-			this.iTimeoutHandle = null;
-		}
-		iLength = oVm.sOut.length;
-		oVm.iLoopCount = 0;
-		oVm.bStop = false; //TTT
-		//TTT oVm.sStopLabel = "";
-		//if (oVm.vmLoopCondition()) {
-		try {
-			this.fnScript(oVm);
-		} catch (e) {
-			oVm.sOut += "\n" + String(e) + "\n";
-			oVm.error(2); // Syntax Error
-		}
-		if (oVm.sOut.length !== iLength) {
-			this.view.setAreaValue("resultText", oVm.sOut);
-		}
-		this.fnRunStart1();
-		//} else {
-		//	this.oVm.vmStopTimer();
-		//}
-	},
-
-	fnRun: function (sScript) {
-		var oVm = this.oVm;
-
-		if (!this.fnScript) {
-			oVm.vmInit({
-				variables: this.oVariables
-			});
-			try {
-				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
-			} catch (e) {
-				//TTT sOut += "\n" + String(e) + "\n" + String(e.stack) + "\n";
-				Utils.console.error(e);
-				this.fnScript = null; //TTT
-			}
-		} else {
-			oVm.vmInitVariables();
-		}
-
-		if (this.fnScript) {
-			this.oVm.sOut = this.view.getAreaValue("resultText");
-			oVm.bStop = false;
-			oVm.sStopLabel = "";
-			oVm.iStopPriority = 0;
-			oVm.iLine = 0; //oVm.goto(0);
-
-			this.iTimeoutHandle = null;
-
-
-			this.view.setDisabled("runButton", true);
-			this.view.setDisabled("stopButton", false);
-			this.view.setDisabled("continueButton", true);
-			oVm.vmStartTimer();
-			this.fnRunStart1();
-		}
-		if (Utils.debug > 1) {
-			Utils.console.debug("DEBUG: End of fnRun");
-		}
 	},
 
 	fnParseRun: function (sInput) {
@@ -277,7 +261,6 @@ Controller.prototype = {
 
 	fnStop: function () {
 		this.oVm.vmStop("break", 80);
-		//this.oVm.error();
 	},
 
 	fnContinue: function () {
@@ -290,7 +273,6 @@ Controller.prototype = {
 			this.oVm.sStopLabel = "";
 			this.oVm.iStopPriority = 0;
 		}
-		this.oVm.vmStartTimer();
 		this.fnRunStart1();
 	}
 };
