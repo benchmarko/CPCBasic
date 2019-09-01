@@ -8,7 +8,7 @@ cpcBasic.addItem("",  String.raw`
 30 INK 0,0
 40 BORDER 0
 50 INK 1,26
-60 INK 3,0
+60 'INK 3,0:'cannot detect pen 3 if it has same color as pen 0
 70 q=5
 90 LOCATE 16,1
 100 PRINT"Stardodger"

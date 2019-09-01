@@ -229,7 +229,7 @@ BasicParser.prototype = {
 				return (/[0-9]/).test(c);
 			},
 			isSign = function (c) {
-				return (/[+\-]/).test(c);
+				return (/[+-]/).test(c);
 			},
 			isHexOrBin = function (c) { // bin: &X, hex: & or &H
 				return (/[&]/).test(c);
@@ -368,14 +368,12 @@ BasicParser.prototype = {
 					sToken += advanceWhile(isDigit);
 				}
 				if (sChar === "e") {
-					//sToken += "e";
-					//sChar = advance();
 					sToken += advanceWhile(isSign);
 					if (isDigit(sChar)) {
 						sToken += advanceWhile(isDigit);
 					}
 				}
-				sToken = parseFloat(sToken); //TTT
+				sToken = parseFloat(sToken);
 				if (!isFinite(sToken)) {
 					throw new BasicParser.ErrorObject("Number is too large or too small", sToken, iStartPos); // for a 64-bit double
 				}
@@ -418,47 +416,6 @@ BasicParser.prototype = {
 				}
 				if (BasicParser.mKeywords[sToken.toLowerCase()]) {
 					fnParseKeyword();
-					/*
-					sToken = sToken.toLowerCase();
-					if (sToken === "rem") { // ignore comment
-						if (isNotNewLine(sChar)) {
-							advanceWhile(isNotNewLine);
-						}
-					} else {
-						addToken(sToken, 0, iStartPos);
-					}
-					if (sToken === "data") { // special handling since strings in data lines need not be quoted
-						if (isWhiteSpace(sChar)) {
-							advanceWhile(isWhiteSpace);
-						}
-						while (true) {
-							if (isQuotes(sChar)) {
-								sChar = "";
-								sToken = advanceWhile(isNotQuotes);
-								if (!isQuotes(sChar)) {
-									throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
-								}
-								sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
-								addToken("string", sToken, iStartPos + 1);
-								sChar = advance();
-							} else {
-								sToken = advanceWhile(isUnquotedData);
-								sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
-								nValueAsNumber = parseFloat(sToken);
-								if (String(nValueAsNumber) === sToken) {
-									addToken("number", nValueAsNumber, iStartPos); // use number, if it is a number
-								} else {
-									addToken("string", sToken, iStartPos);
-								}
-							}
-							if (sChar !== ",") {
-								break;
-							}
-							addToken(sChar, 0, iStartPos); // ","
-							sChar = advance();
-						}
-					}
-					*/
 				} else {
 					addToken("identifier", sToken, iStartPos);
 				}
@@ -700,28 +657,6 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
-			/*
-			fnGetArgsInBrackets = function () {
-				var aArgs = [];
-
-				if (oToken.type === "[") {
-					if (aTokens[iIndex].type === "]") {
-						advance("[");
-					} else {
-						do {
-							advance();
-							aArgs.push(expression(0));
-						} while (oToken.type === ",");
-						if (oToken.type !== "]") {
-							throw new BasicParser.ErrorObject("Expected closing brackets for argument list after", aTokens[iIndex - 2].value, aTokens[iIndex - 1].pos);
-						}
-					}
-					advance("]");
-				}
-				return aArgs;
-			},
-			*/
-
 			fngetOptionalStream = function () {
 				var oValue;
 
@@ -875,38 +810,6 @@ BasicParser.prototype = {
 			return value;
 		});
 
-		/*
-		symbol("[", function () {
-			var t = oToken,
-				iParseIndex = iIndex,
-				oValue,
-				aArgs = [];
-
-			if (t.type === "(end)") {
-				throw new BasicParser.ErrorObject("Unexpected end of file", "", t.pos);
-			}
-			if (aTokens[iIndex + 1].type === "]") {
-				oValue = expression(0);
-			} else {
-				do {
-					aArgs.push(expression(0));
-					t = oToken;
-				} while (t.type !== "]" && t.type !== "(end)");
-				if (t.type !== "]") {
-					throw new BasicParser.ErrorObject("Expected closing bracket", "]", aTokens[iParseIndex].pos);
-				}
-				oValue = {
-					type: "fcall",
-					args: aArgs,
-					name: "concat",
-					pos: aTokens[iParseIndex - 1].pos
-				};
-			}
-			advance();
-			return oValue;
-		});
-		*/
-
 		infix("^", 90, 80);
 
 		prefix("-", 80);
@@ -1058,21 +961,6 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		/*
-		stmt("every", function () {
-			var oValue = {
-				type: "everyGosub",
-				args: null,
-				pos: iIndex - 1
-			};
-
-			oValue.args = fnGetArgs(); // interval and optional timer
-			advance("gosub");
-			oValue.args.push(expression(0)); // line
-			return oValue;
-		});
-		*/
-
 		stmt("for", function () {
 			var oValue = {
 				type: "for"
@@ -1113,6 +1001,19 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("graphics", function () {
+			var sName, oValue;
+
+			if (oToken.type === "pen" || oToken.type === "paper") { // graphics pen/paper
+				sName = "graphics" + Utils.stringCapitalize(oToken.type);
+				advance(oToken.type);
+				oValue = fnCreateCmdCall(sName);
+			} else {
+				throw new BasicParser.ErrorObject("Expected pen or paper at", oToken.type, oToken.pos);
+			}
+			return oValue;
+		});
+
 		stmt("if", function () {
 			var oValue = {
 				type: "if"
@@ -1143,7 +1044,6 @@ BasicParser.prototype = {
 				} else {
 					oValue.third = statements();
 				}
-				//oValue.third = oToken.type === "if" ? statement() : statements();
 			} else {
 				oValue.third = null;
 			}
@@ -1159,31 +1059,6 @@ BasicParser.prototype = {
 				},
 				sText = "",
 				sName, oValue2;
-
-			/*
-			if (oToken.type === "#") { // stream?
-				advance("#");
-				oValue2 = expression(0); //TTT howto
-				oValue.args.push({
-					type: "#",
-					right: oValue2,
-					pos: aTokens[iIndex - 1].pos //TTT
-				});
-				advance(",");
-			}
-			*/
-			/*
-			if (oToken.type === "#") { // stream?
-				advance("#");
-				oValue.args.push(expression(0));
-				advance(",");
-			} else {
-				oValue.args.push({
-					type: "number",
-					value: 0
-				});
-			}
-			*/
 
 			oValue.args.push(fngetOptionalStream());
 
@@ -1216,12 +1091,6 @@ BasicParser.prototype = {
 					throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
 				}
 				sName = oToken.value;
-				/*
-				oValue.args.push({
-					type: "identifier",
-					value: sName
-				});
-				*/
 				advance();
 				if (oToken.type === "(") {
 					oValue2 = {
@@ -1388,7 +1257,6 @@ BasicParser.prototype = {
 					name: "print",
 					pos: aTokens[iIndex - 2].pos
 				},
-				//aArgs = [],
 				oValue2,
 				iParseIndex = iIndex,
 				bTrailingSemicolon = false,
@@ -1434,7 +1302,6 @@ BasicParser.prototype = {
 				} else {
 					t = expression(0);
 					oValue.args.push(t);
-					//bTrailingSemicolon = (oToken.type === ";");
 				}
 			}
 
@@ -1647,25 +1514,8 @@ BasicParser.prototype = {
 				}
 			},
 
-			/*
-			fnGetVarDefault = function (sName) {
-				var iArrayIndices = sName.split("A").length - 1,
-					bIsString = sName.includes("$"),
-					value, aValue, i;
-
-				value = bIsString ? "" : 0;
-				if (iArrayIndices) {
-					aValue = [];
-					for (i = 0; i <= 10; i += 1) { //TTT do we want arrays without declaration?
-						aValue.push(value);
-					}
-					value = aValue;
-				}
-				return value;
-			},
-			*/
-			fnGetVarDefault = function (sName) {
-				return 1; //TTT
+			fnGetVarDefault = function (/* sName */) {
+				return 1; // during compile step, we just init all variables with 1
 			},
 
 			oDevScopeArgs = null,
@@ -1715,7 +1565,6 @@ BasicParser.prototype = {
 				aNodeArgs = fnParseArgs(node.args);
 				bDevScopeArgsCollect = false;
 				value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
-				//variables[sName] = 0; // will get a function
 				oDevScopeArgs = null;
 				return value;
 			},
@@ -1805,7 +1654,6 @@ BasicParser.prototype = {
 					break;
 				case "identifier":
 					value = fnAdaptVariableName(node.value); // here we use node.value
-					//variables[value] = fnGetVarDefault(value);
 					break;
 				case "array":
 					aNodeArgs = fnParseArgs(node.args);
@@ -1827,7 +1675,6 @@ BasicParser.prototype = {
 					}
 
 					value = sName + value + " = " + parseNode(node.value);
-					//variables[sName] = fnGetVarDefault(sName);
 					break;
 				case "fcall":
 					aNodeArgs = fnParseArgs(node.args);
@@ -2039,6 +1886,21 @@ BasicParser.prototype = {
 					}
 					return s;
 				},
+				/*
+				print: function () { // varargs
+					var	s = "",
+						iStream, i;
+
+					iStream = arguments[0];
+					for (i = 1; i < arguments.length; i += 1) { // starting with arg 1
+						if (s !== "") {
+							s += ";";
+						}
+						s += "o.print(" + iStream + ", " + String(arguments[i]) + ")";
+					}
+					return s;
+				},
+				*/
 				read: function () { // varargs
 					var	aArgs = [],
 						sName, i;

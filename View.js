@@ -105,6 +105,15 @@ View.prototype = {
 		return this;
 	},
 
+	setAreaScrollTop: function (sId, scrollTop) {
+		var area = document.getElementById(sId);
+
+		if (scrollTop === undefined) {
+			scrollTop = area.scrollHeight;
+		}
+		area.scrollTop = scrollTop;
+	},
+
 	fnSetSelectionRange: function (textarea, selectionStart, selectionEnd) {
 		var fullText, scrollHeight, scrollTop, textareaHeight;
 

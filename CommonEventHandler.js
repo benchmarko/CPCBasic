@@ -116,7 +116,7 @@ CommonEventHandler.prototype = {
 		window.open("https://github.com/benchmarko/CPCBasic/#readme");
 	},
 
-	onOutputTextChange: function () { // TODO
+	onOutputTextChange: function () {
 		this.controller.fnInvalidateScript();
 	},
 
@@ -178,8 +178,19 @@ CommonEventHandler.prototype = {
 			this.view.setAreaValue("inputText", "");
 			this.model.setProperty("example", "");
 		}
+	},
+
+	onVarSelectChange: function () {
+		var sPar = this.view.getSelectValue("varSelect"),
+			oVariables = this.controller.oVariables,
+			sValue;
+
+		sValue = oVariables[sPar];
+		//this.view.setLabelText("varLabel", sPar).setLabelTitle("varLabel", sPar);
+		this.view.setAreaValue("varText", sValue);
 	}
 };
+
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = CommonEventHandler;

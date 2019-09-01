@@ -84,12 +84,20 @@ var cpcBasicExternalConfig, // eslint-disable-line vars-on-top
 				title: "BM Benchmark 3"
 			});
 			this.model.setExample({
+				key: "keys",
+				title: "Keys Test"
+			});
+			this.model.setExample({
 				key: "rectangles",
 				title: "Rectangles"
 			});
 			this.model.setExample({
 				key: "stardodger",
 				title: "Stardodger"
+			});
+			this.model.setExample({
+				key: "stars",
+				title: "Stars"
 			});
 
 			that.controller = new Controller(this.model, this.view);

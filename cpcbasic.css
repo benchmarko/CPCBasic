@@ -8,17 +8,10 @@ body {
 	padding: 2px;
 	margin: 2px;
 	background-color: LightGrey;
-	/* font-size: 2em; */ /* Test */
 }
 
 .clearLeft {
 	clear: left;
-}
-
-@media (max-width: 480px) {
-	.canvas {
-		width: 330px;
-	}
 }
 
 .legendButton {

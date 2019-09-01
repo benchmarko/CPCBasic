@@ -31,13 +31,11 @@ Controller.prototype = {
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
 
-		//bHidden = oView.getHidden("cpcArea");
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
 			cpcDivId: "cpcArea",
 			view: this.view
 		});
-		//oView.setHidden("cpcArea", bHidden); // restore hidden
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
 		sExample = oModel.getProperty("example");
@@ -47,6 +45,9 @@ Controller.prototype = {
 		this.fnScript = null;
 
 		this.iTimeoutHandle = null;
+
+		this.fnRunPartHandler = this.fnRunPart1.bind(this);
+		this.fnKeyDownHandler = this.fnOnKeyDown.bind(this);
 
 		this.fnSetExampleSelectOptions();
 		this.commonEventHandler.onExampleSelectChange();
@@ -103,14 +104,19 @@ Controller.prototype = {
 
 	fnSetVarSelectOptions: function (sSelect, oVariables) {
 		var aItems = [],
-			oItem, sKey, sValue;
+			oItem, sKey, sValue, sTitle, sStrippedTitle;
 
 		for (sKey in oVariables) {
 			if (oVariables.hasOwnProperty(sKey)) {
 				sValue = oVariables[sKey];
+				sTitle = sKey + "=" + sValue;
+				sStrippedTitle = sTitle.substr(0, 35); // limit length
+				if (sTitle !== sStrippedTitle) {
+					sStrippedTitle += " ...";
+				}
 				oItem = {
 					value: sKey,
-					title: sKey + "=" + sValue
+					title: sStrippedTitle
 				};
 				oItem.text = oItem.title;
 				aItems.push(oItem);
@@ -141,6 +147,7 @@ Controller.prototype = {
 		}
 		if (oVm.sOut.length !== iLength) {
 			this.view.setAreaValue("resultText", oVm.sOut);
+			this.view.setAreaScrollTop("resultText"); // scroll to bottom
 		}
 		this.fnRunStart1();
 	},
@@ -148,8 +155,10 @@ Controller.prototype = {
 	fnOnKeyDown: function () {
 		var sKey;
 
-		this.oCanvas.options.fnOnKeyDown = null; //TTT
+		this.oCanvas.options.fnOnKeyDown = null;
 		sKey = this.oCanvas.getKeyFromBuffer();
+		this.oVm.sStopLabel = "";
+		this.oVm.iStopPriority = 0;
 		Utils.console.log("Wait for key: " + sKey);
 		this.fnRunStart1(); // continue
 	},
@@ -165,23 +174,18 @@ Controller.prototype = {
 				this.view.setDisabled("stopButton", true);
 				this.view.setDisabled("continueButton", this.oVm.sStopLabel === "end");
 				this.fnSetVarSelectOptions("varSelect", this.oVariables);
+				this.commonEventHandler.onVarSelectChange();
 				return;
 			} else if (this.oVm.sStopLabel === "frame") {
 				this.oVm.sStopLabel = "";
 				this.oVm.iStopPriority = 0;
 				iTimeOut = iTimeUntilFrame; // wait until next frame
 			} else if (this.oVm.sStopLabel === "key") {
-				this.oVm.sStopLabel = "";
-				this.oVm.iStopPriority = 0;
-				this.oCanvas.options.fnOnKeyDown = this.fnOnKeyDown.bind(this); //TTT
-				//TTT wait until keypress
+				this.oCanvas.options.fnOnKeyDown = this.fnKeyDownHandler; // wait until keypress handler
 				return;
-			} else if (this.oVm.sStopLabel === "timer") {
-				//TTT
 			}
 		}
-
-		this.iTimeoutHandle = setTimeout(this.fnRunPart1.bind(this), iTimeOut);
+		this.iTimeoutHandle = setTimeout(this.fnRunPartHandler, iTimeOut);
 	},
 
 	fnRun: function (sScript) {
@@ -191,7 +195,7 @@ Controller.prototype = {
 			oVm.vmInit({
 				variables: this.oVariables
 			});
-			this.oVm.clear(); //TTT init variables
+			this.oVm.clear(); // init variables
 			try {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
 			} catch (e) {
@@ -201,6 +205,8 @@ Controller.prototype = {
 		} else {
 			oVm.vmInitVariables();
 		}
+		this.oVm.vmInitInks();
+		this.oVm.clearInput();
 
 		if (this.fnScript) {
 			this.oVm.sOut = this.view.getAreaValue("resultText");
@@ -245,6 +251,7 @@ Controller.prototype = {
 
 		this.fnInvalidateScript();
 		this.fnSetVarSelectOptions("varSelect", this.oVariables);
+		this.commonEventHandler.onVarSelectChange();
 		return oOutput;
 	},
 
@@ -260,7 +267,13 @@ Controller.prototype = {
 	},
 
 	fnStop: function () {
+		var sStopLabel = this.oVm.sStopLabel;
+
 		this.oVm.vmStop("break", 80);
+		if (sStopLabel === "key") { // current sStopLabel was key?
+			this.oCanvas.options.fnOnKeyDown = null;
+			this.fnRunStart1(); //TTT handle break
+		}
 	},
 
 	fnContinue: function () {
