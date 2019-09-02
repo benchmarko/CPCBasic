@@ -1,6 +1,6 @@
 // Controller.js - Controller
 //
-/* globals CommonEventHandler  */
+/* globals CommonEventHandler cpcBasicCharset  */
 
 "use strict";
 
@@ -33,6 +33,7 @@ Controller.prototype = {
 
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
+			aCharset: cpcBasicCharset, //TTT
 			cpcDivId: "cpcArea",
 			view: this.view
 		});
@@ -165,7 +166,8 @@ Controller.prototype = {
 
 	fnRunStart1: function () {
 		var iTimeUntilFrame,
-			iTimeOut = 0;
+			iTimeOut = 0,
+			iNextLine;
 
 		iTimeUntilFrame = this.oVm.vmCheckNextFrame();
 		if (this.oVm.bStop) {
@@ -184,6 +186,17 @@ Controller.prototype = {
 				this.oCanvas.options.fnOnKeyDown = this.fnKeyDownHandler; // wait until keypress handler
 				return;
 			}
+			/*
+			} else if (this.oVm.sStopLabel === "run") {
+				this.oVm.sStopLabel = "";
+				this.oVm.iStopPriority = 0;
+				iNextLine = this.oVm.iLine; // save line
+				this.oVm.vmInitVariables();
+				this.oVm.vmInitStack();
+				this.oVm.clearInput();
+				this.oVm.goto(iNextLine);
+			}
+			*/
 		}
 		this.iTimeoutHandle = setTimeout(this.fnRunPartHandler, iTimeOut);
 	},
@@ -203,6 +216,7 @@ Controller.prototype = {
 				this.fnScript = null;
 			}
 		} else {
+			oVm.vmInitStack();
 			oVm.vmInitVariables();
 		}
 		this.oVm.vmInitInks();

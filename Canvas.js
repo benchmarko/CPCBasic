@@ -54,11 +54,41 @@ Canvas.prototype = {
 	aDefaultInks: [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16], // eslint-disable-line array-element-newline
 
 	// limit inks (pens)
+	/*
 	aInksPerModeLimit: [
 		16,
 		4,
 		2
 	],
+
+	aLineWidthPerMode: [
+		4,
+		2,
+		1
+	],
+	*/
+
+	aModeData: [
+		{
+			iInks: 16,
+			iLineWidth: 4,
+			iCharWidth: 8 * 4,
+			iCharHeight: 16
+		},
+		{
+			iInks: 4,
+			iLineWidth: 2,
+			iCharWidth: 8 * 2,
+			iCharHeight: 16
+		},
+		{
+			iInks: 2,
+			iLineWidth: 1,
+			iCharWidth: 8,
+			iCharHeight: 16
+		}
+	],
+
 
 	/*
 	mCpcKey2KeyCode: {
@@ -189,6 +219,8 @@ Canvas.prototype = {
 
 		this.options = Object.assign({}, options);
 
+		this.aCharset = this.options.aCharset;
+
 		this.oPressedKeys = {};
 		this.aKeyBuffer = [];
 
@@ -198,6 +230,9 @@ Canvas.prototype = {
 		this.iMode = 1;
 
 		this.aCurrentInks = this.aDefaultInks.slice();
+		this.oCustomCharset = {}; // symbol
+
+		this.oChars = {}; // cache for pixeldata chars (invalidated when paper or pen changes, or symbol redefined)
 
 		//this.iFgInk = 24;
 		//this.iBgInk = 1;
@@ -213,6 +248,10 @@ Canvas.prototype = {
 		this.iMask = 0;
 
 		this.bClipped = false;
+
+
+		this.iPen = 1;
+		this.iPaper = 0;
 
 		canvas = document.getElementById("cpcCanvas");
 
@@ -232,9 +271,12 @@ Canvas.prototype = {
 		ctx.strokeStyle = this.aColors[this.aCurrentInks[this.iGPen]];
 		//ctx.lineWidth = 1;
 
+		ctx.translate(this.xOrig, this.yOrig);
 		// get Cartesian coordinate system with the origin in the bottom left corner (moved by 1 pixel to the right)
-		ctx.translate(1 + this.xOrig, iHeight + this.yOrig);
-		ctx.scale(1, -1);
+		//ctx.translate(1 + this.xOrig, iHeight + this.yOrig);
+		//ctx.scale(1, -1);
+
+		this.aColorValues = this.extractAllColorValues(this.aColors);
 
 		if (this.options.onload) {
 			this.options.onload(this);
@@ -242,25 +284,227 @@ Canvas.prototype = {
 		canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
-		window.addEventListener("resize", this.fnDebounce(this.resize.bind(this), 200, false), false);
+		//window.addEventListener("resize", this.fnDebounce(this.resize.bind(this), 200, false), false);
 		window.addEventListener("click", this.onWindowClick.bind(this), false);
 
 		//this.testCanvas1();
 	},
 
+	extractColorValues: function (sColor) { // "#rrggbb"
+		/*
+		if (sColor.charAt(0) === "#") {
+			sColor = sColor.substring(1); // remove #
+		}
+		*/
+		return [
+			parseInt(sColor.substring(1, 3), 16),
+			parseInt(sColor.substring(3, 5), 16),
+			parseInt(sColor.substring(5, 7), 16)
+		];
+	},
+
+	extractAllColorValues: function (aColors) {
+		var aColorValues = [],
+			i;
+
+		for (i = 0; i < aColors.length; i += 1) {
+			aColorValues[i] = this.extractColorValues(aColors[i]);
+		}
+
+		return aColorValues;
+	},
+
+
+	create1CharData: function (aCharData) {
+		var ctx = this.canvas.getContext("2d"),
+			iWidth = this.aModeData[this.iMode].iCharWidth,
+			iHeight = this.aModeData[this.iMode].iCharHeight,
+			iScaleX = iWidth / 8,
+			iScaleY = iHeight / 8, // we assume alwas 2 here
+			aFgColor, aBgColor,	aColor,	iCharData, oImageData, aPixel, row, col, i;
+
+		aFgColor = this.aColorValues[this.aCurrentInks[this.iPen]];
+		aBgColor = this.aColorValues[this.aCurrentInks[this.iPaper]];
+
+		oImageData = ctx.createImageData(iWidth, iHeight);
+		aPixel = oImageData.data;
+		for (row = 0; row < iHeight; row += iScaleY) {
+			iCharData = aCharData[row / iScaleY];
+			for (col = 0; col < iWidth; col += 1) {
+				aColor = (iCharData & (1 << (col / iScaleX))) ? aFgColor : aBgColor; // eslint-disable-line no-bitwise
+				i = (col * 4) + (row * iWidth * 4);
+				aPixel[i] = aColor[0]; // r
+				aPixel[i + 1] = aColor[1]; // g
+				aPixel[i + 2] = aColor[2]; // b
+				aPixel[i + 3] = 255; // a
+
+				i += iWidth * 4; // duplicate to next row
+				aPixel[i] = aColor[0]; // r
+				aPixel[i + 1] = aColor[1]; // g
+				aPixel[i + 2] = aColor[2]; // b
+				aPixel[i + 3] = 255; // a
+			}
+		}
+		return oImageData;
+	},
+
+
+	/*
+	testCreateChars: function () {
+		var ctx = this.canvas.getContext("2d"),
+			iChar = 0,
+			x, y,
+			aCharData = [];
+
+		for (y = 0; y < 400; y += 16) {
+			for (x = 0; x < 640; x += 8) {
+				if (!aCharData[iChar]) {
+					aCharData[iChar] = this.create1Char(this.aCharset[iChar]);
+				}
+				ctx.putImageData(aCharData[iChar], x, y);
+				iChar = (iChar + 1) % 256;
+			}
+		}
+	},
 
 	testCanvas1: function () {
-		var ctx = this.canvas.getContext("2d"),
-			img;
+		var iGPen = this.iGPen,
+			iGPaper = this.iGPaper,
+			i, j;
 
+		for (i = 0; i < 2; i += 1) {
+			for (j = 0; j < 16; j += 1) {
+				if (i !== j) {
+					this.iGPen = j;
+					this.iGPaper = i;
+					this.testCreateChars();
+				}
+			}
+		}
+
+		this.iGPen = iGPen;
+		this.iGPaper = iGPaper;
+		Utils.console.log("end of test");
+	},
+	*/
+
+
+
+	/*
+	testCanvas1: function () {
+		var ctx = this.canvas.getContext("2d"),
+			img,
+			testDrawImg1 = function () {
+				var x, y,
+					sx = 0,
+					sy = 0;
+
+				for (y = 0; y < 400; y += 16) {
+					for (x = 0; x < 640; x += 8) {
+						ctx.drawImage(img, sx, sy, 8, 16, x, y, 8, 16);
+						sx += 8;
+						if (sx >= 128) {
+							sx = 0;
+							sy += 16;
+							if (sy >= 256) {
+								sy = 0;
+							}
+						}
+					}
+				}
+			},
+			zeroPad = function (iNum) {
+				return "00000000".slice(String(iNum).length) + iNum;
+			},
+			testExtractData1 = function () {
+				var pixelData,
+					img2, iRed, iGreen, iBlue, iAlpha, iColor,
+					x, y, r, c, iPos, iVal, i,
+					sOut = "",
+					aVal = [],
+					sx = 0,
+					sy = 0;
+
+				for (i = 0; i < 256; i += 1) {
+					img2 = ctx.getImageData(sx, sy, 8, 16); // still cross origin
+
+					pixelData = img2.data;
+					//aVal.length = 0;
+					for (r = 0; r < 8; r += 1) {
+						iVal = 0;
+						for (c = 0; c < 8; c += 1) {
+							iPos = (c * 4) + (r * 8 * 4 * 2);
+							iRed = pixelData[iPos + 0];
+							iGreen = pixelData[iPos + 1];
+							iBlue = pixelData[iPos + 2];
+							iAlpha = pixelData[iPos + 3];
+							iColor = iRed * 65536 + iGreen * 256 + iBlue;
+							//aColor[c] = iColor;
+							if (!iColor) { //TTT get background color as set
+								iVal |= (1 << c);
+							}
+						}
+						//sOut += aColor.join(", ") + "\n";
+						//aVal[r] = iVal; // r/8
+						aVal[r] = "0x" + (iVal < 16 ? "0" : "") + iVal.toString(16);
+					}
+					//sOut += aVal.join(", ") + "\n";
+
+					sOut += "[" + aVal.join(", ") + "], // 0x" + (i < 16 ? "0" : "") + i.toString(16) + "\n";
+					//for (r = 0; r < 8; r += 1) {
+					//	sOut += "\t0B" + zeroPad(aVal[r].toString(2)) + (r < 7 ? "," : "") + "\n";
+					//}
+					//sOut += "],\n";
+
+					sx += 8;
+					if (sx >= 128) {
+						sx = 0;
+						sy += 16;
+						if (sy >= 256) {
+							sy = 0;
+						}
+					}
+				}
+				window.cpcBasic.view.setAreaValue("resultText", sOut);
+			};
+		img = document.getElementById("testImg");
+		ctx.drawImage(img, 0, 0);
+		//testDrawImg1();
+		testExtractData1();
+
+		Utils.console.log("end of test");
+		},
+	*/
+
+	/*
 		img = new Image();
+		// https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
 		img.onload = function () {
-    		ctx.drawImage(img, 0, 0);
+			var x, y,
+				sx = 0,
+				sy = 0;
+
+			for (y = 0; y < 400; y += 16) {
+				for (x = 0; x < 640; x += 8) {
+					ctx.drawImage(img, sx, sy, 8, 16, x, y, 8, 16);
+					sx += 8;
+					if (sx >= 128) {
+						sx = 0;
+						sy += 16;
+						if (sy >= 256) {
+							sy = 0;
+						}
+					}
+				}
+			}
 		};
 		img.src = "img/md2x.png";
+		// ctx.drawImage(img, 0, 0);
+		//var t1 = this.canvas.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, '');
+		//window.cpcBasic.view.setAreaValue("resultText", String(t1));
+	*/
 
-		//test
-		/*
+	/*
 		ctx.fillStyle = "white";
 		ctx.font = "8px Monospace";
 		for (var y = 0; y < 400; y += 8) {
@@ -269,7 +513,13 @@ Canvas.prototype = {
 			}
 		}
 		ctx.fillText("World!", 10, 50);
-		*/
+	*/
+
+	setCustomChar: function (iChar, aCharData) {
+		if (this.oCustomCharset[iChar]) { // already set?
+			delete this.oChars[iChar]; // delete pixeldata for this char
+		}
+		this.oCustomCharset[iChar] = aCharData;
 	},
 
 	setDefaultInks: function () {
@@ -426,6 +676,7 @@ Canvas.prototype = {
 		return undefined;
 	},
 
+	/*
 	fnDebounce: function (func, wait, immediate) {
 		var timeout,
 			that = this;
@@ -447,7 +698,9 @@ Canvas.prototype = {
 			}
 		};
 	},
+	*/
 
+	/*
 	resize: function () { // not used, yet
 		var sCpcDivId = this.options.cpcDivId,
 			oView = this.options.view,
@@ -462,19 +715,9 @@ Canvas.prototype = {
 		iHeight = cpcDiv.clientHeight;
 		if (iWidth !== this.iWidth || iHeight !== this.iHeight) {
 			Utils.console.log("Canvas.resize width=" + iWidth + " height=" + iHeight);
-			/*
-			canvas = this.canvas;
-			if (canvas.width !== iWidth) {
-				//this.iWidth = iWidth;
-				//canvas.width = iWidth;
-			}
-			if (canvas.height !== iHeight) {
-				//this.iHeight = iHeight;
-				//canvas.height = iHeight;
-			}
-			*/
 		}
 	},
+	*/
 
 	getXpos: function () {
 		return this.xPos;
@@ -487,7 +730,8 @@ Canvas.prototype = {
 
 	privDrawPath: function (path, iStart) {
 		var ctx, i, oPos,
-			canvas = this.canvas;
+			canvas = this.canvas,
+			iHeight = this.iHeight;
 
 		if (path.length) { //TTT
 			ctx = canvas.getContext("2d");
@@ -505,16 +749,16 @@ Canvas.prototype = {
 					ctx.fillStyle = oPos.c;
 					ctx.fill();
 				} else {
-					ctx.moveTo(this.xPos, this.yPos); // current position
+					ctx.moveTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5)); // current position
 					this.xPos = oPos.x;
 					this.yPos = oPos.y;
 					if (oPos.t === "m" || oPos.t === "t") {
-						ctx.moveTo(this.xPos + 0.5, this.yPos + 0.5); // we use +0.5 to get full opacity and better colors
+						ctx.moveTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5)); // we use +0.5 to get full opacity and better colors
 					} else if (oPos.t === "l") {
-						ctx.lineTo(this.xPos + 0.5, this.yPos + 0.5);
+						ctx.lineTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5));
 					} else { // "p"?
-						ctx.moveTo(this.xPos - 1 + 0.5, this.yPos - 1 + 0.5);
-						ctx.lineTo(this.xPos + 0.5, this.yPos + 0.5);
+						ctx.moveTo(this.xPos - 1 + 0.5, iHeight - (this.yPos - 1 + 0.5));
+						ctx.lineTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5));
 					}
 				}
 			}
@@ -526,7 +770,8 @@ Canvas.prototype = {
 		var ctx = this.canvas.getContext("2d"),
 			imageData, pixelData, iRed, iGreen, iBlue, iColor;
 
-		imageData = ctx.getImageData(xPos + 0.5, this.iHeight - (yPos + 0.5), 1, 1);
+		//imageData = ctx.getImageData(xPos + 0.5, this.iHeight - (yPos + 0.5), 1, 1);
+		imageData = ctx.getImageData(xPos + 0.5, yPos + 0.5, 1, 1);
 		pixelData = imageData.data;
 		iRed = pixelData[0];
 		iGreen = pixelData[1];
@@ -546,7 +791,7 @@ Canvas.prototype = {
 
 		this.aPath.push(path);
 
-		if (path.t !== "m") {
+		//if (path.t !== "m") {
 			this.privDrawPath(this.aPath, this.iPath); // draw new element
 			this.iPath = this.aPath.length;
 			if (path.t === "t") {
@@ -557,7 +802,7 @@ Canvas.prototype = {
 					iGPen = this.aCurrentInks.indexOf(iInk);
 				}
 			}
-		}
+		//}
 		return iGPen;
 	},
 
@@ -571,7 +816,7 @@ Canvas.prototype = {
 	setGPen: function (iGPen) {
 		var ctx = this.canvas.getContext("2d");
 
-		iGPen %= this.aInksPerModeLimit[this.iMode]; // limit pens
+		iGPen %= this.aModeData[this.iMode].iInks; // limit pens
 		this.iGPen = iGPen;
 		ctx.strokeStyle = this.aColors[this.aCurrentInks[iGPen]];
 	},
@@ -579,6 +824,45 @@ Canvas.prototype = {
 	setGPaper: function (iGPaper) {
 		this.iGPaper = iGPaper;
 		///TTT
+	},
+
+	setPen: function (iPen) {
+		//var ctx = this.canvas.getContext("2d");
+
+		iPen %= this.aModeData[this.iMode].iInks; // limit pens
+		if (iPen !== this.iPen) {
+			this.iPen = iPen;
+			this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
+		}
+	},
+
+	setPaper: function (iPaper) {
+		iPaper %= this.aModeData[this.iMode].iInks; // limit papers
+		if (iPaper !== this.iPaper) {
+			this.iPaper = iPaper;
+			this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
+		}
+	},
+
+	printGChar: function (iChar) {
+		var ctx = this.canvas.getContext("2d"),
+			x = this.xPos,
+			y = this.yPos;
+
+		if (!this.oChars[iChar]) { // pixeldata not available?
+			this.oChars[iChar] = this.create1CharData(this.aCharset[iChar]);
+		}
+		ctx.putImageData(this.oChars[iChar], x, y);
+		this.xPos += this.aModeData[this.iMode].iCharWidth;
+	},
+
+	printChar: function (iChar, x, y) {
+		var ctx = this.canvas.getContext("2d");
+
+		if (!this.oChars[iChar]) { // pixeldata not available?
+			this.oChars[iChar] = this.create1CharData(this.aCharset[iChar]);
+		}
+		ctx.putImageData(this.oChars[iChar], x * this.aModeData[this.iMode].iCharWidth, y * this.aModeData[this.iMode].iCharHeight);
 	},
 
 	setOrigin: function (xOrig, yOrig) {
@@ -636,16 +920,14 @@ Canvas.prototype = {
 	},
 
 	mode: function (iMode) {
-		var ctx = this.canvas.getContext("2d"),
-			mLineWidth = [
-				4,
-				2,
-				1
-			];
+		var ctx = this.canvas.getContext("2d");
 
 		this.removeClipping();
 
 		this.iMode = iMode;
+
+		this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
+
 		this.cls();
 		//inks are kept! this.aCurrentInks = this.aDefaultInks[iMode].slice();
 		this.xPos = 0;
@@ -654,10 +936,9 @@ Canvas.prototype = {
 		//this.yOrig = 0;
 		this.setOrigin(0, 0);
 		this.setMask(0);
-		//this.iGPen = 1;
 		this.setGPen(1);
-		this.iGPaper = 0;
+		this.setGPaper(0);
 
-		ctx.lineWidth = mLineWidth[iMode];
+		ctx.lineWidth = this.aModeData[iMode].iLineWidth;
 	}
 };

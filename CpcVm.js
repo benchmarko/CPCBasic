@@ -22,6 +22,27 @@ function CpcVm(options, oCanvas) {
 CpcVm.prototype = {
 	iFrameTimeMs: 1000 / 50, // 50 Hz => 20 ms
 
+	mWinData: [ // window data for mode mode 0,1,2
+		{
+			iLeft: 0,
+			iRight: 19,
+			iTop: 0,
+			iBottom: 24
+		},
+		{
+			iLeft: 0,
+			iRight: 39,
+			iTop: 0,
+			iBottom: 24
+		},
+		{
+			iLeft: 0,
+			iRight: 79,
+			iTop: 0,
+			iBottom: 24
+		}
+	],
+
 	vmInit: function (options) {
 		var i;
 
@@ -63,6 +84,13 @@ CpcVm.prototype = {
 		}
 
 		this.aWindow = [];
+
+		this.iZone = 13;
+
+		this.v = options.variables || {};
+
+		this.vmInitWindowData();
+		/*
 		for (i = 0; i < 8; i += 1) {
 			this.aWindow.push({ // depends on mode
 				iId: i,
@@ -76,10 +104,7 @@ CpcVm.prototype = {
 				iPen: 1
 			});
 		}
-
-		this.iZone = 13;
-
-		this.v = options.variables || {};
+		*/
 	},
 
 	vmGetError: function (iErr) {
@@ -126,7 +151,6 @@ CpcVm.prototype = {
 
 	vmGotoLine: function (line, sMsg) {
 		if (Utils.debug > 2) {
-			//if ((/^\d+$/).test(iLine) || Utils.debug > 4) { // non-number labels only in higher debug levels
 			if (typeof line === "number" || Utils.debug > 4) { // non-number labels only in higher debug levels
 				Utils.console.debug("DEBUG: vmGotoLine: " + sMsg + ": " + line);
 			}
@@ -215,6 +239,20 @@ CpcVm.prototype = {
 		return arr;
 	},
 
+	vmInitWindowData: function () {
+		var oData = {
+				iPos: 0, // current text position in line
+				iVpos: 0,
+				iPaper: 0,
+				iPen: 1
+			},
+			i;
+
+		for (i = 0; i < 8; i += 1) {
+			this.aWindow[i] = Object.assign(oData, this.mWinData[this.iMode]);
+		}
+	},
+
 	vmInitVariables: function () {
 		var aVariables = Object.keys(this.v),
 			i, sName;
@@ -223,6 +261,10 @@ CpcVm.prototype = {
 			sName = aVariables[i];
 			this.v[sName] = this.fnGetVarDefault(sName);
 		}
+	},
+
+	vmInitStack: function () {
+		this.oGosubStack.length = 0;
 	},
 
 	vmInitInks: function () {
@@ -548,10 +590,10 @@ CpcVm.prototype = {
 		return Math.exp(n);
 	},
 
-	fill: function () {
+	fill: function (iGPen) {
 		this.oCanvas.addPath({
 			t: "f", // type: fill
-			c: "red" //TODO
+			c: iGPen
 		});
 	},
 
@@ -572,21 +614,11 @@ CpcVm.prototype = {
 	},
 
 	gosub: function (retLabel, n) {
-		/*
-		if (Utils.debug > 2) {
-			Utils.console.debug("DEBUG: gosub: " + n + " (ret=" + retLabel + ")");
-		}
-		*/
 		this.vmGotoLine(n, "gosub (ret=" + retLabel + ")");
 		this.oGosubStack.push(retLabel);
 	},
 
 	"goto": function (n) {
-		/*
-		if (Utils.debug > 2) {
-			Utils.console.debug("DEBUG: goto: " + n); //TTT tron?
-		}
-		*/
 		this.vmGotoLine(n, "goto");
 	},
 
@@ -718,8 +750,8 @@ CpcVm.prototype = {
 	locate: function (iStream, iPos, iVpos) {
 		var oWin = this.aWindow[iStream];
 
-		oWin.iPos = iPos;
-		oWin.iVpos = iVpos;
+		oWin.iPos = iPos - 1;
+		oWin.iVpos = iVpos - 1;
 	},
 
 	log: function (n) {
@@ -766,6 +798,7 @@ CpcVm.prototype = {
 
 	mode: function (n) {
 		this.sOut = "";
+		this.vmInitWindowData();
 		this.oCanvas.mode(n);
 	},
 
@@ -840,8 +873,14 @@ CpcVm.prototype = {
 		this.vmNotImplemented("out");
 	},
 
-	paper: function () {
-		this.vmNotImplemented("paper");
+	paper: function (iStream, iPaper) {
+		var oWin;
+
+		iStream = iStream || 0;
+		oWin = this.aWindow[iStream];
+
+		oWin.iPaper = iPaper;
+		this.oCanvas.setPaper(iPaper);
 	},
 
 	peek: function () {
@@ -849,8 +888,14 @@ CpcVm.prototype = {
 		return 0;
 	},
 
-	pen: function () {
-		this.vmNotImplemented("pen");
+	pen: function (iStream, iPen) {
+		var oWin;
+
+		iStream = iStream || 0;
+		oWin = this.aWindow[iStream];
+
+		oWin.iPen = iPen;
+		this.oCanvas.setPen(iPen);
 	},
 
 	pi: function () {
@@ -859,19 +904,6 @@ CpcVm.prototype = {
 
 	plot: function (x, y, iGPen, iGMask) { // 2, up to 4 parameters
 		this.vmAddGraphicsItem("p", false, x, y, iGPen, iGMask);
-		/*
-		var oItem = {
-			t: "p",
-			x: x,
-			y: y
-		};
-
-		if (iGPen !== undefined) {
-			oItem.c = iGPen;
-			this.graphicsPen(iGPen);
-		}
-		this.oCanvas.addPath(oItem);
-		*/
 	},
 
 	plotr: function (x, y, iGPen, iGMask) {
@@ -884,26 +916,75 @@ CpcVm.prototype = {
 
 	pos: function (iStream) {
 		iStream = iStream || 0;
-		return this.aWindow[iStream].iPos;
+		return this.aWindow[iStream].iPos + 1;
+	},
+
+	vmPrintChars: function (sStr, iStream) {
+		var oWin = this.aWindow[iStream],
+			i, iChar, x, y;
+
+		x = oWin.iPos;
+		y = oWin.iVpos;
+		if (sStr.length < 80 && (x + sStr.length >= 80)) { // TTT
+			x += 1;
+			if (x >= 80) {
+				x = 0;
+				y += 1;
+			}
+		}
+		for (i = 0; i < sStr.length; i += 1) {
+			iChar = sStr.charCodeAt(i);
+			if (iChar === 10) {
+				x = 0;
+				y += 1;
+			} else {
+				this.oCanvas.printChar(iChar, x, y);
+			}
+			x += 1;
+			if (x >= 80) {
+				x = 0;
+				y += 1;
+			}
+		}
+		oWin.iPos = x;
+		oWin.iVpos = y;
+	},
+
+	vmPrintGraphChars: function (sStr) {
+		var iChar, i;
+
+		for (i = 0; i < sStr.length; i += 1) {
+			iChar = sStr.charCodeAt(i);
+			this.oCanvas.printGChar(iChar);
+		}
 	},
 
 	print: function (iStream) { // varargs
 		var oWin = this.aWindow[iStream],
 			sStr, i, iLf;
+//		oWin.bTag = true;
 
 		for (i = 1; i < arguments.length; i += 1) {
 			sStr = String(arguments[i]);
 			if (typeof arguments[i] === "number" && arguments[i] >= 0) {
 				sStr = " " + sStr;
 			}
-			this.sOut += sStr;
 
+			if (oWin.bTag) {
+				this.vmPrintGraphChars(sStr);
+			} else {
+				this.vmPrintChars(sStr, iStream);
+			}
+			this.sOut += sStr; // console
+
+			/*
 			iLf = sStr.indexOf("\n");
 			if (iLf >= 0) {
 				oWin.iPos = sStr.length - iLf; // TODO: tab in same print is already called, should depend on what is already printed
 			} else {
 				oWin.iPos += sStr.length;
 			}
+			*/
 		}
 	},
 
@@ -1024,8 +1105,19 @@ CpcVm.prototype = {
 		this.vmNotImplemented("|CPM");
 	},
 
-	run: function () {
-		this.vmNotImplemented("run");
+	run: function (numOrString) {
+		var iLine;
+
+		if (typeof numOrString === "string") { // filename?
+			this.vmNotImplemented("run \"file\"");
+			this.goto("end");
+		} else { // so number or undefined
+			iLine = numOrString || 0;
+			this.clear();
+			this.vmInitStack();
+			this.clearInput();
+			this.goto(iLine);
+		}
 	},
 
 	save: function () {
@@ -1095,12 +1187,20 @@ CpcVm.prototype = {
 
 	// swap (window swap)
 
-	symbol: function () {
-		this.vmNotImplemented("symbol");
+	symbol: function (iChar) { // varargs  (iChar, rows 1..8)
+		var aArgs = [],
+			i;
+
+		//aArgs = Array.prototype.slice.call(arguments, 0);
+		for (i = 1; i < arguments.length; i += 1) { // start with 1
+			aArgs.push(arguments[i]);
+		}
+		//this.vmNotImplemented("symbol");
+		this.oCanvas.setCustomChar(iChar, aArgs);
 	},
 
 	symbolAfter: function () {
-		this.vmNotImplemented("symbolAfter");
+		this.vmNotImplemented("symbolAfter"); // maybe not needed
 	},
 
 	tab: function (n) {
@@ -1211,7 +1311,7 @@ CpcVm.prototype = {
 
 	vpos: function (iStream) {
 		iStream = iStream || 0;
-		return this.aWindow[iStream].iVpos;
+		return this.aWindow[iStream].iVpos + 1;
 	},
 
 	wait: function (iPort /* , iMask, iInv */) {

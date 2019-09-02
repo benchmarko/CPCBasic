@@ -330,14 +330,6 @@ BasicParser.prototype = {
 						} else {
 							sToken = advanceWhile(isUnquotedData);
 							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
-							/*
-							nValueAsNumber = parseFloat(sToken);
-							if (String(nValueAsNumber) === sToken) {
-								addToken("number", nValueAsNumber, iStartPos); // use number, if it is a number
-							} else {
-								addToken("string", sToken, iStartPos);
-							}
-							*/
 							addToken("string", sToken, iStartPos);
 						}
 						if (sChar !== ",") {
@@ -1250,6 +1242,22 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("paper", function () {
+			var oStream = fngetOptionalStream(),
+				oValue = fnCreateCmdCall("paper");
+
+			oValue.args.unshift(oStream);
+			return oValue;
+		});
+
+		stmt("pen", function () {
+			var oStream = fngetOptionalStream(),
+				oValue = fnCreateCmdCall("pen");
+
+			oValue.args.unshift(oStream);
+			return oValue;
+		});
+
 		stmt("print", function () {
 			var oValue = {
 					type: "fcall",
@@ -1325,6 +1333,13 @@ BasicParser.prototype = {
 				advance(",");
 			}
 			oValue = fnCreateCmdCall(rsxToken.type + Utils.stringCapitalize(rsxToken.value));
+			return oValue;
+		});
+
+		stmt("run", function () {
+			var oValue;
+
+			oValue = fnCreateCmdCall();
 			return oValue;
 		});
 
@@ -1746,6 +1761,14 @@ BasicParser.prototype = {
 				case "return":
 					value = "o.return(); break;";
 					break;
+				/*
+				case "run":
+					sName = "s" + that.iStopCount; // use also stopCount TTT
+					aNodeArgs = fnParseArgs(node.args);
+					//value = "o.run(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;";
+					value = "o.run(" + aNodeArgs.join(", ") + "); break;";
+					break;
+				*/
 				case "stop":
 					sName = "s" + that.iStopCount;
 					that.iStopCount += 1;
@@ -1886,21 +1909,6 @@ BasicParser.prototype = {
 					}
 					return s;
 				},
-				/*
-				print: function () { // varargs
-					var	s = "",
-						iStream, i;
-
-					iStream = arguments[0];
-					for (i = 1; i < arguments.length; i += 1) { // starting with arg 1
-						if (s !== "") {
-							s += ";";
-						}
-						s += "o.print(" + iStream + ", " + String(arguments[i]) + ")";
-					}
-					return s;
-				},
-				*/
 				read: function () { // varargs
 					var	aArgs = [],
 						sName, i;
@@ -1913,6 +1921,15 @@ BasicParser.prototype = {
 				},
 				"return": function () {
 					return "o.return(); break";
+				},
+				run: function () { // varargs
+					var	aArgs = [],
+						i;
+
+					for (i = 0; i < arguments.length; i += 1) {
+						aArgs.push(arguments[i]);
+					}
+					return "o.run(" + aArgs.join(", ") + "); break;";
 				}
 			},
 			fnCombineData = function (aData) {

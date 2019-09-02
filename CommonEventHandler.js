@@ -186,7 +186,6 @@ CommonEventHandler.prototype = {
 			sValue;
 
 		sValue = oVariables[sPar];
-		//this.view.setLabelText("varLabel", sPar).setLabelTitle("varLabel", sPar);
 		this.view.setAreaValue("varText", sValue);
 	}
 };
