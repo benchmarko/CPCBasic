@@ -1205,10 +1205,12 @@ BasicParser.prototype = {
 
 		stmt("on", function () {
 			var oValue = {
-				type: "on",
-				args: null,
-				pos: iIndex - 1
-			};
+					type: "on",
+					name: null,
+					args: null,
+					pos: iIndex - 1
+				},
+				bOnError = false;
 
 			/*
 			if (oToken.type === "break") {
@@ -1219,16 +1221,28 @@ BasicParser.prototype = {
 				}
 			}
 			*/
-
 			// TODO
-			oValue.left = expression(0);
-			if (oToken.type === "gosub") {
+
+			if (oToken.type === "break") {
+				advance("break");
+				oValue.Type = "onBreak"; // cont, gosub..., stop // TODO
+			} else if (oToken.type === "error") { // on error goto
+				advance("error");
+				bOnError = true;
+				oValue.name = "onErrorGoto";
+			} else {
+				oValue.left = expression(0);
+			}
+
+			if (oToken.type === "gosub" && !bOnError) {
 				advance("gosub");
 				oValue.name = "onGosub";
 				oValue.args = fnGetArgs();
 			} else if (oToken.type === "goto") {
 				advance("goto");
-				oValue.name = "onGoto";
+				if (!oValue.name) {
+					oValue.name = "onGoto";
+				}
 				oValue.args = fnGetArgs();
 			} else {
 				/*
@@ -1324,6 +1338,28 @@ BasicParser.prototype = {
 		});
 
 		oSymbols["?"] = oSymbols.print; // ? is same as print
+
+		stmt("randomize", function () {
+			var oValue = {
+				type: "randomize",
+				args: fnGetArgs()
+			};
+
+			//return fnCreateCmdCall("randomize");
+			return oValue;
+		});
+
+		stmt("resume", function () {
+			var sName = "resume",
+				oValue;
+
+			if (oToken.type === "next") { // resume next
+				advance("next");
+				sName = "resumeNext";
+			}
+			oValue = fnCreateCmdCall(sName); //TTT
+			return oValue;
+		});
 
 		stmt("rsx", function () {
 			var rsxToken = aTokens[iIndex - 2],
@@ -1630,8 +1666,10 @@ BasicParser.prototype = {
 				var aNodeArgs, i, sName, sLabel, value;
 
 				aNodeArgs = fnParseArgs(node.args);
-				i = parseNode(node.left);
-				aNodeArgs.unshift(i);
+				if (node.left) {
+					i = parseNode(node.left);
+					aNodeArgs.unshift(i);
+				}
 				sName = node.name;
 				if (sName === "onGosub") {
 					sLabel = "g" + that.iGosubCount;
@@ -1757,6 +1795,16 @@ BasicParser.prototype = {
 					break;
 				case "on":
 					value = fnParseOn(node);
+					break;
+				case "randomize":
+					aNodeArgs = fnParseArgs(node.args);
+					if (aNodeArgs.length) {
+						value = "o.randomize(" + aNodeArgs.join(", ") + ")";
+					} else {
+						sName = "s" + that.iStopCount; // use also stopCount for randomize? TTT
+						that.iStopCount += 1;
+						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetInput())";
+					}
 					break;
 				case "return":
 					value = "o.return(); break;";

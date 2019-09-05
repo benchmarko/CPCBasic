@@ -15,14 +15,14 @@ function CpcVm(options, oCanvas) {
 	this.iStartTime = Date.now();
 	this.oRandom = new Random();
 	this.lastRnd = 0.1; // TODO this.oRandom.random();
-	this.vmInit(options);
 	this.oCanvas = oCanvas;
+	this.vmInit(options);
 }
 
 CpcVm.prototype = {
 	iFrameTimeMs: 1000 / 50, // 50 Hz => 20 ms
 
-	mWinData: [ // window data for mode mode 0,1,2
+	mWinData: [ // window data for mode mode 0,1,2 (we are counting from 0 here)
 		{
 			iLeft: 0,
 			iRight: 19,
@@ -48,66 +48,65 @@ CpcVm.prototype = {
 
 		this.options = options || {};
 
-		this.iNextFrameTime = Date.now() + this.iFrameTimeMs;
+		this.iNextFrameTime = Date.now() + this.iFrameTimeMs; // next time of frame fly
 
-		this.iLine = 0;
+		this.iLine = 0; // current line number (or label)
 
 		this.bStop = false;
-		this.sStopLabel = "";
-		this.iStopPriority = 0;
+		this.sStopLabel = ""; // stot label or reason
+		this.iStopPriority = 0; // stop priority (higher number means higher priority which can overwrite lower priority)
+		this.fnInputCallback = null; // callback for stop reason "input"
+		// special stop labels and priorities:
+		// "timer": 20 (timer expired)
+		// "key": 30  (wait for key)
+		// "frame": 40 (frame command: wait for frame fly)
+		// "input": 45  (wait for input: input, line input, randomize without parameter)
+		// "error": 50 (BASIC error, error command)
+		// "stop": 60 (stop or end command)
+		// "end": 90 (end of program)
 
-		this.sOut = "";
+		this.sOut = ""; // console output
 
-		this.aData = [];
-		this.iData = 0;
-		this.oDataLineIndex = {
+		this.aData = []; // array for BASIC data lines (continuous)
+		this.iData = 0; // current index
+		this.oDataLineIndex = { // line number index for the data line buffer
 			0: 0 // for line 0: index 0
 		};
 
-		this.iErr = 0;
-		this.iErl = 0;
+		this.iErr = 0; // last error code
+		this.iErl = 0; // line of last error
 
-		this.oGosubStack = [];
-		this.bDeg = false;
-		this.iHimem = 42619; // example
+		this.oGosubStack = []; // stack of line numbers for gosub/return
+		this.bDeg = false; // degree or radians
+		this.iHimem = 42619; // high memory limit, just an example
 
-		this.aTimer = []; // timer 0..3
+		this.aTimer = []; // BASIC timer 0..3 (3 has highest priority)
 		for (i = 0; i < 4; i += 1) {
 			this.aTimer.push({
 				iId: i,
-				iLine: 0,
-				iRepeat: 0,
-				iInterval: 0,
-				bActive: false,
-				iNextTime: 0
+				iLine: 0, // gosub line when timer expires
+				bRepeat: false, // flag if timer is repeating (every) or one time (after)
+				iIntervalMs: 0, // interval or timeout
+				bActive: false, // flag if timer is active
+				iNextTime: 0 // next expiration time
 			});
 		}
+		this.bTimersDisabled = false; // flag if timers are disabled
 
 		this.aWindow = [];
 
-		this.iZone = 13;
+		this.iZone = 13; // print tab zone value
 
-		this.v = options.variables || {};
+		this.v = options.variables || {}; // collection of BASIC variables
 
-		this.vmInitWindowData();
-		/*
-		for (i = 0; i < 8; i += 1) {
-			this.aWindow.push({ // depends on mode
-				iId: i,
-				iLeft: 0,
-				iRight: 0,
-				iTop: 0,
-				iBottom: 0,
-				iPos: 0, // current text position in line
-				iVpos: 0,
-				iPaper: 0,
-				iPen: 1
-			});
-		}
-		*/
+		//this.iMode = 1; // screen mode 0..2
+		this.mode(1);
+		//this.vmInitWindowData();
+
+		this.sInput = ""; // input handling
 	},
 
-	vmGetError: function (iErr) {
+	vmGetError: function (iErr) { // BASIC error numbers
 		var aErrors = [
 				"Improper argument", // 0
 				"Unexpected NEXT", // 1
@@ -159,17 +158,23 @@ CpcVm.prototype = {
 	},
 
 	vmCheckTimer: function (iTime) {
-		var oTimer, i;
+		var iDelta, oTimer, i;
 
-		for (i = 3; i >= 0; i -= 1) {
+		if (this.bTimersDisabled) { // BASIC timers are disabled?
+			return;
+		}
+		for (i = 3; i >= 0; i -= 1) { // check timers starting with highest priority first
 			oTimer = this.aTimer[i];
-			if (oTimer.bActive && iTime > oTimer.iNextTime) {
+			if (oTimer.bActive && iTime > oTimer.iNextTimeMs) { // timer expired?
 				this.gosub(this.iLine, oTimer.iLine);
 				if (!oTimer.bRepeat) { // not repeating
 					oTimer.bActive = false;
 				} else {
-					oTimer.iNextTime += oTimer.iInterval * this.iFrameTimeMs;
+					//oTimer.iNextTimeMs += oTimer.iInterval * this.iFrameTimeMs; // set next expiration time
+					iDelta = iTime - oTimer.iNextTimeMs;
+					oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
 				}
+				break; // TODO: found expired timer. What happens with timers with lower priority?
 			}
 		}
 	},
@@ -179,14 +184,14 @@ CpcVm.prototype = {
 			iDelta,
 			iTimeUntilFrame;
 
-		if (iTime > this.iNextFrameTime) {
+		if (iTime > this.iNextFrameTime) { // next time of frame fly
 			iDelta = iTime - this.iNextFrameTime;
 			if (iDelta > this.iFrameTimeMs) {
 				this.iNextFrameTime += this.iFrameTimeMs * Math.ceil(iDelta / this.iFrameTimeMs);
 			} else {
 				this.iNextFrameTime += this.iFrameTimeMs;
 			}
-			this.vmCheckTimer(iTime);
+			this.vmCheckTimer(iTime); // check BASIC timers
 		}
 
 		iTimeUntilFrame = this.iNextFrameTime - iTime;
@@ -344,18 +349,27 @@ CpcVm.prototype = {
 		this.oCanvas.addPath(oItem);
 	},
 
+	vmSetInput: function (sInput) {
+		this.sInput = sInput;
+	},
+
+	vmGetInput: function () {
+		return this.sInput;
+	},
+
 	abs: function (n) {
 		return Math.abs(n);
 	},
 
 	afterGosub: function (iInterval, iTimer, iLine) {
-		var oTimer = this.aTimer[iTimer];
+		var oTimer = this.aTimer[iTimer],
+			iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
 
-		oTimer.iInterval = iInterval;
+		oTimer.iIntervalMs = iIntervalMs;
 		oTimer.iLine = iLine;
 		oTimer.bRepeat = false;
 		oTimer.bActive = true;
-		oTimer.iNextTime = Date.now() + iInterval * this.iFrameTimeMs;
+		oTimer.iNextTimeMs = Date.now() + iIntervalMs;
 	},
 
 	// and
@@ -419,8 +433,9 @@ CpcVm.prototype = {
 		this.oCanvas.clearInput();
 	},
 
-	clg: function () {
+	clg: function (iPen) {
 		this.vmNotImplemented("clg");
+		this.oCanvas.clearGraphics(iPen);
 	},
 
 	closein: function () {
@@ -432,9 +447,15 @@ CpcVm.prototype = {
 	},
 
 	cls: function (iStream) {
+		var oWin;
+
 		iStream = iStream || 0;
+		oWin = this.aWindow[iStream];
+		this.oCanvas.clearWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom); // cls window
 		this.sOut = "";
-		this.oCanvas.cls(); // TODO: cls window
+		//this.locate(iStream, 1, 1);
+		oWin.iPos = 0;
+		oWin.iVpos = 0;
 	},
 
 	cont: function () {
@@ -502,7 +523,7 @@ CpcVm.prototype = {
 	},
 
 	di: function () {
-		this.vmNotImplemented("di");
+		this.bTimersDisabled = true;
 	},
 
 	dim: function (sVar) { // varargs
@@ -531,7 +552,7 @@ CpcVm.prototype = {
 	},
 
 	ei: function () {
-		this.vmNotImplemented("ei");
+		this.bTimersDisabled = false;
 	},
 
 	// else
@@ -565,25 +586,28 @@ CpcVm.prototype = {
 	},
 
 	error: function (iErr) {
-		var sError;
+		var sError,
+			iStream = 0; //TTT
 
 		this.iErr = iErr;
 		this.iErl = this.iLine;
 
 		sError = this.vmGetError(iErr);
 		Utils.console.log("BASIC error(" + iErr + "): " + sError + " in " + this.iErl);
-		this.sOut += sError + " in " + this.iErl + "\n";
+		sError += " in " + this.iErl + "\n";
+		this.print(iStream, sError);
 		this.vmStop("error", 50);
 	},
 
 	everyGosub: function (iInterval, iTimer, iLine) {
-		var oTimer = this.aTimer[iTimer];
+		var oTimer = this.aTimer[iTimer],
+			iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
 
-		oTimer.iInterval = iInterval;
+		oTimer.iIntervalMs = iIntervalMs;
 		oTimer.iLine = iLine;
 		oTimer.bRepeat = true;
 		oTimer.bActive = true;
-		oTimer.iNextTime = Date.now() + iInterval * this.iFrameTimeMs;
+		oTimer.iNextTimeMs = Date.now() + iIntervalMs;
 	},
 
 	exp: function (n) {
@@ -681,6 +705,9 @@ CpcVm.prototype = {
 		var sInput;
 
 		Utils.console.log("input:");
+
+		this.print(iStream, sMsg);
+
 		// a simple input via prompt
 		sInput = window.prompt(sMsg + " " + sVar); // eslint-disable-line no-alert
 		if (sInput === null) {
@@ -689,6 +716,7 @@ CpcVm.prototype = {
 		if (sVar.indexOf("$") < 0) { //TTT no string?
 			sInput = Number(sInput);
 		}
+		this.print(iStream, sInput);
 		return sInput;
 	},
 
@@ -731,11 +759,15 @@ CpcVm.prototype = {
 		var sInput;
 
 		Utils.console.log("lineInput:");
+
+		this.print(iStream, sMsg);
+
 		// a simple input via prompt
 		sInput = window.prompt(sMsg + " " + sVar); // eslint-disable-line no-alert
 		if (sInput === null) {
 			sInput = "";
 		}
+		this.print(iStream, sInput);
 		return sInput;
 	},
 
@@ -796,10 +828,11 @@ CpcVm.prototype = {
 
 	// mod
 
-	mode: function (n) {
+	mode: function (iMode) {
+		this.iMode = iMode;
 		this.sOut = "";
 		this.vmInitWindowData();
-		this.oCanvas.mode(n);
+		this.oCanvas.mode(iMode);
 	},
 
 	move: function (x, y, iGPen, iGMask) {
@@ -824,7 +857,9 @@ CpcVm.prototype = {
 
 	// on break stop
 
-	// on error goto
+	onErrorGoto: function () {
+		this.vmNotImplemented("on error goto");
+	},
 
 	onGosub: function (retLabel, n) { // varargs
 		var iLine;
@@ -921,29 +956,59 @@ CpcVm.prototype = {
 
 	vmPrintChars: function (sStr, iStream) {
 		var oWin = this.aWindow[iStream],
+			iLeft = oWin.iLeft,
+			iRight = oWin.iRight,
+			iTop = oWin.iTop,
+			iBottom = oWin.iBottom,
 			i, iChar, x, y;
 
 		x = oWin.iPos;
 		y = oWin.iVpos;
-		if (sStr.length < 80 && (x + sStr.length >= 80)) { // TTT
-			x += 1;
-			if (x >= 80) {
+		if (sStr.length <= (iRight - iLeft) && (x + sStr.length > (iRight + 1 - iLeft))) { // TTT
+			x = 0;
+			y += 1; // newline if string does not fit
+			/*
+			if (y > oWin.iBottom) {
+				y = oWin.iBottom;
+				this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
+			}
+			*/
+			/*
+			if (x > iRight) {
 				x = 0;
 				y += 1;
 			}
+			*/
 		}
 		for (i = 0; i < sStr.length; i += 1) {
 			iChar = sStr.charCodeAt(i);
 			if (iChar === 10) {
 				x = 0;
 				y += 1;
+				/*
+				if (y > oWin.iBottom) {
+					y = oWin.iBottom;
+					this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
+				}
+				*/
 			} else {
-				this.oCanvas.printChar(iChar, x, y);
+				if (y > (oWin.iBottom - iTop)) {
+					y = oWin.iBottom - iTop;
+					this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
+				}
+				//this.oCanvas.printChar(iChar, x + iLeft, y + iTop);
+				this.oCanvas.printChar(iChar, x + iLeft, y + iTop);
+				x += 1;
 			}
-			x += 1;
-			if (x >= 80) {
+			if (x > (iRight - iLeft)) {
 				x = 0;
 				y += 1;
+				/*
+				if (y > oWin.iBottom) {
+					y = oWin.iBottom;
+					this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
+				}
+				*/
 			}
 		}
 		oWin.iPos = x;
@@ -961,8 +1026,7 @@ CpcVm.prototype = {
 
 	print: function (iStream) { // varargs
 		var oWin = this.aWindow[iStream],
-			sStr, i, iLf;
-//		oWin.bTag = true;
+			sStr, i;
 
 		for (i = 1; i < arguments.length; i += 1) {
 			sStr = String(arguments[i]);
@@ -992,19 +1056,46 @@ CpcVm.prototype = {
 		this.bDeg = false;
 	},
 
-	randomize: function (n) {
-		var sInput;
+	/*
+	vmRandomizeCallback: function (sInput) {
+		var n;
 
-		if (n === undefined) {
+		Utils.console.log("randomize: " + sInput);
+		if (!sInput) {
+			sInput = 1;
+		}
+		n = Number(sInput);
+		this.oRandom.init(n);
+	},
+	*/
+
+	randomize: function (n) {
+		var iStream = 0,
+			sMsg;
+
+		if (n === undefined) { // no arguments? input...
+			sMsg = "Random number seed?";
+			this.fnInputCallback = null; // we do not need it //this.fnInputCallback = this.vmRandomizeCallback.bind(this);
+			this.print(iStream, sMsg);
+			this.vmStop("input", 45);
+			/*
+			// TODO
 			// a simple input via prompt
 			sInput = window.prompt("Random number seed?"); // eslint-disable-line no-alert
 			if (!sInput) {
 				sInput = 1;
 			}
 			n = Number(sInput);
+			*/
+		} else {
+			Utils.console.log("randomize: " + n);
+			if (!n) {
+				n = 1;
+			}
+			n = Number(n);
+			this.oRandom.init(n);
+			//this.vmRandomizeCallback(n);
 		}
-		Utils.console.log("randomize: " + n);
-		this.oRandom.init(n);
 	},
 
 	read: function (sVar) {
@@ -1033,9 +1124,9 @@ CpcVm.prototype = {
 			iTime = 0;
 
 		if (oTimer.bActive) {
-			iTime = oTimer.iNextTime - Date.now();
+			iTime = oTimer.iNextTimeMs - Date.now();
 			iTime /= this.iFrameTimeMs;
-			oTimer.bActive = false;
+			oTimer.bActive = false; // switch off timer
 		}
 		return iTime;
 	},
@@ -1055,6 +1146,10 @@ CpcVm.prototype = {
 
 	resume: function () { // resume, resume n, resume next
 		this.vmNotImplemented("resume");
+	},
+
+	resumeNext: function () {
+		this.vmNotImplemented("resume next");
 	},
 
 	"return": function () {
@@ -1191,11 +1286,9 @@ CpcVm.prototype = {
 		var aArgs = [],
 			i;
 
-		//aArgs = Array.prototype.slice.call(arguments, 0);
 		for (i = 1; i < arguments.length; i += 1) { // start with 1
 			aArgs.push(arguments[i]);
 		}
-		//this.vmNotImplemented("symbol");
 		this.oCanvas.setCustomChar(iChar, aArgs);
 	},
 
@@ -1216,7 +1309,6 @@ CpcVm.prototype = {
 		iStream = iStream || 0;
 		oWin = this.aWindow[iStream];
 		oWin.bTag = true;
-		this.vmNotImplemented("tag");
 	},
 
 	tagoff: function (iStream) {
@@ -1225,7 +1317,6 @@ CpcVm.prototype = {
 		iStream = iStream || 0;
 		oWin = this.aWindow[iStream];
 		oWin.bTag = false;
-		this.vmNotImplemented("tagoff");
 	},
 
 	tan: function (n) {
@@ -1331,10 +1422,13 @@ CpcVm.prototype = {
 	window: function (iStream, iLeft, iRight, iTop, iBottom) {
 		var oWin = this.aWindow[iStream];
 
-		oWin.left = Math.min(iLeft, iRight);
-		oWin.right = Math.max(iLeft, iRight);
-		oWin.top = Math.max(iTop, iBottom);
-		oWin.bottom = Math.min(iTop, iBottom);
+		oWin.iLeft = Math.min(iLeft, iRight) - 1;
+		oWin.iRight = Math.max(iLeft, iRight) - 1;
+		oWin.iTop = Math.min(iTop, iBottom) - 1;
+		oWin.iBottom = Math.max(iTop, iBottom) - 1;
+
+		oWin.iPos = 0; //TTT
+		oWin.iVpos = 0;
 	},
 
 	windowSwap: function (iStream1, iStream2) {

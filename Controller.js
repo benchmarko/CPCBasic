@@ -48,7 +48,9 @@ Controller.prototype = {
 		this.iTimeoutHandle = null;
 
 		this.fnRunPartHandler = this.fnRunPart1.bind(this);
-		this.fnKeyDownHandler = this.fnOnKeyDown.bind(this);
+		//this.fnKeyDownHandler = this.fnOnKeyDown.bind(this);
+		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
+		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
 
 		this.fnSetExampleSelectOptions();
 		this.commonEventHandler.onExampleSelectChange();
@@ -153,7 +155,7 @@ Controller.prototype = {
 		this.fnRunStart1();
 	},
 
-	fnOnKeyDown: function () {
+	fnWaitForKey: function () {
 		var sKey;
 
 		this.oCanvas.options.fnOnKeyDown = null;
@@ -162,6 +164,32 @@ Controller.prototype = {
 		this.oVm.iStopPriority = 0;
 		Utils.console.log("Wait for key: " + sKey);
 		this.fnRunStart1(); // continue
+	},
+
+	fnWaitForInput: function () {
+		var sInput = this.oVm.vmGetInput(), //this.sBufferedInput,
+			sKey;
+
+		do {
+			sKey = this.oVm.inkey$(); // or: for iKey: this.oCanvas.getKeyFromBuffer();
+			if (sKey !== "") { // chr13 shows as empty string!
+				sInput += sKey;
+				this.oVm.print(0, sKey);
+			}
+		} while (sKey !== "" && sKey !== "\n" && sKey.charCodeAt(0) !== 13); // get all keys until newline
+
+		this.oVm.vmSetInput(sInput);
+		if (sKey.charCodeAt(0) === 13 || sKey === "\n") {
+			this.oCanvas.options.fnOnKeyDown = null;
+			this.oVm.sStopLabel = "";
+			this.oVm.iStopPriority = 0;
+			Utils.console.log("Wait for input: " + sInput);
+			//this.oVm.vmSetInput(sInput);
+			if (this.oVm.fnInputCallback !== null) {
+				this.oVm.fnInputCallback(sInput);
+			}
+			this.fnRunStart1(); // continue
+		}
 	},
 
 	fnRunStart1: function () {
@@ -183,11 +211,17 @@ Controller.prototype = {
 				this.oVm.iStopPriority = 0;
 				iTimeOut = iTimeUntilFrame; // wait until next frame
 			} else if (this.oVm.sStopLabel === "key") {
-				this.oCanvas.options.fnOnKeyDown = this.fnKeyDownHandler; // wait until keypress handler
+				this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForKey; // wait until keypress handler
+				return;
+			} else if (this.oVm.sStopLabel === "input") {
+				this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput; // wait until keypress handler
+				//this.sBufferedInput = "";
+				this.oVm.vmSetInput("");
+				this.fnWaitForInput();
 				return;
 			}
 			/*
-			} else if (this.oVm.sStopLabel === "run") {
+			} else if (this.oVm.sStopLabel === "run") { // TODO: run with line number
 				this.oVm.sStopLabel = "";
 				this.oVm.iStopPriority = 0;
 				iNextLine = this.oVm.iLine; // save line

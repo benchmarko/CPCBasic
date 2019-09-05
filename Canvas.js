@@ -41,32 +41,9 @@ Canvas.prototype = {
 		"#FFFFFF" //  26 Bright White
 	],
 
-	/*
-	aDefaultInks: [ // mode 0,1,2: pen 0-15
-		[1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, "1,24", "16,11"], // eslint-disable-line array-element-newline
-		[1, 24, 20, 6, 1, 24, 20, 6, 1, 24, 20, 6, 1, 24, 20, 6], // eslint-disable-line array-element-newline
-		[1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24, 1, 24] // eslint-disable-line array-element-newline
-	],
-	*/
-
 	// mode 0: pen 0-15
-	//aDefaultInks: [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, "1,24", "16,11"], // eslint-disable-line array-element-newline
+	// TODO: inks for pen 15,15 are alternating: "1,24", "16,11"
 	aDefaultInks: [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16], // eslint-disable-line array-element-newline
-
-	// limit inks (pens)
-	/*
-	aInksPerModeLimit: [
-		16,
-		4,
-		2
-	],
-
-	aLineWidthPerMode: [
-		4,
-		2,
-		1
-	],
-	*/
 
 	aModeData: [
 		{
@@ -89,21 +66,6 @@ Canvas.prototype = {
 		}
 	],
 
-
-	/*
-	mCpcKey2KeyCode: {
-		0: 38, // cursor up
-		1: 39, // cursor right
-		2: 40, // cursor down
-		3: 105, // numpad f9
-		4: 102, // numpad f6
-		5: 99, // numpad f3
-		6: 0, // numpad enter
-		7: 0, // numpad .
-		8: 37, // cursor left
-		47: 32 // space
-	},
-	*/
 
 	mCpcKey2Key: {
 		0: "38ArrowUp", // cursor up
@@ -197,21 +159,12 @@ Canvas.prototype = {
 		// "226IntlBackslash", "122F11", "123F12", "44PrintScreen", "145ScrollLock", "19Pause", "45Insert", "36Home", "33PageUp", "35End", "34PageDown", "111NumpadDivide", "106NumpadMultiply", "109NumpadSubtract", "107NumpadAdd"
 	},
 
+	bCpcKey2KeyModified: false,
+
 	aJoyKeyCodes: [
 		[72, 73, 74, 75, 76, 77], // eslint-disable-line array-element-newline
 		[48, 49, 50, 51, 52, 53] // eslint-disable-line array-element-newline
 	],
-
-	/*
-	mKey2CpcKey: {
-		"38ArrowUp": 0, // cursor up
-		"39ArrowRight": 1, // cursor right
-		"40ArrowDown": 2, // cursor down
-		"105Numpad9": 3, // numpad f9
-		"102Numpad6": 4, // numpad f6
-		"99Numpad3": 5, // numpad f3
-	...	},
-	*/
 
 	init: function (options) {
 		var iBorder = 2,
@@ -234,9 +187,6 @@ Canvas.prototype = {
 
 		this.oChars = {}; // cache for pixeldata chars (invalidated when paper or pen changes, or symbol redefined)
 
-		//this.iFgInk = 24;
-		//this.iBgInk = 1;
-
 		this.xPos = 0;
 		this.yPos = 0;
 		this.xOrig = 0;
@@ -254,27 +204,23 @@ Canvas.prototype = {
 		this.iPaper = 0;
 
 		canvas = document.getElementById("cpcCanvas");
+		this.canvas = canvas;
 
 		// make sure canvas is not hidden (allows to get width, height, set style)
 		iWidth = canvas.width;
 		iHeight = canvas.height;
+		this.iWidth = iWidth;
+		this.iHeight = iHeight;
 		canvas.style.borderWidth = iBorder + "px";
 		canvas.style.borderColor = "#888888"; //TTT inactive border
 		canvas.style.borderStyle = "solid";
 		canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iGPaper]];
-		this.canvas = canvas;
-
-		this.iWidth = iWidth;
-		this.iHeight = iHeight;
 
 		ctx = canvas.getContext("2d");
 		ctx.strokeStyle = this.aColors[this.aCurrentInks[this.iGPen]];
-		//ctx.lineWidth = 1;
 
 		ctx.translate(this.xOrig, this.yOrig);
 		// get Cartesian coordinate system with the origin in the bottom left corner (moved by 1 pixel to the right)
-		//ctx.translate(1 + this.xOrig, iHeight + this.yOrig);
-		//ctx.scale(1, -1);
 
 		this.aColorValues = this.extractAllColorValues(this.aColors);
 
@@ -284,18 +230,11 @@ Canvas.prototype = {
 		canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
-		//window.addEventListener("resize", this.fnDebounce(this.resize.bind(this), 200, false), false);
 		window.addEventListener("click", this.onWindowClick.bind(this), false);
 
-		//this.testCanvas1();
 	},
 
-	extractColorValues: function (sColor) { // "#rrggbb"
-		/*
-		if (sColor.charAt(0) === "#") {
-			sColor = sColor.substring(1); // remove #
-		}
-		*/
+	extractColorValues: function (sColor) { // from "#rrggbb"
 		return [
 			parseInt(sColor.substring(1, 3), 16),
 			parseInt(sColor.substring(3, 5), 16),
@@ -313,7 +252,6 @@ Canvas.prototype = {
 
 		return aColorValues;
 	},
-
 
 	create1CharData: function (aCharData) {
 		var ctx = this.canvas.getContext("2d"),
@@ -348,173 +286,6 @@ Canvas.prototype = {
 		return oImageData;
 	},
 
-
-	/*
-	testCreateChars: function () {
-		var ctx = this.canvas.getContext("2d"),
-			iChar = 0,
-			x, y,
-			aCharData = [];
-
-		for (y = 0; y < 400; y += 16) {
-			for (x = 0; x < 640; x += 8) {
-				if (!aCharData[iChar]) {
-					aCharData[iChar] = this.create1Char(this.aCharset[iChar]);
-				}
-				ctx.putImageData(aCharData[iChar], x, y);
-				iChar = (iChar + 1) % 256;
-			}
-		}
-	},
-
-	testCanvas1: function () {
-		var iGPen = this.iGPen,
-			iGPaper = this.iGPaper,
-			i, j;
-
-		for (i = 0; i < 2; i += 1) {
-			for (j = 0; j < 16; j += 1) {
-				if (i !== j) {
-					this.iGPen = j;
-					this.iGPaper = i;
-					this.testCreateChars();
-				}
-			}
-		}
-
-		this.iGPen = iGPen;
-		this.iGPaper = iGPaper;
-		Utils.console.log("end of test");
-	},
-	*/
-
-
-
-	/*
-	testCanvas1: function () {
-		var ctx = this.canvas.getContext("2d"),
-			img,
-			testDrawImg1 = function () {
-				var x, y,
-					sx = 0,
-					sy = 0;
-
-				for (y = 0; y < 400; y += 16) {
-					for (x = 0; x < 640; x += 8) {
-						ctx.drawImage(img, sx, sy, 8, 16, x, y, 8, 16);
-						sx += 8;
-						if (sx >= 128) {
-							sx = 0;
-							sy += 16;
-							if (sy >= 256) {
-								sy = 0;
-							}
-						}
-					}
-				}
-			},
-			zeroPad = function (iNum) {
-				return "00000000".slice(String(iNum).length) + iNum;
-			},
-			testExtractData1 = function () {
-				var pixelData,
-					img2, iRed, iGreen, iBlue, iAlpha, iColor,
-					x, y, r, c, iPos, iVal, i,
-					sOut = "",
-					aVal = [],
-					sx = 0,
-					sy = 0;
-
-				for (i = 0; i < 256; i += 1) {
-					img2 = ctx.getImageData(sx, sy, 8, 16); // still cross origin
-
-					pixelData = img2.data;
-					//aVal.length = 0;
-					for (r = 0; r < 8; r += 1) {
-						iVal = 0;
-						for (c = 0; c < 8; c += 1) {
-							iPos = (c * 4) + (r * 8 * 4 * 2);
-							iRed = pixelData[iPos + 0];
-							iGreen = pixelData[iPos + 1];
-							iBlue = pixelData[iPos + 2];
-							iAlpha = pixelData[iPos + 3];
-							iColor = iRed * 65536 + iGreen * 256 + iBlue;
-							//aColor[c] = iColor;
-							if (!iColor) { //TTT get background color as set
-								iVal |= (1 << c);
-							}
-						}
-						//sOut += aColor.join(", ") + "\n";
-						//aVal[r] = iVal; // r/8
-						aVal[r] = "0x" + (iVal < 16 ? "0" : "") + iVal.toString(16);
-					}
-					//sOut += aVal.join(", ") + "\n";
-
-					sOut += "[" + aVal.join(", ") + "], // 0x" + (i < 16 ? "0" : "") + i.toString(16) + "\n";
-					//for (r = 0; r < 8; r += 1) {
-					//	sOut += "\t0B" + zeroPad(aVal[r].toString(2)) + (r < 7 ? "," : "") + "\n";
-					//}
-					//sOut += "],\n";
-
-					sx += 8;
-					if (sx >= 128) {
-						sx = 0;
-						sy += 16;
-						if (sy >= 256) {
-							sy = 0;
-						}
-					}
-				}
-				window.cpcBasic.view.setAreaValue("resultText", sOut);
-			};
-		img = document.getElementById("testImg");
-		ctx.drawImage(img, 0, 0);
-		//testDrawImg1();
-		testExtractData1();
-
-		Utils.console.log("end of test");
-		},
-	*/
-
-	/*
-		img = new Image();
-		// https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
-		img.onload = function () {
-			var x, y,
-				sx = 0,
-				sy = 0;
-
-			for (y = 0; y < 400; y += 16) {
-				for (x = 0; x < 640; x += 8) {
-					ctx.drawImage(img, sx, sy, 8, 16, x, y, 8, 16);
-					sx += 8;
-					if (sx >= 128) {
-						sx = 0;
-						sy += 16;
-						if (sy >= 256) {
-							sy = 0;
-						}
-					}
-				}
-			}
-		};
-		img.src = "img/md2x.png";
-		// ctx.drawImage(img, 0, 0);
-		//var t1 = this.canvas.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, '');
-		//window.cpcBasic.view.setAreaValue("resultText", String(t1));
-	*/
-
-	/*
-		ctx.fillStyle = "white";
-		ctx.font = "8px Monospace";
-		for (var y = 0; y < 400; y += 8) {
-			for (var x = 0; x < 640; x += 8) {
-				ctx.fillText("W", x, y);
-			}
-		}
-		ctx.fillText("World!", 10, 50);
-	*/
-
 	setCustomChar: function (iChar, aCharData) {
 		if (this.oCustomCharset[iChar]) { // already set?
 			delete this.oChars[iChar]; // delete pixeldata for this char
@@ -544,6 +315,28 @@ Canvas.prototype = {
 		}
 	},
 
+	removeCodeFromKeymap: function (sPressedKey) {
+		var oCpcKey2Key = this.mCpcKey2Key,
+			iCpcKey, sMappedKeys, aMappedKeys, i, sKey, iKey;
+
+		if (Utils.debug > 1) {
+			Utils.console.log("removeCodeFromKeymap: Unfortunately not all keys can be used. Pressed:" + sPressedKey);
+		}
+		for (iCpcKey in oCpcKey2Key) {
+			if (oCpcKey2Key.hasOwnProperty(iCpcKey)) {
+				sMappedKeys = this.mCpcKey2Key[iCpcKey];
+				aMappedKeys = sMappedKeys.split(","); // maybe more
+				for (i = 0; i < aMappedKeys.length; i += 1) {
+					sKey = aMappedKeys[i];
+					iKey = parseInt(sKey, 10); // get just the number
+					aMappedKeys[i] = iKey;
+				}
+				sMappedKeys = aMappedKeys.join(",");
+				this.mCpcKey2Key[iCpcKey] = sMappedKeys;
+			}
+		}
+	},
+
 	fnCanvasKeydown: function (event) {
 		var mSpecialChars = {
 				37: 75, // left
@@ -552,11 +345,16 @@ Canvas.prototype = {
 				40: 80 // down
 			},
 			iKeyCode = event.which || event.keyCode,
-			sPressedKey = iKeyCode + event.code;
+			sPressedKey = iKeyCode;
 
+		if (event.code) { // available for e.g. Chrome, Firefox
+			sPressedKey += event.code;
+		} else if (!this.bCpcKey2KeyModified) { // event.code not available on e.g. Edge
+			this.removeCodeFromKeymap(sPressedKey); // Remove code information from the mapping. Not all keys can be detected then.
+			this.bCpcKey2KeyModified = true;
+		}
 		this.oPressedKeys[sPressedKey] = 0 + (event.shiftKey ? 32 : 0) + (event.ctrlKey ? 128 : 0);
 		if (Utils.debug > 1) {
-			// https://www.w3schools.com/jsref/obj_keyboardevent.asp
 			Utils.console.log("fnCanvasKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey, event);
 		}
 
@@ -575,10 +373,13 @@ Canvas.prototype = {
 
 	fnCanvasKeyup: function (event) {
 		var iKeyCode = event.which || event.keyCode,
-			sPressedKey = iKeyCode + event.code;
+			sPressedKey = iKeyCode;
+
+		if (event.code) { // available for e.g. Chrome, Firefox
+			sPressedKey += event.code;
+		}
 
 		if (Utils.debug > 1) {
-			// https://www.w3schools.com/jsref/obj_keyboardevent.asp
 			Utils.console.log("fnCanvasKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey, event);
 		}
 		delete this.oPressedKeys[sPressedKey];
@@ -594,17 +395,6 @@ Canvas.prototype = {
 		}
 		return iKeyCode;
 	},
-
-	/*
-	getKeyState: function (iCpcKey) {
-		var iState = -1;
-
-		if (iCpcKey in this.oPressedKeys) {
-			iState = this.oPressedKeys[iCpcKey];
-		}
-		return iState;
-	},
-	*/
 
 	getKeyState: function (iCpcKey) {
 		var iState = -1,
@@ -676,49 +466,6 @@ Canvas.prototype = {
 		return undefined;
 	},
 
-	/*
-	fnDebounce: function (func, wait, immediate) {
-		var timeout,
-			that = this;
-
-		return function () {
-			var args = arguments,
-				later = function () {
-					timeout = null;
-					if (!immediate) {
-						func.apply(that, args);
-					}
-				},
-				callNow = immediate && !timeout;
-
-			clearTimeout(timeout);
-			timeout = setTimeout(later, wait);
-			if (callNow) {
-				func.apply(that, args);
-			}
-		};
-	},
-	*/
-
-	/*
-	resize: function () { // not used, yet
-		var sCpcDivId = this.options.cpcDivId,
-			oView = this.options.view,
-			bHidden = oView.getHidden(sCpcDivId),
-			cpcDiv, iWidth, iHeight, canvas;
-
-		if (bHidden) {
-			return; // canvas is hidden
-		}
-		cpcDiv = document.getElementById(sCpcDivId);
-		iWidth = cpcDiv.clientWidth;
-		iHeight = cpcDiv.clientHeight;
-		if (iWidth !== this.iWidth || iHeight !== this.iHeight) {
-			Utils.console.log("Canvas.resize width=" + iWidth + " height=" + iHeight);
-		}
-	},
-	*/
-
 	getXpos: function () {
 		return this.xPos;
 	},
@@ -727,13 +474,12 @@ Canvas.prototype = {
 		return this.yPos;
 	},
 
-
 	privDrawPath: function (path, iStart) {
 		var ctx, i, oPos,
 			canvas = this.canvas,
 			iHeight = this.iHeight;
 
-		if (path.length) { //TTT
+		if (path.length) {
 			ctx = canvas.getContext("2d");
 
 			ctx.beginPath();
@@ -770,8 +516,7 @@ Canvas.prototype = {
 		var ctx = this.canvas.getContext("2d"),
 			imageData, pixelData, iRed, iGreen, iBlue, iColor;
 
-		//imageData = ctx.getImageData(xPos + 0.5, this.iHeight - (yPos + 0.5), 1, 1);
-		imageData = ctx.getImageData(xPos + 0.5, yPos + 0.5, 1, 1);
+		imageData = ctx.getImageData(xPos + 0.5, this.iHeight - (yPos + 0.5), 1, 1);
 		pixelData = imageData.data;
 		iRed = pixelData[0];
 		iGreen = pixelData[1];
@@ -791,18 +536,16 @@ Canvas.prototype = {
 
 		this.aPath.push(path);
 
-		//if (path.t !== "m") {
-			this.privDrawPath(this.aPath, this.iPath); // draw new element
-			this.iPath = this.aPath.length;
-			if (path.t === "t") {
-				iColor = this.testPixel(this.xPos, this.yPos);
-				sColor = "#" + Number(iColor).toString(16).toUpperCase();
-				iInk = this.aColors.indexOf(sColor);
-				if (iInk >= 0) {
-					iGPen = this.aCurrentInks.indexOf(iInk);
-				}
+		this.privDrawPath(this.aPath, this.iPath); // draw new element
+		this.iPath = this.aPath.length;
+		if (path.t === "t") {
+			iColor = this.testPixel(this.xPos, this.yPos);
+			sColor = "#" + Number(iColor).toString(16).toUpperCase();
+			iInk = this.aColors.indexOf(sColor);
+			if (iInk >= 0) {
+				iGPen = this.aCurrentInks.indexOf(iInk);
 			}
-		//}
+		}
 		return iGPen;
 	},
 
@@ -827,8 +570,6 @@ Canvas.prototype = {
 	},
 
 	setPen: function (iPen) {
-		//var ctx = this.canvas.getContext("2d");
-
 		iPen %= this.aModeData[this.iMode].iInks; // limit pens
 		if (iPen !== this.iPen) {
 			this.iPen = iPen;
@@ -840,6 +581,7 @@ Canvas.prototype = {
 		iPaper %= this.aModeData[this.iMode].iInks; // limit papers
 		if (iPaper !== this.iPaper) {
 			this.iPaper = iPaper;
+			this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iGPaper]];
 			this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
 		}
 	},
@@ -868,12 +610,11 @@ Canvas.prototype = {
 	setOrigin: function (xOrig, yOrig) {
 		var ctx = this.canvas.getContext("2d");
 
-		ctx.translate(-this.xOrig, -this.yOrig); // restore
+		ctx.translate(-this.xOrig, this.yOrig); // restore
 
 		this.xOrig = xOrig;
 		this.yOrig = yOrig;
-		//ctx.translate(1 + xOrig, this.iHeight + yOrig);
-		ctx.translate(xOrig, yOrig);
+		ctx.translate(xOrig, -yOrig);
 	},
 
 	removeClipping: function () {
@@ -885,7 +626,7 @@ Canvas.prototype = {
 		}
 	},
 
-	setClipping: function (x, y, iWidth, iHeight) { ///TODO restore?...
+	setClipping: function (x, y, iWidth, iHeight) {
 		var ctx = this.canvas.getContext("2d");
 
 		this.removeClipping();
@@ -911,34 +652,61 @@ Canvas.prototype = {
 		}
 	},
 
-	cls: function () { // TODO: should clear current window only
-		var canvas = this.canvas,
-			ctx = canvas.getContext("2d");
+	clearWindow: function (iLeft, iRight, iTop, iBottom) { // clear current window
+		var ctx = this.canvas.getContext("2d"),
+			iCharWidth = this.aModeData[this.iMode].iCharWidth,
+			iCharHeight = this.aModeData[this.iMode].iCharHeight,
+			iWidth = iRight + 1 - iLeft,
+			iHeight = iBottom + 1 - iTop;
 
-		this.clearPath(); //TTT
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		//this.clearPath(); //TTT
+		ctx.clearRect(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, iHeight * iCharHeight);
+		//ctx.clearRect(0, 0, this.iWidth, this.iHeight); // cls complete canvas
+	},
+
+	clearGraphics: function (iPen) {
+		var ctx = this.canvas.getContext("2d");
+
+		ctx.fillStyle = this.aColors[this.aCurrentInks[iPen]];
+		ctx.fillRect(0, 0, this.iWidth, this.iHeight);
+
+		this.xPos = 0;
+		this.yPos = 0;
+	},
+
+	windowScroolDown: function (iLeft, iRight, iTop, iBottom) { // clear current window
+		var ctx = this.canvas.getContext("2d"),
+			iCharWidth = this.aModeData[this.iMode].iCharWidth,
+			iCharHeight = this.aModeData[this.iMode].iCharHeight,
+			iWidth = iRight + 1 - iLeft,
+			iHeight = iBottom + 1 - iTop,
+			imageData;
+
+		if (iHeight > 1) { // scroll part
+			imageData = ctx.getImageData(iLeft * iCharWidth, (iTop + 1) * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight);
+			ctx.putImageData(imageData, iLeft * iCharWidth, iTop * iCharHeight);
+		}
+		ctx.clearRect(iLeft * iCharWidth, (iBottom - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight); // clear line
 	},
 
 	mode: function (iMode) {
 		var ctx = this.canvas.getContext("2d");
 
 		this.removeClipping();
-
 		this.iMode = iMode;
-
 		this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
 
-		this.cls();
 		//inks are kept! this.aCurrentInks = this.aDefaultInks[iMode].slice();
 		this.xPos = 0;
 		this.yPos = 0;
-		//this.xOrig = 0;
-		//this.yOrig = 0;
 		this.setOrigin(0, 0);
 		this.setMask(0);
 		this.setGPen(1);
 		this.setGPaper(0);
 
 		ctx.lineWidth = this.aModeData[iMode].iLineWidth;
+
+		this.clearPath(); //TTT
+		ctx.clearRect(0, 0, this.iWidth, this.iHeight); // cls
 	}
 };

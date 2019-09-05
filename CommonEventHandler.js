@@ -186,6 +186,9 @@ CommonEventHandler.prototype = {
 			sValue;
 
 		sValue = oVariables[sPar];
+		if (sValue === undefined) {
+			sValue = "";
+		}
 		this.view.setAreaValue("varText", sValue);
 	}
 };
