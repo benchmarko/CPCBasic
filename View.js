@@ -67,7 +67,7 @@ View.prototype = {
 					option.value = oItem.value;
 				}
 				if (option.text !== oItem.text) {
-					if (Utils.debug > 1) {
+					if (Utils.debug > 3) {
 						Utils.console.debug("setSelectOptions: " + sId + ": text changed for index " + i + ": " + oItem.text);
 					}
 					option.text = oItem.text;

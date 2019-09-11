@@ -52,8 +52,8 @@ CpcVm.prototype = {
 
 		this.iLine = 0; // current line number (or label)
 
-		this.bStop = false;
-		this.sStopLabel = ""; // stot label or reason
+		//this.bStop = false;
+		this.sStopLabel = ""; // stop label or reason
 		this.iStopPriority = 0; // stop priority (higher number means higher priority which can overwrite lower priority)
 		this.fnInputCallback = null; // callback for stop reason "input"
 		// special stop labels and priorities:
@@ -64,6 +64,7 @@ CpcVm.prototype = {
 		// "error": 50 (BASIC error, error command)
 		// "stop": 60 (stop or end command)
 		// "end": 90 (end of program)
+		// "reset": 99 (reset canvas)
 
 		this.sOut = ""; // console output
 
@@ -92,6 +93,9 @@ CpcVm.prototype = {
 			});
 		}
 		this.bTimersDisabled = false; // flag if timers are disabled
+
+		this.iStatFrameCount = 0; // debugging
+		this.iStatFrameCountTs = 0; // debugging
 
 		this.aWindow = [];
 
@@ -148,9 +152,13 @@ CpcVm.prototype = {
 		return sError;
 	},
 
+	vmReset: function () {
+		this.oCanvas.reset();
+	},
+
 	vmGotoLine: function (line, sMsg) {
-		if (Utils.debug > 2) {
-			if (typeof line === "number" || Utils.debug > 4) { // non-number labels only in higher debug levels
+		if (Utils.debug > 3) {
+			if (typeof line === "number" || Utils.debug > 5) { // non-number labels only in higher debug levels
 				Utils.console.debug("DEBUG: vmGotoLine: " + sMsg + ": " + line);
 			}
 		}
@@ -179,18 +187,43 @@ CpcVm.prototype = {
 		}
 	},
 
+	vmStatStart: function () {
+		var iTime = Date.now();
+
+		this.iStatFrameCount = 0;
+		this.iStatFrameCountTs = iTime;
+	},
+
+	vmStatStop: function () {
+		var iTime = Date.now(),
+			iDelta = iTime - this.iStatFrameCountTs,
+			iFps = this.iStatFrameCount * 1000 / iDelta;
+
+		return iFps;
+	},
+
 	vmCheckNextFrame: function () {
 		var iTime = Date.now(),
 			iDelta,
 			iTimeUntilFrame;
 
-		if (iTime > this.iNextFrameTime) { // next time of frame fly
+		//if (this.oStatCheckFrame) {
+		//	this.oStatCheckFrame.collect(1);
+		//}
+		if (iTime >= this.iNextFrameTime) { // next time of frame fly
 			iDelta = iTime - this.iNextFrameTime;
+			if (Utils.debug) {
+				this.iStatFrameCount += 1;
+			}
+
 			if (iDelta > this.iFrameTimeMs) {
 				this.iNextFrameTime += this.iFrameTimeMs * Math.ceil(iDelta / this.iFrameTimeMs);
 			} else {
 				this.iNextFrameTime += this.iFrameTimeMs;
 			}
+			//if (Utils.debug > 2) {
+			//	Utils.console.debug("DEBUG: vmCheckNextFrame: iDelta=" + iDelta); //TTT TTT
+			//}
 			this.vmCheckTimer(iTime); // check BASIC timers
 		}
 
@@ -204,7 +237,8 @@ CpcVm.prototype = {
 		if (iTime > this.iNextFrameTime) {
 			this.vmStop("timer", 20);
 		}
-		return !this.bStop;
+		//return !this.bStop;
+		return this.sStopLabel === "";
 	},
 
 	fnGetVarDefault: function (sName) {
@@ -278,11 +312,13 @@ CpcVm.prototype = {
 
 	vmStop: function (sLabel, iStopPriority) {
 		iStopPriority = iStopPriority || 0;
-		this.bStop = true;
+		//this.bStop = true;
+		/*
 		if (sLabel === "end") {
-			iStopPriority = 90;
+			//iStopPriority = 90;
 			this.vmGotoLine(sLabel, "stop");
 		}
+		*/
 		if (iStopPriority > this.iStopPriority) {
 			this.iStopPriority = iStopPriority;
 			this.sStopLabel = sLabel;
@@ -391,20 +427,28 @@ CpcVm.prototype = {
 	},
 
 	border: function (iInk1, iInk2) { // ink2 optional
-		this.vmNotImplemented("border");
+		this.oCanvas.setBorder(iInk1);
 	},
 
 	// break
 
 	call: function (n) { // varargs (adr + parameters)
-		if (n === 0xbd19) { // frame
-			this.frame();
-		} else if (n === 0xbb18) { // wait for any key
+		switch (n) {
+		case 0xbb03: // KM Initialize
+			this.clearInput();
+			// TODO: reset also speed key
+			break;
+		case 0xbb18: // KM Wait Key
 			if (this.inkey$() === "") { // no key?
 				this.vmStop("key", 30); // wait for key
 			}
-		} else {
+			break;
+		case 0xbd19: // MC Wait Flyback
+			this.frame();
+			break;
+		default:
 			Utils.console.log("Ignored: call ", n);
+			break;
 		}
 	},
 
@@ -832,7 +876,7 @@ CpcVm.prototype = {
 		this.iMode = iMode;
 		this.sOut = "";
 		this.vmInitWindowData();
-		this.oCanvas.mode(iMode);
+		this.oCanvas.setMode(iMode);
 	},
 
 	move: function (x, y, iGPen, iGMask) {

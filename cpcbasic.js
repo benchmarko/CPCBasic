@@ -14,12 +14,11 @@ cpcBasic = {
 		debug: 0,
 		example: "testpage",
 		exampleDir: "examples", // example base directory
-		showSpecial: true,
 		showInput: true,
-		showOutput: true,
-		showResult: true,
-		showVariable: true,
-		showCpc: true
+		showCpc: true,
+		showOutput: false,
+		showResult: false,
+		showVariable: false
 	},
 	model: null,
 	view: null,

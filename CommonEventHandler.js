@@ -106,6 +106,10 @@ CommonEventHandler.prototype = {
 		this.controller.fnContinue();
 	},
 
+	onResetButtonClick: function () {
+		this.controller.fnReset();
+	},
+
 	onParseRunButtonClick: function () {
 		var sInput = this.view.getAreaValue("inputText");
 

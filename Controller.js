@@ -13,6 +13,66 @@ if (typeof require !== "undefined") {
 	CpcVm = require("./CpcVm.js"); // eslint-disable-line global-require
 }
 
+
+/*
+// test
+function Stat(bVari) {
+	this.bVari = bVari;
+}
+
+Stat.prototype = {
+	collect: function (x) {
+		if (!this.cnt) { // set values the first time
+			this.min = x;
+			this.max = x;
+			this.cnt = 1;
+			this.avg = x;
+			this.sum = x;
+			if (this.bVari) {
+				this.vri = 0;
+			}
+		} else {
+			this.cnt += 1;
+			this.sum += x;
+
+			if (this.bVari) { // variance...
+				this.vri = (this.cnt - 2.0) / (this.cnt - 1.0) * (this.vri) + (x - this.avg) * (x - this.avg) / this.cnt;
+			}
+
+			this.avg += (x - this.avg) / this.cnt;
+
+			if (x < this.min) {
+				this.min = x;
+			} else if (x > this.max) {
+				this.max = x;
+			}
+		}
+	},
+
+	postprocess: function () {
+		if (this.bVari) {
+			this.std = (this.vri !== null) ? Math.sqrt(this.vri) : 0; // compute standard deviation from variance (0 for undefined)
+		}
+	},
+
+	get: function (sType) {
+		return this[sType]; // 'sum', 'cnt', 'avg', 'min', 'max', 'vri', 'std'
+	},
+
+	toFormattedString: function (aTypes) {
+		var aResult = [],
+			sType, i;
+
+		for (i = 0; i < aTypes.length; i += 1) {
+			sType = aTypes[i];
+			aResult.push(this.get(sType));
+		}
+		return aResult.join(", ");
+	}
+};
+*/
+
+
 function Controller(oModel, oView) {
 	this.init(oModel, oView);
 }
@@ -25,7 +85,7 @@ Controller.prototype = {
 		this.view = oView;
 		this.commonEventHandler = new CommonEventHandler(oModel, oView, this);
 
-		oView.setHidden("specialArea", !oModel.getProperty("showSpecial"));
+		//oView.setHidden("specialArea", !oModel.getProperty("showSpecial"));
 		oView.setHidden("inputArea", !oModel.getProperty("showInput"));
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
@@ -141,7 +201,7 @@ Controller.prototype = {
 			this.iTimeoutHandle = null;
 		}
 		iLength = oVm.sOut.length;
-		oVm.bStop = false;
+		//oVm.bStop = false;
 		try {
 			this.fnScript(oVm);
 		} catch (e) {
@@ -193,46 +253,91 @@ Controller.prototype = {
 	},
 
 	fnRunStart1: function () {
-		var iTimeUntilFrame,
+		var oVm = this.oVm,
 			iTimeOut = 0,
-			iNextLine;
+			iTimeUntilFrame;
 
-		iTimeUntilFrame = this.oVm.vmCheckNextFrame();
-		if (this.oVm.bStop) {
-			if (this.oVm.sStopLabel === "end" || this.oVm.sStopLabel === "stop" || this.oVm.sStopLabel === "break" || this.oVm.iErr) {
-				this.view.setDisabled("runButton", false);
-				this.view.setDisabled("stopButton", true);
-				this.view.setDisabled("continueButton", this.oVm.sStopLabel === "end");
-				this.fnSetVarSelectOptions("varSelect", this.oVariables);
-				this.commonEventHandler.onVarSelectChange();
-				return;
-			} else if (this.oVm.sStopLabel === "frame") {
-				this.oVm.sStopLabel = "";
-				this.oVm.iStopPriority = 0;
-				iTimeOut = iTimeUntilFrame; // wait until next frame
-			} else if (this.oVm.sStopLabel === "key") {
-				this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForKey; // wait until keypress handler
-				return;
-			} else if (this.oVm.sStopLabel === "input") {
-				this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput; // wait until keypress handler
-				//this.sBufferedInput = "";
-				this.oVm.vmSetInput("");
-				this.fnWaitForInput();
-				return;
+		iTimeUntilFrame = oVm.vmCheckNextFrame();
+		/*
+		if (Utils.debug > 1) {
+			if (!this.oStat1) {
+				this.oStat1 = new Stat(true);
 			}
-			/*
-			} else if (this.oVm.sStopLabel === "run") { // TODO: run with line number
-				this.oVm.sStopLabel = "";
-				this.oVm.iStopPriority = 0;
-				iNextLine = this.oVm.iLine; // save line
-				this.oVm.vmInitVariables();
-				this.oVm.vmInitStack();
-				this.oVm.clearInput();
-				this.oVm.goto(iNextLine);
-			}
-			*/
+			this.oStat1.collect(iTimeUntilFrame);
 		}
-		this.iTimeoutHandle = setTimeout(this.fnRunPartHandler, iTimeOut);
+		*/
+
+		switch (oVm.sStopLabel) {
+		case "timer":
+			oVm.sStopLabel = "";
+			oVm.iStopPriority = 0;
+			break;
+
+		case "frame":
+			oVm.sStopLabel = "";
+			oVm.iStopPriority = 0;
+			iTimeOut = iTimeUntilFrame; // wait until next frame
+			break;
+
+		case "reset":
+			oVm.vmReset();
+			// now fall through
+		case "break":
+			// fall through
+		case "end":
+			// fall through
+		case "error":
+			// fall through
+		case "stop":
+			this.view.setDisabled("runButton", false);
+			this.view.setDisabled("stopButton", true);
+			this.view.setDisabled("continueButton", oVm.sStopLabel === "end" || oVm.sStopLabel === "reset");
+			this.fnSetVarSelectOptions("varSelect", this.oVariables);
+			this.commonEventHandler.onVarSelectChange();
+			if (Utils.debug > 0) {
+				/*
+				if (this.oStat1) {
+					this.oStat1.postprocess(); // compute std
+					Utils.console.log("fnRunStart1: " + oVm.sStopLabel + ": stat1: " + this.oStat1.toFormattedString(["min", "max", "avg", "std", "sum"])); // hdr,min,max,avg,std,sum
+					this.oStat1 = null;
+				}
+				*/
+				Utils.console.log("fnRunStart1: " + oVm.sStopLabel + ": " + oVm.vmStatStop());
+			}
+			//return;
+			break;
+
+		case "key":
+			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForKey; // wait until keypress handler
+			//return;
+			break;
+
+		case "input":
+			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput; // wait until keypress handler
+			oVm.vmSetInput("");
+			this.fnWaitForInput();
+			//return;
+			break;
+
+			/*
+		case "run": // TODO: run with line number
+			oVm.sStopLabel = "";
+			oVm.iStopPriority = 0;
+			iNextLine = oVm.iLine; // save line
+			oVm.vmInitVariables();
+			oVm.vmInitStack();
+			oVm.clearInput();
+			oVm.goto(iNextLine);
+			break;
+			*/
+
+		default:
+			break;
+		}
+
+		if (!oVm.sStopLabel) {
+			this.iTimeoutHandle = setTimeout(this.fnRunPartHandler, iTimeOut);
+		}
 	},
 
 	fnRun: function (sScript) {
@@ -242,7 +347,7 @@ Controller.prototype = {
 			oVm.vmInit({
 				variables: this.oVariables
 			});
-			this.oVm.clear(); // init variables
+			oVm.clear(); // init variables
 			try {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
 			} catch (e) {
@@ -253,12 +358,12 @@ Controller.prototype = {
 			oVm.vmInitStack();
 			oVm.vmInitVariables();
 		}
-		this.oVm.vmInitInks();
-		this.oVm.clearInput();
+		oVm.vmInitInks();
+		oVm.clearInput();
 
 		if (this.fnScript) {
-			this.oVm.sOut = this.view.getAreaValue("resultText");
-			oVm.bStop = false;
+			oVm.sOut = this.view.getAreaValue("resultText");
+			//oVm.bStop = false;
 			oVm.sStopLabel = "";
 			oVm.iStopPriority = 0;
 			oVm.iLine = 0;
@@ -269,6 +374,10 @@ Controller.prototype = {
 			this.view.setDisabled("runButton", true);
 			this.view.setDisabled("stopButton", false);
 			this.view.setDisabled("continueButton", true);
+
+			if (Utils.debug > 0) {
+				oVm.vmStatStart(); //TTT
+			}
 			this.fnRunStart1();
 		}
 		if (Utils.debug > 1) {
@@ -318,22 +427,37 @@ Controller.prototype = {
 		var sStopLabel = this.oVm.sStopLabel;
 
 		this.oVm.vmStop("break", 80);
-		if (sStopLabel === "key") { // current sStopLabel was key?
+		if (sStopLabel === "key" || sStopLabel === "input") { // current sStopLabel was key or input?
 			this.oCanvas.options.fnOnKeyDown = null;
 			this.fnRunStart1(); //TTT handle break
 		}
 	},
 
 	fnContinue: function () {
+		var oVm = this.oVm;
+
 		this.iTimeoutHandle = null;
 
 		this.view.setDisabled("runButton", true);
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
-		if (this.oVm.sStopLabel === "break" || this.oVm.sStopLabel === "stop") {
-			this.oVm.sStopLabel = "";
-			this.oVm.iStopPriority = 0;
+		if (oVm.sStopLabel === "break" || oVm.sStopLabel === "stop") {
+			oVm.sStopLabel = "";
+			oVm.iStopPriority = 0;
 		}
 		this.fnRunStart1();
+	},
+
+	fnReset: function () {
+		var oVm = this.oVm,
+			sStopLabel = oVm.sStopLabel;
+
+		this.fnStop();
+		oVm.vmStop("reset", 99);
+		if (sStopLabel === "break" || sStopLabel === "end" || sStopLabel === "error") {
+			oVm.vmReset();
+		}
+		this.view.setDisabled("continueButton", true);
 	}
+
 };

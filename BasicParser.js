@@ -1733,7 +1733,7 @@ BasicParser.prototype = {
 					aNodeArgs = fnParseArgs(node.args);
 					sName = node.name;
 					if (mFunctions[sName] === undefined) {
-						if (Utils.debug > 1) {
+						if (Utils.debug > 2) {
 							Utils.console.debug("NOTE: Generating default call for function ", sName, " pos ", node.pos);
 						}
 						value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
