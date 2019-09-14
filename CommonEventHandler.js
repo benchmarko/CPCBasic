@@ -160,6 +160,8 @@ CommonEventHandler.prototype = {
 				sInput = oExample.script;
 				that.view.setAreaValue("inputText", sInput);
 				that.view.setAreaValue("outputText", "");
+				that.controller.fnReset();
+				that.onParseRunButtonClick();
 			},
 			fnExampleError = function () {
 				Utils.console.log("Example " + sUrl + " error");

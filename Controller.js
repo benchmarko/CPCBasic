@@ -79,13 +79,21 @@ function Controller(oModel, oView) {
 
 Controller.prototype = {
 	init: function (oModel, oView) {
-		var sExample;
+		var that = this,
+			sUrl, sExample,
+			onExampleIndexLoaded = function () {
+				Utils.console.log(sUrl + " loaded");
+				that.fnSetExampleSelectOptions();
+				that.commonEventHandler.onExampleSelectChange();
+			},
+			onExampleIndexError = function () {
+				Utils.console.log(sUrl + " error");
+			};
 
 		this.model = oModel;
 		this.view = oView;
 		this.commonEventHandler = new CommonEventHandler(oModel, oView, this);
 
-		//oView.setHidden("specialArea", !oModel.getProperty("showSpecial"));
 		oView.setHidden("inputArea", !oModel.getProperty("showInput"));
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
@@ -112,8 +120,23 @@ Controller.prototype = {
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
 		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
 
-		this.fnSetExampleSelectOptions();
-		this.commonEventHandler.onExampleSelectChange();
+		sUrl = oModel.getProperty("exampleDir") + "/" + oModel.getProperty("exampleIndex");
+		if (sUrl) {
+			Utils.loadScript(sUrl, onExampleIndexLoaded, onExampleIndexError);
+		} else {
+			Utils.console.error("ExampleIndex not set");
+		}
+	},
+
+	// Also called from index file 0index.js
+	fnAddIndex: function (sDir, input) { // optional sDir
+		var sInput, aIndex, i;
+
+		sInput = input.trim();
+		aIndex = JSON.parse(sInput);
+		for (i = 0; i < aIndex.length; i += 1) {
+			this.model.setExample(aIndex[i]);
+		}
 	},
 
 	// Also called from example files xxxxx.js
@@ -201,7 +224,6 @@ Controller.prototype = {
 			this.iTimeoutHandle = null;
 		}
 		iLength = oVm.sOut.length;
-		//oVm.bStop = false;
 		try {
 			this.fnScript(oVm);
 		} catch (e) {
@@ -227,7 +249,7 @@ Controller.prototype = {
 	},
 
 	fnWaitForInput: function () {
-		var sInput = this.oVm.vmGetInput(), //this.sBufferedInput,
+		var sInput = this.oVm.vmGetInput(),
 			sKey;
 
 		do {
@@ -304,19 +326,16 @@ Controller.prototype = {
 				*/
 				Utils.console.log("fnRunStart1: " + oVm.sStopLabel + ": " + oVm.vmStatStop());
 			}
-			//return;
 			break;
 
 		case "key":
 			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForKey; // wait until keypress handler
-			//return;
 			break;
 
 		case "input":
 			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput; // wait until keypress handler
 			oVm.vmSetInput("");
 			this.fnWaitForInput();
-			//return;
 			break;
 
 			/*
@@ -363,7 +382,6 @@ Controller.prototype = {
 
 		if (this.fnScript) {
 			oVm.sOut = this.view.getAreaValue("resultText");
-			//oVm.bStop = false;
 			oVm.sStopLabel = "";
 			oVm.iStopPriority = 0;
 			oVm.iLine = 0;
@@ -398,6 +416,7 @@ Controller.prototype = {
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
+			this.oVm.print(0, sOutput + "\n"); // Error
 		} else {
 			sOutput = oOutput.text;
 		}
@@ -414,6 +433,8 @@ Controller.prototype = {
 
 	fnParseRun: function (sInput) {
 		var oOutput, sScript;
+
+		this.fnStop(); //TTT maybe running
 
 		oOutput = this.fnParse(sInput);
 
@@ -454,9 +475,11 @@ Controller.prototype = {
 
 		this.fnStop();
 		oVm.vmStop("reset", 99);
-		if (sStopLabel === "break" || sStopLabel === "end" || sStopLabel === "error") {
-			oVm.vmReset();
-		}
+		//if (sStopLabel === "break" || sStopLabel === "end" || sStopLabel === "error" || sStopLabel === "key" || sStopLabel === "input" || sStopLabel === "stop") {
+		this.view.setAreaValue("outputText", "");
+		this.view.setAreaValue("resultText", "");
+		oVm.vmReset();
+		//}
 		this.view.setDisabled("continueButton", true);
 	}
 

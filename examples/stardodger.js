@@ -2,7 +2,10 @@
 
 "use strict";
 
-cpcBasic.addItem("",  String.raw`
+cpcBasic.addItem("", function () { /*
+5 REM Stardodger Game (2D Star Dodge)
+6 REM https://scruss.com/blog/2012/09/08/2d-star-dodge-flies-again/
+7 REM (We cannot detect pen 3 if it has same color as pen 0)
 10 ' ** Initialise **
 20 MODE 1
 30 INK 0,0
@@ -76,4 +79,4 @@ cpcBasic.addItem("",  String.raw`
 745 frame
 750 WEND
 760 RETURN
-`);
+*/ });

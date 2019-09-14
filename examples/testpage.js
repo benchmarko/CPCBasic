@@ -2,7 +2,7 @@
 
 "use strict";
 
-cpcBasic.addItem("",  String.raw`
+cpcBasic.addItem("", function () { /*
 100 rem test1
 110 'wait 0,0
 120 'clear
@@ -33,4 +33,4 @@ cpcBasic.addItem("",  String.raw`
 1040 drawr 0,-50
 1050 next:move 348,0:fill 3
 9000 print "ok"
-`);
+*/ });

@@ -2,7 +2,7 @@
 
 "use strict";
 
-cpcBasic.addItem("", String.raw`
+cpcBasic.addItem("", function () { /*
 500 REM start
 600 'PRINT "Press and release Space to start measurement"
 610 'IF INKEY(47)<>0 THEN 610
@@ -203,4 +203,4 @@ cpcBasic.addItem("", String.raw`
 2910 REM system or quit to exit bwbasic
 2920 END
 2930 REM end
-`);
+*/ });

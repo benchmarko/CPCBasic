@@ -12,8 +12,9 @@ var cpcBasicExternalConfig, cpcBasic;
 cpcBasic = {
 	config: {
 		debug: 0,
-		example: "testpage",
+		example: "rectangles",
 		exampleDir: "examples", // example base directory
+		exampleIndex: "0index.js", // example index in exampleDir
 		showInput: true,
 		showCpc: true,
 		showOutput: false,
@@ -24,8 +25,24 @@ cpcBasic = {
 	view: null,
 	controller: null,
 
-	addItem: function (sKey, fnInput) {
-		return cpcBasic.controller.fnAddItem(sKey, fnInput);
+	fnHereDoc: function (fn) {
+		return String(fn).
+			replace(/^[^/]+\/\*\S*/, "").
+			replace(/\*\/[^/]+$/, "");
+	},
+
+	addIndex: function (sDir, input) {
+		if (typeof input !== "string") {
+			input = this.fnHereDoc(input);
+		}
+		return cpcBasic.controller.fnAddIndex(sDir, input);
+	},
+
+	addItem: function (sKey, input) {
+		if (typeof input !== "string") {
+			input = this.fnHereDoc(input);
+		}
+		return cpcBasic.controller.fnAddItem(sKey, input);
 	},
 
 	// https://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
@@ -75,6 +92,7 @@ cpcBasic = {
 		iDebug = Number(this.model.getProperty("debug"));
 		Utils.debug = iDebug;
 
+		/*
 		this.model.setExample({
 			key: "testpage",
 			title: "Test Page"
@@ -99,6 +117,7 @@ cpcBasic = {
 			key: "stars",
 			title: "Stars"
 		});
+		*/
 
 		that.controller = new Controller(this.model, this.view);
 	},
@@ -108,6 +127,53 @@ cpcBasic = {
 		this.fnDoStart();
 	}
 };
+
+
+// some polyfills for IE11 (which is not fully supported)
+if (!Object.assign) {
+	Object.assign = function (oTarget) { // varargs // Object.assign is ES6, not in IE
+		var oTo = oTarget,
+			i,
+			oNextSource,
+			sNextKey;
+
+		for (i = 1; i < arguments.length; i += 1) {
+			oNextSource = arguments[i];
+			for (sNextKey in oNextSource) {
+				if (oNextSource.hasOwnProperty(sNextKey)) {
+					oTo[sNextKey] = oNextSource[sNextKey];
+				}
+			}
+		}
+		return oTo;
+	};
+}
+
+if (!String.prototype.includes) {
+	String.prototype.includes = function (search, start) { // eslint-disable-line no-extend-native
+		var bRet;
+
+		if (start + search.length > this.length) {
+			bRet = false;
+		} else {
+			bRet = this.indexOf(search, start) !== -1;
+		}
+		return bRet;
+	};
+}
+
+if (!String.prototype.repeat) {
+	String.prototype.repeat = function (iCount) { // eslint-disable-line no-extend-native
+		var sStr = String(this),
+			sOut = "",
+			i;
+
+		for (i = 0; i < iCount; i += 1) {
+			sOut += sStr;
+		}
+		return sOut;
+	};
+}
 
 
 cpcBasic.fnOnLoad(); // if cpcbasic.js is the last script, we do not need to wait for window.onload

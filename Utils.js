@@ -94,7 +94,15 @@ var Utils = {
 			}
 		}
 		return oChanged;
-	}
+	},
+	bSupportsBinaryLiterals: (function () { // does the browser support binary literals?
+		try {
+			Function("0b01"); // eslint-disable-line no-new-func
+			return true;
+		} catch (err) {
+			return false;
+		}
+	}())
 };
 
 if (typeof module !== "undefined" && module.exports) {

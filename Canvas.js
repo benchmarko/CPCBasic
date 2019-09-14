@@ -402,14 +402,21 @@ Canvas.prototype = {
 	},
 
 	fnCanvasKeydown: function (event) {
-		var mSpecialChars = {
+		var /*
+			mSpecialChars = {
 				37: 75, // left
 				38: 72, // up
 				39: 77, // right
 				40: 80 // down
 			},
+			*/
+			mSpecialKeys = {
+				Enter: "\r", //TTT"\n",
+				Spacebar: " " // IE
+			},
 			iKeyCode = event.which || event.keyCode,
-			sPressedKey = iKeyCode;
+			sPressedKey = iKeyCode,
+			sKey = event.key;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
 			sPressedKey += event.code;
@@ -419,15 +426,22 @@ Canvas.prototype = {
 		}
 		this.oPressedKeys[sPressedKey] = 0 + (event.shiftKey ? 32 : 0) + (event.ctrlKey ? 128 : 0);
 		if (Utils.debug > 1) {
-			Utils.console.log("fnCanvasKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey, event);
+			Utils.console.log("fnCanvasKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " ", event);
 		}
 
-
+		/*
 		if (iKeyCode in mSpecialChars) {
 			this.aKeyBuffer.push(0);
 			this.aKeyBuffer.push(mSpecialChars[iKeyCode]);
 		} else {
 			this.aKeyBuffer.push(iKeyCode);
+		}
+		*/
+		if (sKey in mSpecialKeys) { // mainly for IE
+			sKey = mSpecialKeys[sKey];
+		}
+		if (sKey.length === 1) { // ignore special keys with more than 1 character
+			this.aKeyBuffer.push(sKey);
 		}
 
 		if (this.options.fnOnKeyDown) { // special handler?
@@ -444,20 +458,29 @@ Canvas.prototype = {
 		}
 
 		if (Utils.debug > 1) {
-			Utils.console.log("fnCanvasKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey, event);
+			Utils.console.log("fnCanvasKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + event.key + "' " + event.key.charCodeAt(0) + " ", event);
 		}
 		delete this.oPressedKeys[sPressedKey];
 	},
 
 	getKeyFromBuffer: function () {
-		var iKeyCode;
+		var sKeyCode;
 
 		if (this.aKeyBuffer.length) {
-			iKeyCode = this.aKeyBuffer.shift();
+			sKeyCode = this.aKeyBuffer.shift();
+			/*
+			if (sKeyCode.length > 1) {
+				if (sKeyCode === "Enter") {
+					sKeyCode = "\n";
+				} else {
+					return this.getKeyFromBuffer(); // ignore key, get next one
+				}
+			}
+			*/
 		} else {
-			iKeyCode = -1;
+			sKeyCode = ""; // -1;
 		}
-		return iKeyCode;
+		return sKeyCode;
 	},
 
 	getKeyState: function (iCpcKey) {
@@ -673,6 +696,11 @@ Canvas.prototype = {
 	printChar: function (iChar, x, y) {
 		var ctx = this.canvas.getContext("2d");
 
+		if (iChar >= this.aCharset.length) {
+			Utils.console.warn("printChar: Ignoring char with code " + iChar);
+			return;
+		}
+
 		if (!this.oChars[iChar]) { // pixeldata not available?
 			this.oChars[iChar] = this.create1CharData(this.oCustomCharset[iChar] || this.aCharset[iChar]);
 		}
@@ -693,7 +721,9 @@ Canvas.prototype = {
 		var ctx = this.canvas.getContext("2d");
 
 		if (this.bClipped) {
+			/* TODO
 			ctx.restore();
+			*/
 			this.bClipped = false;
 		}
 	},
@@ -703,10 +733,12 @@ Canvas.prototype = {
 
 		this.removeClipping();
 		this.bClipped = true;
+		/* TODO
 		ctx.save();
 		ctx.rect(x, y, iWidth, iHeight);
 		ctx.stroke();
 		ctx.clip();
+		*/
 	},
 
 	setMask: function (iMask) {

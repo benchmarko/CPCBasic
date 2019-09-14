@@ -2,7 +2,7 @@
 
 "use strict";
 
-cpcBasic.addItem("",  String.raw`
+cpcBasic.addItem("", function () { /*
 10 REM Stars
 20 DIM x(24),y(24),s(24)
 30 MODE 2:INK 0,0:INK 1,26:BORDER 0:PAPER 0:PEN 1:CLS
@@ -19,4 +19,4 @@ cpcBasic.addItem("",  String.raw`
 125 frame
 126 cls: 'test since xor does not work yet
 130 GOTO 80
-`);
+*/ });

@@ -132,7 +132,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	pen: "c",
 	pi: "f",
 	plot: "c",
-	plorr: "c",
+	plotr: "c",
 	poke: "c",
 	pos: "f",
 	print: "c", // print also with spc(), tab(), using
@@ -255,7 +255,7 @@ BasicParser.prototype = {
 				return (/["]/).test(c);
 			},
 			isNotQuotes = function (c) {
-				return c !== "" && !isQuotes(c);
+				return c !== "" && !isQuotes(c) && !isNewLine(c); // quoted string must be in one line!
 			},
 			isIdentifierStart = function (c) {
 				return c !== "" && (/[A-Za-z]/).test(c); // cannot use complete [A-Za-z]+[\w]*[$%!]
@@ -268,6 +268,9 @@ BasicParser.prototype = {
 			},
 			isStream = function (c) {
 				return (/[#]/).test(c);
+			},
+			isAddress = function (c) {
+				return (/[@]/).test(c);
 			},
 			isRsx = function (c) {
 				return (/[|]/).test(c);
@@ -304,6 +307,11 @@ BasicParser.prototype = {
 					pos: iPos
 				});
 			},
+			hexEscape = function (str) {
+				return str.replace(/[\x00-\x1f]/g, function(sChar) {
+					return "\\x" + ("00" + sChar.charCodeAt().toString(16)).slice(-2);
+				});
+			},
 			fnParseKeyword = function () {
 				sToken = sToken.toLowerCase();
 				if (sToken === "rem") { // ignore comment
@@ -322,11 +330,15 @@ BasicParser.prototype = {
 							sChar = "";
 							sToken = advanceWhile(isNotQuotes);
 							if (!isQuotes(sChar)) {
-								throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
+								//throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
+								Utils.console.warn("Unterminated string ", sToken, " at position ", iStartPos + 1);
 							}
 							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
+							sToken = hexEscape(sToken);
 							addToken("string", sToken, iStartPos + 1);
-							sChar = advance();
+							if (sChar === '"') { // not for newline
+								sChar = advance();
+							}
 						} else {
 							sToken = advanceWhile(isUnquotedData);
 							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
@@ -391,11 +403,15 @@ BasicParser.prototype = {
 				sChar = "";
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
+					//throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
+					Utils.console.warn("Unterminated string ", sToken, " at position ", iStartPos + 1);
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
+				sToken = hexEscape(sToken);
 				addToken("string", sToken, iStartPos + 1);
-				sChar = advance();
+				if (sChar === '"') { // not for newline
+					sChar = advance();
+				}
 			} else if (isIdentifierStart(sChar)) {
 				sToken = sChar;
 				sChar = advance();
@@ -411,6 +427,9 @@ BasicParser.prototype = {
 				} else {
 					addToken("identifier", sToken, iStartPos);
 				}
+			} else if (isAddress(sChar)) {
+				addToken(sChar, 0, iStartPos);
+				sChar = advance();
 			} else if (isRsx(sChar)) {
 				sChar = advance();
 				sToken = "";
@@ -723,6 +742,7 @@ BasicParser.prototype = {
 		symbol("break");
 		symbol("else");
 		symbol("step");
+		symbol("swap");
 		symbol("then");
 		symbol("to");
 		symbol("using");
@@ -828,6 +848,8 @@ BasicParser.prototype = {
 		infixr("xor", 20);
 
 		prefix("#", 10); // stream
+
+		prefix("@", 10); // address of
 
 		infixr("=", 30); // equal for comparison, will be overwritten
 		oSymbols["(==)"] = oSymbols["="];
@@ -1032,7 +1054,7 @@ BasicParser.prototype = {
 				if (oToken.type === "number") {
 					oValue.third = [fnCreateCmdCall("goto")];
 				} else if (oToken.type === "if") {
-					oValue.third = statement();
+					oValue.third = [statement()];
 				} else {
 					oValue.third = statements();
 				}
@@ -1044,8 +1066,8 @@ BasicParser.prototype = {
 
 		stmt("input", function () {
 			var oValue = {
-					type: "fcall",
-					name: "input",
+					type: "input",
+					//name: "input",
 					args: [],
 					pos: aTokens[iIndex - 1].pos
 				},
@@ -1065,9 +1087,9 @@ BasicParser.prototype = {
 				advance();
 				if (oToken.type === ";") { // ";" => append "?"
 					sText += "?";
-					advance();
+					advance(";");
 				} else if (oToken.type === ",") {
-					advance();
+					advance(",");
 				} else {
 					throw new BasicParser.ErrorObject("Expected ; or , at", oToken.type, oToken.pos);
 				}
@@ -1115,8 +1137,8 @@ BasicParser.prototype = {
 
 		stmt("line", function () {
 			var oValue = {
-					type: "fcall",
-					name: "lineInput",
+					//type: "fcall",
+					type: "lineInput",
 					args: [],
 					pos: aTokens[iIndex - 1].pos
 				},
@@ -1210,22 +1232,25 @@ BasicParser.prototype = {
 					args: null,
 					pos: iIndex - 1
 				},
+				bOnBreak = false,
 				bOnError = false;
 
-			/*
 			if (oToken.type === "break") {
 				advance("break");
-				oValue.Type = "onBreak"; // cont, gosub..., stop
 				if (oToken.type === "gosub") {
-					// TODO
+					advance("gosub");
+					oValue.name = "onBreakGosub";
+					oValue.args = fnGetArgs();
+					bOnBreak = true;
+				} else if (oToken.type === "cont") {
+					advance("cont");
+					oValue.name = "onBreakCont";
+					oValue.args = [];
+				} else if (oToken.type === "stop") {
+					advance("stop");
+					oValue.name = "onBreakStop";
+					oValue.args = [];
 				}
-			}
-			*/
-			// TODO
-
-			if (oToken.type === "break") {
-				advance("break");
-				oValue.Type = "onBreak"; // cont, gosub..., stop // TODO
 			} else if (oToken.type === "error") { // on error goto
 				advance("error");
 				bOnError = true;
@@ -1234,7 +1259,7 @@ BasicParser.prototype = {
 				oValue.left = expression(0);
 			}
 
-			if (oToken.type === "gosub" && !bOnError) {
+			if (oToken.type === "gosub" && !bOnError && !bOnBreak) {
 				advance("gosub");
 				oValue.name = "onGosub";
 				oValue.args = fnGetArgs();
@@ -1244,13 +1269,6 @@ BasicParser.prototype = {
 					oValue.name = "onGoto";
 				}
 				oValue.args = fnGetArgs();
-			} else {
-				/*
-				oValue = {
-					type: "on", //TTT
-					left: oLeft
-				};
-				*/
 			}
 
 			return oValue;
@@ -1535,6 +1553,9 @@ BasicParser.prototype = {
 				"<>": function (a, b) {
 					return a + " !== " + b;
 				},
+				"@": function (a) {
+					return 'o.addressOf("' + a + '")'; // address of
+				},
 				"#": function (a) {
 					return a; // stream
 				}
@@ -1620,6 +1641,28 @@ BasicParser.prototype = {
 				return value;
 			},
 
+			fnParseFor = function (node) {
+				var sVarName, sLabel, value, value2, sStepName;
+
+				sVarName = fnAdaptVariableName(node.left.name);
+				sLabel = "f" + that.iForCount;
+				that.oStack.f.push(that.iForCount);
+				that.iForCount += 1;
+
+				sStepName = sVarName + "Step";
+				value = sStepName.substr(2); // remove preceiding "v."
+				variables[value] = 0; // declare also step variable
+
+				value = "/* for() */ " + parseNode(node.left) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+				value += "\ncase \"" + sLabel + "\": ";
+
+				value += sVarName + " += " + sStepName + ";";
+				value += "\ncase \"" + sLabel + "b\": ";
+				value2 = parseNode(node.right);
+				value += "if (" + sStepName + " > 0 && " + sVarName + " > " + value2 + " || " + sStepName + " < 0 && " + sVarName + " < " + value2 + ") { o.goto(\"" + sLabel + "e\"); break; }";
+				return value;
+			},
+
 			fnParseIf = function (node) {
 				var aNodeArgs, sLabel, value, sPart;
 
@@ -1640,25 +1683,50 @@ BasicParser.prototype = {
 				return value;
 			},
 
-			fnParseFor = function (node) {
-				var sVarName, sLabel, value, value2, sStepName;
+			fnParseInput = function (node) {
+				var aNodeArgs, sLabel, value, i, sStream, sMsg;
 
-				sVarName = fnAdaptVariableName(node.left.name);
-				sLabel = "f" + that.iForCount;
-				that.oStack.f.push(that.iForCount);
-				that.iForCount += 1;
+				sLabel = "s" + that.iStopCount;
+				that.iStopCount += 1;
 
-				sStepName = sVarName + "Step";
-				value = sStepName.substr(2); // remove preceiding "v."
-				variables[value] = 0; // declare also step variable
+				aNodeArgs = fnParseArgs(node.args);
+				sStream = aNodeArgs.shift();
+				sMsg = aNodeArgs.shift();
 
-				value = "/* for() */ " + parseNode(node.left) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
-				value += "\ncase \"" + sLabel + "\": ";
+				value = "o.input(" + sStream + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+				for (i = 0; i < aNodeArgs.length; i += 1) {
+					value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
+				}
 
-				value += sVarName + " += " + sStepName + ";";
-				value += "\ncase \"" + sLabel + "b\": ";
-				value2 = parseNode(node.right);
-				value += "if (" + sStepName + " > 0 && " + sVarName + " > " + value2 + " || " + sStepName + " < 0 && " + sVarName + " < " + value2 + ") { o.goto(\"" + sLabel + "e\"); break; }";
+				/*
+				sStream = aNodeArgs[0];
+				sMsg = aNodeArgs[1];
+				for (i = 2; i < aNodeArgs.length; i += 1) {
+					if (s !== "") {
+						s += "; ";
+					}
+					s += aNodeArgs[i] + " = o.input(" + sStream + ", " + sMsg + ", \"" + aNodeArgs[i] + "\")";
+				}
+				*/
+
+				//value = "if (" + parseNode(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
+				return value;
+			},
+
+			fnParseLineInput = function (node) {
+				var aNodeArgs, sLabel, value, i, sStream, sMsg;
+
+				sLabel = "s" + that.iStopCount;
+				that.iStopCount += 1;
+
+				aNodeArgs = fnParseArgs(node.args);
+				sStream = aNodeArgs.shift();
+				sMsg = aNodeArgs.shift();
+
+				value = "o.lineInput(" + sStream + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+				for (i = 0; i < aNodeArgs.length; i += 1) {
+					value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
+				}
 				return value;
 			},
 
@@ -1699,7 +1767,11 @@ BasicParser.prototype = {
 					break;
 				case "binnumber":
 					value = node.value.slice(2);
-					value = "0b" + ((value.length) ? value : "0"); // &x->0b; 0b is ES6
+					if (Utils.bSupportsBinaryLiterals) {
+						value = "0b" + ((value.length) ? value : "0"); // &x->0b; 0b is ES6
+					} else {
+						value = "0x" + ((value.length) ? parseInt(value, 2).toString(16) : "0"); // we convert it to hex
+					}
 					break;
 				case "hexnumber":
 					value = node.value.slice(1);
@@ -1777,6 +1849,17 @@ BasicParser.prototype = {
 				case "if":
 					value = fnParseIf(node);
 					break;
+				case "input":
+					/*
+					sName = "s" + that.iStopCount; // use also stopCount for input? TTT
+					that.iStopCount += 1;
+					value = "o.input(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						value += " " + aNodeArgs[i];
+					}
+					*/
+					value = fnParseInput(node);
+					break;
 				case "label":
 					that.iLine = node.value;
 					aNodeArgs = fnParseArgs(node.left);
@@ -1787,6 +1870,9 @@ BasicParser.prototype = {
 							value += ";";
 						}
 					}
+					break;
+				case "lineInput":
+					value = fnParseLineInput(node);
 					break;
 				case "next":
 					i = that.oStack.f.pop();
@@ -1926,6 +2012,7 @@ BasicParser.prototype = {
 					return "o.goto(" + n + "); break";
 				},
 
+				/*
 				input: function () { // varargs
 					var s = "",
 						sStream, i, sMsg;
@@ -1940,11 +2027,15 @@ BasicParser.prototype = {
 					}
 					return s;
 				},
+				*/
+
+				/*
 				lineInput: function (sStream, sMsg, sVar) { // varargs
 					var s = sVar + " = o.lineInput(" + sStream + ", " + sMsg + ", \"" + sVar + "\")";
 
 					return s;
 				},
+				*/
 				next: function () { // varargs
 					var	s = "",
 						i;

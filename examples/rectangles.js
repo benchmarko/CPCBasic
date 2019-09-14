@@ -2,7 +2,7 @@
 
 "use strict";
 
-cpcBasic.addItem("",  String.raw`
+cpcBasic.addItem("", function () { /*
 100 'rectangles
 110 for m=2 to 0 step -1
 120 gosub 300
@@ -17,11 +17,11 @@ cpcBasic.addItem("",  String.raw`
 320 for i = 0 to 48 step 2
 330 graphics pen ((i + 1) / 2) mod 16
 340 move 0+i,0+i
-350 draw 639-i,0+i 
+350 draw 639-i,0+i
 360 draw 639-i,399-i
 370 draw 0+i,399-i
 380 draw 0+i,0+i
 390 frame
 400 next
 410 return
-`);
+*/ });

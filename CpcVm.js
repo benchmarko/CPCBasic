@@ -52,10 +52,8 @@ CpcVm.prototype = {
 
 		this.iLine = 0; // current line number (or label)
 
-		//this.bStop = false;
 		this.sStopLabel = ""; // stop label or reason
 		this.iStopPriority = 0; // stop priority (higher number means higher priority which can overwrite lower priority)
-		this.fnInputCallback = null; // callback for stop reason "input"
 		// special stop labels and priorities:
 		// "timer": 20 (timer expired)
 		// "key": 30  (wait for key)
@@ -63,8 +61,12 @@ CpcVm.prototype = {
 		// "input": 45  (wait for input: input, line input, randomize without parameter)
 		// "error": 50 (BASIC error, error command)
 		// "stop": 60 (stop or end command)
+		// "break": 80 (break pressed)
 		// "end": 90 (end of program)
 		// "reset": 99 (reset canvas)
+		this.fnInputCallback = null; // callback for stop reason "input"
+		//this.aInputVars = []; // list of variables for input command
+		this.aInputValues = null;
 
 		this.sOut = ""; // console output
 
@@ -79,6 +81,9 @@ CpcVm.prototype = {
 
 		this.oGosubStack = []; // stack of line numbers for gosub/return
 		this.bDeg = false; // degree or radians
+
+
+		this.aMem = []; // for peek, poke
 		this.iHimem = 42619; // high memory limit, just an example
 
 		this.aTimer = []; // BASIC timer 0..3 (3 has highest priority)
@@ -103,10 +108,8 @@ CpcVm.prototype = {
 
 		this.v = options.variables || {}; // collection of BASIC variables
 
-		//this.iMode = 1; // screen mode 0..2
+		this.iMode = null;
 		this.mode(1);
-		//this.vmInitWindowData();
-
 		this.sInput = ""; // input handling
 	},
 
@@ -178,7 +181,6 @@ CpcVm.prototype = {
 				if (!oTimer.bRepeat) { // not repeating
 					oTimer.bActive = false;
 				} else {
-					//oTimer.iNextTimeMs += oTimer.iInterval * this.iFrameTimeMs; // set next expiration time
 					iDelta = iTime - oTimer.iNextTimeMs;
 					oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
 				}
@@ -283,12 +285,13 @@ CpcVm.prototype = {
 				iPos: 0, // current text position in line
 				iVpos: 0,
 				iPaper: 0,
-				iPen: 1
+				iPen: 1,
+				bTag: false
 			},
 			i;
 
 		for (i = 0; i < 8; i += 1) {
-			this.aWindow[i] = Object.assign(oData, this.mWinData[this.iMode]);
+			this.aWindow[i] = Object.assign({}, oData, this.mWinData[this.iMode]); // new object for every window
 		}
 	},
 
@@ -312,13 +315,6 @@ CpcVm.prototype = {
 
 	vmStop: function (sLabel, iStopPriority) {
 		iStopPriority = iStopPriority || 0;
-		//this.bStop = true;
-		/*
-		if (sLabel === "end") {
-			//iStopPriority = 90;
-			this.vmGotoLine(sLabel, "stop");
-		}
-		*/
 		if (iStopPriority > this.iStopPriority) {
 			this.iStopPriority = iStopPriority;
 			this.sStopLabel = sLabel;
@@ -393,8 +389,21 @@ CpcVm.prototype = {
 		return this.sInput;
 	},
 
+
 	abs: function (n) {
 		return Math.abs(n);
+	},
+
+	addressOf: function (sVar) { // addressOf operator
+		var aVarNames = Object.keys(this.v),
+			iPos;
+
+		sVar = sVar.replace("v.", "");
+		iPos = aVarNames.indexOf(sVar);
+		if (iPos === -1) {
+			this.error(5); // Improper argument
+		}
+		return iPos;
 	},
 
 	afterGosub: function (iInterval, iTimer, iLine) {
@@ -497,7 +506,6 @@ CpcVm.prototype = {
 		oWin = this.aWindow[iStream];
 		this.oCanvas.clearWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom); // cls window
 		this.sOut = "";
-		//this.locate(iStream, 1, 1);
 		oWin.iPos = 0;
 		oWin.iVpos = 0;
 	},
@@ -615,6 +623,7 @@ CpcVm.prototype = {
 
 	eof: function () {
 		this.vmNotImplemented("eof");
+		return -1;
 	},
 
 	erase: function () {
@@ -729,6 +738,11 @@ CpcVm.prototype = {
 	},
 
 	inkey$: function () {
+		var sKey = this.oCanvas.getKeyFromBuffer(),
+			sInput = "";
+
+		sInput = sKey; //TTT
+		/*
 		var iCode = this.oCanvas.getKeyFromBuffer(),
 			sInput = "";
 
@@ -738,6 +752,8 @@ CpcVm.prototype = {
 				sInput += String.fromCharCode(this.oCanvas.getKeyFromBuffer());
 			}
 		}
+		*/
+
 		return sInput;
 	},
 
@@ -745,24 +761,79 @@ CpcVm.prototype = {
 		this.vmNotImplemented("inp");
 	},
 
-	input: function (iStream, sMsg, sVar) {
-		var sInput;
+	/*
+	vmInputCallback: function (sInput) {
+		var aInputVars = this.aInputVars,
+			iLength = aInputVars.length,
+			v = this.v,
+			aValues, sVar, sValue, i;
 
-		Utils.console.log("input:");
-
-		this.print(iStream, sMsg);
-
-		// a simple input via prompt
-		sInput = window.prompt(sMsg + " " + sVar); // eslint-disable-line no-alert
-		if (sInput === null) {
-			sInput = "";
+		Utils.console.log("input: " + sInput);
+		aValues = sInput.split(",", iLength);
+		for (i = 0; i < iLength; i += 1) {
+			sVar = aInputVars[i];
+			sValue = aValues[i];
+			if (sVar.indexOf("$") < 0) { //TTT no string?
+				sValue = Number(sValue);
+			}
+			v[sVar] = sValue; // set variable
 		}
-		if (sVar.indexOf("$") < 0) { //TTT no string?
-			sInput = Number(sInput);
-		}
-		this.print(iStream, sInput);
-		return sInput;
 	},
+	*/
+
+	vmGetNextInput: function (sVar) {
+		var aInputValues = this.aInputValues,
+			sValue;
+
+		Utils.console.log("vmGetInput: " + sVar);
+		sValue = aInputValues.shift(); //TTT
+		if (sVar.indexOf("$") < 0) { //TTT no string?
+			sValue = Number(sValue);
+		}
+		return sValue;
+	},
+
+	vmInputCallback: function (sInput) {
+		Utils.console.log("vmInputCallback: " + sInput);
+		this.aInputValues = sInput.split(",");
+	},
+
+	input: function (iStream, sMsg) { // varargs
+		//iStream = iStream || 0;
+		if (iStream < 8) {
+			this.fnInputCallback = this.vmInputCallback.bind(this);
+			/*
+			//TTT arguments.length
+			for (i = 2; i < arguments.length; i += 1) {
+				aInputVars[i].push(arguments[i]);
+			}
+			*/
+			this.print(iStream, sMsg);
+			this.vmStop("input", 45);
+		} else if (iStream === 8) {
+			this.aInputValues = [];
+			this.vmNotImplemented("input #8");
+		} else if (iStream === 9) {
+			this.aInputValues = [];
+			this.vmNotImplemented("input #9");
+		}
+	},
+
+	/*
+	input: function (iStream, sMsg) { // varargs
+		var aInputVars = this.aInputVars,
+			i;
+
+		//Utils.console.log("input:");
+		this.fnInputCallback = this.vmInputCallback.bind(this);
+		aInputVars.length = 0;
+		for (i = 2; i < arguments.length; i += 1) {
+			aInputVars[i].push(arguments[i]);
+		}
+		this.print(iStream, sMsg);
+		this.vmStop("input", 45);
+	},
+	*/
 
 	instr: function (p1, p2, p3) { // optional startpos as first parameter
 		if (typeof p1 === "string") {
@@ -799,6 +870,32 @@ CpcVm.prototype = {
 		this.vmNotImplemented("let");
 	},
 
+	vmLineInputCallback: function (sInput) {
+		Utils.console.log("vmLineInputCallback: " + sInput);
+		this.aInputValues = [sInput];
+	},
+
+	lineInput: function (iStream, sMsg, sVar) { // sVar must be string variable
+		//iStream = iStream || 0;
+		if (iStream < 8) {
+			this.fnInputCallback = this.vmLineInputCallback.bind(this);
+			/*
+			//TTT arguments.length
+			for (i = 2; i < arguments.length; i += 1) {
+				aInputVars[i].push(arguments[i]);
+			}
+			*/
+			this.print(iStream, sMsg);
+			this.vmStop("input", 45);
+		} else if (iStream === 8) {
+			this.aInputValues = [];
+			this.vmNotImplemented("line input #8");
+		} else if (iStream === 9) {
+			this.aInputValues = [];
+			this.vmNotImplemented("line input #9");
+		}
+	},
+	/*
 	lineInput: function (iStream, sMsg, sVar) { // sVar must be string variable
 		var sInput;
 
@@ -814,6 +911,7 @@ CpcVm.prototype = {
 		this.print(iStream, sInput);
 		return sInput;
 	},
+	*/
 
 	list: function () {
 		this.vmNotImplemented("list");
@@ -895,11 +993,17 @@ CpcVm.prototype = {
 
 	// not
 
-	// on break cont
+	onBreakCont: function () {
+		this.vmNotImplemented("on break cont");
+	},
 
-	// on break gosub
+	onBreakGosub: function () {
+		this.vmNotImplemented("on break gosub");
+	},
 
-	// on break stop
+	onBreakStop: function () {
+		this.vmNotImplemented("on break stop");
+	},
 
 	onErrorGoto: function () {
 		this.vmNotImplemented("on error goto");
@@ -944,7 +1048,7 @@ CpcVm.prototype = {
 		this.oCanvas.setOrigin(xOff, yOff);
 
 		if (xLeft !== undefined) {
-			this.oCanvas.setClipping(xLeft, yBottom, xRight - xLeft, yTop - yBottom);
+			this.oCanvas.setClipping(xLeft, yBottom, xRight - xLeft, yBottom - yTop);
 		}
 	},
 
@@ -962,9 +1066,11 @@ CpcVm.prototype = {
 		this.oCanvas.setPaper(iPaper);
 	},
 
-	peek: function () {
-		this.vmNotImplemented("peek");
-		return 0;
+	peek: function (iAddr) {
+		var iByte = this.aMem[iAddr] || 0;
+
+		//this.vmNotImplemented("peek");
+		return iByte;
 	},
 
 	pen: function (iStream, iPen) {
@@ -989,8 +1095,9 @@ CpcVm.prototype = {
 		this.vmAddGraphicsItem("p", true, x, y, iGPen, iGMask);
 	},
 
-	poke: function () {
-		this.vmNotImplemented("poke");
+	poke: function (iAddr, iByte) {
+		this.aMem[iAddr] = iByte;
+		//this.vmNotImplemented("poke");
 	},
 
 	pos: function (iStream) {
@@ -1040,7 +1147,6 @@ CpcVm.prototype = {
 					y = oWin.iBottom - iTop;
 					this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
 				}
-				//this.oCanvas.printChar(iChar, x + iLeft, y + iTop);
 				this.oCanvas.printChar(iChar, x + iLeft, y + iTop);
 				x += 1;
 			}
@@ -1138,7 +1244,6 @@ CpcVm.prototype = {
 			}
 			n = Number(n);
 			this.oRandom.init(n);
-			//this.vmRandomizeCallback(n);
 		}
 	},
 
@@ -1184,6 +1289,8 @@ CpcVm.prototype = {
 		if (iLine in this.oDataLineIndex) {
 			this.iData = this.oDataLineIndex[iLine];
 		} else {
+			Utils.console.warn("restore: " + iLine + " not found or no data line");
+			// TODO try to find next data line > iLine
 			this.error(8); // Line does not exist
 		}
 	},
@@ -1296,7 +1403,10 @@ CpcVm.prototype = {
 	},
 
 	sq: function () {
+		var iSq = 4;
+
 		this.vmNotImplemented("sq");
+		return iSq;
 	},
 
 	sqr: function (n) {
@@ -1477,6 +1587,8 @@ CpcVm.prototype = {
 
 	windowSwap: function (iStream1, iStream2) {
 		var oTemp = this.aWindow[iStream1];
+
+		iStream2 = iStream2 || 0; // iStream2 is optional
 
 		this.aWindow[iStream1] = this.aWindow[iStream2];
 		this.aWindow[iStream2] = oTemp;
