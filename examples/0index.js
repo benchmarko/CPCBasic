@@ -48,6 +48,10 @@ cpcBasic.addIndex("./", function () { /*
 	{
 		"key": "rectangles",
 		"title": "Rectangles"
+	},
+    {
+		"key": "seconds",
+		"title": "Seconds Test"
     },
     {
 		"key": "simple",
@@ -55,8 +59,12 @@ cpcBasic.addIndex("./", function () { /*
     },
 	{
 		"key": "stardodger",
-		"title": "Stardodger Game"
+		"title": "Stardodger Game (Textual)"
 	},
+	{
+		"key": "spacewar",
+		"title": "Spacewar Game (Textual)"
+    },
 	{
 		"key": "stars",
 		"title": "Stars"

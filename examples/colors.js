@@ -21,11 +21,16 @@ cpcBasic.addItem("", function () { /*
 1860 f=0
 1870 AFTER 500 GOSUB 2190
 1880 IF f=0 THEN frame:goto 1880
-1885 stop
+1885 ?"Loading graphics..."
+1886 after 100 gosub 2300
+1887 IF f=1 THEN frame:goto 1887
+1888 goto 2400
+1889 '
 1890 'draw circle plus 3,4 or 6 around it
 1895 di
 1896 gosub 1900
-1897 ei:return
+1897 ei
+1898 return
 1900 cx%=cx(st):cy%=cy(st):lc(st)=0
 1910 FOR x%=1 TO r(st)
 1920 ORIGIN cx%,cy%,0,640,0,400
@@ -62,4 +67,7 @@ cpcBasic.addItem("", function () { /*
 2190 r=REMAIN(1)+REMAIN(2)+REMAIN(3)
 2200 f=1
 2210 RETURN
+2300 f=2
+2310 return
+2400 run "graphics"
 */ });

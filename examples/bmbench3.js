@@ -3,12 +3,13 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-500 REM start
+500 REM BM Bench - bmbench.bas (BASIC) mod1
+510 REM https://github.com/benchmarko/BMbench
 600 'PRINT "Press and release Space to start measurement"
 610 'IF INKEY(47)<>0 THEN 610
 620 'IF INKEY(47)<>-1 THEN 620
-900 'MODE 2
-999 'CALL &BD19
+900 MODE 2
+999 CALL &BD19
 1000 REM BM Bench - bmbench.bas (BASIC) mod1
 1010 REM (c) Marco Vieth, 2002
 1020 REM http://www.benchmarko.de

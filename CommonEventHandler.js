@@ -87,9 +87,9 @@ CommonEventHandler.prototype = {
 	},
 
 	onParseButtonClick: function () {
-		var sInput = this.view.getAreaValue("inputText");
+		//var sInput = this.view.getAreaValue("inputText");
 
-		this.controller.fnParse(sInput);
+		this.controller.fnParse();
 	},
 
 	onRunButtonClick: function () {
@@ -111,9 +111,9 @@ CommonEventHandler.prototype = {
 	},
 
 	onParseRunButtonClick: function () {
-		var sInput = this.view.getAreaValue("inputText");
+		//var sInput = this.view.getAreaValue("inputText");
 
-		this.controller.fnParseRun(sInput);
+		this.controller.fnParseRun();
 	},
 
 	onHelpButtonClick: function () {
@@ -149,6 +149,10 @@ CommonEventHandler.prototype = {
 			sExample = this.view.getSelectValue("exampleSelect"),
 			sUrl, oExample,
 
+			fnParseRunExample = function ()	{
+				that.controller.fnParseRun();
+			},
+
 			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
 				var sInput;
 
@@ -161,7 +165,8 @@ CommonEventHandler.prototype = {
 				that.view.setAreaValue("inputText", sInput);
 				that.view.setAreaValue("outputText", "");
 				that.controller.fnReset();
-				that.onParseRunButtonClick();
+				//that.onParseRunButtonClick();
+				setTimeout(fnParseRunExample, 100); // TTT hopefully the reset is done already
 			},
 			fnExampleError = function () {
 				Utils.console.log("Example " + sUrl + " error");

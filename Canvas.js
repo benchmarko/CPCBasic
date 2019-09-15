@@ -63,6 +63,12 @@ Canvas.prototype = {
 			iLineWidth: 1,
 			iCharWidth: 8,
 			iCharHeight: 16
+		},
+		{
+			iInks: 16, // mode 3 not available on CPC
+			iLineWidth: 1,
+			iCharWidth: 8,
+			iCharHeight: 16
 		}
 	],
 

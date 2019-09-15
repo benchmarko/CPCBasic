@@ -40,6 +40,12 @@ CpcVm.prototype = {
 			iRight: 79,
 			iTop: 0,
 			iBottom: 24
+		},
+		{
+			iLeft: 0, // mode 3 not available on CPC
+			iRight: 79,
+			iTop: 0,
+			iBottom: 24
 		}
 	],
 
@@ -49,6 +55,8 @@ CpcVm.prototype = {
 		this.options = options || {};
 
 		this.iNextFrameTime = Date.now() + this.iFrameTimeMs; // next time of frame fly
+		this.iTimeUntilFrame = 0;
+		this.iStopCount = 0;
 
 		this.iLine = 0; // current line number (or label)
 
@@ -65,8 +73,7 @@ CpcVm.prototype = {
 		// "end": 90 (end of program)
 		// "reset": 99 (reset canvas)
 		this.fnInputCallback = null; // callback for stop reason "input"
-		//this.aInputVars = []; // list of variables for input command
-		this.aInputValues = null;
+		this.aInputValues = [];
 
 		this.sOut = ""; // console output
 
@@ -94,7 +101,9 @@ CpcVm.prototype = {
 				bRepeat: false, // flag if timer is repeating (every) or one time (after)
 				iIntervalMs: 0, // interval or timeout
 				bActive: false, // flag if timer is active
-				iNextTime: 0 // next expiration time
+				iNextTime: 0, // next expiration time
+				bHandlerRunning: false, // flag if handler (subroutine) is running
+				iStackIndexReturn: 0 // index in gosub stack with return, if handler is running
 			});
 		}
 		this.bTimersDisabled = false; // flag if timers are disabled
@@ -147,7 +156,7 @@ CpcVm.prototype = {
 				"WEND missing", // 29
 				"Unexpected WEND", // 30
 				"File not open", // 31,
-				"Broken in", // 32
+				"Broken in", // 32  (derr=146: xxx not found)
 				"Unknown error" // 33...
 			],
 			sError = aErrors[iErr] || aErrors[aErrors.length - 1]; // Unknown error
@@ -176,8 +185,15 @@ CpcVm.prototype = {
 		}
 		for (i = 3; i >= 0; i -= 1) { // check timers starting with highest priority first
 			oTimer = this.aTimer[i];
-			if (oTimer.bActive && iTime > oTimer.iNextTimeMs) { // timer expired?
+			/* TTT
+			if (oTimer.bHandlerRunning) { // a running handler will also block other timer
+				break;
+			}
+			*/
+			if (oTimer.bActive && !oTimer.bHandlerRunning && iTime > oTimer.iNextTimeMs) { // timer expired?
 				this.gosub(this.iLine, oTimer.iLine);
+				oTimer.bHandlerRunning = true;
+				oTimer.iStackIndexReturn = this.oGosubStack.length; //TTT
 				if (!oTimer.bRepeat) { // not repeating
 					oTimer.bActive = false;
 				} else {
@@ -185,6 +201,20 @@ CpcVm.prototype = {
 					oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
 				}
 				break; // TODO: found expired timer. What happens with timers with lower priority?
+			}
+		}
+	},
+
+	vmCheckTimerHandlers: function () {
+		var i, oTimer;
+
+		for (i = 3; i >= 0; i -= 1) {
+			oTimer = this.aTimer[i];
+			if (oTimer.bHandlerRunning) {
+				if (oTimer.iStackIndexReturn > this.oGosubStack.length) {
+					oTimer.bHandlerRunning = false;
+					oTimer.iStackIndexReturn = 0;
+				}
 			}
 		}
 	},
@@ -204,8 +234,8 @@ CpcVm.prototype = {
 		return iFps;
 	},
 
-	vmCheckNextFrame: function () {
-		var iTime = Date.now(),
+	vmCheckNextFrame: function (iTime) {
+		var //iTime = Date.now(),
 			iDelta,
 			iTimeUntilFrame;
 
@@ -229,6 +259,14 @@ CpcVm.prototype = {
 			this.vmCheckTimer(iTime); // check BASIC timers
 		}
 
+		//iTimeUntilFrame = this.iNextFrameTime - iTime;
+		//this.iTimeUntilFrame = iTimeUntilFrame; //TTT
+	},
+
+	vmGetTimeUntilFrame: function (iTime) {
+		var iTimeUntilFrame;
+
+		iTime = iTime || Date.now();
 		iTimeUntilFrame = this.iNextFrameTime - iTime;
 		return iTimeUntilFrame;
 	},
@@ -236,10 +274,15 @@ CpcVm.prototype = {
 	vmLoopCondition: function () {
 		var iTime = Date.now();
 
-		if (iTime > this.iNextFrameTime) {
-			this.vmStop("timer", 20);
+		if (iTime >= this.iNextFrameTime) {
+			this.vmCheckNextFrame(iTime);
+			this.iStopCount += 1;
+			if (this.iStopCount >= 5) { // do not stop too often because of just timer resason because setTimeout is expensive
+				this.iStopCount = 0;
+				this.vmStop("timer", 20);
+			}
+			//this.vmStop("timer", 20);
 		}
-		//return !this.bStop;
 		return this.sStopLabel === "";
 	},
 
@@ -313,9 +356,9 @@ CpcVm.prototype = {
 		this.oCanvas.setDefaultInks();
 	},
 
-	vmStop: function (sLabel, iStopPriority) {
+	vmStop: function (sLabel, iStopPriority, bForce) {
 		iStopPriority = iStopPriority || 0;
-		if (iStopPriority > this.iStopPriority) {
+		if (bForce || iStopPriority >= this.iStopPriority) {
 			this.iStopPriority = iStopPriority;
 			this.sStopLabel = sLabel;
 		}
@@ -761,26 +804,6 @@ CpcVm.prototype = {
 		this.vmNotImplemented("inp");
 	},
 
-	/*
-	vmInputCallback: function (sInput) {
-		var aInputVars = this.aInputVars,
-			iLength = aInputVars.length,
-			v = this.v,
-			aValues, sVar, sValue, i;
-
-		Utils.console.log("input: " + sInput);
-		aValues = sInput.split(",", iLength);
-		for (i = 0; i < iLength; i += 1) {
-			sVar = aInputVars[i];
-			sValue = aValues[i];
-			if (sVar.indexOf("$") < 0) { //TTT no string?
-				sValue = Number(sValue);
-			}
-			v[sVar] = sValue; // set variable
-		}
-	},
-	*/
-
 	vmGetNextInput: function (sVar) {
 		var aInputValues = this.aInputValues,
 			sValue;
@@ -799,15 +822,8 @@ CpcVm.prototype = {
 	},
 
 	input: function (iStream, sMsg) { // varargs
-		//iStream = iStream || 0;
 		if (iStream < 8) {
 			this.fnInputCallback = this.vmInputCallback.bind(this);
-			/*
-			//TTT arguments.length
-			for (i = 2; i < arguments.length; i += 1) {
-				aInputVars[i].push(arguments[i]);
-			}
-			*/
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else if (iStream === 8) {
@@ -818,22 +834,6 @@ CpcVm.prototype = {
 			this.vmNotImplemented("input #9");
 		}
 	},
-
-	/*
-	input: function (iStream, sMsg) { // varargs
-		var aInputVars = this.aInputVars,
-			i;
-
-		//Utils.console.log("input:");
-		this.fnInputCallback = this.vmInputCallback.bind(this);
-		aInputVars.length = 0;
-		for (i = 2; i < arguments.length; i += 1) {
-			aInputVars[i].push(arguments[i]);
-		}
-		this.print(iStream, sMsg);
-		this.vmStop("input", 45);
-	},
-	*/
 
 	instr: function (p1, p2, p3) { // optional startpos as first parameter
 		if (typeof p1 === "string") {
@@ -895,23 +895,6 @@ CpcVm.prototype = {
 			this.vmNotImplemented("line input #9");
 		}
 	},
-	/*
-	lineInput: function (iStream, sMsg, sVar) { // sVar must be string variable
-		var sInput;
-
-		Utils.console.log("lineInput:");
-
-		this.print(iStream, sMsg);
-
-		// a simple input via prompt
-		sInput = window.prompt(sMsg + " " + sVar); // eslint-disable-line no-alert
-		if (sInput === null) {
-			sInput = "";
-		}
-		this.print(iStream, sInput);
-		return sInput;
-	},
-	*/
 
 	list: function () {
 		this.vmNotImplemented("list");
@@ -1309,6 +1292,7 @@ CpcVm.prototype = {
 		if (iLine === undefined) {
 			this.error(3); // Unexpected Return [in <line>]
 		}
+		this.vmCheckTimerHandlers();
 		this.vmGotoLine(iLine, "return");
 	},
 
@@ -1345,6 +1329,7 @@ CpcVm.prototype = {
 
 	rsxBasic: function () {
 		this.vmNotImplemented("|BASIC");
+		this.vmStop("reset", 90);
 	},
 
 	rsxCpm: function () {
@@ -1352,6 +1337,7 @@ CpcVm.prototype = {
 	},
 
 	run: function (numOrString) {
+		/*
 		var iLine;
 
 		if (typeof numOrString === "string") { // filename?
@@ -1363,6 +1349,13 @@ CpcVm.prototype = {
 			this.vmInitStack();
 			this.clearInput();
 			this.goto(iLine);
+		}
+		*/
+		this.aInputValues = [numOrString]; // we misuse aInputValues
+		if (typeof numOrString === "string") { // filename?
+			this.vmStop("loadFile", 90);
+		} else {
+			this.vmStop("run", 90); // number or undefined
 		}
 	},
 

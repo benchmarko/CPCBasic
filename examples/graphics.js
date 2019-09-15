@@ -26,5 +26,8 @@ cpcBasic.addItem("", function () { /*
 1680 IF i=1 THEN FRAME:INK 1,24:INK 2,6:INK 3,2:gosub 1585:i=2:RETURN
 1690 IF I=2 THEN FRAME:INK 1,6:INK 2,2:INK 3,24:gosub 1585:I=3:RETURN
 1700 IF I=3 THEN FRAME:INK 1,2:INK 2,24:INK 3,6:gosub 1585:I=1:RETURN
-2000 end
+2000 ?"loading colors..."
+2010 T=TIME+100*20
+2020 IF T>TIME THEN frame:goto 2020
+2020 run"colors"
 */ });
