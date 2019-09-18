@@ -46,9 +46,10 @@ CPCBasic Links:
 - It is just BASIC and cannot execute Z80 machine code
 - Changing the color with "INK" does not change existing drawings, no blinking colors
 - "TESTR" cannot distinguish between pens of same color
-- Not implemented commands, e.g. DEFINT, DEFREAL, DEFSTR, KEY, KEY DEF
+- Not implemented commands, e.g. KEY, KEY DEF
 - RESTORE on lines without DATA
-- Print does not handle BASIC control codes
+- Print does not handle all BASIC control codes
+- Limited type checking, limited DEFINT, DEFREAL, DEFSTR,
 - No sound
 - No direct input mode of BASIC commands, e.g. LIST, RENUM, ...
 - Few code checks
@@ -70,7 +71,7 @@ CPCBasic Links:
 
 ## Possible Future Enhancements
 
-- Fix some limitations, e.g. handle BASIC control codes
+- Fix some limitations, e.g. handle all BASIC control codes
 - Drag&Drop BASIC programs (tokenized or ASCII) into CPCBasic
 - Sound support
 - Support DSK images?

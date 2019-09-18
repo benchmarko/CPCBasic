@@ -243,11 +243,6 @@ BasicParser.prototype = {
 			isWhiteSpace = function (c) {
 				return (/[ \r]/).test(c);
 			},
-			/*
-			isNotWhiteSpace = function (c) {
-				return !isWhiteSpace(c);
-			},
-			*/
 			isNewLine = function (c) {
 				return (/[\n]/).test(c);
 			},
@@ -308,8 +303,8 @@ BasicParser.prototype = {
 				});
 			},
 			hexEscape = function (str) {
-				return str.replace(/[\x00-\x1f]/g, function(sChar) {
-					return "\\x" + ("00" + sChar.charCodeAt().toString(16)).slice(-2);
+				return str.replace(/[\x00-\x1f]/g, function (sChar2) { // eslint-disable-line no-control-regex
+					return "\\x" + ("00" + sChar2.charCodeAt().toString(16)).slice(-2);
 				});
 			},
 			fnParseKeyword = function () {
@@ -330,7 +325,6 @@ BasicParser.prototype = {
 							sChar = "";
 							sToken = advanceWhile(isNotQuotes);
 							if (!isQuotes(sChar)) {
-								//throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
 								Utils.console.warn("Unterminated string ", sToken, " at position ", iStartPos + 1);
 							}
 							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
@@ -403,7 +397,6 @@ BasicParser.prototype = {
 				sChar = "";
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					//throw new BasicParser.ErrorObject("Unterminated string", sToken, iStartPos + 1);
 					Utils.console.warn("Unterminated string ", sToken, " at position ", iStartPos + 1);
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
@@ -953,6 +946,18 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/* TTT
+		stmt("defint", function () {
+			var oValue = {
+				type: "defint",
+				args: [], //fnGetArgs(),
+				pos: aTokens[iIndex - 1].pos
+			};
+
+			return oValue;
+		});
+		*/
+
 		stmt("end", function () {
 			var oValue = {
 				type: "end"
@@ -1067,7 +1072,6 @@ BasicParser.prototype = {
 		stmt("input", function () {
 			var oValue = {
 					type: "input",
-					//name: "input",
 					args: [],
 					pos: aTokens[iIndex - 1].pos
 				},
@@ -1076,10 +1080,12 @@ BasicParser.prototype = {
 
 			oValue.args.push(fngetOptionalStream());
 
-			if (oToken.type === ";") { // no newline?
+			oValue.args.push({
+				type: "string",
+				value: (oToken.type === ";") ? ";" : ""
+			});
+			if (oToken.type === ";") { // no newline after input?
 				advance(";");
-			} else {
-				sText = "\\n";
 			}
 
 			if (oToken.type === "string") {
@@ -1137,7 +1143,6 @@ BasicParser.prototype = {
 
 		stmt("line", function () {
 			var oValue = {
-					//type: "fcall",
 					type: "lineInput",
 					args: [],
 					pos: aTokens[iIndex - 1].pos
@@ -1149,10 +1154,12 @@ BasicParser.prototype = {
 
 			oValue.args.push(fngetOptionalStream());
 
-			if (oToken.type === ";") { // no newline?
+			oValue.args.push({
+				type: "string",
+				value: (oToken.type === ";") ? ";" : ""
+			});
+			if (oToken.type === ";") { // no newline after input?
 				advance(";");
-			} else {
-				sText = "\\n";
 			}
 
 			if (oToken.type === "string") {
@@ -1349,7 +1356,7 @@ BasicParser.prototype = {
 			if (!bTrailingSemicolon) {
 				oValue.args.push({
 					type: "string",
-					value: "\\n"
+					value: "\\r\\n"
 				});
 			}
 			return oValue;
@@ -1363,7 +1370,6 @@ BasicParser.prototype = {
 				args: fnGetArgs()
 			};
 
-			//return fnCreateCmdCall("randomize");
 			return oValue;
 		});
 
@@ -1375,7 +1381,7 @@ BasicParser.prototype = {
 				advance("next");
 				sName = "resumeNext";
 			}
-			oValue = fnCreateCmdCall(sName); //TTT
+			oValue = fnCreateCmdCall(sName);
 			return oValue;
 		});
 
@@ -1684,37 +1690,26 @@ BasicParser.prototype = {
 			},
 
 			fnParseInput = function (node) {
-				var aNodeArgs, sLabel, value, i, sStream, sMsg;
+				var aNodeArgs, sLabel, value, i, sStream, sNoCRLF, sMsg;
 
 				sLabel = "s" + that.iStopCount;
 				that.iStopCount += 1;
 
 				aNodeArgs = fnParseArgs(node.args);
 				sStream = aNodeArgs.shift();
+				sNoCRLF = aNodeArgs.shift();
 				sMsg = aNodeArgs.shift();
 
-				value = "o.input(" + sStream + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+				value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 				for (i = 0; i < aNodeArgs.length; i += 1) {
 					value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
 				}
 
-				/*
-				sStream = aNodeArgs[0];
-				sMsg = aNodeArgs[1];
-				for (i = 2; i < aNodeArgs.length; i += 1) {
-					if (s !== "") {
-						s += "; ";
-					}
-					s += aNodeArgs[i] + " = o.input(" + sStream + ", " + sMsg + ", \"" + aNodeArgs[i] + "\")";
-				}
-				*/
-
-				//value = "if (" + parseNode(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
 				return value;
 			},
 
 			fnParseLineInput = function (node) {
-				var aNodeArgs, sLabel, value, i, sStream, sMsg;
+				var aNodeArgs, sLabel, value, i, sStream, sNoCRLF, sMsg;
 
 				sLabel = "s" + that.iStopCount;
 				that.iStopCount += 1;
@@ -1723,7 +1718,7 @@ BasicParser.prototype = {
 				sStream = aNodeArgs.shift();
 				sMsg = aNodeArgs.shift();
 
-				value = "o.lineInput(" + sStream + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+				value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 				for (i = 0; i < aNodeArgs.length; i += 1) {
 					value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
 				}
@@ -1816,7 +1811,7 @@ BasicParser.prototype = {
 					break;
 
 				case "call":
-					sName = "c" + that.iStopCount; //TTT
+					sName = "c" + that.iStopCount;
 					that.iStopCount += 1;
 					value = "o.call(" + fnParseArgs(node.args).join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
@@ -1850,14 +1845,6 @@ BasicParser.prototype = {
 					value = fnParseIf(node);
 					break;
 				case "input":
-					/*
-					sName = "s" + that.iStopCount; // use also stopCount for input? TTT
-					that.iStopCount += 1;
-					value = "o.input(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value += " " + aNodeArgs[i];
-					}
-					*/
 					value = fnParseInput(node);
 					break;
 				case "label":
@@ -1986,7 +1973,30 @@ BasicParser.prototype = {
 
 					for (i = 0; i < arguments.length; i += 1) {
 						sName = arguments[i];
+						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
 						aArgs.push("o.defint(\"" + sName + "\")");
+					}
+					return aArgs.join("; ");
+				},
+				defreal: function () { // varargs
+					var	aArgs = [],
+						sName, i;
+
+					for (i = 0; i < arguments.length; i += 1) {
+						sName = arguments[i];
+						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
+						aArgs.push("o.defreal(\"" + sName + "\")");
+					}
+					return aArgs.join("; ");
+				},
+				defstr: function () { // varargs
+					var	aArgs = [],
+						sName, i;
+
+					for (i = 0; i < arguments.length; i += 1) {
+						sName = arguments[i];
+						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
+						aArgs.push("o.defstr(\"" + sName + "\")");
 					}
 					return aArgs.join("; ");
 				},

@@ -13,66 +13,6 @@ if (typeof require !== "undefined") {
 	CpcVm = require("./CpcVm.js"); // eslint-disable-line global-require
 }
 
-
-/*
-// test
-function Stat(bVari) {
-	this.bVari = bVari;
-}
-
-Stat.prototype = {
-	collect: function (x) {
-		if (!this.cnt) { // set values the first time
-			this.min = x;
-			this.max = x;
-			this.cnt = 1;
-			this.avg = x;
-			this.sum = x;
-			if (this.bVari) {
-				this.vri = 0;
-			}
-		} else {
-			this.cnt += 1;
-			this.sum += x;
-
-			if (this.bVari) { // variance...
-				this.vri = (this.cnt - 2.0) / (this.cnt - 1.0) * (this.vri) + (x - this.avg) * (x - this.avg) / this.cnt;
-			}
-
-			this.avg += (x - this.avg) / this.cnt;
-
-			if (x < this.min) {
-				this.min = x;
-			} else if (x > this.max) {
-				this.max = x;
-			}
-		}
-	},
-
-	postprocess: function () {
-		if (this.bVari) {
-			this.std = (this.vri !== null) ? Math.sqrt(this.vri) : 0; // compute standard deviation from variance (0 for undefined)
-		}
-	},
-
-	get: function (sType) {
-		return this[sType]; // 'sum', 'cnt', 'avg', 'min', 'max', 'vri', 'std'
-	},
-
-	toFormattedString: function (aTypes) {
-		var aResult = [],
-			sType, i;
-
-		for (i = 0; i < aTypes.length; i += 1) {
-			sType = aTypes[i];
-			aResult.push(this.get(sType));
-		}
-		return aResult.join(", ");
-	}
-};
-*/
-
-
 function Controller(oModel, oView) {
 	this.init(oModel, oView);
 }
@@ -101,7 +41,7 @@ Controller.prototype = {
 
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
-			aCharset: cpcBasicCharset, //TTT
+			aCharset: cpcBasicCharset,
 			cpcDivId: "cpcArea",
 			view: this.view
 		});
@@ -116,7 +56,6 @@ Controller.prototype = {
 		this.iTimeoutHandle = null;
 
 		this.fnRunStart1Handler = this.fnRunStart1.bind(this);
-		//this.fnKeyDownHandler = this.fnOnKeyDown.bind(this);
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
 		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
 
@@ -221,8 +160,6 @@ Controller.prototype = {
 		this.oCanvas.options.fnOnKeyDown = null;
 		sKey = this.oCanvas.getKeyFromBuffer();
 		this.oVm.vmStop("", 0, true);
-		//this.oVm.sStopLabel = "";
-		//this.oVm.iStopPriority = 0;
 		Utils.console.log("Wait for key: " + sKey);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
@@ -230,26 +167,44 @@ Controller.prototype = {
 	},
 
 	fnWaitForInput: function () {
-		var sInput = this.oVm.vmGetInput(),
+		var oInput = this.oVm.vmGetInputObject(),
+			iStream = oInput.iStream,
+			sInput = oInput.sInput,
 			sKey;
 
 		do {
-			sKey = this.oVm.inkey$(); // or: for iKey: this.oCanvas.getKeyFromBuffer();
-			if (sKey !== "") { // chr13 shows as empty string!
-				sInput += sKey;
-				this.oVm.print(0, sKey);
+			sKey = this.oVm.inkey$(); // or: this.oCanvas.getKeyFromBuffer()
+			// chr13 shows as empty string!
+			if (sKey !== "") {
+				if (sKey === "\x08") { // Backspace
+					if (sInput.length > 0) {
+						sInput = sInput.slice(0, -1);
+						sKey = sKey + " " + sKey;
+					} else {
+						sKey = "\x07"; // ignore Backspace, use BEL
+					}
+					this.oVm.print(iStream, sKey);
+				} else if (sKey === "\r") {
+					// ignore
+				} else {
+					this.oVm.print(iStream, sKey);
+					if (sKey >= "\x20") { // no control codes in buffer
+						sInput += sKey;
+					}
+				}
 			}
-		} while (sKey !== "" && sKey !== "\n" && sKey.charCodeAt(0) !== 13); // get all keys until newline
+		} while (sKey !== "" && sKey !== "\r"); // get all keys until CR
 
-		this.oVm.vmSetInput(sInput);
-		if (sKey.charCodeAt(0) === 13 || sKey === "\n") {
+		oInput.sInput = sInput;
+		if (sKey === "\r") {
 			this.oCanvas.options.fnOnKeyDown = null;
-			//this.oVm.sStopLabel = "";
-			//this.oVm.iStopPriority = 0;
 			this.oVm.vmStop("", 0, true);
 			Utils.console.log("Wait for input: " + sInput);
-			if (this.oVm.fnInputCallback !== null) {
-				this.oVm.fnInputCallback(sInput);
+			if (!oInput.sNoCRLF) {
+				this.oVm.print(iStream, "\r\n");
+			}
+			if (oInput.fnInputCallback) {
+				oInput.fnInputCallback(sInput);
 			}
 			if (this.iTimeoutHandle === null) {
 				this.fnRunStart1();
@@ -312,8 +267,6 @@ Controller.prototype = {
 
 		if (this.fnScript) {
 			oVm.sOut = this.view.getAreaValue("resultText");
-			//oVm.sStopLabel = "";
-			//oVm.iStopPriority = 0;
 			oVm.vmStop("", 0, true);
 			oVm.iLine = iLine;
 
@@ -384,15 +337,13 @@ Controller.prototype = {
 			break;
 
 		case "frame":
-			//oVm.sStopLabel = "";
-			//oVm.iStopPriority = 0;
 			oVm.vmStop("", 0, true);
 			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
 			break;
 
 		case "input":
-			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput; // wait until keypress handler
-			oVm.vmSetInput("");
+			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput;
+			oVm.oInput.sInput = ""; //TTT vmSetInput("");
 			this.fnWaitForInput();
 			break;
 
@@ -420,15 +371,13 @@ Controller.prototype = {
 			break;
 
 		case "run": // TODO: run with line number
-			this.fnRun2(oVm.vmGetNextInput("")); //TTT
+			this.fnRun2(oVm.vmGetNextInput(""));
 			break;
 
 		case "stop":
 			break;
 
 		case "timer":
-			//oVm.sStopLabel = "";
-			//oVm.iStopPriority = 0;
 			oVm.vmStop("", 0, true);
 			break;
 
@@ -454,73 +403,6 @@ Controller.prototype = {
 		}
 	},
 
-	/*
-	fnTestScript1: function (o) {
-		var v = o.v;
-
-		//while (1) { //o.vmLoopCondition()) {
-			switch (o.iLine) {
-			case 0:
-			case "s0":
-				v.i = 0;
-				v.t = o.time() + 1500;
-			case 110:
-				if (o.time() < v.t) {
-					v.i = v.i + 1; o.goto(110);
-					break;
-				}
-			case 120:
-				o.print(0, v.i, "\n");
-			case "end":
-				o.vmStop("end", 90);
-				break;
-			default:
-				o.error(8);
-				o.goto("end");
-				break;
-			}
-	//return;
-	//	}
-	},
-
-	fnTest2: function () {
-		var oVm = this.oVm;
-
-		this.fnTestScript1(oVm);
-
-		if (oVm.sStopLabel === "") {
-			//setTimeout(this.fnTest2.bind(this), 0);
-			setTimeout(this.fnTest2Bound, 0);
-			//return this.fnTest2Bound();
-		} else {
-			Utils.console.log("DEBUG: fnTest2: stopped with i=" + oVm.v.i);
-		}
-	},
-
-	fnTest2Bound: null,
-
-	fnTest1: function () {
-		var oVm = this.oVm;
-
-		oVm.vmInitStack();
-		oVm.vmInitVariables();
-		oVm.vmInitInks();
-		oVm.clearInput();
-
-		oVm.sStopLabel = "";
-		oVm.iStopPriority = 0;
-		oVm.iLine = 0;
-
-		this.fnTest2Bound = this.fnTest2.bind(this);
-		this.fnTest2();
-
-		//while (oVm.sStopLabel === "") {
-		//	this.fnTestScript1(oVm);
-		//}
-		//Utils.console.log("DEBUG: fnTest1 finsished: i=" + oVm.v.i);
-	},
-	*/
-
 	fnParse: function () {
 		this.oVm.vmStop("parse", 90);
 		if (this.iTimeoutHandle === null) {
@@ -544,11 +426,6 @@ Controller.prototype = {
 
 	fnStop: function () {
 		this.oVm.vmStop("break", 80);
-		/*
-		if (sStopLabel === "key" || sStopLabel === "input") { // current sStopLabel was key or input? //TODO
-			this.oCanvas.options.fnOnKeyDown = null;
-		}
-		*/
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
 		}

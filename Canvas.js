@@ -408,16 +408,9 @@ Canvas.prototype = {
 	},
 
 	fnCanvasKeydown: function (event) {
-		var /*
-			mSpecialChars = {
-				37: 75, // left
-				38: 72, // up
-				39: 77, // right
-				40: 80 // down
-			},
-			*/
-			mSpecialKeys = {
-				Enter: "\r", //TTT"\n",
+		var mSpecialKeys = {
+				Backspace: "\x08",
+				Enter: "\r",
 				Spacebar: " " // IE
 			},
 			iKeyCode = event.which || event.keyCode,
@@ -435,15 +428,7 @@ Canvas.prototype = {
 			Utils.console.log("fnCanvasKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " ", event);
 		}
 
-		/*
-		if (iKeyCode in mSpecialChars) {
-			this.aKeyBuffer.push(0);
-			this.aKeyBuffer.push(mSpecialChars[iKeyCode]);
-		} else {
-			this.aKeyBuffer.push(iKeyCode);
-		}
-		*/
-		if (sKey in mSpecialKeys) { // mainly for IE
+		if (sKey in mSpecialKeys) {
 			sKey = mSpecialKeys[sKey];
 		}
 		if (sKey.length === 1) { // ignore special keys with more than 1 character
@@ -682,7 +667,7 @@ Canvas.prototype = {
 		iPaper %= this.aModeData[this.iMode].iInks; // limit papers
 		if (iPaper !== this.iPaper) {
 			this.iPaper = iPaper;
-			this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
+			//TTT this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
 			this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
 		}
 	},
@@ -770,8 +755,8 @@ Canvas.prototype = {
 			iHeight = iBottom + 1 - iTop;
 
 		//this.clearPath(); //TTT
+		this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
 		ctx.clearRect(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, iHeight * iCharHeight);
-		//ctx.clearRect(0, 0, this.iWidth, this.iHeight); // cls complete canvas
 	},
 
 	clearGraphics: function (iPen) {
@@ -825,6 +810,8 @@ Canvas.prototype = {
 		ctx.lineWidth = this.aModeData[iMode].iLineWidth;
 
 		this.clearPath(); //TTT
+		this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
 		ctx.clearRect(0, 0, this.iWidth, this.iHeight); // cls
+		//this.clearWindow(0, x, 0, y); // we have no dimensions here!
 	}
 };
