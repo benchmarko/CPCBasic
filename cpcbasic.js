@@ -92,33 +92,6 @@ cpcBasic = {
 		iDebug = Number(this.model.getProperty("debug"));
 		Utils.debug = iDebug;
 
-		/*
-		this.model.setExample({
-			key: "testpage",
-			title: "Test Page"
-		});
-		this.model.setExample({
-			key: "bmbench3",
-			title: "BM Benchmark 3"
-		});
-		this.model.setExample({
-			key: "keys",
-			title: "Keys Test"
-		});
-		this.model.setExample({
-			key: "rectangles",
-			title: "Rectangles"
-		});
-		this.model.setExample({
-			key: "stardodger",
-			title: "Stardodger"
-		});
-		this.model.setExample({
-			key: "stars",
-			title: "Stars"
-		});
-		*/
-
 		that.controller = new Controller(this.model, this.view);
 	},
 

@@ -84,6 +84,7 @@ CpcVm.prototype = {
 		};
 
 		this.sOut = ""; // console output
+		//this.iPrintStream = 0; // current stream in print
 
 		this.aData = []; // array for BASIC data lines (continuous)
 		this.iData = 0; // current index
@@ -178,6 +179,7 @@ CpcVm.prototype = {
 		this.oCanvas.reset();
 		this.oVarTypes = {};
 		this.vmDefineVarTypes("R", "a-z");
+		this.oInput.fnInputCallback = null; //TTT
 	},
 
 	vmGotoLine: function (line, sMsg) {
@@ -870,6 +872,7 @@ CpcVm.prototype = {
 			this.oInput.iStream = iStream;
 			this.oInput.sNoCRLF = sNoCRLF;
 			this.oInput.fnInputCallback = this.vmInputCallback.bind(this);
+			this.oInput.sInput = "";
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else if (iStream === 8) {
@@ -926,6 +929,7 @@ CpcVm.prototype = {
 			this.oInput.iStream = iStream;
 			this.oInput.sNoCRLF = sNoCRLF;
 			this.oInput.fnInputCallback = this.vmLineInputCallback.bind(this);
+			this.oInput.sInput = "";
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else if (iStream === 8) {
@@ -1398,12 +1402,20 @@ CpcVm.prototype = {
 	print: function (iStream) { // varargs
 		var oWin = this.aWindow[iStream],
 			sBuf = "",
-			sStr, i;
+			aSpecialArgs,
+			sStr, i, arg;
 
+		//this.iPrintStream = iStream;
 		for (i = 1; i < arguments.length; i += 1) {
-			sStr = String(arguments[i]);
-			if (typeof arguments[i] === "number" && arguments[i] >= 0) {
-				sStr = " " + sStr;
+			arg = arguments[i];
+			if (typeof arg === "object") { // delayed call for e.g. tab()
+				aSpecialArgs = arg.args; // TODO: copy?
+				aSpecialArgs.unshift(iStream);
+				sStr = this[arg.type].apply(this, aSpecialArgs);
+			} else if (typeof arg === "number" && arg >= 0) {
+				sStr = " " + String(arg);
+			} else {
+				sStr = String(arg);
 			}
 
 			if (oWin.bTag) {
@@ -1434,7 +1446,8 @@ CpcVm.prototype = {
 
 		if (n === undefined) { // no arguments? input...
 			sMsg = "Random number seed?";
-			this.oInput.fnInputCallback = null; // we do not need it //this.oInput.fnInputCallback = this.vmRandomizeCallback.bind(this);
+			this.oInput.fnInputCallback = null; // we do not need it
+			this.oInput.sInput = "";
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else {
@@ -1554,20 +1567,6 @@ CpcVm.prototype = {
 	},
 
 	run: function (numOrString) {
-		/*
-		var iLine;
-
-		if (typeof numOrString === "string") { // filename?
-			this.vmNotImplemented("run \"file\"");
-			this.goto("end");
-		} else { // so number or undefined
-			iLine = numOrString || 0;
-			this.clear();
-			this.vmInitStack();
-			this.clearInput();
-			this.goto(iLine);
-		}
-		*/
 		this.oInput.aInputValues = [numOrString]; // we misuse aInputValues
 		if (typeof numOrString === "string") { // filename?
 			this.vmStop("loadFile", 90);
@@ -1660,11 +1659,15 @@ CpcVm.prototype = {
 		this.vmNotImplemented("symbolAfter"); // maybe not needed
 	},
 
-	tab: function (n) {
+	// tab
+	//TODO: prints from current pos, must be called after first parts have been printed!
+	tab: function (iStream, n) { // tab() must be first thing in a print statement!, it expects mandatory iStream!
+		var	oWin = this.aWindow[iStream];
+
 		if (n === undefined) { // simulated tab in print for ","
 			n = this.iZone;
 		}
-		return " ".repeat(n); // TODO: adapt spaces for next tab position
+		return " ".repeat(n - 1 - oWin.iPos);
 	},
 
 	tag: function (iStream) {

@@ -155,7 +155,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	sin: "f",
 	sound: "c",
 	space$: "f",
-	spc: "f",
+	spc: "x", // print spc
 	speed: "c", // speed ink, speed key, speed write
 	sq: "f",
 	sqr: "f",
@@ -165,7 +165,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	string$: "f",
 	swap: "x", // window swap
 	symbol: "c", // symbol, symbol after
-	tab: "f",
+	tab: "x", // print tab
 	tag: "c",
 	tagoff: "c",
 	tan: "f",
@@ -661,7 +661,7 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
-			fngetOptionalStream = function () {
+			fnGetOptionalStream = function () {
 				var oValue;
 
 				if (oToken.type === "#") { // stream?
@@ -732,11 +732,14 @@ BasicParser.prototype = {
 		symbol(")");
 		symbol("]");
 
+		// define additional statement parts
 		symbol("break");
 		symbol("else");
+		symbol("spc");
 		symbol("step");
 		symbol("swap");
 		symbol("then");
+		symbol("tab");
 		symbol("to");
 		symbol("using");
 
@@ -1078,7 +1081,7 @@ BasicParser.prototype = {
 				sText = "",
 				sName, oValue2;
 
-			oValue.args.push(fngetOptionalStream());
+			oValue.args.push(fnGetOptionalStream());
 
 			oValue.args.push({
 				type: "string",
@@ -1152,7 +1155,7 @@ BasicParser.prototype = {
 
 			advance("input");
 
-			oValue.args.push(fngetOptionalStream());
+			oValue.args.push(fnGetOptionalStream());
 
 			oValue.args.push({
 				type: "string",
@@ -1206,7 +1209,7 @@ BasicParser.prototype = {
 		});
 
 		stmt("locate", function () {
-			var oStream = fngetOptionalStream(),
+			var oStream = fnGetOptionalStream(),
 				oValue = fnCreateCmdCall("locate");
 
 			oValue.args.unshift(oStream);
@@ -1226,7 +1229,7 @@ BasicParser.prototype = {
 				});
 				advance();
 				if (oToken.type === ",") {
-					advance();
+					advance(",");
 				}
 			}
 			return oValue;
@@ -1282,7 +1285,7 @@ BasicParser.prototype = {
 		});
 
 		stmt("paper", function () {
-			var oStream = fngetOptionalStream(),
+			var oStream = fnGetOptionalStream(),
 				oValue = fnCreateCmdCall("paper");
 
 			oValue.args.unshift(oStream);
@@ -1290,7 +1293,7 @@ BasicParser.prototype = {
 		});
 
 		stmt("pen", function () {
-			var oStream = fngetOptionalStream(),
+			var oStream = fnGetOptionalStream(),
 				oValue = fnCreateCmdCall("pen");
 
 			oValue.args.unshift(oStream);
@@ -1299,7 +1302,7 @@ BasicParser.prototype = {
 
 		stmt("print", function () {
 			var oValue = {
-					type: "fcall",
+					type: "fcall", //"print",
 					args: [],
 					name: "print",
 					pos: aTokens[iIndex - 2].pos
@@ -1308,12 +1311,32 @@ BasicParser.prototype = {
 				iParseIndex = iIndex,
 				bTrailingSemicolon = false,
 				reFormat = /!|&|\\ *\\|#+\.?#*[+-]?/,
-				t, aFormat;
+				t, aFormat, oStream;
 
-			oValue.args.push(fngetOptionalStream());
+			oStream = fnGetOptionalStream();
+			oValue.args.push(oStream);
 
 			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
-				if (oToken.type === "using") {
+				if (oToken.type === "spc") {
+					advance("spc");
+					t = expression(0); // value
+					oValue2 = {
+						type: "fcall",
+						name: "spc",
+						args: [t]
+					};
+					oValue.args.push(oValue2);
+				} else if (oToken.type === "tab") {
+					advance("tab");
+					t = expression(0); // value
+					oValue2 = {
+						//type: "fcall",
+						type: "tab",
+						//name: "tab", //TTT
+						args: [t]
+					};
+					oValue.args.push(oValue2);
+				} else if (oToken.type === "using") {
 					advance("using");
 					t = expression(0); // format
 					aFormat = t.value.split(reFormat);
@@ -1340,9 +1363,9 @@ BasicParser.prototype = {
 					advance(";");
 				} else if (oToken.type === ",") { // default tab, simulate tab...
 					oValue.args.push({
-						type: "fcall",
+						type: "tab", //"fcall",
 						args: [], // special: we use no args to get tab with current zone
-						name: "tab",
+						//name: "tab",
 						pos: aTokens[iParseIndex - 2].pos
 					});
 					advance(",");
@@ -1470,7 +1493,7 @@ BasicParser.prototype = {
 				advance("swap");
 				oValue = fnCreateCmdCall("windowSwap");
 			} else {
-				oStream = fngetOptionalStream();
+				oStream = fnGetOptionalStream();
 				oValue = fnCreateCmdCall("window");
 				oValue.args.unshift(oStream);
 			}
@@ -1480,7 +1503,7 @@ BasicParser.prototype = {
 		stmt("write", function () {
 			var oValue, oStream;
 
-			oStream = fngetOptionalStream();
+			oStream = fnGetOptionalStream();
 			oValue = fnCreateCmdCall("write");
 			oValue.args.unshift(oStream);
 			return oValue;
@@ -1651,8 +1674,8 @@ BasicParser.prototype = {
 				var sVarName, sLabel, value, value2, sStepName;
 
 				sVarName = fnAdaptVariableName(node.left.name);
-				sLabel = "f" + that.iForCount;
-				that.oStack.f.push(that.iForCount);
+				sLabel = that.iLine + "f" + that.iForCount;
+				that.oStack.f.push(sLabel); //that.oStack.f.push(that.iForCount);
 				that.iForCount += 1;
 
 				sStepName = sVarName + "Step";
@@ -1672,7 +1695,7 @@ BasicParser.prototype = {
 			fnParseIf = function (node) {
 				var aNodeArgs, sLabel, value, sPart;
 
-				sLabel = "i" + that.iIfCount;
+				sLabel = that.iLine + "i" + that.iIfCount;
 				that.iIfCount += 1;
 
 				value = "if (" + parseNode(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
@@ -1692,7 +1715,7 @@ BasicParser.prototype = {
 			fnParseInput = function (node) {
 				var aNodeArgs, sLabel, value, i, sStream, sNoCRLF, sMsg;
 
-				sLabel = "s" + that.iStopCount;
+				sLabel = that.iLine + "s" + that.iStopCount;
 				that.iStopCount += 1;
 
 				aNodeArgs = fnParseArgs(node.args);
@@ -1711,11 +1734,12 @@ BasicParser.prototype = {
 			fnParseLineInput = function (node) {
 				var aNodeArgs, sLabel, value, i, sStream, sNoCRLF, sMsg;
 
-				sLabel = "s" + that.iStopCount;
+				sLabel = that.iLine + "s" + that.iStopCount;
 				that.iStopCount += 1;
 
 				aNodeArgs = fnParseArgs(node.args);
 				sStream = aNodeArgs.shift();
+				sNoCRLF = aNodeArgs.shift();
 				sMsg = aNodeArgs.shift();
 
 				value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
@@ -1735,7 +1759,7 @@ BasicParser.prototype = {
 				}
 				sName = node.name;
 				if (sName === "onGosub") {
-					sLabel = "g" + that.iGosubCount;
+					sLabel = that.iLine + "g" + that.iGosubCount;
 					that.iGosubCount += 1;
 					aNodeArgs.unshift('"' + sLabel + '"');
 					value = "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
@@ -1746,6 +1770,38 @@ BasicParser.prototype = {
 				}
 				return value;
 			},
+
+			// TEST: we need this because if there is a tab(), it must be the first function in a print to get the correct position
+			/*
+			fnParsePrint = function (node) {
+				var i, sName, sNote, sStream,
+					aArgs = node.args,
+					aNodeArgs = [],
+					value = "";
+
+				sStream = parseNode(aArgs[0]);
+
+				sName = "print"; //node.name;
+				for (i = 1; i < aArgs.length; i += 1) {
+					sNote = parseNode(aArgs[i]);
+					if (aArgs[i].type === "tab") {
+						if (aNodeArgs.length) {
+							aNodeArgs.unshift(sStream);
+							value += "o." + sName + "(" + aNodeArgs.join(", ") + ");";
+							aNodeArgs.length = 0;
+							//sName = "printTab";
+							sNote = "o.tab(" + sStream + ", " + sNote + ")";
+						}
+					}
+					aNodeArgs.push(sNote);
+				}
+				if (value === "" || aNodeArgs.length) { //TTT
+					aNodeArgs.unshift(sStream);
+					value += "o." + sName + "(" + aNodeArgs.join(", ") + ");";
+				}
+				return value;
+			},
+			*/
 
 			parseNode = function (node) { // eslint-disable-line complexity
 				var i, value, value2, sName, aNodeArgs;
@@ -1811,7 +1867,7 @@ BasicParser.prototype = {
 					break;
 
 				case "call":
-					sName = "c" + that.iStopCount;
+					sName = that.iLine + "c" + that.iStopCount;
 					that.iStopCount += 1;
 					value = "o.call(" + fnParseArgs(node.args).join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
@@ -1819,7 +1875,7 @@ BasicParser.prototype = {
 					value = fnParseDef(node);
 					break;
 				case "end": // same as stop, use also stopCount
-					sName = "s" + that.iStopCount;
+					sName = that.iLine + "s" + that.iStopCount;
 					that.iStopCount += 1;
 					value = "o.end(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
@@ -1832,12 +1888,12 @@ BasicParser.prototype = {
 					value = fnParseFor(node);
 					break;
 				case "frame":
-					sName = "s" + that.iStopCount; // use also stopCount for frame? TTT
+					sName = that.iLine + "s" + that.iStopCount; // use also stopCount for frame? TTT
 					that.iStopCount += 1;
 					value = "o.frame(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
 				case "gosub":
-					sName = "g" + that.iGosubCount;
+					sName = that.iLine + "g" + that.iGosubCount;
 					that.iGosubCount += 1;
 					value = 'o.gosub("' + sName + '", ' + parseNode(node.left) + '); break; \ncase "' + sName + '":';
 					break;
@@ -1862,19 +1918,31 @@ BasicParser.prototype = {
 					value = fnParseLineInput(node);
 					break;
 				case "next":
-					i = that.oStack.f.pop();
-					sName = "f" + i;
-					value = "/* next() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
+					aNodeArgs = fnParseArgs(node.args);
+					value = "";
+					if (!aNodeArgs.length) {
+						aNodeArgs.push(""); //TTT
+					}
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = that.oStack.f.pop();
+						//sName = "f" + value2;
+						value += "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
+					}
 					break;
 				case "on":
 					value = fnParseOn(node);
 					break;
+				/*
+				case "print":
+					value = fnParsePrint(node);
+					break;
+				*/
 				case "randomize":
 					aNodeArgs = fnParseArgs(node.args);
 					if (aNodeArgs.length) {
 						value = "o.randomize(" + aNodeArgs.join(", ") + ")";
 					} else {
-						sName = "s" + that.iStopCount; // use also stopCount for randomize? TTT
+						sName = that.iLine + "s" + that.iStopCount; // use also stopCount for randomize? TTT
 						that.iStopCount += 1;
 						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetInput())";
 					}
@@ -1882,28 +1950,33 @@ BasicParser.prototype = {
 				case "return":
 					value = "o.return(); break;";
 					break;
-				/*
-				case "run":
-					sName = "s" + that.iStopCount; // use also stopCount TTT
-					aNodeArgs = fnParseArgs(node.args);
-					//value = "o.run(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;";
-					value = "o.run(" + aNodeArgs.join(", ") + "); break;";
-					break;
-				*/
 				case "stop":
-					sName = "s" + that.iStopCount;
+					sName = that.iLine + "s" + that.iStopCount;
 					that.iStopCount += 1;
 					value = "o.stop(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
+				/*
+				case "tab": // print with delayed tab function
+					aNodeArgs = fnParseArgs(node.args);
+					//value2 = aNodeArgs[0];
+					//value = function (iStream) {
+						//return "o.tab(" + iStream + ", " + + ")";
+					//	return "o.tab(" + iStream + ", " + value2 + ")";
+					//};
+					break;
+				*/
+				case "tab":
+					aNodeArgs = fnParseArgs(node.args);
+					value = "{type: \"tab\", args: [" + aNodeArgs.join(", ") + "]}"; //TTT
+					break;
 				case "wend":
-					i = that.oStack.w.pop();
-					sName = "w" + i;
+					sName = that.oStack.w.pop();
 					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					break;
 				case "while":
-					sName = "w" + that.iWhileCount;
+					sName = that.iLine + "w" + that.iWhileCount;
 					value = "\ncase \"" + sName + "\": if (!(" + parseNode(node.left) + ")) { o.goto(\"" + sName + "e\"); break; }";
-					that.oStack.w.push(that.iWhileCount);
+					that.oStack.w.push(sName);
 					that.iWhileCount += 1;
 					break;
 				default:
@@ -2046,6 +2119,7 @@ BasicParser.prototype = {
 					return s;
 				},
 				*/
+				/*
 				next: function () { // varargs
 					var	s = "",
 						i;
@@ -2058,6 +2132,22 @@ BasicParser.prototype = {
 					}
 					return s;
 				},
+				*/
+
+				/*
+				print: function () { // varargs
+					var aArgs = [],
+						sStream, sName, i;
+
+					sStream = arguments[0];
+					for (i = 1; i < arguments.length; i += 1) {
+						sName = arguments[i];
+						aArgs.push(sName);
+					}
+					return "o.print(" + sStream + ", " + aArgs.join(", ") + ")";
+				},
+				*/
+
 				read: function () { // varargs
 					var	aArgs = [],
 						sName, i;

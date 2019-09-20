@@ -10,6 +10,10 @@ cpcBasic.addIndex("./", function () { /*
 		"title": "First Program (empty)"
     },
 	{
+    	"key": "art",
+		"title": "Computer Art"
+	},
+	{
 		"key": "bmbench3",
 		"title": "BM Benchmark 3"
     },
@@ -24,7 +28,7 @@ cpcBasic.addIndex("./", function () { /*
     {
     	"key": "colors",
 		"title": "Colors CPC Demo"
-    },
+	},
     {
     	"key": "cpc464ch",
 		"title": "CPC 464 Character Art"
@@ -46,6 +50,14 @@ cpcBasic.addIndex("./", function () { /*
 		"title": "Keyboard Test"
 	},
 	{
+		"key": "labyrinth",
+		"title": "Labyrinth"
+	},
+	{
+		"key": "landscape",
+		"title": "Landscape"
+	},
+	{
 		"key": "rectangles",
 		"title": "Rectangles"
 	},
@@ -56,7 +68,11 @@ cpcBasic.addIndex("./", function () { /*
     {
 		"key": "simple",
 		"title": "Simple Labyrinth"
-    },
+	},
+    {
+		"key": "sphere",
+		"title": "Sphere"
+	},
 	{
 		"key": "stardodger",
 		"title": "Stardodger Game (Textual)"

@@ -409,9 +409,16 @@ Canvas.prototype = {
 
 	fnCanvasKeydown: function (event) {
 		var mSpecialKeys = {
-				Backspace: "\x08",
+				Alt: String.fromCharCode(224), // Copy
+				ArrowUp: String.fromCharCode(240),
+				ArrowDown: String.fromCharCode(241),
+				ArrowLeft: String.fromCharCode(242),
+				ArrowRight: String.fromCharCode(243),
+				Backspace: "\x08", //TTT or 127?
+				Delete: String.fromCharCode(16),
 				Enter: "\r",
-				Spacebar: " " // IE
+				Spacebar: " ", // for IE
+				Tab: String.fromCharCode(9)
 			},
 			iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
@@ -573,16 +580,16 @@ Canvas.prototype = {
 					ctx.fillStyle = oPos.c;
 					ctx.fill();
 				} else {
-					ctx.moveTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5)); // current position
+					ctx.moveTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5)); // current position
 					this.xPos = oPos.x;
 					this.yPos = oPos.y;
 					if (oPos.t === "m" || oPos.t === "t") {
-						ctx.moveTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5)); // we use +0.5 to get full opacity and better colors
+						ctx.moveTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5)); // we use +0.5 to get full opacity and better colors
 					} else if (oPos.t === "l") {
-						ctx.lineTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5));
+						ctx.lineTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5));
 					} else { // "p"?
-						ctx.moveTo(this.xPos - 1 + 0.5, iHeight - (this.yPos - 1 + 0.5));
-						ctx.lineTo(this.xPos + 0.5, iHeight - (this.yPos + 0.5));
+						ctx.moveTo(this.xPos - 1 + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig - 1 + 0.5));
+						ctx.lineTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5));
 					}
 				}
 			}
@@ -594,7 +601,7 @@ Canvas.prototype = {
 		var ctx = this.canvas.getContext("2d"),
 			imageData, pixelData, iRed, iGreen, iBlue, iColor;
 
-		imageData = ctx.getImageData(xPos + 0.5, this.iHeight - (yPos + 0.5), 1, 1);
+		imageData = ctx.getImageData(xPos + this.xOrig + 0.5, this.iHeight - (yPos + this.yOrig + 0.5), 1, 1);
 		pixelData = imageData.data;
 		iRed = pixelData[0];
 		iGreen = pixelData[1];
@@ -674,8 +681,8 @@ Canvas.prototype = {
 
 	printGChar: function (iChar) {
 		var ctx = this.canvas.getContext("2d"),
-			x = this.xPos,
-			y = this.yPos;
+			x = this.xPos + this.xOrig,
+			y = this.iHeight - (this.yPos + this.yOrig);
 
 		if (!this.oChars[iChar]) { // pixeldata not available?
 			this.oChars[iChar] = this.create1CharData(this.oCustomCharset[iChar] || this.aCharset[iChar]);
@@ -699,13 +706,15 @@ Canvas.prototype = {
 	},
 
 	setOrigin: function (xOrig, yOrig) {
-		var ctx = this.canvas.getContext("2d");
+		//var ctx = this.canvas.getContext("2d");
 
-		ctx.translate(-this.xOrig, this.yOrig); // restore
+		//ctx.translate(-this.xOrig, this.yOrig); // restore
 
 		this.xOrig = xOrig;
 		this.yOrig = yOrig;
-		ctx.translate(xOrig, -yOrig);
+		//ctx.translate(xOrig, -yOrig);
+		this.xPos = 0;
+		this.yPos = 0;
 	},
 
 	removeClipping: function () {

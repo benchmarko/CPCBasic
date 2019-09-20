@@ -55,6 +55,9 @@ Controller.prototype = {
 
 		this.iTimeoutHandle = null;
 
+		this.sLabelBeforeStop = ""; //TTT
+		this.iPrioBeforeStop = 0;
+
 		this.fnRunStart1Handler = this.fnRunStart1.bind(this);
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
 		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
@@ -315,7 +318,7 @@ Controller.prototype = {
 		}
 	},
 
-	fnRunStart1: function () {
+	fnRunStart1: function () { // eslint-disable-line complexity
 		var oVm = this.oVm,
 			iTimeOut = 0;
 
@@ -343,7 +346,7 @@ Controller.prototype = {
 
 		case "input":
 			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput;
-			oVm.oInput.sInput = ""; //TTT vmSetInput("");
+			//oVm.oInput.sInput = ""; //TTT vmSetInput("");
 			this.fnWaitForInput();
 			break;
 
@@ -393,8 +396,8 @@ Controller.prototype = {
 			this.view.setAreaScrollTop("resultText"); // scroll to bottom
 
 			this.view.setDisabled("runButton", false);
-			this.view.setDisabled("stopButton", true);
-			this.view.setDisabled("continueButton", oVm.sStopLabel === "end" || oVm.sStopLabel === "reset");
+			this.view.setDisabled("stopButton", oVm.sStopLabel !== "input" && oVm.sStopLabel !== "key");
+			this.view.setDisabled("continueButton", oVm.sStopLabel === "end" || oVm.sStopLabel === "reset" || oVm.sStopLabel === "input" || oVm.sStopLabel === "key");
 			if (this.oVariables) {
 				this.fnSetVarSelectOptions("varSelect", this.oVariables);
 				this.commonEventHandler.onVarSelectChange();
@@ -425,6 +428,13 @@ Controller.prototype = {
 	},
 
 	fnStop: function () {
+		var oVm = this.oVm;
+
+		this.sLabelBeforeStop = oVm.sStopLabel;
+		this.iPrioBeforeStop = oVm.iStopPriority;
+		if (oVm.sStopLabel === "input" || oVm.sStopLabel === "key") {
+			this.oCanvas.options.fnOnKeyDown = null;
+		}
 		this.oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
@@ -438,7 +448,9 @@ Controller.prototype = {
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
 		if (oVm.sStopLabel === "break" || oVm.sStopLabel === "stop") {
-			this.oVm.vmStop("", 0, true);
+			this.oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
+			this.sLabelBeforeStop = "";
+			this.iPrioBeforeStop = 0;
 		}
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
