@@ -12,7 +12,7 @@ var cpcBasicExternalConfig, cpcBasic;
 cpcBasic = {
 	config: {
 		debug: 0,
-		example: "rectangles",
+		example: "cpcbasic",
 		exampleDir: "examples", // example base directory
 		exampleIndex: "0index.js", // example index in exampleDir
 		showInput: true,
@@ -103,6 +103,12 @@ cpcBasic = {
 
 
 // some polyfills for IE11 (which is not fully supported)
+if (!Math.sign) {
+	Math.sign = function (x) {
+		return ((x > 0) - (x < 0)) || +x; // eslint-disable-line no-implicit-coercion
+	};
+}
+
 if (!Object.assign) {
 	Object.assign = function (oTarget) { // varargs // Object.assign is ES6, not in IE
 		var oTo = oTarget,
@@ -135,6 +141,23 @@ if (!String.prototype.includes) {
 	};
 }
 
+if (!String.prototype.padStart) {
+	String.prototype.padStart = function (iTargetLength, sPad) { // eslint-disable-line no-extend-native
+		var sRet = String(this);
+
+		iTargetLength >>= 0; // eslint-disable-line no-bitwise
+		if (this.length < iTargetLength) {
+			sPad = String(typeof sPad !== "undefined" ? sPad : " ");
+			iTargetLength -= this.length;
+			if (iTargetLength > sPad.length) {
+				sPad += sPad.repeat(iTargetLength / sPad.length);
+			}
+			sRet = sPad.slice(0, iTargetLength) + sRet;
+		}
+		return sRet;
+	};
+}
+
 if (!String.prototype.repeat) {
 	String.prototype.repeat = function (iCount) { // eslint-disable-line no-extend-native
 		var sStr = String(this),
@@ -147,6 +170,5 @@ if (!String.prototype.repeat) {
 		return sOut;
 	};
 }
-
 
 cpcBasic.fnOnLoad(); // if cpcbasic.js is the last script, we do not need to wait for window.onload

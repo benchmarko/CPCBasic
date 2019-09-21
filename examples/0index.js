@@ -8,7 +8,11 @@ cpcBasic.addIndex("./", function () { /*
     {
 		"key": "1st",
 		"title": "First Program (empty)"
-    },
+	},
+	{
+    	"key": "anageo",
+		"title": "Analytical Geometry"
+	},
 	{
     	"key": "art",
 		"title": "Computer Art"
@@ -29,13 +33,29 @@ cpcBasic.addIndex("./", function () { /*
     	"key": "colors",
 		"title": "Colors CPC Demo"
 	},
+	{
+    	"key": "complex",
+		"title": "Complex numbers"
+	},
     {
     	"key": "cpc464ch",
 		"title": "CPC 464 Character Art"
-    },
-       {
+	},
+	{
+    	"key": "cpcbasic",
+		"title": "CPC Basic"
+	},
+	{
+    	"key": "division",
+		"title": "Division of long numberss"
+	},
+    {
     	"key": "euler",
 		"title": "Compute e with 1000 digits"
+	},
+	{
+    	"key": "factorials",
+		"title": "Big Factorials"
     },
     {
     	"key": "fractions",
@@ -56,6 +76,10 @@ cpcBasic.addIndex("./", function () { /*
 	{
 		"key": "landscape",
 		"title": "Landscape"
+	},
+	{
+		"key": "piechart",
+		"title": "Pie Chart"
 	},
 	{
 		"key": "rectangles",

@@ -320,13 +320,15 @@ Controller.prototype = {
 
 	fnRunStart1: function () { // eslint-disable-line complexity
 		var oVm = this.oVm,
+			sReason = oVm.vmGetStopReason(),
 			iTimeOut = 0;
 
-		if (oVm.sStopLabel === "") {
+		if (!sReason) {
 			this.fnRunPart1();
+			sReason = oVm.vmGetStopReason();
 		}
 
-		switch (oVm.sStopLabel) {
+		switch (sReason) {
 		case "":
 			break;
 
@@ -346,7 +348,6 @@ Controller.prototype = {
 
 		case "input":
 			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput;
-			//oVm.oInput.sInput = ""; //TTT vmSetInput("");
 			this.fnWaitForInput();
 			break;
 
@@ -385,19 +386,20 @@ Controller.prototype = {
 			break;
 
 		default:
-			Utils.console.warn("fnRunStart1: Unknown run mode: " + oVm.sStopLabel);
+			Utils.console.warn("fnRunStart1: Unknown run mode: " + sReason);
 			break;
 		}
 
-		if (!oVm.sStopLabel) {
+		sReason = oVm.vmGetStopReason();
+		if (!sReason) {
 			this.iTimeoutHandle = setTimeout(this.fnRunStart1Handler, iTimeOut);
 		} else {
 			this.view.setAreaValue("resultText", oVm.sOut);
 			this.view.setAreaScrollTop("resultText"); // scroll to bottom
 
 			this.view.setDisabled("runButton", false);
-			this.view.setDisabled("stopButton", oVm.sStopLabel !== "input" && oVm.sStopLabel !== "key");
-			this.view.setDisabled("continueButton", oVm.sStopLabel === "end" || oVm.sStopLabel === "reset" || oVm.sStopLabel === "input" || oVm.sStopLabel === "key");
+			this.view.setDisabled("stopButton", sReason !== "input" && sReason !== "key");
+			this.view.setDisabled("continueButton", sReason === "end" || sReason === "reset" || sReason === "input" || sReason === "key");
 			if (this.oVariables) {
 				this.fnSetVarSelectOptions("varSelect", this.oVariables);
 				this.commonEventHandler.onVarSelectChange();
@@ -428,27 +430,30 @@ Controller.prototype = {
 	},
 
 	fnStop: function () {
-		var oVm = this.oVm;
+		var oVm = this.oVm,
+			sReason = oVm.vmGetStopReason(),
+			iPriority = oVm.vmGetStopPriority();
 
-		this.sLabelBeforeStop = oVm.sStopLabel;
-		this.iPrioBeforeStop = oVm.iStopPriority;
-		if (oVm.sStopLabel === "input" || oVm.sStopLabel === "key") {
+		this.sLabelBeforeStop = sReason;
+		this.iPrioBeforeStop = iPriority;
+		if (sReason === "input" || sReason === "key") {
 			this.oCanvas.options.fnOnKeyDown = null;
 		}
-		this.oVm.vmStop("break", 80);
+		oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
 		}
 	},
 
 	fnContinue: function () {
-		var oVm = this.oVm;
+		var oVm = this.oVm,
+			sReason = oVm.vmGetStopReason();
 
 		this.view.setDisabled("runButton", true);
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
-		if (oVm.sStopLabel === "break" || oVm.sStopLabel === "stop") {
-			this.oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
+		if (sReason === "break" || sReason === "stop") {
+			oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
 			this.sLabelBeforeStop = "";
 			this.iPrioBeforeStop = 0;
 		}

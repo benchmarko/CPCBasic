@@ -26,7 +26,7 @@ function BasicParser(options) {
 	this.init(options);
 }
 
-BasicParser.mKeywords = { // c=command, f=function, o=operator
+BasicParser.mKeywords = { // c=command, f=function, o=operator, x=additional keyword for command
 	abs: "f",
 	after: "c",
 	and: "o",
@@ -35,7 +35,7 @@ BasicParser.mKeywords = { // c=command, f=function, o=operator
 	auto: "c",
 	bin$: "f",
 	border: "c",
-	"break": "x", //TTT
+	"break": "x",
 	call: "c",
 	cat: "c",
 	chain: "c", // chain, chain merge
@@ -623,7 +623,7 @@ BasicParser.prototype = {
 			fnGetArgs = function () {
 				var aArgs = [];
 
-				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else") { //TTT else?
+				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else") {
 					aArgs.push(expression(0));
 					while (oToken.type === ",") {
 						advance();
@@ -879,7 +879,7 @@ BasicParser.prototype = {
 						pos: left.pos
 					};
 				} else {
-					oObj = aTokens[iIndex - 1]; // or this
+					oObj = aTokens[iIndex - 1];
 					throw new BasicParser.ErrorObject("Invalid lvalue at", oObj.type, oObj.pos);
 				}
 			} else { // equal used as comparison
@@ -898,7 +898,7 @@ BasicParser.prototype = {
 		stmt("after", function () {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
 
-			if (oValue.args.length < 2) { // add default timer
+			if (oValue.args.length < 2) { // add default timer 0
 				oValue.args.push({
 					type: "number",
 					value: 0
@@ -948,18 +948,6 @@ BasicParser.prototype = {
 			oValue.value = expression(0);
 			return oValue;
 		});
-
-		/* TTT
-		stmt("defint", function () {
-			var oValue = {
-				type: "defint",
-				args: [], //fnGetArgs(),
-				pos: aTokens[iIndex - 1].pos
-			};
-
-			return oValue;
-		});
-		*/
 
 		stmt("end", function () {
 			var oValue = {
@@ -1302,7 +1290,7 @@ BasicParser.prototype = {
 
 		stmt("print", function () {
 			var oValue = {
-					type: "fcall", //"print",
+					type: "fcall",
 					args: [],
 					name: "print",
 					pos: aTokens[iIndex - 2].pos
@@ -1330,9 +1318,7 @@ BasicParser.prototype = {
 					advance("tab");
 					t = expression(0); // value
 					oValue2 = {
-						//type: "fcall",
 						type: "tab",
-						//name: "tab", //TTT
 						args: [t]
 					};
 					oValue.args.push(oValue2);
@@ -1363,9 +1349,8 @@ BasicParser.prototype = {
 					advance(";");
 				} else if (oToken.type === ",") { // default tab, simulate tab...
 					oValue.args.push({
-						type: "tab", //"fcall",
+						type: "tab",
 						args: [], // special: we use no args to get tab with current zone
-						//name: "tab",
 						pos: aTokens[iParseIndex - 2].pos
 					});
 					advance(",");
@@ -1652,7 +1637,7 @@ BasicParser.prototype = {
 					i;
 
 				for (i = 0; i < aArgs.length; i += 1) {
-					aNodeArgs[i] = parseNode(aArgs[i]);
+					aNodeArgs[i] = parseNode(aArgs[i]); // eslint-disable-line no-use-before-define
 				}
 				return aNodeArgs;
 			},
@@ -1675,7 +1660,7 @@ BasicParser.prototype = {
 
 				sVarName = fnAdaptVariableName(node.left.name);
 				sLabel = that.iLine + "f" + that.iForCount;
-				that.oStack.f.push(sLabel); //that.oStack.f.push(that.iForCount);
+				that.oStack.f.push(sLabel);
 				that.iForCount += 1;
 
 				sStepName = sVarName + "Step";
@@ -1770,38 +1755,6 @@ BasicParser.prototype = {
 				}
 				return value;
 			},
-
-			// TEST: we need this because if there is a tab(), it must be the first function in a print to get the correct position
-			/*
-			fnParsePrint = function (node) {
-				var i, sName, sNote, sStream,
-					aArgs = node.args,
-					aNodeArgs = [],
-					value = "";
-
-				sStream = parseNode(aArgs[0]);
-
-				sName = "print"; //node.name;
-				for (i = 1; i < aArgs.length; i += 1) {
-					sNote = parseNode(aArgs[i]);
-					if (aArgs[i].type === "tab") {
-						if (aNodeArgs.length) {
-							aNodeArgs.unshift(sStream);
-							value += "o." + sName + "(" + aNodeArgs.join(", ") + ");";
-							aNodeArgs.length = 0;
-							//sName = "printTab";
-							sNote = "o.tab(" + sStream + ", " + sNote + ")";
-						}
-					}
-					aNodeArgs.push(sNote);
-				}
-				if (value === "" || aNodeArgs.length) { //TTT
-					aNodeArgs.unshift(sStream);
-					value += "o." + sName + "(" + aNodeArgs.join(", ") + ");";
-				}
-				return value;
-			},
-			*/
 
 			parseNode = function (node) { // eslint-disable-line complexity
 				var i, value, value2, sName, aNodeArgs;
@@ -1921,22 +1874,16 @@ BasicParser.prototype = {
 					aNodeArgs = fnParseArgs(node.args);
 					value = "";
 					if (!aNodeArgs.length) {
-						aNodeArgs.push(""); //TTT
+						aNodeArgs.push(""); // we have no variable, so use empty argument
 					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = that.oStack.f.pop();
-						//sName = "f" + value2;
 						value += "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					}
 					break;
 				case "on":
 					value = fnParseOn(node);
 					break;
-				/*
-				case "print":
-					value = fnParsePrint(node);
-					break;
-				*/
 				case "randomize":
 					aNodeArgs = fnParseArgs(node.args);
 					if (aNodeArgs.length) {
@@ -1955,19 +1902,9 @@ BasicParser.prototype = {
 					that.iStopCount += 1;
 					value = "o.stop(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 					break;
-				/*
-				case "tab": // print with delayed tab function
-					aNodeArgs = fnParseArgs(node.args);
-					//value2 = aNodeArgs[0];
-					//value = function (iStream) {
-						//return "o.tab(" + iStream + ", " + + ")";
-					//	return "o.tab(" + iStream + ", " + value2 + ")";
-					//};
-					break;
-				*/
 				case "tab":
 					aNodeArgs = fnParseArgs(node.args);
-					value = "{type: \"tab\", args: [" + aNodeArgs.join(", ") + "]}"; //TTT
+					value = "{type: \"tab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the tab() call until print() is called
 					break;
 				case "wend":
 					sName = that.oStack.w.pop();
@@ -2094,59 +2031,6 @@ BasicParser.prototype = {
 				"goto": function (n) {
 					return "o.goto(" + n + "); break";
 				},
-
-				/*
-				input: function () { // varargs
-					var s = "",
-						sStream, i, sMsg;
-
-					sStream = arguments[0];
-					sMsg = arguments[1];
-					for (i = 2; i < arguments.length; i += 1) {
-						if (s !== "") {
-							s += "; ";
-						}
-						s += arguments[i] + " = o.input(" + sStream + ", " + sMsg + ", \"" + arguments[i] + "\")";
-					}
-					return s;
-				},
-				*/
-
-				/*
-				lineInput: function (sStream, sMsg, sVar) { // varargs
-					var s = sVar + " = o.lineInput(" + sStream + ", " + sMsg + ", \"" + sVar + "\")";
-
-					return s;
-				},
-				*/
-				/*
-				next: function () { // varargs
-					var	s = "",
-						i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						if (s !== "") {
-							s += ";";
-						}
-						s += "o.next(" + String(arguments[i]) + ")";
-					}
-					return s;
-				},
-				*/
-
-				/*
-				print: function () { // varargs
-					var aArgs = [],
-						sStream, sName, i;
-
-					sStream = arguments[0];
-					for (i = 1; i < arguments.length; i += 1) {
-						sName = arguments[i];
-						aArgs.push(sName);
-					}
-					return "o.print(" + sStream + ", " + aArgs.join(", ") + ")";
-				},
-				*/
 
 				read: function () { // varargs
 					var	aArgs = [],

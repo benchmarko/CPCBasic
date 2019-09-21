@@ -60,8 +60,10 @@ CpcVm.prototype = {
 
 		this.iLine = 0; // current line number (or label)
 
-		this.sStopLabel = ""; // stop label or reason
-		this.iStopPriority = 0; // stop priority (higher number means higher priority which can overwrite lower priority)
+		this.oStop = {
+			sReason: "", // stop reason
+			iPriority: 0 // stop priority (higher number means higher priority which can overwrite lower priority)
+		};
 		// special stop labels and priorities:
 		// "timer": 20 (timer expired)
 		// "key": 30  (wait for key)
@@ -73,8 +75,6 @@ CpcVm.prototype = {
 		// "end": 90 (end of program)
 		// "reset": 99 (reset canvas)
 
-		//this.oInput.fnInputCallback = null; // callback for stop reason "input"
-		//this.oInput.aInputValues = [];
 		this.oInput = {
 			iStream: 0,
 			sInput: "",
@@ -84,7 +84,6 @@ CpcVm.prototype = {
 		};
 
 		this.sOut = ""; // console output
-		//this.iPrintStream = 0; // current stream in print
 
 		this.aData = []; // array for BASIC data lines (continuous)
 		this.iData = 0; // current index
@@ -285,7 +284,7 @@ CpcVm.prototype = {
 				this.vmStop("timer", 20);
 			}
 		}
-		return this.sStopLabel === "";
+		return this.oStop.sReason === "";
 	},
 
 	fnGetVarDefault: function (sName) {
@@ -350,21 +349,6 @@ CpcVm.prototype = {
 		}
 	},
 
-	/*
-	vmVarCharArray: function (sFirst, sLast) {
-		var aList = [],
-			iStep = 1,
-			iFirst = sFirst.charCodeAt(0),
-			iLast = sLast.charCodeAt(0);
-
-		while (iFirst <= iLast) {
-			aList.push(iFirst);
-			iFirst += iStep;
-		}
-		return aList;
-	},
-	*/
-
 	vmDefineVarTypes: function (sType, sNameOrRange) {
 		var aRange, iFirst, iLast, i, sVarChar;
 
@@ -390,11 +374,19 @@ CpcVm.prototype = {
 		this.oCanvas.setDefaultInks();
 	},
 
-	vmStop: function (sLabel, iStopPriority, bForce) {
-		iStopPriority = iStopPriority || 0;
-		if (bForce || iStopPriority >= this.iStopPriority) {
-			this.iStopPriority = iStopPriority;
-			this.sStopLabel = sLabel;
+	vmGetStopReason: function () {
+		return this.oStop.sReason;
+	},
+
+	vmGetStopPriority: function () {
+		return this.oStop.iPriority;
+	},
+
+	vmStop: function (sReason, iPriority, bForce) {
+		iPriority = iPriority || 0;
+		if (bForce || iPriority >= this.oStop.iPriority) {
+			this.oStop.iPriority = iPriority;
+			this.oStop.sReason = sReason;
 		}
 	},
 
@@ -459,7 +451,6 @@ CpcVm.prototype = {
 	},
 
 	vmSetInputParas: function (sInput) {
-		//this.oInput.sInput 
 		this.oInput.sInput = sInput;
 	},
 
@@ -467,15 +458,6 @@ CpcVm.prototype = {
 		return this.oInput;
 	},
 
-	/*
-	vmSetInputStream: function (iStream) {
-		this.iInputStream = iStream;
-	},
-
-	vmGetInputStream: function () {
-		return this.iInputStream;
-	},
-	*/
 
 	abs: function (n) {
 		return Math.abs(n);
@@ -735,7 +717,7 @@ CpcVm.prototype = {
 
 		sError = this.vmGetError(iErr);
 		Utils.console.log("BASIC error(" + iErr + "): " + sError + " in " + this.iErl);
-		sError += " in " + this.iErl + "\n";
+		sError += " in " + this.iErl + "\r\n";
 		this.print(iStream, sError);
 		this.vmStop("error", 50);
 	},
@@ -807,7 +789,7 @@ CpcVm.prototype = {
 
 	hex$: function (n, iPad) {
 		iPad = iPad || 0;
-		return (n >>> 0).toString(16).padStart(iPad, 0); // eslint-disable-line no-bitwise
+		return (n >>> 0).toString(16).padStart(iPad, "0"); // eslint-disable-line no-bitwise
 	},
 
 	himem: function () {
@@ -1151,18 +1133,6 @@ CpcVm.prototype = {
 		if (sStr.length <= (iRight - iLeft) && (x + sStr.length > (iRight + 1 - iLeft))) {
 			x = 0;
 			y += 1; // newline if string does not fit
-			/*
-			if (y > oWin.iBottom) {
-				y = oWin.iBottom;
-				this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
-			}
-			*/
-			/*
-			if (x > iRight) {
-				x = 0;
-				y += 1;
-			}
-			*/
 		}
 		for (i = 0; i < sStr.length; i += 1) {
 			iChar = sStr.charCodeAt(i);
@@ -1176,12 +1146,6 @@ CpcVm.prototype = {
 			if (x > (iRight - iLeft)) {
 				x = 0;
 				y += 1;
-				/*
-				if (y > oWin.iBottom) {
-					y = oWin.iBottom;
-					this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
-				}
-				*/
 			}
 		}
 		oWin.iPos = x;
@@ -1377,16 +1341,6 @@ CpcVm.prototype = {
 			this.vmPrintChars(sOut, iStream); // print chars collected so far
 			sOut = "";
 		}
-
-		/*
-		aParts = sStr.split(/([\x00-\x1f]+)/); // eslint-disable-line no-control-regex
-		for (i = 0; i < aParts.length; i += 1) {
-			if (i % 2 === 0) {
-				this.vmPrintChars(aParts[i], iStream);
-			} else { // control code (we assume parameters are in the same call.) TODO: put in buffer, if not complete
-			}
-		}
-		*/
 		return sBuf;
 	},
 
@@ -1405,34 +1359,30 @@ CpcVm.prototype = {
 			aSpecialArgs,
 			sStr, i, arg;
 
-		//this.iPrintStream = iStream;
-		for (i = 1; i < arguments.length; i += 1) {
-			arg = arguments[i];
-			if (typeof arg === "object") { // delayed call for e.g. tab()
-				aSpecialArgs = arg.args; // TODO: copy?
-				aSpecialArgs.unshift(iStream);
-				sStr = this[arg.type].apply(this, aSpecialArgs);
-			} else if (typeof arg === "number" && arg >= 0) {
-				sStr = " " + String(arg);
-			} else {
-				sStr = String(arg);
-			}
+		if (iStream < 8) {
+			for (i = 1; i < arguments.length; i += 1) {
+				arg = arguments[i];
+				if (typeof arg === "object") { // delayed call for e.g. tab()
+					aSpecialArgs = arg.args; // TODO: copy?
+					aSpecialArgs.unshift(iStream);
+					sStr = this[arg.type].apply(this, aSpecialArgs);
+				} else if (typeof arg === "number" && arg >= 0) {
+					sStr = " " + String(arg);
+				} else {
+					sStr = String(arg);
+				}
 
-			if (oWin.bTag) {
-				this.vmPrintGraphChars(sStr);
-			} else {
-				sBuf = this.vmPrintCharsOrControls(sStr, iStream, sBuf);
+				if (oWin.bTag) {
+					this.vmPrintGraphChars(sStr);
+				} else {
+					sBuf = this.vmPrintCharsOrControls(sStr, iStream, sBuf);
+				}
+				this.sOut += sStr; // console
 			}
-			this.sOut += sStr; // console
-
-			/*
-			iLf = sStr.indexOf("\n");
-			if (iLf >= 0) {
-				oWin.iPos = sStr.length - iLf; // TODO: tab in same print is already called, should depend on what is already printed
-			} else {
-				oWin.iPos += sStr.length;
-			}
-			*/
+		} else if (iStream === 8) {
+			this.vmNotImplemented("print #8");
+		} else if (iStream === 9) {
+			this.vmNotImplemented("print #9");
 		}
 	},
 
@@ -1466,8 +1416,8 @@ CpcVm.prototype = {
 		if (this.iData < this.aData.length) {
 			item = this.aData[this.iData];
 			this.iData += 1;
-			if (this.vmDetermineVarType(sVar) !== "$") { // not string? => convert to number, TODO: binary and hex!
-				item = Number(item);
+			if (this.vmDetermineVarType(sVar) !== "$") { // not string? => convert to number (also binary, hex)
+				item = this.val(item);
 			}
 		} else {
 			this.error(4); // DATA exhausted
@@ -1659,15 +1609,19 @@ CpcVm.prototype = {
 		this.vmNotImplemented("symbolAfter"); // maybe not needed
 	},
 
-	// tab
-	//TODO: prints from current pos, must be called after first parts have been printed!
-	tab: function (iStream, n) { // tab() must be first thing in a print statement!, it expects mandatory iStream!
-		var	oWin = this.aWindow[iStream];
+	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print()
+		var	oWin = this.aWindow[iStream],
+			iCount;
 
 		if (n === undefined) { // simulated tab in print for ","
 			n = this.iZone;
 		}
-		return " ".repeat(n - 1 - oWin.iPos);
+		iCount = n - 1 - oWin.iPos;
+		if (iCount < 0) {
+			Utils.console.warn("tab: n=" + n + ", iCount=" + iCount);
+			iCount = 0;
+		}
+		return " ".repeat(iCount);
 	},
 
 	tag: function (iStream) {
@@ -1751,18 +1705,29 @@ CpcVm.prototype = {
 		return s;
 	},
 
-	val: function (s) { // todo: interpret hex!
-		var iNum,
-			isHexOrBin = function (c) { // bin: &X, hex: & or &H
-				return (/[&]/).test(c);
-			};
+	val: function (s) {
+		var iNum = 0;
 
-		if (isHexOrBin(s)) {
-			Utils.console.warn("val: possible hex number: " + s + " (TODO)");
-		}
-		iNum = parseFloat(s);
-		if (isNaN(iNum)) {
-			iNum = 0;
+		if (typeof s !== "string") {
+			this.error(13); // Type mismatch
+		} else {
+			s = s.trim().toLowerCase();
+			if (Utils.stringStartsWith(s, "&x")) { // binary &x
+				s = s.slice(2);
+				iNum = parseInt(s, 2);
+			} else if (Utils.stringStartsWith(s, "&h")) { // hex &h
+				s = s.slice(2);
+				iNum = parseInt(s, 16);
+			} else if (Utils.stringStartsWith(s, "&")) { // hex &
+				s = s.slice(1);
+				iNum = parseInt(s, 16);
+			} else {
+				iNum = parseFloat(s);
+			}
+
+			if (isNaN(iNum)) {
+				iNum = 0;
+			}
 		}
 		return iNum;
 	},
@@ -1808,7 +1773,28 @@ CpcVm.prototype = {
 	},
 
 	write: function (iStream) { // varargs
-		this.vmNotImplemented("write");
+		var aArgs = [],
+			i, arg, sStr;
+
+		for (i = 1; i < arguments.length; i += 1) {
+			arg = arguments[i];
+			if (typeof arg === "number") {
+				aArgs.push(String(arg));
+			} else {
+				aArgs.push('"' + String(arg) + '"');
+			}
+		}
+		sStr = aArgs.join(",");
+
+		if (iStream < 8) {
+			this.vmPrintChars(sStr, iStream);
+			this.vmPrintCharsOrControls("\r\n", iStream);
+		} else if (iStream === 8) {
+			this.vmNotImplemented("write #8");
+		} else if (iStream === 9) {
+			this.vmNotImplemented("write #9");
+		}
+		this.sOut += sStr + "\n"; // console
 	},
 
 	// xor

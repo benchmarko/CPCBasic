@@ -9,7 +9,7 @@ cpcBasic.addItem("", function () { /*
 140 next
 155 ?:?"(Mode 3 with 16 colors not available on CPC!)"
 160 ?"Press a key to start again"
-165 call &bb18
+165 gosub 420
 170 goto 110
 280 '
 290 'draw rectangle
@@ -24,8 +24,10 @@ cpcBasic.addItem("", function () { /*
 360 draw 639-i,399-i
 370 draw 0+i,399-i
 380 draw 0+i,0+i
-390 frame
+390 'frame
 400 next
-410 ?"Press a key":call &bb18:'wait for key
-420 return
+410 ?"Press a key"
+420 t=time+900
+430 if inkey$="" and t>time then call &bd19:goto 430
+440 return
 */ });

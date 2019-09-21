@@ -3,20 +3,24 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-10 REM Drawing circles
-12 MODE 2
-13 DEG
-15 r=100
-16 gosub 40
-17 r=r+10
-18 if r<=200 then 16
-28 stop
-30 'draw
-40 n=0:x=1:y=2:radio=3:despx=4:despy=5
-60 FOR i=0 TO 359
-80 px=sin(i)*r+320
-90 py=cos(i)*r+200
-100 PLOT px,py
-110 NEXT
-120 return
+100 REM Drawing circles
+110 DEG
+115 for m=0 to 3
+120 mode m
+125 ?"Mode";m
+130 for r=100 to 200 step 10
+140 gosub 400
+150 next r
+155 call &bb18
+160 next m
+170 goto 115
+180 '
+390 'draw
+400 n=0:x=1:y=2:radio=3:despx=4:despy=5
+410 FOR i=0 TO 359
+420 px=sin(i)*r+320
+430 py=cos(i)*r+200
+440 PLOT px,py
+450 NEXT
+460 return
 */ });

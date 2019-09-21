@@ -118,8 +118,8 @@ Canvas.prototype = {
 		41: "55Digit7",
 		42: "85KeyU",
 		43: "90KeyY",
-		44: "72KeyH", //TTT check!
-		45: "74KeyJ", //TTT check!
+		44: "72KeyH",
+		45: "74KeyJ",
 		46: "78KeyN",
 		47: "32Space", // space
 		48: "54Digit6",
@@ -188,28 +188,10 @@ Canvas.prototype = {
 		this.aPath = [];
 		this.iPath = 0;
 
-		//this.iMode = 1;
-
-		//this.aCurrentInks = this.aDefaultInks.slice();
-		//this.oCustomCharset = {}; // symbol
-
 		this.oChars = {}; // cache for pixeldata chars (invalidated when paper or pen changes, or symbol redefined)
-
-		/*
-		this.xPos = 0;
-		this.yPos = 0;
-		this.xOrig = 0;
-		this.yOrig = 0;
-		*/
-
-		//this.iGPen = 1;
-		//this.iGPaper = 0;
 
 		this.iMask = 0;
 		this.bClipped = false;
-
-		//this.iPen = 1;
-		//this.iPaper = 0;
 
 		canvas = document.getElementById("cpcCanvas");
 		this.canvas = canvas;
@@ -220,15 +202,7 @@ Canvas.prototype = {
 		this.iWidth = iWidth;
 		this.iHeight = iHeight;
 		canvas.style.borderWidth = iBorderWidth + "px";
-		//canvas.style.borderColor = "#888888"; //TTT inactive border
 		canvas.style.borderStyle = "solid";
-		//canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iGPaper]];
-
-		//ctx = canvas.getContext("2d");
-		//ctx.strokeStyle = this.aColors[this.aCurrentInks[this.iGPen]];
-
-		//ctx.translate(this.xOrig, this.yOrig);
-		// get Cartesian coordinate system with the origin in the bottom left corner (moved by 1 pixel to the right)
 
 		this.aColorValues = this.extractAllColorValues(this.aColors);
 
@@ -241,32 +215,7 @@ Canvas.prototype = {
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
 		window.addEventListener("click", this.onWindowClick.bind(this), false);
-
-
-		//this.testGenCharset1();
 	},
-
-	/*
-	testGenCharset1: function () {
-		var aCharset = this.aCharset,
-			s = "",
-			i, aChar;
-
-		function mirrorBits(n) {
-			//return parseInt(n.toString(2).split("").reverse().join(""), 2);
-			return parseInt(("00000000" + n.toString(2)).substr(-8).split("").reverse().join(""), 2);
-		}
-
-		for (i = 0; i < 256; i += 1) {
-			aChar = aCharset[i];
-			aChar = aChar.map(function (iByte) {
-				return "0x" + ("00" + mirrorBits(iByte).toString(16)).substr(-2);
-			});
-			s += "[" + aChar.join(", ") + "], // 0x" + ("00" + i.toString(16)).substr(-2) + "\n";
-		}
-		Utils.console.log(s);
-	},
-	*/
 
 	reset: function () {
 		this.iMode = 1;
@@ -276,30 +225,14 @@ Canvas.prototype = {
 		this.iPen = null;
 		this.iPaper = null;
 		this.oCustomCharset = {}; // symbol
-		//this.xPos = 0;
-		//this.yPos = 0;
-		//this.xOrig = 0;
-		//this.yOrig = 0;
-		//this.iMask = 0;
-		//this.bClipped = false;
 		this.setGPen(1);
 		this.setGPaper(0);
 		this.setPen(1);
 		this.setPaper(0);
 		this.setBorder(this.aDefaultInks[this.iPaper]);
 		this.setMode(1);
-		// this.removeClipping();
-		// this.iMode = iMode;
-		// this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
-		// this.xPos = 0;
-		// this.yPos = 0;
-		// this.setOrigin(0, 0);
-		// this.setMask(0);
-		// this.clearPath();
-
 		this.clearInput();
-		// this.aKeyBuffer.length = 0;
-		this.oPressedKeys = {}; //TTT
+		this.oPressedKeys = {};
 	},
 
 	extractColorValues: function (sColor) { // from "#rrggbb"
@@ -370,17 +303,15 @@ Canvas.prototype = {
 		var oTarget = event.target,
 			canvas = oTarget;
 
-		//canvas.style.borderColor = "#008800"; //TTT
 		this.cpcAreaBox.style.background = "#463c3c";
 		canvas.focus();
 		this.bHasFocus = true;
 		event.stopPropagation();
 	},
 
-	onWindowClick: function (event) {
+	onWindowClick: function (/* event */) {
 		if (this.bHasFocus) {
 			this.bHasFocus = false;
-			//this.canvas.style.borderColor = "#888888"; //TTT
 			this.cpcAreaBox.style.background = "";
 		}
 	},
@@ -466,15 +397,6 @@ Canvas.prototype = {
 
 		if (this.aKeyBuffer.length) {
 			sKeyCode = this.aKeyBuffer.shift();
-			/*
-			if (sKeyCode.length > 1) {
-				if (sKeyCode === "Enter") {
-					sKeyCode = "\n";
-				} else {
-					return this.getKeyFromBuffer(); // ignore key, get next one
-				}
-			}
-			*/
 		} else {
 			sKeyCode = ""; // -1;
 		}
@@ -625,7 +547,7 @@ Canvas.prototype = {
 		this.iPath = this.aPath.length;
 		if (path.t === "t") {
 			iColor = this.testPixel(this.xPos, this.yPos);
-			sColor = "#" + Number(iColor).toString(16).toUpperCase();
+			sColor = "#" + Number(iColor).toString(16).padStart(6, "0").toUpperCase();
 			iInk = this.aColors.indexOf(sColor);
 			if (iInk >= 0) {
 				iGPen = this.aCurrentInks.indexOf(iInk);
@@ -634,17 +556,17 @@ Canvas.prototype = {
 		return iGPen;
 	},
 
-	setInk: function (iPen, iInk1, iInk2) {
-		this.aCurrentInks[iPen] = iInk1; //TODO iInk2
+	setInk: function (iPen, iInk1 /* , iInk2 */) {
+		this.aCurrentInks[iPen] = iInk1;
 		if (iPen === this.iGPen) {
 			this.setGPen(iPen); // set stroke color
 		}
 		if (iPen === this.iPaper) {
-			this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]]; //TTT
+			this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
 		}
 	},
 
-	setBorder: function (iInk1, iInk2) {
+	setBorder: function (iInk1 /* , iInk2 */) {
 		this.iBorderColor = iInk1;
 		this.canvas.style.borderColor = this.aColors[iInk1];
 	},
@@ -659,7 +581,7 @@ Canvas.prototype = {
 
 	setGPaper: function (iGPaper) {
 		this.iGPaper = iGPaper;
-		///TTT
+		// TODO
 	},
 
 	setPen: function (iPen) {
@@ -674,7 +596,6 @@ Canvas.prototype = {
 		iPaper %= this.aModeData[this.iMode].iInks; // limit papers
 		if (iPaper !== this.iPaper) {
 			this.iPaper = iPaper;
-			//TTT this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
 			this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
 		}
 	},
@@ -706,19 +627,14 @@ Canvas.prototype = {
 	},
 
 	setOrigin: function (xOrig, yOrig) {
-		//var ctx = this.canvas.getContext("2d");
-
-		//ctx.translate(-this.xOrig, this.yOrig); // restore
-
 		this.xOrig = xOrig;
 		this.yOrig = yOrig;
-		//ctx.translate(xOrig, -yOrig);
 		this.xPos = 0;
 		this.yPos = 0;
 	},
 
 	removeClipping: function () {
-		var ctx = this.canvas.getContext("2d");
+		//var ctx = this.canvas.getContext("2d");
 
 		if (this.bClipped) {
 			/* TODO
@@ -763,7 +679,6 @@ Canvas.prototype = {
 			iWidth = iRight + 1 - iLeft,
 			iHeight = iBottom + 1 - iTop;
 
-		//this.clearPath(); //TTT
 		this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
 		ctx.clearRect(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, iHeight * iCharHeight);
 	},
@@ -800,7 +715,6 @@ Canvas.prototype = {
 		this.iMode = iMode;
 		this.oChars = {}; //TTT invalidate chars (TODO but it depends on colors!)
 
-		//inks are kept! this.aCurrentInks = this.aDefaultInks[iMode].slice();
 		this.xPos = 0;
 		this.yPos = 0;
 		this.setOrigin(0, 0);
@@ -811,16 +725,10 @@ Canvas.prototype = {
 		this.setPen(this.iPen);
 		this.setPaper(this.iPaper);
 
-		/*
-		this.setGPen(1);
-		this.setGPaper(0);
-		*/
-
 		ctx.lineWidth = this.aModeData[iMode].iLineWidth;
 
-		this.clearPath(); //TTT
+		this.clearPath();
 		this.canvas.style.backgroundColor = this.aColors[this.aCurrentInks[this.iPaper]];
-		ctx.clearRect(0, 0, this.iWidth, this.iHeight); // cls
-		//this.clearWindow(0, x, 0, y); // we have no dimensions here!
+		ctx.clearRect(0, 0, this.iWidth, this.iHeight); // cls (for clearWindow we have no dimensions here)
 	}
 };
