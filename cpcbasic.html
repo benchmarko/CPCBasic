@@ -13,10 +13,11 @@
 			<span id="inputLegend" class="legendButton" title="Show/Hide BASIC">CPC BASIC</span>
 			<button id="reloadButton" title="Reload page with URL parameter settings">Reload</button>
 			<button id="helpButton" title="Help">Help</button>
-			<br>
-			<select id="exampleSelect" title="Load Example"></select>
-			<button id="parseRunButton" title="Parse and run script">Run</button>
 		</legend>
+		<div class="clearLeft selectWrap"> <!-- clearleft needed for IE -->
+			<select id="exampleSelect" title="Load Example"></select>
+			<!-- <button id="parseRunButton" title="Compile and run script">Run</button> -->
+		</div>
 		<div id="inputArea" class="area">
 			<textarea id="inputText" rows="15" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 			<div>
@@ -26,7 +27,7 @@
 				<button id="undoButton" title="Undo changes" disabled>Undo</button>
 				<button id="redoButton" title="Redo changes" disabled>Redo</button>
 				-->
-				<button id="parseButton" title="Parse BASIC script">Parse only</button>
+				<button id="parseButton" title="Compile BASIC script">Compile only</button>
 			</div>
 		</div>
 	</div>
@@ -34,15 +35,26 @@
 	<fieldset class="flexBox clearLeft" id="cpcAreaBox">
 		<legend>
 			<span id="cpcLegend" class="legendButton" title="Show/Hide CPC">CPC</span>
+			<button id="parseRunButton" title="Compile and run script">Run</button>
 			<button id="stopButton" title="Stop/escape/break running script" disabled>Break</button>
 			<button id="continueButton" title="Continue script" disabled>Continue</button>
-			<button id="resetButton" title="Reset">Reset</button>
+			<button id="resetButton" title="Reset CPC">Reset</button>
+			<button id="screenshotButton" title="Take Screenshot and download">Screenshot</button>
 		</legend>
 		<div id="cpcArea" class="area">
 			<canvas id="cpcCanvas" width="640" height="400"></canvas>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
+		<legend>
+			<span id="inp2Legend" class="legendButton" title="Alternative way of input">Input</span>
+		</legend>
+		<div id="inp2Area" class="area">
+			<textarea id="inp2Text" placeholder="experimental" rows="1" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+			<button id="enterButton" title="Enter">Enter</button>
+		</div>
+	</fieldset>
+	<fieldset class="flexBox">
 		<legend>
 			<span id="resultLegend" class="legendButton" title="Show/Hide BASIC Console">Console</span>
 		</legend>
@@ -71,7 +83,7 @@
 		<div id="outputArea" class="area" hidden>
 			<button id="runButton" title="Run JavaScript">Run</button>
 			<br>
-			<textarea id="outputText" placeholder="Use input field, press 'Parse&Run'" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+			<textarea id="outputText" placeholder="Use input field, press 'Run'" rows="12" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft" id="consoleBox" hidden>
@@ -80,6 +92,7 @@
 			<textarea id="consoleText" rows="12" cols="40"></textarea>
 		</div>
 	</fieldset>
+	<a id="screenshotLink"></a>
 <script src="BasicParser.js"></script>
 <script src="Canvas.js"></script>
 <script src="CommonEventHandler.js"></script>

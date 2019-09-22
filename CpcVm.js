@@ -521,6 +521,12 @@ CpcVm.prototype = {
 				this.vmStop("key", 30); // wait for key
 			}
 			break;
+		case 0xbb81: // TXT Cursor On
+			// TODO
+			break;
+		case 0xbb84: // TXT Cursor Off
+			// TODO
+			break;
 		case 0xbd19: // MC Wait Flyback
 			this.frame();
 			break;

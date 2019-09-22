@@ -35,6 +35,7 @@ Controller.prototype = {
 		this.commonEventHandler = new CommonEventHandler(oModel, oView, this);
 
 		oView.setHidden("inputArea", !oModel.getProperty("showInput"));
+		oView.setHidden("inp2Area", !oModel.getProperty("showInp2"));
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
@@ -469,6 +470,29 @@ Controller.prototype = {
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
 		}
-	}
+	},
 
+	fnScreenshot: function () {
+		var image = this.oCanvas.canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you do not replace you will get a DOM 18 exception.
+
+		return image;
+	},
+
+	fnEnter: function () {
+		var oVm = this.oVm,
+			sReason = oVm.vmGetStopReason(),
+			sInput = this.view.getAreaValue("inp2Text"),
+			i;
+
+		for (i = 0; i < sInput.length; i += 1) {
+			this.oCanvas.putKeyInBuffer(sInput.charAt(i));
+		}
+		this.oCanvas.putKeyInBuffer("\r"); //TTT
+		if (sReason === "input") {
+			this.fnWaitForInput();
+		} else if (sReason === "key") {
+			this.fnWaitForKey();
+		}
+		this.view.setAreaValue("inp2Text", "");
+	}
 };

@@ -370,7 +370,7 @@ Canvas.prototype = {
 			sKey = mSpecialKeys[sKey];
 		}
 		if (sKey.length === 1) { // ignore special keys with more than 1 character
-			this.aKeyBuffer.push(sKey);
+			this.putKeyInBuffer(sKey); //this.aKeyBuffer.push(sKey);
 		}
 
 		if (this.options.fnOnKeyDown) { // special handler?
@@ -393,14 +393,18 @@ Canvas.prototype = {
 	},
 
 	getKeyFromBuffer: function () {
-		var sKeyCode;
+		var sKey;
 
 		if (this.aKeyBuffer.length) {
-			sKeyCode = this.aKeyBuffer.shift();
+			sKey = this.aKeyBuffer.shift();
 		} else {
-			sKeyCode = ""; // -1;
+			sKey = "";
 		}
-		return sKeyCode;
+		return sKey;
+	},
+
+	putKeyInBuffer: function (sKey) {
+		this.aKeyBuffer.push(sKey);
 	},
 
 	getKeyState: function (iCpcKey) {
@@ -481,6 +485,67 @@ Canvas.prototype = {
 		return this.yPos;
 	},
 
+
+	// https://de.wikipedia.org/wiki/Bresenham-Algorithmus
+	testBresenhamLine: function (xstart, ystart, xend, yend) {
+		var ctx = this.canvas.getContext("2d"),
+			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
+
+		dx = xend - xstart;
+		dy = yend - ystart;
+
+		incx = Math.sign(dx);
+		incy = Math.sign(dy);
+		if (dx < 0) {
+			dx = -dx;
+		}
+		if (dy < 0) {
+			dy = -dy;
+		}
+
+		if (dx > dy) {
+			pdx = incx;
+			pdy = 0;
+			ddx = incx;
+			ddy = incy;
+			deltaslowdirection = dy;
+			deltafastdirection = dx;
+		} else {
+			pdx = 0;
+			pdy = incy;
+			ddx = incx;
+			ddy = incy;
+			deltaslowdirection = dx;
+			deltafastdirection = dy;
+		}
+
+		x = xstart;
+		y = ystart;
+		err = deltafastdirection / 2;
+		//SetPixel(x, y);
+		ctx.moveTo(x - 1 + this.xOrig + 0.5, this.iHeight - (y + this.yOrig - 1 + 0.5));
+		ctx.lineTo(x + this.xOrig + 0.5, this.iHeight - (y + this.yOrig + 0.5));
+		//ctx.fillStyle = this.aColors[this.aCurrentInks[this.iPen]];
+		//ctx.fillRect(x + this.xOrig + 0.5, this.iHeight - (y + this.yOrig + 0.5), 1, 1);
+
+		for (t = 0; t < deltafastdirection; t += 1) {
+			err -= deltaslowdirection;
+			if (err < 0) {
+				err += deltafastdirection;
+				x += ddx;
+				y += ddy;
+			} else {
+				x += pdx;
+				y += pdy;
+			}
+			//SetPixel(x, y);
+			ctx.moveTo(x - 1 + this.xOrig + 0.5, this.iHeight - (y + this.yOrig - 1 + 0.5));
+			ctx.lineTo(x + this.xOrig + 0.5, this.iHeight - (y + this.yOrig + 0.5));
+			//ctx.fillRect(x + this.xOrig + 0.5, this.iHeight - (y + this.yOrig + 0.5), 1, 1);
+		}
+	},
+
+
 	privDrawPath: function (path, iStart) {
 		var ctx, i, oPos,
 			canvas = this.canvas,
@@ -503,16 +568,17 @@ Canvas.prototype = {
 					ctx.fill();
 				} else {
 					ctx.moveTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5)); // current position
+					if (oPos.t === "m" || oPos.t === "t") {
+						ctx.moveTo(oPos.x + this.xOrig + 0.5, iHeight - (oPos.y + this.yOrig + 0.5)); // we use +0.5 to get full opacity and better colors
+					} else if (oPos.t === "l") {
+						ctx.lineTo(oPos.x + this.xOrig + 0.5, iHeight - (oPos.y + this.yOrig + 0.5));
+						//this.testBresenhamLine(this.xPos, this.yPos, oPos.x, oPos.y);
+					} else { // "p"?
+						ctx.moveTo(oPos.x - 1 + this.xOrig + 0.5, iHeight - (oPos.y + this.yOrig - 1 + 0.5));
+						ctx.lineTo(oPos.x + this.xOrig + 0.5, iHeight - (oPos.y + this.yOrig + 0.5));
+					}
 					this.xPos = oPos.x;
 					this.yPos = oPos.y;
-					if (oPos.t === "m" || oPos.t === "t") {
-						ctx.moveTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5)); // we use +0.5 to get full opacity and better colors
-					} else if (oPos.t === "l") {
-						ctx.lineTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5));
-					} else { // "p"?
-						ctx.moveTo(this.xPos - 1 + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig - 1 + 0.5));
-						ctx.lineTo(this.xPos + this.xOrig + 0.5, iHeight - (this.yPos + this.yOrig + 0.5));
-					}
 				}
 			}
 			ctx.stroke();
@@ -523,7 +589,7 @@ Canvas.prototype = {
 		var ctx = this.canvas.getContext("2d"),
 			imageData, pixelData, iRed, iGreen, iBlue, iColor;
 
-		imageData = ctx.getImageData(xPos + this.xOrig + 0.5, this.iHeight - (yPos + this.yOrig + 0.5), 1, 1);
+		imageData = ctx.getImageData(xPos + this.xOrig + 0.5, this.iHeight - (yPos + this.yOrig + 0.5 + 0.1), 1, 1); // another 0.1 needed for IE, Edge
 		pixelData = imageData.data;
 		iRed = pixelData[0];
 		iGreen = pixelData[1];
@@ -541,7 +607,7 @@ Canvas.prototype = {
 		var iGPen = 0,
 			iColor, sColor, iInk;
 
-		this.aPath.push(path);
+		this.aPath.push(path); // curently we do not need it
 
 		this.privDrawPath(this.aPath, this.iPath); // draw new element
 		this.iPath = this.aPath.length;

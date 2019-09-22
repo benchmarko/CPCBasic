@@ -5,8 +5,8 @@
 cpcBasic.addItem("", function () { /*
 100 REM Keyboard Test
 110 mode 2
-115 window #0,1,40,1,25:window #1,41,80,1,25
-120 ?"Keyboard Test: Focus window and press some keys..."
+115 window #0,1,40,3,25:window #1,41,80,3,25:window #2,1,80,1,2
+120 ?#2"Keyboard Test: Focus window and press some keys..."
 140 'every 50*2 gosub 800
 150 for i=0 to 79
 160 x=inkey(i)

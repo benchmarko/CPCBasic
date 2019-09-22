@@ -16,6 +16,7 @@ cpcBasic = {
 		exampleDir: "examples", // example base directory
 		exampleIndex: "0index.js", // example index in exampleDir
 		showInput: true,
+		showInp2: false,
 		showCpc: true,
 		showOutput: false,
 		showResult: false,

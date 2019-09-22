@@ -70,6 +70,10 @@ CommonEventHandler.prototype = {
 		this.toogleHidden("inputArea", "showInput");
 	},
 
+	onInp2LegendClick: function () {
+		this.toogleHidden("inp2Area", "showInp2");
+	},
+
 	onOutputLegendClick: function () {
 		this.toogleHidden("outputArea", "showOutput");
 	},
@@ -196,6 +200,23 @@ CommonEventHandler.prototype = {
 			sValue = "";
 		}
 		this.view.setAreaValue("varText", sValue);
+	},
+
+	onScreenshotButtonClick: function () {
+		var sExample = this.view.getSelectValue("exampleSelect"),
+			image = this.controller.fnScreenshot(),
+			link = document.getElementById("screenshotLink"),
+			sName = sExample + ".png";
+
+		//window.location.href = image; // "download"
+
+		link.setAttribute("download", sName);
+		link.setAttribute("href", image);
+		link.click();
+	},
+
+	onEnterButtonClick: function () {
+		this.controller.fnEnter();
 	}
 };
 
