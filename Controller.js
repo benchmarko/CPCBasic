@@ -133,7 +133,18 @@ Controller.prototype = {
 
 	fnSetVarSelectOptions: function (sSelect, oVariables) {
 		var aItems = [],
-			oItem, sKey, sValue, sTitle, sStrippedTitle;
+			oItem, sKey, sValue, sTitle, sStrippedTitle,
+			fnSortByString = function (a, b) {
+				var x = a.value,
+					y = b.value;
+
+				if (x < y) {
+					return -1;
+				} else if (x > y) {
+					return 1;
+				}
+				return 0;
+			};
 
 		for (sKey in oVariables) {
 			if (oVariables.hasOwnProperty(sKey)) {
@@ -151,6 +162,7 @@ Controller.prototype = {
 				aItems.push(oItem);
 			}
 		}
+		aItems = aItems.sort(fnSortByString);
 		this.view.setSelectOptions(sSelect, aItems);
 	},
 

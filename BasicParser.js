@@ -457,13 +457,15 @@ BasicParser.prototype = {
 			aParseTree = [],
 			oToken,
 
+			/*
 			fnEqualAsAssign = function () {
-				oSymbols["="] = oSymbols["(=)"];
+				//oSymbols["="] = oSymbols["(=)"];
 			},
 
 			fnEqualAsComparison = function () {
-				oSymbols["="] = oSymbols["(==)"];
+				//oSymbols["="] = oSymbols["(==)"];
 			},
+			*/
 
 			symbol = function (id, nud, lbp, led) {
 				var oSymbol = oSymbols[id];
@@ -536,6 +538,21 @@ BasicParser.prototype = {
 				return left;
 			},
 
+			assignment = function () { // similar to let
+				var oValue = {
+					type: "assign",
+					pos: oToken.pos
+				};
+
+				if (oToken.type !== "identifier") {
+					throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
+				}
+				oValue.left = expression(90); // take it (can also be an array) and stop
+				advance("="); // equal as assignment
+				oValue.right = expression(0);
+				return oValue;
+			},
+
 			statement = function () {
 				var t = oToken,
 					v;
@@ -544,7 +561,12 @@ BasicParser.prototype = {
 					advance();
 					return t.std();
 				}
-				v = expression(0);
+
+				if (t.type === "identifier") {
+					v = assignment();
+				} else {
+					v = expression(0);
+				}
 				if (v.type !== "assign" && v.type !== "fcall" && v.type !== "def" && v.type !== "(" && v.type !== "[") {
 					throw new BasicParser.ErrorObject("Bad expression statement", t.value, t.pos);
 				}
@@ -847,6 +869,9 @@ BasicParser.prototype = {
 
 		prefix("@", 10); // address of
 
+		infixr("=", 30); // equal for comparison
+
+		/*
 		infixr("=", 30); // equal for comparison, will be overwritten
 		oSymbols["(==)"] = oSymbols["="];
 		delete oSymbols["="];
@@ -864,13 +889,16 @@ BasicParser.prototype = {
 						pos: left.pos
 					};
 				} else if (left.type === "identifier") {
+					fnEqualAsComparison(); //TTT
 					oObj = {
 						type: "assign",
 						name: left.value,
 						value: expression(0),
 						pos: left.pos
 					};
+					fnEqualAsAssign(); //TTT
 				} else if (left.type === "array") {
+					fnEqualAsComparison(); //TTT
 					oObj = {
 						type: "assign",
 						name: left.name,
@@ -878,6 +906,7 @@ BasicParser.prototype = {
 						value: expression(0),
 						pos: left.pos
 					};
+					fnEqualAsAssign(); //TTT
 				} else {
 					oObj = aTokens[iIndex - 1];
 					throw new BasicParser.ErrorObject("Invalid lvalue at", oObj.type, oObj.pos);
@@ -893,7 +922,24 @@ BasicParser.prototype = {
 			return oObj;
 		});
 		oSymbols["(=)"] = oSymbols["="];
+		*/
 
+		/*
+		infix("=", 10, 20, function (left) {
+			var t = left.type,
+				oObj;
+
+			// equal used as comparison
+			oObj = { // default infix method
+				type: "=", // comparison
+				left: left,
+				right: expression(0),
+				pos: left.pos
+			};
+
+			return oObj;
+		});
+		*/
 
 		stmt("after", function () {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
@@ -976,7 +1022,16 @@ BasicParser.prototype = {
 				type: "for"
 			};
 
+			if (oToken.type !== "identifier") {
+				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
+			}
+			oValue.name = expression(90); // take simple identifier, nothing more
+			if (oValue.name.type !== "identifier") { //TTT not array?
+				throw new BasicParser.ErrorObject("Expected simple identifier at", oToken.type, oToken.pos);
+			}
+			advance("=");
 			oValue.left = expression(0);
+
 			advance("to");
 			oValue.right = expression(0);
 
@@ -1029,9 +1084,9 @@ BasicParser.prototype = {
 				type: "if"
 			};
 
-			fnEqualAsComparison();
+			//fnEqualAsComparison();
 			oValue.left = expression(0);
-			fnEqualAsAssign();
+			//fnEqualAsAssign();
 
 			if (oToken.type === "goto") {
 				// skip "then"
@@ -1052,7 +1107,7 @@ BasicParser.prototype = {
 				} else if (oToken.type === "if") {
 					oValue.third = [statement()];
 				} else {
-					oValue.third = statements();
+					oValue.third = statements("else");
 				}
 			} else {
 				oValue.third = null;
@@ -1130,6 +1185,21 @@ BasicParser.prototype = {
 				sName = "keyDef";
 			}
 			return fnCreateCmdCall(sName);
+		});
+
+		stmt("let", function () {
+			var oValue = {
+				type: "assign",
+				pos: aTokens[iIndex - 1].pos
+			};
+
+			if (oToken.type !== "identifier") {
+				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
+			}
+			oValue.left = expression(90); // take it (can also be an array) and stop
+			advance("="); // equal as assignment
+			oValue.right = expression(0);
+			return oValue;
 		});
 
 		stmt("line", function () {
@@ -1464,9 +1534,9 @@ BasicParser.prototype = {
 				type: "while"
 			};
 
-			fnEqualAsComparison();
+			//fnEqualAsComparison();
 			oValue.left = expression(0);
-			fnEqualAsAssign();
+			//fnEqualAsAssign();
 
 			return oValue;
 		});
@@ -1497,7 +1567,7 @@ BasicParser.prototype = {
 
 		// line
 		iIndex = 0;
-		fnEqualAsAssign();
+		//fnEqualAsAssign();
 		advance();
 		while (oToken.type !== "(end)") {
 			aParseTree.push(line());
@@ -1550,22 +1620,28 @@ BasicParser.prototype = {
 					return a + " % " + b;
 				},
 				">": function (a, b) {
-					return a + " > " + b;
+					//return a + " > " + b;
+					return a + " > " + b + " ? -1 : 0";
 				},
 				"<": function (a, b) {
-					return a + " < " + b;
+					//return a + " < " + b;
+					return a + " < " + b + " ? -1 : 0";
 				},
 				">=": function (a, b) {
-					return a + " >= " + b;
+					//return a + " >= " + b;
+					return a + " >= " + b + " ? -1 : 0";
 				},
 				"<=": function (a, b) {
-					return a + " <= " + b;
+					//return a + " <= " + b;
+					return a + " <= " + b + " ? -1 : 0";
 				},
 				"=": function (a, b) {
-					return a + " === " + b;
+					//return a + " === " + b;
+					return a + " === " + b + " ? -1 : 0";
 				},
 				"<>": function (a, b) {
-					return a + " !== " + b;
+					//return a + " !== " + b;
+					return a + " !== " + b + " ? -1 : 0";
 				},
 				"@": function (a) {
 					return 'o.addressOf("' + a + '")'; // address of
@@ -1658,7 +1734,7 @@ BasicParser.prototype = {
 			fnParseFor = function (node) {
 				var sVarName, sLabel, value, value2, sStepName;
 
-				sVarName = fnAdaptVariableName(node.left.name);
+				sVarName = parseNode(node.name); //fnAdaptVariableName(node.left.name);
 				sLabel = that.iLine + "f" + that.iForCount;
 				that.oStack.f.push(sLabel);
 				that.iForCount += 1;
@@ -1667,7 +1743,7 @@ BasicParser.prototype = {
 				value = sStepName.substr(2); // remove preceiding "v."
 				variables[value] = 0; // declare also step variable
 
-				value = "/* for() */ " + parseNode(node.left) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+				value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
 				value += "\ncase \"" + sLabel + "\": ";
 
 				value += sVarName + " += " + sStepName + ";";
@@ -1749,7 +1825,10 @@ BasicParser.prototype = {
 					aNodeArgs.unshift('"' + sLabel + '"');
 					value = "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
 				} else if (sName === "onGoto") {
-					value = "o." + sName + "(" + aNodeArgs.join(", ") + "); break";
+					sLabel = that.iLine + "s" + that.iStopCount;
+					that.iStopCount += 1;
+					aNodeArgs.unshift('"' + sLabel + '"');
+					value = "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
 				} else { //TODO
 					value = "/* on(" + i + ") */  o." + sName + "(" + aNodeArgs.join(", ") + ")";
 				}
@@ -1792,6 +1871,7 @@ BasicParser.prototype = {
 					}).join("");
 					break;
 				case "assign":
+					/*
 					if (node.args) { // array?
 						aNodeArgs = fnParseArgs(node.args);
 						sName = fnAdaptVariableName(node.name, aNodeArgs.length);
@@ -1802,8 +1882,22 @@ BasicParser.prototype = {
 						sName = fnAdaptVariableName(node.name);
 						value = "";
 					}
-
 					value = sName + value + " = " + parseNode(node.value);
+					*/
+
+					if (node.left.type === "array") {
+						aNodeArgs = fnParseArgs(node.left.args);
+						sName = fnAdaptVariableName(node.left.name, aNodeArgs.length);
+						value = aNodeArgs.map(function (val) {
+							return "[" + val + "]";
+						}).join("");
+					} else if (node.left.type === "identifier") {
+						sName = fnAdaptVariableName(node.left.value);
+						value = "";
+					} else {
+						value = "error "; //TTT
+					}
+					value = sName + value + " = " + parseNode(node.right);
 					break;
 				case "fcall":
 					aNodeArgs = fnParseArgs(node.args);

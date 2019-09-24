@@ -34,8 +34,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Just open cpcbasic.html in a browser.
   The user interface shows several boxes, which can be reduced and expanded by pressing the **green** buttons.
 - Use the selection field to select a sample program, reset the CPC, and run the program.
-- If you change the BASIC program, press the **Run** button to compile and run the BASIC program in JavaScript. The **Parse only** button parses (or compiles) the program without it running.
+- If you change the BASIC program, press the **Run** button to compile and run the BASIC program in JavaScript. The **Compile only** button compiles the program without running it.
 - If the focus is on the CPC screen, keystrokes will be detected by a running program.
+  The *Input* window is an alternative way to send input to the CPC. This works also on mobile devices.
 - The **Break** button stops the simulation. You can continue with the "Continue" button.
 - The **Reset** button resets the CPC.
 - Textual output is also written to the *Console* Window. This is useful for copying and pasting the output.
@@ -62,8 +63,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   `defint a: a=1: a%=2: ?a,a%`
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
-- Comparison with equal in assignment: `a=0: x=(a=0): ?x`\
-  (By the way, `a=0: x=(a>=0): ?x` is ok but returns true, should return -1 as on the CPC)
+- [Solved: Comparison with equal in assignment ispossible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
 - A lot more
 

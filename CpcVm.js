@@ -1034,24 +1034,31 @@ CpcVm.prototype = {
 	onGosub: function (retLabel, n) { // varargs
 		var iLine;
 
-		if (n) {
-			iLine = arguments[n + 1]; // n=1...; start with argument 2
-			this.vmGotoLine(iLine, "onGosub (n=" + n + ", ret=" + retLabel + ")");
-			this.oGosubStack.push(retLabel);
+		if (!n || (n + 2) > arguments.length) { // out of range? => continue with line after onGosub
+			if (Utils.debug > 0) {
+				Utils.console.debug("DEBUG: onGosub: out of range: n=" + n + " in " + this.iLine);
+			}
+			iLine = retLabel;
+
 		} else {
-			Utils.console.warn("onGosub: n=" + n + " in " + this.iLine);
-			this.error(8);
+			iLine = arguments[n + 1]; // n=1...; start with argument 2
+			this.oGosubStack.push(retLabel);
 		}
+		this.vmGotoLine(iLine, "onGosub (n=" + n + ", ret=" + retLabel + ", iLine=" + iLine + ")");
 	},
 
-	onGoto: function (n) { // varargs
+	onGoto: function (retLabel, n) { // varargs
 		var iLine;
 
-		if (!n) { // NaN, null, 0...
-			Utils.console.warn("onGoto: n=" + n + " in " + this.iLine);
+		if (!n || (n + 2) > arguments.length) { // out of range? => continue with line after onGoto
+			if (Utils.debug > 0) {
+				Utils.console.debug("DEBUG: onGoto: out of range: n=" + n + " in " + this.iLine);
+			}
+			iLine = retLabel;
+		} else {
+			iLine = arguments[n + 1];
 		}
-		iLine = arguments[n];
-		this.vmGotoLine(iLine, "onGoto (n=" + n + ")");
+		this.vmGotoLine(iLine, "onGoto (n=" + n + ", ret=" + retLabel + ", iLine=" + iLine + ")");
 	},
 
 	// on sq gosub
