@@ -45,7 +45,7 @@ CpcVm.prototype = {
 			iLeft: 0, // mode 3 not available on CPC
 			iRight: 79,
 			iTop: 0,
-			iBottom: 24
+			iBottom: 49 //24
 		}
 	],
 
@@ -176,6 +176,7 @@ CpcVm.prototype = {
 
 	vmReset: function () {
 		this.oCanvas.reset();
+		this.iClgPen = 0;
 		this.oVarTypes = {};
 		this.vmDefineVarTypes("R", "a-z");
 		this.oInput.fnInputCallback = null; //TTT
@@ -392,6 +393,11 @@ CpcVm.prototype = {
 
 	vmNotImplemented: function (sName) {
 		Utils.console.warn("Not implemented: " + sName);
+		/*
+		if (Utils.debug) {
+			Utils.console.debug("WARN: Not implemented: " + sName);
+		}
+		*/
 	},
 
 	// not complete
@@ -428,7 +434,8 @@ CpcVm.prototype = {
 		return sStr;
 	},
 
-	vmAddGraphicsItem: function (sType, bRelative, x, y, iGPen, iGMask) {
+	/*
+	vmAddGraphicsItem: function (sType, bRelative, x, y, iGPen, iGColMode) {
 		var oItem = {
 			t: sType,
 			x: x,
@@ -443,12 +450,13 @@ CpcVm.prototype = {
 			oItem.c = iGPen;
 			this.graphicsPen(iGPen);
 		}
-		if (iGMask !== undefined) { //TODO
-			//oItem.m = iGMask;
-			this.oCanvas.setMask(iGMask);
+		if (iGColMode !== undefined) { //TODO
+			//oItem.m = iGColMode;
+			this.oCanvas.setGColMode(iGColMode);
 		}
 		this.oCanvas.addPath(oItem);
 	},
+	*/
 
 	vmSetInputParas: function (sInput) {
 		this.oInput.sInput = sInput;
@@ -562,9 +570,13 @@ CpcVm.prototype = {
 		this.oCanvas.clearInput();
 	},
 
-	clg: function (iPen) {
-		this.vmNotImplemented("clg");
-		this.oCanvas.clearGraphics(iPen);
+	clg: function (iClgPen) {
+		if (iClgPen !== undefined) {
+			this.iClgPen = iClgPen;
+		} else {
+			iClgPen = this.iClgPen;
+		}
+		this.oCanvas.clearGraphics(iClgPen);
 	},
 
 	closein: function () {
@@ -667,12 +679,26 @@ CpcVm.prototype = {
 		return this.fnCreateNDimArray.apply(this, aArgs);
 	},
 
-	draw: function (x, y, iGPen, iGMask) {
-		this.vmAddGraphicsItem("l", false, x, y, iGPen, iGMask);
+	draw: function (x, y, iGPen, iGColMode) {
+		//this.vmAddGraphicsItem("l", false, x, y, iGPen, iGColMode);
+		if (iGPen !== undefined) {
+			this.graphicsPen(iGPen);
+		}
+		if (iGColMode !== undefined) {
+			this.oCanvas.setGColMode(iGColMode);
+		}
+		this.oCanvas.draw(x, y);
 	},
 
-	drawr: function (x, y, iGPen, iGMask) {
-		this.vmAddGraphicsItem("l", true, x, y, iGPen, iGMask);
+	drawr: function (x, y, iGPen, iGColMode) {
+		//this.vmAddGraphicsItem("l", true, x, y, iGPen, iGColMode);
+		if (iGPen !== undefined) {
+			this.graphicsPen(iGPen);
+		}
+		if (iGColMode !== undefined) {
+			this.oCanvas.setGColMode(iGColMode);
+		}
+		this.oCanvas.drawr(x, y);
 	},
 
 	edit: function () {
@@ -744,10 +770,14 @@ CpcVm.prototype = {
 	},
 
 	fill: function (iGPen) {
+		/*
 		this.oCanvas.addPath({
 			t: "f", // type: fill
 			c: iGPen
 		});
+		*/
+		//TODO
+		this.vmNotImplemented("fill");
 	},
 
 	fix: function (n) {
@@ -784,12 +814,15 @@ CpcVm.prototype = {
 		}
 	},
 
-	graphicsPen: function (iGPen /* , iGMask */) {
+	graphicsPen: function (iGPen, iTransparentMode) {
 		iGPen = this.int(iGPen);
 		if (iGPen >= 0 && iGPen < 16) {
 			this.oCanvas.setGPen(iGPen);
 		} else {
 			this.error(5); // Improper argument
+		}
+		if (iTransparentMode !== undefined) {
+			this.oCanvas.setTranspartentMode(iGPen);
 		}
 	},
 
@@ -996,15 +1029,30 @@ CpcVm.prototype = {
 		oWin = this.aWindow[iStream];
 		this.pen(iStream, oWin.iPen); // set pen and paper also in canvas
 		this.paper(iStream, oWin.iPaper);
+		this.iClgPen = 0;
 		this.oCanvas.setMode(iMode);
 	},
 
-	move: function (x, y, iGPen, iGMask) {
-		this.vmAddGraphicsItem("m", false, x, y, iGPen, iGMask);
+	move: function (x, y, iGPen, iGColMode) {
+		//this.vmAddGraphicsItem("m", false, x, y, iGPen, iGColMode);
+		if (iGPen !== undefined) {
+			this.graphicsPen(iGPen);
+		}
+		if (iGColMode !== undefined) {
+			this.oCanvas.setGColMode(iGColMode);
+		}
+		this.oCanvas.move(x, y);
 	},
 
-	mover: function (x, y, iGPen, iGMask) {
-		this.vmAddGraphicsItem("m", true, x, y, iGPen, iGMask);
+	mover: function (x, y, iGPen, iGColMode) {
+		//this.vmAddGraphicsItem("m", true, x, y, iGPen, iGColMode);
+		if (iGPen !== undefined) {
+			this.graphicsPen(iGPen);
+		}
+		if (iGColMode !== undefined) {
+			this.oCanvas.setGColMode(iGColMode);
+		}
+		this.oCanvas.mover(x, y);
 	},
 
 	"new": function () {
@@ -1077,7 +1125,8 @@ CpcVm.prototype = {
 		this.oCanvas.setOrigin(xOff, yOff);
 
 		if (xLeft !== undefined) {
-			this.oCanvas.setClipping(xLeft, yBottom, xRight - xLeft, yBottom - yTop);
+			//this.oCanvas.setClipping(xLeft, yBottom, xRight - xLeft, yBottom - yTop);
+			this.oCanvas.setGWindow(xLeft, xRight, yTop, yBottom);
 		}
 	},
 
@@ -1115,12 +1164,26 @@ CpcVm.prototype = {
 		return Math.PI; // or less precise: 3.14159265
 	},
 
-	plot: function (x, y, iGPen, iGMask) { // 2, up to 4 parameters
-		this.vmAddGraphicsItem("p", false, x, y, iGPen, iGMask);
+	plot: function (x, y, iGPen, iGColMode) { // 2, up to 4 parameters
+		//this.vmAddGraphicsItem("p", false, x, y, iGPen, iGColMode);
+		if (iGPen !== undefined) {
+			this.graphicsPen(iGPen);
+		}
+		if (iGColMode !== undefined) {
+			this.oCanvas.setGColMode(iGColMode);
+		}
+		this.oCanvas.plot(x, y);
 	},
 
-	plotr: function (x, y, iGPen, iGMask) {
-		this.vmAddGraphicsItem("p", true, x, y, iGPen, iGMask);
+	plotr: function (x, y, iGPen, iGColMode) {
+		//this.vmAddGraphicsItem("p", true, x, y, iGPen, iGColMode);
+		if (iGPen !== undefined) {
+			this.graphicsPen(iGPen);
+		}
+		if (iGColMode !== undefined) {
+			this.oCanvas.setGColMode(iGColMode);
+		}
+		this.oCanvas.plotr(x, y);
 	},
 
 	poke: function (iAddr, iByte) {
@@ -1151,7 +1214,7 @@ CpcVm.prototype = {
 			iChar = sStr.charCodeAt(i);
 			if (y > (oWin.iBottom - iTop)) {
 				y = oWin.iBottom - iTop;
-				this.oCanvas.windowScroolDown(iLeft, iRight, iTop, iBottom);
+				this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom);
 			}
 			this.oCanvas.printChar(iChar, x + iLeft, y + iTop);
 			x += 1;
@@ -1248,9 +1311,11 @@ CpcVm.prototype = {
 			break;
 		case 0x15: //TODO NAK
 			break;
-		case 0x16: //TODO SYN
+		case 0x16: // SYN
+			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0));
 			break;
-		case 0x17: //TODO ETB
+		case 0x17: // ETB
+			this.oCanvas.setGColMode(sPara.charCodeAt(0));
 			break;
 		case 0x18: // CAN
 			i = oWin.iPen;
@@ -1551,7 +1616,7 @@ CpcVm.prototype = {
 	},
 
 	sound: function () {
-		this.vmNotImplemented("sound");
+		//this.vmNotImplemented("sound");
 	},
 
 	space$: function (n) {
@@ -1658,20 +1723,26 @@ CpcVm.prototype = {
 	},
 
 	test: function (x, y) {
+		/*
 		return this.oCanvas.addPath({
 			t: "t",
 			x: x,
 			y: y
 		});
+		*/
+		return this.oCanvas.test(x, y);
 	},
 
 	testr: function (x, y) {
+		/*
 		return this.oCanvas.addPath({
 			t: "t",
 			x: x,
 			y: y,
 			r: true
 		});
+		*/
+		return this.oCanvas.testr(x, y);
 	},
 
 	// then

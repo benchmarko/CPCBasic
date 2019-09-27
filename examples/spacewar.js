@@ -5,15 +5,20 @@
 cpcBasic.addItem("", function () { /*
 1 rem Spacewar
 2 rem http://jsbasic.apphb.com/default.aspx?sourceCode=SpaceWar
+3 rem Keyboard controls adapted
 10 cls
 20 locate 8, 5
 30 print " S P A C E   W A R"
 40 locate 9, 8
-50 print "Keys: 'S' or '8' to go up"
-70 print space$(8) "'X' or '2' to go down" : print space$(8) "<space> to shoot"
-75 print : print : print space$(8) "First to 10 points wins"
+50 'print "Keys: 'S' or '8' to go up"
+51 print "Keys: Cursor keys"
+60 'print space$(8) "'X' or '2' to go down"
+61 print space$(8) "to go up or down,"
+74 print space$(8) "<space> to shoot,"
+75 print space$(8) "q to quit"
+78 print : print : print space$(8) "First to 10 points wins"
 80 print : print : print space$(8) "Press <space> to start"
-90 if inkey$ <> " " then frame:goto 90
+90 if inkey$ <> " " then call &bd19:goto 90
 100 rem Constants
 110 minY$ = 3 : maxY$ = 17
 200 rem Game initialisation
@@ -32,15 +37,14 @@ cpcBasic.addItem("", function () { /*
 316 print "-=<"
 325 if missile1x$ <> 0 then gosub 750
 326 if missile2x$ <> 0 then gosub 850
-330 k$ = inkey$
-335 if k$ = "8" then k$ = "s" else if k$ = "2" then k$ = "x": 'map more keys
-340 if k$ = "s" and player1y$ > minY$  then gosub 610 : player1y$ = player1y$ - 1
-350 if k$ = "x" and player1y$ < maxY$ then gosub 610 : player1y$ = player1y$ + 1
-355 if k$ = " " then gosub 700
-360 if k$ = "q" then end
+330 k$ = lower$(inkey$)
+340 if k$ = chr$(240) and player1y$ > minY$  then gosub 610 : player1y$ = player1y$ - 1
+350 if k$ = chr$(241) and player1y$ < maxY$ then gosub 610 : player1y$ = player1y$ + 1
+355 if k$ = " " or k$=chr$(224) then gosub 700
+360 if k$ = "q" then cls:end:goto 205
 369 rem Control the computer player
 370 gosub 500
-380 frame:goto 300
+380 call &bd19:goto 300
 400 rem Update scores
 410 locate 2, 1
 420 print "Player 1: " player1Score$
@@ -94,7 +98,7 @@ cpcBasic.addItem("", function () { /*
 910 if player1Score$ = 10 then message$ = "PLAYER ONE WINS!!!!" else message$ = "PLAYER TWO WINS!!!!"
 930 locate 10, 7 : print message$
 940 locate 9, 9 : print "Press 'C' to continue"
-950 if inkey$ = "c" then goto 10 else frame:goto 950
+950 if inkey$ = "c" then goto 10 else call &bd19:goto 950
 1000 rem Explode a ship. Assumes playerToExplode$ has been set to 1 or 2
 1005 if playerToExplode$ = 1 then x$ = player1x$ + 1 : y$ = player1y$ else  x$ = player2x$ + 1 : y$ = player2y$
 1006 if i$ = 4 then goto 1030
@@ -107,9 +111,10 @@ cpcBasic.addItem("", function () { /*
 1017 locate x$ + i$, y$ + i$ : print "."
 1018 locate x$ - i$, y$ + i$ : print "."
 1030 rem Tight loop execution to slow down the animation speed only
-1040 for j$ = 1 to 1000
+1040 for j$ = 1 to 10
 1050   locate x$ - i$, y$
 1060   print string$(i$ * 2 + 1, "*")
+1065   call &bd19
 1070 next j$
 1080 i$ = i$ + 1
 1090 if i$ < 5 then goto 300

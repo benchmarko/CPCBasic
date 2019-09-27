@@ -5,13 +5,12 @@
 cpcBasic.addItem("", function () { /*
 5 REM Stardodger Game (2D Star Dodge)
 6 REM https://scruss.com/blog/2012/09/08/2d-star-dodge-flies-again/
-7 REM (We cannot detect pen 3 if it has same color as pen 0)
 10 ' ** Initialise **
 20 MODE 1
 30 INK 0,0
 40 BORDER 0
 50 INK 1,26
-60 'INK 3,0:'cannot detect pen 3 if it has same color as pen 0
+60 INK 3,0
 70 q=5
 90 LOCATE 16,1
 100 PRINT"Stardodger"
@@ -52,8 +51,8 @@ cpcBasic.addItem("", function () { /*
 470 DRAWR 4,dy
 480 IF INKEY(47)<>-1 THEN dy=4 ELSE dy=-4
 490 t=TESTR(2,dy/2)
-495 frame
-500 IF t=1 GOTO 550  
+495 call &bd19
+500 IF t=1 GOTO 550
 510 IF t=3 GOTO 620
 520 MOVER -2,-dy/2
 530 GOTO 470
@@ -63,7 +62,7 @@ cpcBasic.addItem("", function () { /*
 580 PRINT"Number of Screens completed = "+STR$((q/5)-1)
 590 GOSUB 700
 600 RUN
-620 MODE 1 
+620 MODE 1
 630 PRINT TAB(16);"WELL DONE"
 640 LOCATE 10,13
 650 PRINT"Stand by for Screen "+STR$((q/5)+1)
@@ -73,10 +72,10 @@ cpcBasic.addItem("", function () { /*
 700 LOCATE 8,25
 710 PRINT"Press any key to continue"
 720 WHILE INKEY$<>""
-725 frame
+725 call &bd19
 730 WEND
 740 WHILE INKEY$=""
-745 frame
+745 call &bd19
 750 WEND
 760 RETURN
 */ });

@@ -5,7 +5,6 @@
 cpcBasic.addItem("", function () { /*
 141 REM Colors CPC Demo
 143 REM Known from CPC CP/M Disk
-144 REM (For INK change, we redraw the graphics)
 145 DEG
 150 DIM cx(5),cy(5),r(5),lc(5)
 160 cx(1)=320:cy(1)=140
@@ -20,21 +19,15 @@ cpcBasic.addItem("", function () { /*
 1850 EVERY 5,3 GOSUB 2150
 1860 f=0
 1870 AFTER 500 GOSUB 2190
-1880 IF f=0 THEN frame:goto 1880
-1885 ?"Loading graphics..."
-1886 after 100 gosub 2300
-1887 IF f=1 THEN frame:goto 1887
+1880 if inkey$<>"" then gosub 2190
+1885 IF f=0 THEN call &bd19:goto 1880
 1888 goto 2400
 1889 '
 1890 'draw circle plus 3,4 or 6 around it
-1895 di
-1896 gosub 1900
-1897 ei
-1898 return
 1900 cx%=cx(st):cy%=cy(st):lc(st)=0
 1910 FOR x%=1 TO r(st)
 1920 ORIGIN cx%,cy%,0,640,0,400
-1925 'frame
+1925 'draw frame
 1930 MOVE 0,0
 1940 DRAWR r(st)*SIN(x%*360/r(st)),r(st)*COS(x%*360/r(st)),1+(st MOD 3)
 1950 DRAW r(st)*SIN((x%+1)*360/r(st)),r(st)*COS((x%+1)*360/r(st))
@@ -69,5 +62,9 @@ cpcBasic.addItem("", function () { /*
 2210 RETURN
 2300 f=2
 2310 return
-2400 run "graphics"
+2390 '
+2400 ink 1,24:?"Loading graphics..."
+2410 after 80 gosub 2300
+2420 IF f=1 THEN call &bd19:goto 2420
+2430 run "graphics"
 */ });

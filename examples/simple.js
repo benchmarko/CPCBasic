@@ -16,13 +16,13 @@ cpcBasic.addItem("", function () { /*
 140 a$=a$+CHR$(199+2*RND)
 150 wend
 160 print a$;
-170 if t>time then frame:goto 170
+170 if t>time then call &bd19:goto 170
 175 if f=50 or inkey$<>"" then 400
 180 goto 110
 190 '
 300 r=remain(0):f=50:return
 390 '
-400 for i=1 to f:frame:next:
+400 for i=1 to f:call &bd19:next
 410 m=m+1:if m>3 then m=0
 420 goto 80
 */ });

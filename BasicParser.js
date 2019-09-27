@@ -457,16 +457,6 @@ BasicParser.prototype = {
 			aParseTree = [],
 			oToken,
 
-			/*
-			fnEqualAsAssign = function () {
-				//oSymbols["="] = oSymbols["(=)"];
-			},
-
-			fnEqualAsComparison = function () {
-				//oSymbols["="] = oSymbols["(==)"];
-			},
-			*/
-
 			symbol = function (id, nud, lbp, led) {
 				var oSymbol = oSymbols[id];
 
@@ -870,76 +860,6 @@ BasicParser.prototype = {
 		prefix("@", 10); // address of
 
 		infixr("=", 30); // equal for comparison
-
-		/*
-		infixr("=", 30); // equal for comparison, will be overwritten
-		oSymbols["(==)"] = oSymbols["="];
-		delete oSymbols["="];
-
-		infix("=", 10, 20, function (left) {
-			var oObj;
-
-			if (oSymbols["="] === oSymbols["(=)"]) {
-				if (left.type === "fcall") { // TODO: only in DEF FN context!
-					oObj = {
-						type: "def",
-						name: left.name,
-						args: left.args,
-						value: expression(0),
-						pos: left.pos
-					};
-				} else if (left.type === "identifier") {
-					fnEqualAsComparison(); //TTT
-					oObj = {
-						type: "assign",
-						name: left.value,
-						value: expression(0),
-						pos: left.pos
-					};
-					fnEqualAsAssign(); //TTT
-				} else if (left.type === "array") {
-					fnEqualAsComparison(); //TTT
-					oObj = {
-						type: "assign",
-						name: left.name,
-						args: left.args,
-						value: expression(0),
-						pos: left.pos
-					};
-					fnEqualAsAssign(); //TTT
-				} else {
-					oObj = aTokens[iIndex - 1];
-					throw new BasicParser.ErrorObject("Invalid lvalue at", oObj.type, oObj.pos);
-				}
-			} else { // equal used as comparison
-				oObj = { // default infix method
-					type: "=", // comparison
-					left: left,
-					right: expression(0),
-					pos: left.pos
-				};
-			}
-			return oObj;
-		});
-		oSymbols["(=)"] = oSymbols["="];
-		*/
-
-		/*
-		infix("=", 10, 20, function (left) {
-			var t = left.type,
-				oObj;
-
-			// equal used as comparison
-			oObj = { // default infix method
-				type: "=", // comparison
-				left: left,
-				right: expression(0),
-				pos: left.pos
-			};
-
-			return oObj;
-		});
-		*/
 
 		stmt("after", function () {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
@@ -1734,7 +1654,7 @@ BasicParser.prototype = {
 			fnParseFor = function (node) {
 				var sVarName, sLabel, value, value2, sStepName;
 
-				sVarName = parseNode(node.name); //fnAdaptVariableName(node.left.name);
+				sVarName = parseNode(node.name);
 				sLabel = that.iLine + "f" + that.iForCount;
 				that.oStack.f.push(sLabel);
 				that.iForCount += 1;
@@ -1871,20 +1791,6 @@ BasicParser.prototype = {
 					}).join("");
 					break;
 				case "assign":
-					/*
-					if (node.args) { // array?
-						aNodeArgs = fnParseArgs(node.args);
-						sName = fnAdaptVariableName(node.name, aNodeArgs.length);
-						value = aNodeArgs.map(function (val) {
-							return "[" + val + "]";
-						}).join("");
-					} else {
-						sName = fnAdaptVariableName(node.name);
-						value = "";
-					}
-					value = sName + value + " = " + parseNode(node.value);
-					*/
-
 					if (node.left.type === "array") {
 						aNodeArgs = fnParseArgs(node.left.args);
 						sName = fnAdaptVariableName(node.left.name, aNodeArgs.length);

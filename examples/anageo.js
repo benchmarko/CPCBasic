@@ -154,7 +154,7 @@ cpcBasic.addItem("", function () { /*
 1580 WINDOW#2,10,30,10,22:CLS#2:PRINT#2,t[0]+":":PRINT#2
 1590 READ ma:FOR i=1 TO ma:READ t[i]:PRINT#2,HEX$(i)+") "+t[i]:NEXT
 1600 PRINT#2:PRINT#2,"Ihre Wahl : ";
-1610 t=INKEY$:frame:IF t="" THEN 1610
+1610 t=INKEY$:call &bd19:IF t="" THEN 1610
 1620 i=VAL(t):IF i<1 OR i>ma THEN 1610
 1630 PRINT#2,t:t=t[i]:RETURN
 1640 '

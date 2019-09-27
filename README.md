@@ -50,8 +50,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate
 - It is BASIC only and can not execute Z80 machine code
-- Changing the color with *INK*, existing drawings will not be changed and the colors will not flash. Currently you have to redraw the screen with another color to get a flashing effect.
-- *TEST*, *TESTR* can not distinguish between pens of the same color
 - Unimplemented commands, eg. *KEY*, *KEY DEF*, ...
 - RESTORE on lines without *DATA*
 - Print does not process all BASIC control codes
@@ -63,13 +61,19 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   `defint a: a=1: a%=2: ?a,a%`
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
-- [Solved: Comparison with equal in assignment ispossible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
 - A lot more
 
+## Fixed Restrictions
+
+- [fixed: *TEST*, *TESTR* can not distinguish between pens of the same color]
+- [fixed: Changing the color with *INK*, existing drawings will not be changed and the colors will
+  not flash. Currently you have to redraw the screen with another color to get a flashing effect.]
+- [fixed: Comparison with equal in assignment ispossible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
+
 ## Extensions
 
-- *MODE 3*: Similar to *MODE 2*, but with 16 colors: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=rectangles)
+- *MODE 3*: High resolution with real 640x480 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=rectangles)
 - Computations are not limited to 16 bits
 - Peek&Poke can access "large" memory, not only 64K or 512K.
 
@@ -82,7 +86,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Fix some restrictions, e.g. Handle all BASIC control codes
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
 - Sound support
+- Separate sample library; sample category
 - DSK images support
+- Pause key
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
 - RSX extension libraries / plugins programmed in JavaScript
 - Can we detect Busy Loops and insert *FRAME* automatically?

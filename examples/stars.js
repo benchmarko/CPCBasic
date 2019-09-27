@@ -16,7 +16,7 @@ cpcBasic.addItem("", function () { /*
 100 y(i)=y(i)+s(i):IF y(i)>=400 THEN y(i)=0
 110 PLOT x(i),y(i)
 120 NEXT
-125 frame
+125 call &bd19
 126 cls: 'test since xor does not work yet
 130 GOTO 80
 */ });
