@@ -434,30 +434,6 @@ CpcVm.prototype = {
 		return sStr;
 	},
 
-	/*
-	vmAddGraphicsItem: function (sType, bRelative, x, y, iGPen, iGColMode) {
-		var oItem = {
-			t: sType,
-			x: x,
-			y: y
-		};
-
-		if (bRelative) {
-			oItem.r = true;
-		}
-
-		if (iGPen !== undefined) {
-			oItem.c = iGPen;
-			this.graphicsPen(iGPen);
-		}
-		if (iGColMode !== undefined) { //TODO
-			//oItem.m = iGColMode;
-			this.oCanvas.setGColMode(iGColMode);
-		}
-		this.oCanvas.addPath(oItem);
-	},
-	*/
-
 	vmSetInputParas: function (sInput) {
 		this.oInput.sInput = sInput;
 	},
@@ -680,7 +656,6 @@ CpcVm.prototype = {
 	},
 
 	draw: function (x, y, iGPen, iGColMode) {
-		//this.vmAddGraphicsItem("l", false, x, y, iGPen, iGColMode);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -691,7 +666,6 @@ CpcVm.prototype = {
 	},
 
 	drawr: function (x, y, iGPen, iGColMode) {
-		//this.vmAddGraphicsItem("l", true, x, y, iGPen, iGColMode);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -770,12 +744,6 @@ CpcVm.prototype = {
 	},
 
 	fill: function (iGPen) {
-		/*
-		this.oCanvas.addPath({
-			t: "f", // type: fill
-			c: iGPen
-		});
-		*/
 		//TODO
 		this.vmNotImplemented("fill");
 	},
@@ -828,7 +796,7 @@ CpcVm.prototype = {
 
 	hex$: function (n, iPad) {
 		iPad = iPad || 0;
-		return (n >>> 0).toString(16).padStart(iPad, "0"); // eslint-disable-line no-bitwise
+		return (n >>> 0).toString(16).toUpperCase().padStart(iPad, "0"); // eslint-disable-line no-bitwise
 	},
 
 	himem: function () {
@@ -838,6 +806,8 @@ CpcVm.prototype = {
 	// if
 
 	ink: function (iPen, iInk1, iInk2) {
+		iInk1 = (iInk1 + 0.5) | 0; // eslint-disable-line no-bitwise
+		iInk2 = (iInk2 + 0.5) | 0; // eslint-disable-line no-bitwise
 		this.oCanvas.setInk(iPen, iInk1, iInk2);
 	},
 
@@ -986,7 +956,10 @@ CpcVm.prototype = {
 	},
 
 	lower$: function (s) {
-		return s.toLowerCase();
+		if (s >= "A" && s <= "Z") {
+			s = s.toLowerCase();
+		}
+		return s;
 	},
 
 	mask: function () {
@@ -1034,7 +1007,6 @@ CpcVm.prototype = {
 	},
 
 	move: function (x, y, iGPen, iGColMode) {
-		//this.vmAddGraphicsItem("m", false, x, y, iGPen, iGColMode);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1045,7 +1017,6 @@ CpcVm.prototype = {
 	},
 
 	mover: function (x, y, iGPen, iGColMode) {
-		//this.vmAddGraphicsItem("m", true, x, y, iGPen, iGColMode);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1087,7 +1058,6 @@ CpcVm.prototype = {
 				Utils.console.debug("DEBUG: onGosub: out of range: n=" + n + " in " + this.iLine);
 			}
 			iLine = retLabel;
-
 		} else {
 			iLine = arguments[n + 1]; // n=1...; start with argument 2
 			this.oGosubStack.push(retLabel);
@@ -1121,11 +1091,17 @@ CpcVm.prototype = {
 
 	// or
 
-	origin: function (xOff, yOff, xLeft, xRight, yTop, yBottom) { // parameters from xLeft are optional
+	origin: function (xOff, yOff, xLeft, xRight, yTop, yBottom) { // parameters starting from xLeft are optional
+		var tmp;
+
 		this.oCanvas.setOrigin(xOff, yOff);
 
 		if (xLeft !== undefined) {
-			//this.oCanvas.setClipping(xLeft, yBottom, xRight - xLeft, yBottom - yTop);
+			if (yTop < yBottom) {
+				tmp = yTop;
+				yTop = yBottom;
+				yBottom = tmp;
+			}
 			this.oCanvas.setGWindow(xLeft, xRight, yTop, yBottom);
 		}
 	},
@@ -1165,7 +1141,6 @@ CpcVm.prototype = {
 	},
 
 	plot: function (x, y, iGPen, iGColMode) { // 2, up to 4 parameters
-		//this.vmAddGraphicsItem("p", false, x, y, iGPen, iGColMode);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1176,7 +1151,6 @@ CpcVm.prototype = {
 	},
 
 	plotr: function (x, y, iGPen, iGColMode) {
-		//this.vmAddGraphicsItem("p", true, x, y, iGPen, iGColMode);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1195,7 +1169,43 @@ CpcVm.prototype = {
 		return this.aWindow[iStream].iPos + 1;
 	},
 
+	vmMoveCursor2AllowedPos: function (iStream) {
+		var oWin = this.aWindow[iStream],
+			iLeft = oWin.iLeft,
+			iRight = oWin.iRight,
+			iTop = oWin.iTop,
+			iBottom = oWin.iBottom,
+			x = oWin.iPos,
+			y = oWin.iVpos;
+
+		if (x > (iRight - iLeft)) {
+			y += 1;
+			x = 0;
+		}
+
+		if (x < 0) {
+			y -= 1;
+			x = iRight - iLeft;
+		}
+
+		if (y < 0) {
+			y = 0;
+			this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom);
+		}
+
+		if (y > (iBottom - iTop)) {
+			y = iBottom - iTop;
+			this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom);
+		}
+		oWin.iPos = x;
+		oWin.iVpos = y;
+	},
+
 	vmPrintChars: function (sStr, iStream) {
+		var oWin = this.aWindow[iStream],
+			i, iChar;
+
+		/*
 		var oWin = this.aWindow[iStream],
 			iLeft = oWin.iLeft,
 			iRight = oWin.iRight,
@@ -1210,22 +1220,31 @@ CpcVm.prototype = {
 			x = 0;
 			y += 1; // newline if string does not fit
 		}
+		*/
 		for (i = 0; i < sStr.length; i += 1) {
 			iChar = sStr.charCodeAt(i);
+			this.vmMoveCursor2AllowedPos(iStream);
+			/*
 			if (y > (oWin.iBottom - iTop)) {
 				y = oWin.iBottom - iTop;
-				this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom);
+				this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom);
 			}
-			this.oCanvas.printChar(iChar, x + iLeft, y + iTop);
-			x += 1;
+			*/
+			this.oCanvas.printChar(iChar, oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop);
+			//x += 1;
+			oWin.iPos += 1; //TTT
 
+			/*
 			if (x > (iRight - iLeft)) {
 				x = 0;
 				y += 1;
 			}
+			*/
 		}
+		/*
 		oWin.iPos = x;
 		oWin.iVpos = y;
+		*/
 	},
 
 	vmControlSymbol: function (sPara) {
@@ -1276,21 +1295,26 @@ CpcVm.prototype = {
 			Utils.console.log("vmHandleControlCode: BEL");
 			break;
 		case 0x08: // BS
+			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iPos -= 1;
 			break;
 		case 0x09: //TODO TAB ??
+			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iPos += 1;
 			break;
 		case 0x0a: // LF
+			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iVpos += 1;
 			break;
 		case 0x0b: // VT
+			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iVpos -= 1;
 			break;
 		case 0x0c: // FF
 			this.cls(iStream);
 			break;
 		case 0x0d: // CR
+			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iPos = 0;
 			break;
 		case 0x0e: // SO
@@ -1300,14 +1324,19 @@ CpcVm.prototype = {
 			this.pen(iStream, sPara.charCodeAt(0));
 			break;
 		case 0x10: //TODO DLE
+			this.vmMoveCursor2AllowedPos(iStream);
 			break;
 		case 0x11: //TODO DC1
+			this.vmMoveCursor2AllowedPos(iStream);
 			break;
 		case 0x12: //TODO DC2
+			this.vmMoveCursor2AllowedPos(iStream);
 			break;
 		case 0x13: //TODO DC3
+			this.vmMoveCursor2AllowedPos(iStream);
 			break;
 		case 0x14: //TODO DC4
+			this.vmMoveCursor2AllowedPos(iStream);
 			break;
 		case 0x15: //TODO NAK
 			break;
@@ -1444,8 +1473,8 @@ CpcVm.prototype = {
 					aSpecialArgs = arg.args; // TODO: copy?
 					aSpecialArgs.unshift(iStream);
 					sStr = this[arg.type].apply(this, aSpecialArgs);
-				} else if (typeof arg === "number" && arg >= 0) {
-					sStr = " " + String(arg);
+				} else if (typeof arg === "number") {
+					sStr = ((arg >= 0) ? " " : "") + String(arg) + " ";
 				} else {
 					sStr = String(arg);
 				}
@@ -1628,7 +1657,7 @@ CpcVm.prototype = {
 	},
 
 	speedInk: function () {
-		this.vmNotImplemented("speedInk");
+		this.vmNotImplemented("speedInk"); // default: 10,10
 	},
 
 	speedKey: function () {
@@ -1658,9 +1687,13 @@ CpcVm.prototype = {
 	},
 
 	str$: function (n) {
-		var sSign = (Number(n) > 0) ? " " : "",
-			sStr = sSign + String(n);
+		var sStr;
 
+		if (typeof n === "number") {
+			sStr = ((n >= 0) ? " " : "") + String(n);
+		} else {
+			sStr = String(n);
+		}
 		return sStr;
 	},
 
@@ -1723,32 +1756,17 @@ CpcVm.prototype = {
 	},
 
 	test: function (x, y) {
-		/*
-		return this.oCanvas.addPath({
-			t: "t",
-			x: x,
-			y: y
-		});
-		*/
 		return this.oCanvas.test(x, y);
 	},
 
 	testr: function (x, y) {
-		/*
-		return this.oCanvas.addPath({
-			t: "t",
-			x: x,
-			y: y,
-			r: true
-		});
-		*/
 		return this.oCanvas.testr(x, y);
 	},
 
 	// then
 
 	time: function () {
-		return Math.floor((Date.now() - this.iStartTime) * 300 / 1000);
+		return ((Date.now() - this.iStartTime) * 300 / 1000) | 0; // eslint-disable-line no-bitwise
 	},
 
 	// to
@@ -1769,7 +1787,10 @@ CpcVm.prototype = {
 	},
 
 	upper$: function (s) {
-		return s.toUpperCase();
+		if (s >= "a" && s <= "z") {
+			s = s.toUpperCase();
+		}
+		return s;
 	},
 
 	using: function (sFormat) { // varargs

@@ -1004,10 +1004,7 @@ BasicParser.prototype = {
 				type: "if"
 			};
 
-			//fnEqualAsComparison();
 			oValue.left = expression(0);
-			//fnEqualAsAssign();
-
 			if (oToken.type === "goto") {
 				// skip "then"
 				oValue.right = statements("else");
@@ -1454,9 +1451,7 @@ BasicParser.prototype = {
 				type: "while"
 			};
 
-			//fnEqualAsComparison();
 			oValue.left = expression(0);
-			//fnEqualAsAssign();
 
 			return oValue;
 		});
@@ -1487,7 +1482,6 @@ BasicParser.prototype = {
 
 		// line
 		iIndex = 0;
-		//fnEqualAsAssign();
 		advance();
 		while (oToken.type !== "(end)") {
 			aParseTree.push(line());
@@ -1652,7 +1646,7 @@ BasicParser.prototype = {
 			},
 
 			fnParseFor = function (node) {
-				var sVarName, sLabel, value, value2, sStepName;
+				var sVarName, sLabel, value, sStepName, sEndName;
 
 				sVarName = parseNode(node.name);
 				sLabel = that.iLine + "f" + that.iForCount;
@@ -1662,14 +1656,17 @@ BasicParser.prototype = {
 				sStepName = sVarName + "Step";
 				value = sStepName.substr(2); // remove preceiding "v."
 				variables[value] = 0; // declare also step variable
+				sEndName = sVarName + "End";
+				value = sEndName.substr(2); // remove preceiding "v."
+				variables[value] = 0; // declare also step variable
 
-				value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+				value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sEndName + " = " + parseNode(node.right) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
 				value += "\ncase \"" + sLabel + "\": ";
 
 				value += sVarName + " += " + sStepName + ";";
 				value += "\ncase \"" + sLabel + "b\": ";
-				value2 = parseNode(node.right);
-				value += "if (" + sStepName + " > 0 && " + sVarName + " > " + value2 + " || " + sStepName + " < 0 && " + sVarName + " < " + value2 + ") { o.goto(\"" + sLabel + "e\"); break; }";
+				//value2 = parseNode(node.right);
+				value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
 				return value;
 			},
 

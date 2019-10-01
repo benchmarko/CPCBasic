@@ -46,6 +46,10 @@ cpcBasic.addIndex("./", function () { /*
 		"title": "CPC Basic"
 	},
 	{
+    	"key": "cpcmhz",
+		"title": "CPC Mhz"
+	},
+	{
     	"key": "division",
 		"title": "Division of long numberss"
 	},
@@ -81,6 +85,10 @@ cpcBasic.addIndex("./", function () { /*
 		"key": "piechart",
 		"title": "Pie Chart"
 	},
+	   {
+    	"key": "rastercircle",
+		"title": "Raster Circle"
+    },
 	{
 		"key": "rectangles",
 		"title": "Rectangles"
@@ -108,7 +116,11 @@ cpcBasic.addIndex("./", function () { /*
 	{
 		"key": "stars",
 		"title": "Stars"
-    },
+	},
+	{
+		"key": "states",
+		"title": "States of the Earth"
+	},
     {
 		"key": "testpage",
 		"title": "Test Page"
