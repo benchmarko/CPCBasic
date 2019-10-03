@@ -544,6 +544,14 @@ Canvas.prototype = {
 		}
 	},
 
+	fillTextBox: function (iLeft, iTop, iWidth, iHeight, iPen) {
+		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
+			iCharHeight = this.aModeData[this.iMode].iCharHeight;
+
+		this.fillMyRect(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, iHeight * iCharHeight, iPen);
+		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, (iLeft + iWidth) * iCharWidth, (iTop + iHeight) * iCharHeight);
+	},
+
 	moveMyRectDown: function (x, y, iWidth, iHeight, x2, y2) { // for scrolling up (overlap)
 		var iCanvasWidth = this.iWidth,
 			dataset8 = this.dataset8,
@@ -625,19 +633,24 @@ Canvas.prototype = {
 
 		x += this.xOrig;
 		y = this.iHeight - 1 - (y + this.yOrig);
-		if (x < this.xLeft || x >= this.xRight || y < (this.iHeight - 1 - this.yTop) || y >= (this.iHeight - 1 - this.yBottom)) { //>=?
+		if (x < this.xLeft || x >= this.xRight || y < (this.iHeight - this.yTop) || y >= (this.iHeight - this.yBottom)) {
 			return; // not in graphics window
 		}
 		iGPen = this.iGPen;
 		iLineWidth = this.aModeData[this.iMode].iLineWidth;
 		iLineHeight = this.aModeData[this.iMode].iLineHeight;
 
+		x &= ~(iLineWidth - 1); // eslint-disable-line no-bitwise
+		y &= ~(iLineHeight - 1); // eslint-disable-line no-bitwise
+
+		/*
 		if (x + iLineWidth >= this.xRight) { // limit pixel
 			iLineWidth = this.xRight - x;
 		}
-		if (y + iLineHeight >= (this.iHeight - 1 - this.yBottom)) { // limit pixel
-			iLineHeight = (this.iHeight - 1 - this.yBottom) - y;
+		if (y + iLineHeight >= (this.iHeight - this.yBottom)) { // limit pixel
+			iLineHeight = (this.iHeight - this.yBottom) - y;
 		}
+		*/
 		for (row = 0; row < iLineHeight; row += 1) {
 			i = x + this.iWidth * (y + row);
 			for (col = 0; col < iLineWidth; col += 1) {
@@ -838,6 +851,7 @@ Canvas.prototype = {
 		}
 	},
 
+	/*
 	clearWindow: function (iLeft, iRight, iTop, iBottom) { // clear current window
 		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
@@ -847,8 +861,16 @@ Canvas.prototype = {
 			y = iTop * iCharHeight;
 
 		this.fillMyRect(x, y, iWidth * iCharWidth, iHeight * iCharHeight, this.iPaper);
-		this.setNeedUpdate(x, y, x + iLeft * iCharWidth, y + iHeight * iCharHeight);
+		this.setNeedUpdate(x, y, x + iWidth * iCharWidth, y + iHeight * iCharHeight);
 	},
+	*/
+	clearWindow: function (iLeft, iRight, iTop, iBottom) { // clear current window
+		var iWidth = iRight + 1 - iLeft,
+			iHeight = iBottom + 1 - iTop;
+
+		this.fillTextBox(iLeft, iTop, iWidth, iHeight, this.iPaper);
+	},
+
 
 	clearGraphics: function (iClgPen) {
 		this.fillMyRect(this.xLeft, this.yBottom, this.xRight - this.xLeft, this.yTop - this.yBottom, iClgPen); //TTT +1?
@@ -865,8 +887,9 @@ Canvas.prototype = {
 		if (iHeight > 1) { // scroll part
 			this.moveMyRectDown(iLeft * iCharWidth, (iTop + 1) * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, iTop * iCharHeight);
 		}
-		this.fillMyRect(iLeft * iCharWidth, (iBottom - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight, this.iPaper); // clear line
-		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
+		//this.fillMyRect(iLeft * iCharWidth, (iBottom - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight, this.iPaper); // clear line
+		this.fillTextBox(iLeft, iBottom, iWidth, 1, this.iPaper);
+		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight); //TTT
 	},
 
 	windowScrollDown: function (iLeft, iRight, iTop, iBottom) {
@@ -878,7 +901,8 @@ Canvas.prototype = {
 		if (iHeight > 1) { // scroll part
 			this.moveMyRectUp(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, (iTop + 1) * iCharHeight);
 		}
-		this.fillMyRect(iLeft * iCharWidth, (iTop - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight, this.iPaper); // clear line
+		//this.fillMyRect(iLeft * iCharWidth, (iTop - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight, this.iPaper); // clear line
+		this.fillTextBox(iLeft, iTop, iWidth, 1, this.iPaper);
 		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
 	},
 

@@ -228,6 +228,9 @@ BasicParser.prototype = {
 			isDigit = function (c) {
 				return (/[0-9]/).test(c);
 			},
+			isDot = function (c) {
+				return (/[.]/).test(c);
+			},
 			isSign = function (c) {
 				return (/[+-]/).test(c);
 			},
@@ -253,10 +256,10 @@ BasicParser.prototype = {
 				return c !== "" && !isQuotes(c) && !isNewLine(c); // quoted string must be in one line!
 			},
 			isIdentifierStart = function (c) {
-				return c !== "" && (/[A-Za-z]/).test(c); // cannot use complete [A-Za-z]+[\w]*[$%!]
+				return c !== "" && (/[A-Za-z]/).test(c); // cannot use complete [A-Za-z]+[\w]*[$%!]?
 			},
 			isIdentifierMiddle = function (c) {
-				return c !== "" && (/[\w]/).test(c);
+				return c !== "" && (/[A-Za-z0-9.]/).test(c);
 			},
 			isIdentifierEnd = function (c) {
 				return c !== "" && (/[$%!]/).test(c);
@@ -365,7 +368,22 @@ BasicParser.prototype = {
 				if (sChar === ".") {
 					sToken += advanceWhile(isDigit);
 				}
-				if (sChar === "e") {
+				if (sChar === "e" || sChar === "E") {
+					sToken += advanceWhile(isSign);
+					if (isDigit(sChar)) {
+						sToken += advanceWhile(isDigit);
+					}
+				}
+				sToken = parseFloat(sToken);
+				if (!isFinite(sToken)) {
+					throw new BasicParser.ErrorObject("Number is too large or too small", sToken, iStartPos); // for a 64-bit double
+				}
+				addToken("number", sToken, iStartPos);
+			} else if (isDot(sChar)) { // number starting with dot (similat code to normal number)
+				sToken = sChar;
+				sChar = advance();
+				sToken += advanceWhile(isDigit);
+				if (sChar === "e" || sChar === "E") {
 					sToken += advanceWhile(isSign);
 					if (isDigit(sChar)) {
 						sToken += advanceWhile(isDigit);
@@ -1286,6 +1304,7 @@ BasicParser.prototype = {
 				iParseIndex = iIndex,
 				bTrailingSemicolon = false,
 				reFormat = /!|&|\\ *\\|#+\.?#*[+-]?/,
+				iSpcOrTabEnd = 0,
 				t, aFormat, oStream;
 
 			oStream = fnGetOptionalStream();
@@ -1301,6 +1320,7 @@ BasicParser.prototype = {
 						args: [t]
 					};
 					oValue.args.push(oValue2);
+					iSpcOrTabEnd = iIndex; // save index so we can ignore newline if spc or tab is printed last
 				} else if (oToken.type === "tab") {
 					advance("tab");
 					t = expression(0); // value
@@ -1309,6 +1329,7 @@ BasicParser.prototype = {
 						args: [t]
 					};
 					oValue.args.push(oValue2);
+					iSpcOrTabEnd = iIndex;
 				} else if (oToken.type === "using") {
 					advance("using");
 					t = expression(0); // format
@@ -1348,7 +1369,7 @@ BasicParser.prototype = {
 			}
 
 			bTrailingSemicolon = (aTokens[iIndex - 2].type === ";"); //TTT
-			if (!bTrailingSemicolon) {
+			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
 				oValue.args.push({
 					type: "string",
 					value: "\\r\\n"
@@ -1599,6 +1620,7 @@ BasicParser.prototype = {
 
 			fnAdaptVariableName = function (sName, iArrayIndices) {
 				sName = sName.toLowerCase();
+				sName = sName.replace(/\./g, "_");
 				if (Utils.stringEndsWith(sName, "!")) { // real number?
 					sName = sName.slice(0, -1) + "R"; // "!" => "R"
 				} else if (Utils.stringEndsWith(sName, "%")) { // integer number?

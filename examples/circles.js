@@ -9,14 +9,13 @@ cpcBasic.addItem("", function () { /*
 120 mode m
 125 ?"Mode";m
 130 for r=100 to 200 step 10
-140 gosub 400
+140 gosub 410
 150 next r
 155 call &bb18
 160 next m
 170 goto 115
 180 '
 390 'draw
-400 n=0:x=1:y=2:radio=3:despx=4:despy=5
 410 FOR i=0 TO 359
 420 px=sin(i)*r+320
 430 py=cos(i)*r+200

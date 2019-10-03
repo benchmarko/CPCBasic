@@ -1,4 +1,4 @@
-# CPCBasic - Run CPC BASIC in a Browser
+# CPCBasic Unchained - Run CPC BASIC in a Browser
 
 CPCBasic lets you run CPC BASIC programs in a browser. The supported BASIC style is known as Amstrad CPC 6128 Locomotive BASIC 1.1.
 BASIC programs are compiled to JavaScript which can be run in the browser. A library provides the functionality of the commands that are not directly available in JavaScript.
@@ -52,9 +52,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - It is BASIC only and can not execute Z80 machine code
 - Unimplemented commands, eg. *KEY*, *KEY DEF*, ...
 - RESTORE on lines without *DATA*
-- Print does not process all BASIC control codes
 - No sound
-- No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*, ...
+- No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - Few checks of the program
 - Almost no type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
@@ -83,7 +82,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Possible Future Enhancements
 
-- Fix some restrictions, e.g. Handle all BASIC control codes
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
 - Sound support
 - Separate sample library; sample category

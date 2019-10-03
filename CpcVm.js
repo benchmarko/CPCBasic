@@ -180,6 +180,7 @@ CpcVm.prototype = {
 		this.oVarTypes = {};
 		this.vmDefineVarTypes("R", "a-z");
 		this.oInput.fnInputCallback = null; //TTT
+		//this.mode(this.iMode);
 	},
 
 	vmGotoLine: function (line, sMsg) {
@@ -331,7 +332,8 @@ CpcVm.prototype = {
 				iVpos: 0,
 				iPaper: 0,
 				iPen: 1,
-				bTag: false
+				bTextEnabled: true, // text enabled
+				bTag: false // tag=text at graphics
 			},
 			i;
 
@@ -1166,6 +1168,7 @@ CpcVm.prototype = {
 
 	pos: function (iStream) {
 		iStream = iStream || 0;
+		this.vmMoveCursor2AllowedPos(iStream);
 		return this.aWindow[iStream].iPos + 1;
 	},
 
@@ -1221,6 +1224,21 @@ CpcVm.prototype = {
 			y += 1; // newline if string does not fit
 		}
 		*/
+
+		if (!oWin.bTextEnabled) {
+			if (Utils.debug > 0) {
+				Utils.console.debug("DEBUG: vmPrintChars: text output disabled: " + sStr);
+			}
+			return;
+		}
+
+		// put cursor in next line if string does not fit in line any more
+		this.vmMoveCursor2AllowedPos(iStream); //TTT
+		if (sStr.length <= (oWin.iRight - oWin.iLeft) && (oWin.iPos + sStr.length > (oWin.iRight + 1 - oWin.iLeft))) {
+			//this.vmPrintCharsOrControls("\r\n"); // newline if string does not fit in line (recursive call)
+			oWin.iPos = 0;
+			oWin.iVpos += 1; // "\r\n", newline if string does not fit in line
+		}
 		for (i = 0; i < sStr.length; i += 1) {
 			iChar = sStr.charCodeAt(i);
 			this.vmMoveCursor2AllowedPos(iStream);
@@ -1289,7 +1307,8 @@ CpcVm.prototype = {
 		case 0x05: // ENQ
 			this.vmPrintGraphChars(sPara);
 			break;
-		case 0x06: //TODO ACK
+		case 0x06: // ACK
+			oWin.bTextEnabled = true;
 			break;
 		case 0x07: //TODO BEL
 			Utils.console.log("vmHandleControlCode: BEL");
@@ -1298,7 +1317,7 @@ CpcVm.prototype = {
 			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iPos -= 1;
 			break;
-		case 0x09: //TODO TAB ??
+		case 0x09: // TAB
 			this.vmMoveCursor2AllowedPos(iStream);
 			oWin.iPos += 1;
 			break;
@@ -1323,22 +1342,30 @@ CpcVm.prototype = {
 		case 0x0f: // SI
 			this.pen(iStream, sPara.charCodeAt(0));
 			break;
-		case 0x10: //TODO DLE
+		case 0x10: // DLE
 			this.vmMoveCursor2AllowedPos(iStream);
+			this.oCanvas.fillTextBox(oWin.iLeft + oWin.iPos, oWin.iTop + oWin.iVpos, 1, 1, oWin.iPaper); // clear character under cursor
 			break;
-		case 0x11: //TODO DC1
+		case 0x11: // DC1
 			this.vmMoveCursor2AllowedPos(iStream);
+			this.oCanvas.fillTextBox(oWin.iLeft, oWin.iTop + oWin.iVpos, oWin.iPos + 1, 1, oWin.iPaper); // clear line up to cursor
 			break;
-		case 0x12: //TODO DC2
+		case 0x12: // DC2
 			this.vmMoveCursor2AllowedPos(iStream);
+			this.oCanvas.fillTextBox(oWin.iLeft + oWin.iPos, oWin.iTop + oWin.iVpos, oWin.iRight - oWin.iLeft + 1 - oWin.iPos, 1, oWin.iPaper); // clear line from cursor
 			break;
-		case 0x13: //TODO DC3
+		case 0x13: // DC3
 			this.vmMoveCursor2AllowedPos(iStream);
+			this.oCanvas.fillTextBox(oWin.iLeft, oWin.iTop, oWin.iRight - oWin.iLeft + 1, oWin.iTop - oWin.iVpos, oWin.iPaper); // clear window up to cursor line -1
+			this.oCanvas.fillTextBox(oWin.iLeft, oWin.iTop + oWin.iVpos, oWin.iPos + 1, 1, oWin.iPaper); // clear line up to cursor (DC1)
 			break;
-		case 0x14: //TODO DC4
+		case 0x14: // DC4
 			this.vmMoveCursor2AllowedPos(iStream);
+			this.oCanvas.fillTextBox(oWin.iLeft + oWin.iPos, oWin.iTop + oWin.iVpos, oWin.iRight - oWin.iLeft + 1 - oWin.iPos, 1, oWin.iPaper); // clear line from cursor (DC2)
+			this.oCanvas.fillTextBox(oWin.iLeft, oWin.iTop + oWin.iVpos + 1, oWin.iRight - oWin.iLeft + 1, oWin.iBottom - oWin.iTop - oWin.iVpos, oWin.iPaper); // clear window from cursor line +1
 			break;
-		case 0x15: //TODO NAK
+		case 0x15: // NAK
+			oWin.bTextEnabled = false;
 			break;
 		case 0x16: // SYN
 			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0));
@@ -1839,6 +1866,7 @@ CpcVm.prototype = {
 
 	vpos: function (iStream) {
 		iStream = iStream || 0;
+		this.vmMoveCursor2AllowedPos(iStream);
 		return this.aWindow[iStream].iVpos + 1;
 	},
 
