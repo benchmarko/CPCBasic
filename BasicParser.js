@@ -656,8 +656,22 @@ BasicParser.prototype = {
 				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else") {
 					aArgs.push(expression(0));
 					while (oToken.type === ",") {
-						advance();
+						advance(",");
 						aArgs.push(expression(0));
+					}
+				}
+				return aArgs;
+			},
+
+			fnGetArgsSepByCommaSemi = function () {
+				var aArgs = [];
+
+				while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else") {
+					aArgs.push(expression(0));
+					if (oToken.type === "," || oToken.type === ";") {
+						advance();
+					} else {
+						break;
 					}
 				}
 				return aArgs;
@@ -1212,7 +1226,8 @@ BasicParser.prototype = {
 		stmt("next", function () {
 			var oValue = {
 				type: "next",
-				args: []
+				args: [],
+				pos: aTokens[iIndex - 2].pos
 			};
 
 			while (oToken.type === "identifier") {
@@ -1233,7 +1248,7 @@ BasicParser.prototype = {
 					type: "on",
 					name: null,
 					args: null,
-					pos: iIndex - 1
+					pos: aTokens[iIndex - 2].pos
 				},
 				bOnBreak = false,
 				bOnError = false;
@@ -1272,6 +1287,8 @@ BasicParser.prototype = {
 					oValue.name = "onGoto";
 				}
 				oValue.args = fnGetArgs();
+			} else if (!bOnError && !bOnBreak) {
+				throw new BasicParser.ErrorObject("Expected GOTO or GOSUB", oToken.type, oToken.pos);
 			}
 
 			return oValue;
@@ -1303,9 +1320,8 @@ BasicParser.prototype = {
 				oValue2,
 				iParseIndex = iIndex,
 				bTrailingSemicolon = false,
-				reFormat = /!|&|\\ *\\|#+\.?#*[+-]?/,
 				iSpcOrTabEnd = 0,
-				t, aFormat, oStream;
+				t, oStream;
 
 			oStream = fnGetOptionalStream();
 			oValue.args.push(oStream);
@@ -1317,7 +1333,8 @@ BasicParser.prototype = {
 					oValue2 = {
 						type: "fcall",
 						name: "spc",
-						args: [t]
+						args: [t],
+						pos: aTokens[iIndex - 2].pos //TTT
 					};
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex; // save index so we can ignore newline if spc or tab is printed last
@@ -1326,12 +1343,25 @@ BasicParser.prototype = {
 					t = expression(0); // value
 					oValue2 = {
 						type: "tab",
-						args: [t]
+						args: [t],
+						pos: aTokens[iIndex - 2].pos //TTT
 					};
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex;
 				} else if (oToken.type === "using") {
 					advance("using");
+					t = expression(0); // format
+					advance(";");
+					oValue2 = {
+						type: "fcall",
+						name: "using",
+						args: null,
+						pos: aTokens[iIndex - 2].pos //TTT
+					};
+					oValue2.args = fnGetArgsSepByCommaSemi();
+					oValue2.args.unshift(t);
+
+					/*
 					t = expression(0); // format
 					aFormat = t.value.split(reFormat);
 					aFormat.shift(); // remove one arg
@@ -1350,6 +1380,7 @@ BasicParser.prototype = {
 						t = expression(0); // value
 						oValue2.args.push(t);
 					}
+					*/
 					oValue.args.push(oValue2);
 				} else if (BasicParser.mKeywords[oToken.type] && BasicParser.mKeywords[oToken.type].charAt(0) !== "f") { // stop also at keyword which is not a function
 					break;
@@ -1383,7 +1414,8 @@ BasicParser.prototype = {
 		stmt("randomize", function () {
 			var oValue = {
 				type: "randomize",
-				args: fnGetArgs()
+				args: fnGetArgs(),
+				pos: aTokens[iIndex - 2].pos
 			};
 
 			return oValue;
@@ -1443,7 +1475,8 @@ BasicParser.prototype = {
 
 		stmt("stop", function () {
 			var oValue = {
-				type: "stop"
+				type: "stop",
+				pos: aTokens[iIndex - 2].pos
 			};
 
 			return oValue;
@@ -1461,7 +1494,8 @@ BasicParser.prototype = {
 
 		stmt("wend", function () {
 			var oValue = {
-				type: "wend"
+				type: "wend",
+				pos: aTokens[iIndex - 2].pos
 			};
 
 			return oValue;
@@ -1469,7 +1503,8 @@ BasicParser.prototype = {
 
 		stmt("while", function () {
 			var oValue = {
-				type: "while"
+				type: "while",
+				pos: aTokens[iIndex - 2].pos
 			};
 
 			oValue.left = expression(0);
@@ -1552,7 +1587,8 @@ BasicParser.prototype = {
 					return "!" + a;
 				},
 				mod: function (a, b) {
-					return a + " % " + b;
+					//return a + " % " + b;
+					return "(" + a + "+ 0.5) % " + b + " | 0"; // rounded remainder
 				},
 				">": function (a, b) {
 					//return a + " > " + b;
@@ -1897,6 +1933,9 @@ BasicParser.prototype = {
 					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = that.oStack.f.pop();
+						if (sName === undefined) {
+							throw new BasicParser.ErrorObject("Unexpected NEXT at", node.type, node.pos);
+						}
 						value += "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					}
 					break;
@@ -1927,6 +1966,9 @@ BasicParser.prototype = {
 					break;
 				case "wend":
 					sName = that.oStack.w.pop();
+					if (sName === undefined) {
+						throw new BasicParser.ErrorObject("Unexpected WEND at", node.type, node.pos);
+					}
 					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					break;
 				case "while":

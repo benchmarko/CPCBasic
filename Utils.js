@@ -82,6 +82,12 @@ var Utils = {
 	toDegrees: function (rad) {
 		return rad * 180 / Math.PI;
 	},
+	/*
+	round: function (n) {
+		// only for positive n:
+		return (n + 0.5) | 0; // eslint-disable-line no-bitwise
+	},
+	*/
 	getChangedParameters: function (current, initial) {
 		var oChanged = {},
 			sName;

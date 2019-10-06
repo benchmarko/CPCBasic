@@ -3,11 +3,20 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 REM Pie Chart (KREISDIAGRAMM)
+100 REM Pie Chart (Kreisdiagramm)
+101 rem ugly code
+102 '
+103 T$="Y":g=8
+104 read w:dim ws(w),w$(w),p%(w):u=0
+105 for n=1 to w
+106 read ws(n),w$(n):u=u+ws(n)
+107 next
+108 goto 310
+109 '
 110 IF T$="J" THEN DIM W$(W)
 120 TAGOFF
 130 MODE 1
-140 IF T$="N" THEN 300
+140 IF T$="N" THEN 310:'300
 150 REM
 160 INPUT"WIEVIELE ZU VERGLEICHENDE WERTE (MAX 10) :";W
 170 IF W<1 OR W >10 OR W<>INT(W) THEN CLS:GOTO 160
@@ -18,16 +27,19 @@ cpcBasic.addItem("", function () { /*
 220 INK 2,12
 230 INPUT "  MIT BESCHRIFTUNG (J/ODER N) : ";T$: t$=upper$(t$): IF T$<>"N" AND T$<>"J" THEN 230
 240 CLS
+245 '
 250 FOR N=1 TO W
 260 INPUT"   PROZENTSATZ : ";WS(N)
 270 U=U+WS(N)
 280 IF T$="N" THEN 300
 290 INPUT"   BESCHRIFTUNG : ";W$(N)
 300 CLS:NEXT N
+305 '
 310 IF U>100 OR U<90 THEN PRINT"FALSCHE EINGABE":STOP
 320 MODE 1:TAG
 330 PEN 1:PAPER 0
 340 FARB=1:PP=1
+345 '
 350 FOR N=1 TO W
 360 P%(N)=360*WS(N)/100
 370 PP=PP+P%(N)
@@ -41,10 +53,11 @@ cpcBasic.addItem("", function () { /*
 450 GOTO 530
 460 NEXT N
 470 GOTO 570
+475 '
 480 FOR N=1 TO W
 490 IF A=P%(N) THEN 530
 500 NEXT N
-510 NEXT A
+510 'NEXT A
 520 STOP
 530 FARB=FARB+1:IF FARB>3 THEN FARB=0
 540 IF T$<>"N" THEN TAG:PRINT N;:TAGOFF
@@ -59,4 +72,10 @@ cpcBasic.addItem("", function () { /*
 630 ORIGIN 425,200:DRAW (G*20)*COS(1),(G*20)*SIN(1),0
 640 CALL &BB18
 650 stop
+790 '
+800 data 4
+810 data 23,"A"
+820 data 34,"B"
+830 data 15,"C"
+840 data 28,"D"
 */ });

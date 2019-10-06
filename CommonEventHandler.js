@@ -217,6 +217,10 @@ CommonEventHandler.prototype = {
 
 	onEnterButtonClick: function () {
 		this.controller.fnEnter();
+	},
+
+	onSoundButtonClick: function () {
+		this.controller.fnSoundOnOff();
 	}
 };
 

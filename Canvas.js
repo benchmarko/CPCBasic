@@ -249,6 +249,13 @@ Canvas.prototype = {
 		this.oPressedKeys = {};
 	},
 
+	/*
+	roundPositive: function (n) {
+		// for positive numbers only, including 0
+		return (n + 0.5) | 0; // eslint-disable-line no-bitwise
+	},
+	*/
+
 	extractColorValues: function (sColor) { // from "#rrggbb"
 		return [
 			parseInt(sColor.substring(1, 3), 16),
@@ -391,7 +398,7 @@ Canvas.prototype = {
 				ArrowDown: String.fromCharCode(241),
 				ArrowLeft: String.fromCharCode(242),
 				ArrowRight: String.fromCharCode(243),
-				Backspace: "\x08", //TTT or 127?
+				Backspace: String.fromCharCode(127),
 				Delete: String.fromCharCode(16),
 				Enter: "\r",
 				Spacebar: " ", // for IE
@@ -414,6 +421,10 @@ Canvas.prototype = {
 
 		if (sKey in mSpecialKeys) {
 			sKey = mSpecialKeys[sKey];
+		} else if (event.ctrlKey) {
+			if (sKey >= "a" && sKey <= "z") { // map keys with ctrl to control codes (problem: some control codes are browser functions, e.g. w: close window)
+				sKey = String.fromCharCode(sKey.charCodeAt(0) - 96); // ctrl+a => \x01
+			}
 		}
 		if (sKey.length === 1) { // ignore special keys with more than 1 character
 			this.putKeyInBuffer(sKey);
@@ -580,14 +591,14 @@ Canvas.prototype = {
 		}
 	},
 
-	setChar: function (iChar, x, y, iPen, iPaper) {
+	setChar: function (iChar, x, y, iPen, iPaper, iGColMode) {
 		var aCharData = this.oCustomCharset[iChar] || this.aCharset[iChar],
 			iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
 			iWidth = this.iWidth,
 			iScaleWidth = iCharWidth / 8,
 			iScaleHeight = iCharHeight / 8,
-			dataset8 = this.dataset8,
+			//dataset8 = this.dataset8,
 			iTransparent = this.iTransparent,
 			iBit, iPenOrPaper,
 			iCharData, row, col, idx, iCh, iCw;
@@ -601,7 +612,8 @@ Canvas.prototype = {
 					idx = (x + col * iScaleWidth) + iWidth * (y + row * iScaleHeight);
 					for (iCh = 0; iCh < iScaleHeight; iCh += 1) {
 						for (iCw = 0; iCw < iScaleWidth; iCw += 1) {
-							dataset8[idx + iCw + iCh * iWidth] = iPenOrPaper;
+							//dataset8[idx + iCw + iCh * iWidth] = iPenOrPaper;
+							this.setSubPixel(idx + iCw + iCh * iWidth, iPenOrPaper, iGColMode);
 						}
 					}
 				}
@@ -609,8 +621,8 @@ Canvas.prototype = {
 		}
 	},
 
-	setSubPixel: function (i, iGPen) {
-		switch (this.iGColMode) { // TODO: define separate functions
+	setSubPixel: function (i, iGPen, iGColMode) {
+		switch (iGColMode) { // TODO: define separate functions
 		case 0: // normal
 			this.dataset8[i] = iGPen;
 			break;
@@ -629,14 +641,15 @@ Canvas.prototype = {
 	},
 
 	setPixel: function (x, y) {
-		var iGPen, iLineWidth, iLineHeight, i, col, row;
+		var iGPen, iGColMode, iLineWidth, iLineHeight, i, col, row;
 
 		x += this.xOrig;
 		y = this.iHeight - 1 - (y + this.yOrig);
-		if (x < this.xLeft || x >= this.xRight || y < (this.iHeight - this.yTop) || y >= (this.iHeight - this.yBottom)) {
+		if (x < this.xLeft || x > this.xRight || y < (this.iHeight - 1 - this.yTop) || y > (this.iHeight - 1 - this.yBottom)) {
 			return; // not in graphics window
 		}
 		iGPen = this.iGPen;
+		iGColMode = this.iGColMode;
 		iLineWidth = this.aModeData[this.iMode].iLineWidth;
 		iLineHeight = this.aModeData[this.iMode].iLineHeight;
 
@@ -654,7 +667,7 @@ Canvas.prototype = {
 		for (row = 0; row < iLineHeight; row += 1) {
 			i = x + this.iWidth * (y + row);
 			for (col = 0; col < iLineWidth; col += 1) {
-				this.setSubPixel(i + col, iGPen);
+				this.setSubPixel(i + col, iGPen, iGColMode);
 			}
 		}
 	},
@@ -705,7 +718,9 @@ Canvas.prototype = {
 		x = xstart;
 		y = ystart;
 		err = deltafastdirection / 2;
-		this.setPixel((x + 0.5) | 0, (y + 0.5) | 0); // eslint-disable-line no-bitwise
+		//this.setPixel((x + 0.5) | 0, (y + 0.5) | 0); // eslint-disable-line no-bitwise
+		//this.setPixel(this.roundPositive(x), this.roundPositive(y));
+		this.setPixel(x, y); // we expect integers
 
 		for (t = 0; t < deltafastdirection; t += 1) {
 			err -= deltaslowdirection;
@@ -717,7 +732,9 @@ Canvas.prototype = {
 				x += pdx;
 				y += pdy;
 			}
-			this.setPixel((x + 0.5) | 0, (y + 0.5) | 0); // eslint-disable-line no-bitwise
+			//this.setPixel((x + 0.5) | 0, (y + 0.5) | 0); // eslint-disable-line no-bitwise
+			//this.setPixel(this.roundPositive(x), this.roundPositive(y));
+			this.setPixel(x, y); // we expect integers
 		}
 	},
 
@@ -737,8 +754,8 @@ Canvas.prototype = {
 	},
 
 	move: function (x, y) {
-		this.xPos = (x + 0.5) | 0; // eslint-disable-line no-bitwise
-		this.yPos = (y + 0.5) | 0; // eslint-disable-line no-bitwise
+		this.xPos = x; // must be integer
+		this.yPos = y;
 	},
 
 	mover: function (x, y) {
@@ -749,7 +766,7 @@ Canvas.prototype = {
 
 	plot: function (x, y) {
 		this.move(x, y);
-		this.setPixel(this.xPos, this.yPos); // use rounded values
+		this.setPixel(this.xPos, this.yPos); // use rounded values from move
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos, this.yPos);
 	},
 
@@ -814,7 +831,7 @@ Canvas.prototype = {
 		var x = this.xPos + this.xOrig,
 			y = this.iHeight - 1 - (this.yPos + this.yOrig);
 
-		this.setChar(iChar, x, y, this.iGPen, this.iGPaper);
+		this.setChar(iChar, x, y, this.iGPen, this.iGPaper, this.iGColMode);
 		this.xPos += this.aModeData[this.iMode].iCharWidth;
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);
 	},
@@ -827,18 +844,38 @@ Canvas.prototype = {
 
 		x *= this.aModeData[this.iMode].iCharWidth;
 		y *= this.aModeData[this.iMode].iCharHeight;
-		this.setChar(iChar, x, y, this.iPen, this.iPaper);
+		this.setChar(iChar, x, y, this.iPen, this.iPaper, 0);
 		this.setNeedUpdate(x, this.iHeight - 1 - y, x + this.aModeData[this.iMode].iCharWidth, this.iHeight - 1 - (y + this.aModeData[this.iMode].iCharHeight)); //TTT
 	},
 
+	fnPutInRange: function (n, min, max) {
+		if (n < min) {
+			n = min;
+		} else if (n > max) {
+			n = max;
+		}
+		return n;
+	},
+
 	setOrigin: function (xOrig, yOrig) {
-		this.xOrig = (xOrig + 0.5) | 0; // eslint-disable-line no-bitwise
-		this.yOrig = (yOrig + 0.5) | 0; // eslint-disable-line no-bitwise
+		this.xOrig = xOrig; // must be integer
+		this.yOrig = yOrig;
 		this.move(0, 0);
 	},
 
-	setGWindow: function (xLeft, xRight, yTop, yBottom) {
-		// TODO: on the CPC this is set to byte positions?
+	setGWindow: function (xLeft, xRight, yTop, yBottom) { //TTT test!
+		xLeft = this.fnPutInRange(xLeft, 0, this.iWidth - 1);
+		xRight = this.fnPutInRange(xRight, 0, this.iWidth - 1);
+		yTop = this.fnPutInRange(yTop, 0, this.iHeight - 1);
+		yBottom = this.fnPutInRange(yBottom, 0, this.iHeight - 1);
+
+		// On the CPC this is set to byte positions (CPC Systembuch, p. 346)
+		// ORIGIN 0,0,13,563,399,0 gets origin 0,0,8,567,399 mod2+1,mod2
+		xLeft -= xLeft % 8; // and F8 => "begin of CPC screen byte"
+		xRight -= xRight % 8 - 7; // or 07 => "end of CPC screen byte"
+		//yTop -= yTop % 2 - 1; //???
+		//yBottom -= yBottom % 2;
+
 		this.xLeft = xLeft;
 		this.xRight = xRight;
 		this.yTop = yTop;
@@ -873,7 +910,7 @@ Canvas.prototype = {
 
 
 	clearGraphics: function (iClgPen) {
-		this.fillMyRect(this.xLeft, this.yBottom, this.xRight - this.xLeft, this.yTop - this.yBottom, iClgPen); //TTT +1?
+		this.fillMyRect(this.xLeft, this.iHeight - 1 - this.yTop, this.xRight + 1 - this.xLeft, this.yTop + 1 - this.yBottom, iClgPen); //TTT +1? TTT
 		this.move(0, 0);
 		this.setNeedUpdate(this.xLeft, this.yBottom, this.xRight - this.xLeft, this.yTop - this.yBottom);
 	},
@@ -909,7 +946,7 @@ Canvas.prototype = {
 	setMode: function (iMode) {
 		this.iMode = iMode;
 		this.setOrigin(0, 0);
-		this.setGWindow(0, this.iWidth, this.iHeight, 0);
+		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0); //TTT iHeight-1??
 		this.move(0, 0);
 		this.setGColMode(0);
 

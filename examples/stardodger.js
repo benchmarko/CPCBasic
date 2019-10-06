@@ -6,7 +6,8 @@ cpcBasic.addItem("", function () { /*
 5 REM Stardodger Game (2D Star Dodge)
 6 REM https://scruss.com/blog/2012/09/08/2d-star-dodge-flies-again/
 10 ' ** Initialise **
-20 MODE 1
+15 m=1
+20 MODE m
 30 INK 0,0
 40 BORDER 0
 50 INK 1,26
@@ -21,7 +22,7 @@ cpcBasic.addItem("", function () { /*
 150 LOCATE 12,13
 160 PRINT"Use SPACE to climb"
 170 GOSUB 700
-190 MODE 1
+190 cls:move 0,0
 200 DRAWR 629,0
 210 DRAWR 0,170
 220 MOVER 0,60
@@ -56,13 +57,13 @@ cpcBasic.addItem("", function () { /*
 510 IF t=3 GOTO 620
 520 MOVER -2,-dy/2
 530 GOTO 470
-550 MODE 1
+550 cls
 560 PRINT TAB(16);"YOU GOOFED"
 570 LOCATE 5,13
 580 PRINT"Number of Screens completed = "+STR$((q/5)-1)
 590 GOSUB 700
 600 RUN
-620 MODE 1
+620 cls
 630 PRINT TAB(16);"WELL DONE"
 640 LOCATE 10,13
 650 PRINT"Stand by for Screen "+STR$((q/5)+1)

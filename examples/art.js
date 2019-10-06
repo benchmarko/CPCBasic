@@ -24,15 +24,20 @@ cpcBasic.addItem("", function () { /*
 260 y=y+a(p,0)*(1+SIN(p*w  +a(p,1)))
 270 DRAW i-1,y,a(p,2)
 280 NEXT p,i
-290 'CALL &BB18
-291 cont1=0
-292 after 250 gosub 305
-295 t$=inkey$:call &bd19:if t$="" and cont1=0 then 295
-207 r=remain(0)
+290 c.iv%=250:gosub 5040:'wait
 300 goto 185
-305 cont1=1:return
 310 '
 320 'a(i,0)=Amplitude der Fourier-Synthese
 330 'a(i,1)=entsprechende Phasen
 340 'a(i,2)=entsprechende Farben
+4990'
+5000 'CPCBasic lib v0.1
+5010 '1. wait c.iv 1/50 sec
+5020 c.t!=time+c.iv%*6:while time<c.t!:call &bd19:wend:return
+5030 '2. wait c.iv% 1/50 sec, or until keypress (return c.t$)
+5040 c.t$="":c.t!=time+c.iv%*6:while time<c.t! and c.t$="":call &bd19:c.t$=inkey$:wend:return
+5050 '3. set mode c.m% (return c.m%; if not avvailable, c.m%=-1)
+5060 on error goto 5070:mode c.m%:on error goto 0:return
+5070 if err=5 then c.m%=-1:resume next else error err
+5080 '
 */ });

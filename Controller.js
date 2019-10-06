@@ -4,13 +4,14 @@
 
 "use strict";
 
-var Utils, BasicParser, Canvas, CpcVm;
+var Utils, BasicParser, Canvas, CpcVm, Sound;
 
 if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 	BasicParser = require("./BasicParser.js"); // eslint-disable-line global-require
 	Canvas = require("./Canvas.js"); // eslint-disable-line global-require
 	CpcVm = require("./CpcVm.js"); // eslint-disable-line global-require
+	Sound = require("./Sound.js"); // eslint-disable-line global-require
 }
 
 function Controller(oModel, oView) {
@@ -46,12 +47,15 @@ Controller.prototype = {
 			cpcDivId: "cpcArea",
 			view: this.view
 		});
+
+		this.oSound = new Sound();
+
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
 		sExample = oModel.getProperty("example");
 		oView.setSelectValue("exampleSelect", sExample);
 
-		this.oVm = new CpcVm({}, this.oCanvas);
+		this.oVm = new CpcVm({}, this.oCanvas, this.oSound);
 		this.fnScript = null;
 
 		this.iTimeoutHandle = null;
@@ -68,6 +72,9 @@ Controller.prototype = {
 			Utils.loadScript(sUrl, onExampleIndexLoaded, onExampleIndexError);
 		} else {
 			Utils.console.error("ExampleIndex not set");
+		}
+		if (Utils.debug > 0) { //TTT test sound
+			oView.setDisabled("soundButton", false);
 		}
 	},
 
@@ -192,10 +199,10 @@ Controller.prototype = {
 			sKey = this.oVm.inkey$(); // or: this.oCanvas.getKeyFromBuffer()
 			// chr13 shows as empty string!
 			if (sKey !== "") {
-				if (sKey === "\x08") { // Backspace
+				if (sKey === "\x7f") { // del?
 					if (sInput.length > 0) {
 						sInput = sInput.slice(0, -1);
-						sKey = sKey + " " + sKey;
+						sKey = "\x08\x10"; // use backspace and clr  // or: "\x08 \x08"
 					} else {
 						sKey = "\x07"; // ignore Backspace, use BEL
 					}
@@ -506,5 +513,15 @@ Controller.prototype = {
 			this.fnWaitForKey();
 		}
 		this.view.setAreaValue("inp2Text", "");
+	},
+
+	fnSoundOnOff: function () {
+		var oSound = this.oSound;
+
+		if (oSound.isSoundOn()) {
+			oSound.soundOff();
+		} else {
+			oSound.soundOn();
+		}
 	}
 };

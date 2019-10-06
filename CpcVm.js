@@ -11,11 +11,12 @@ if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
 
-function CpcVm(options, oCanvas) {
+function CpcVm(options, oCanvas, oSound) {
 	this.iStartTime = Date.now();
 	this.oRandom = new Random();
 	this.lastRnd = 0.1; // TODO this.oRandom.random();
 	this.oCanvas = oCanvas;
+	this.oSound = oSound;
 	this.vmInit(options);
 }
 
@@ -132,6 +133,16 @@ CpcVm.prototype = {
 		this.sInput = ""; // input handling
 	},
 
+	vmRound: function (n) {
+		if (typeof n !== "number") {
+			Utils.console.warn("vmRound: expected number but got:", n);
+			this.error(13); // "Type mismatch"
+			n = 0;
+			throw new CpcVm.ErrorObject("Type mismatch", n, this.iLine); //TTT
+		}
+		return (n >= 0) ? (n + 0.5) | 0 : (n - 0.5) | 0; // eslint-disable-line no-bitwise
+	},
+
 	vmGetError: function (iErr) { // BASIC error numbers
 		var aErrors = [
 				"Improper argument", // 0
@@ -176,6 +187,7 @@ CpcVm.prototype = {
 
 	vmReset: function () {
 		this.oCanvas.reset();
+		this.oSound.reset();
 		this.iClgPen = 0;
 		this.oVarTypes = {};
 		this.vmDefineVarTypes("R", "a-z");
@@ -417,7 +429,7 @@ CpcVm.prototype = {
 				sStr = arg.substr(0, sFormat.length); // assuming "\...\"
 				iPadLen = sFormat.length - arg.length;
 				sPad = (iPadLen > 0) ? sPadChar.repeat(iPadLen) : "";
-				sStr = sPad + arg;
+				sStr = arg + sPad; // string left aligned
 			}
 		} else { // number
 			if (sFormat.indexOf(".") < 0) { // no decimal point?
@@ -491,12 +503,14 @@ CpcVm.prototype = {
 	},
 
 	border: function (iInk1 /* , iInk2*/) { // ink2 optional
+		iInk1 = this.vmRound(iInk1);
 		this.oCanvas.setBorder(iInk1);
 	},
 
 	// break
 
 	call: function (n) { // varargs (adr + parameters)
+		n = this.vmRound(n);
 		switch (n) {
 		case 0xbb03: // KM Initialize
 			this.clearInput();
@@ -531,6 +545,7 @@ CpcVm.prototype = {
 	},
 
 	chr$: function (n) {
+		n = this.vmRound(n);
 		return String.fromCharCode(n);
 	},
 
@@ -550,6 +565,7 @@ CpcVm.prototype = {
 
 	clg: function (iClgPen) {
 		if (iClgPen !== undefined) {
+			iClgPen = this.vmRound(iClgPen);
 			this.iClgPen = iClgPen;
 		} else {
 			iClgPen = this.iClgPen;
@@ -568,7 +584,7 @@ CpcVm.prototype = {
 	cls: function (iStream) {
 		var oWin;
 
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		oWin = this.aWindow[iStream];
 		this.oCanvas.clearWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom); // cls window
 		this.sOut = "";
@@ -581,7 +597,7 @@ CpcVm.prototype = {
 	},
 
 	copychr$: function (iStream) {
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		this.vmNotImplemented("copychr$ " + iStream);
 	},
 
@@ -658,6 +674,8 @@ CpcVm.prototype = {
 	},
 
 	draw: function (x, y, iGPen, iGColMode) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -668,6 +686,8 @@ CpcVm.prototype = {
 	},
 
 	drawr: function (x, y, iGPen, iGColMode) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -720,6 +740,7 @@ CpcVm.prototype = {
 		var sError,
 			iStream = 0;
 
+		iErr = this.vmRound(iErr);
 		this.iErr = iErr;
 		this.iErl = this.iLine;
 
@@ -731,8 +752,12 @@ CpcVm.prototype = {
 	},
 
 	everyGosub: function (iInterval, iTimer, iLine) {
-		var oTimer = this.aTimer[iTimer],
-			iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
+		var oTimer,	iIntervalMs;
+
+		iInterval = this.vmRound(iInterval);
+		iTimer = this.vmRound(iTimer);
+		oTimer = this.aTimer[iTimer];
+		iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
 
 		oTimer.iIntervalMs = iIntervalMs;
 		oTimer.iLine = iLine;
@@ -746,6 +771,7 @@ CpcVm.prototype = {
 	},
 
 	fill: function (iGPen) {
+		iGPen = this.vmRound(iGPen);
 		//TODO
 		this.vmNotImplemented("fill");
 	},
@@ -776,7 +802,7 @@ CpcVm.prototype = {
 	},
 
 	graphicsPaper: function (iGPaper) {
-		iGPaper = this.int(iGPaper);
+		iGPaper = this.vmRound(iGPaper);
 		if (iGPaper >= 0 && iGPaper < 16) {
 			this.oCanvas.setGPaper(iGPaper);
 		} else {
@@ -785,7 +811,7 @@ CpcVm.prototype = {
 	},
 
 	graphicsPen: function (iGPen, iTransparentMode) {
-		iGPen = this.int(iGPen);
+		iGPen = this.vmRound(iGPen);
 		if (iGPen >= 0 && iGPen < 16) {
 			this.oCanvas.setGPen(iGPen);
 		} else {
@@ -797,8 +823,9 @@ CpcVm.prototype = {
 	},
 
 	hex$: function (n, iPad) {
-		iPad = iPad || 0;
-		return (n >>> 0).toString(16).toUpperCase().padStart(iPad, "0"); // eslint-disable-line no-bitwise
+		n = this.vmRound(n);
+		iPad = this.vmRound(iPad || 0);
+		return n.toString(16).toUpperCase().padStart(iPad, "0"); // eslint-disable-line no-bitwise
 	},
 
 	himem: function () {
@@ -807,15 +834,22 @@ CpcVm.prototype = {
 
 	// if
 
-	ink: function (iPen, iInk1, iInk2) {
-		iInk1 = (iInk1 + 0.5) | 0; // eslint-disable-line no-bitwise
-		iInk2 = (iInk2 + 0.5) | 0; // eslint-disable-line no-bitwise
+	ink: function (iPen, iInk1, iInk2) { // optional iInk2
+		iPen = this.vmRound(iPen);
+		iInk1 = this.vmRound(iInk1);
+		if (iInk2 === undefined) {
+			iInk2 = iInk1;
+		} else {
+			iInk2 = this.vmRound(iInk2);
+		}
 		this.oCanvas.setInk(iPen, iInk1, iInk2);
 	},
 
 	inkey: function (iKey) {
-		var iKeyState = this.oCanvas.getKeyState(iKey);
+		var iKeyState;
 
+		iKey = this.vmRound(iKey);
+		iKeyState = this.oCanvas.getKeyState(iKey);
 		return iKeyState;
 	},
 
@@ -826,7 +860,7 @@ CpcVm.prototype = {
 	},
 
 	inp: function () {
-		this.vmNotImplemented("inp");
+		//this.vmNotImplemented("inp");
 	},
 
 	vmDetermineVarType: function (sName) {
@@ -861,6 +895,7 @@ CpcVm.prototype = {
 	},
 
 	input: function (iStream, sNoCRLF, sMsg) { // varargs
+		iStream = this.vmRound(iStream);
 		if (iStream < 8) {
 			this.oInput.iStream = iStream;
 			this.oInput.sNoCRLF = sNoCRLF;
@@ -881,6 +916,7 @@ CpcVm.prototype = {
 		if (typeof p1 === "string") {
 			return p1.indexOf(p2) + 1;
 		}
+		p1 = this.vmRound(p1);
 		return p2.indexOf(p3, p1) + 1;
 	},
 
@@ -889,6 +925,7 @@ CpcVm.prototype = {
 	},
 
 	joy: function (iJoy) {
+		iJoy = this.vmRound(iJoy);
 		return this.oCanvas.getJoyState(iJoy);
 	},
 
@@ -901,6 +938,7 @@ CpcVm.prototype = {
 	},
 
 	left$: function (s, iLen) {
+		iLen = this.vmRound(iLen);
 		return s.substr(0, iLen);
 	},
 
@@ -918,6 +956,7 @@ CpcVm.prototype = {
 	},
 
 	lineInput: function (iStream, sNoCRLF, sMsg /* , sVar*/) { // sVar must be string variable
+		iStream = this.vmRound(iStream);
 		if (iStream < 8) {
 			this.oInput.iStream = iStream;
 			this.oInput.sNoCRLF = sNoCRLF;
@@ -973,6 +1012,7 @@ CpcVm.prototype = {
 	},
 
 	memory: function (n) {
+		n = this.vmRound(n);
 		this.iHimem = n;
 	},
 
@@ -981,6 +1021,8 @@ CpcVm.prototype = {
 	},
 
 	mid$: function (s, iStart, iLen) { // as function
+		iStart = this.vmRound(iStart);
+		iLen = this.vmRound(iLen);
 		return s.substr(iStart - 1, iLen);
 	},
 
@@ -998,6 +1040,7 @@ CpcVm.prototype = {
 		var iStream = 0,
 			oWin;
 
+		iMode = this.vmRound(iMode);
 		this.iMode = iMode;
 		this.sOut = "";
 		this.vmInitWindowData();
@@ -1009,6 +1052,8 @@ CpcVm.prototype = {
 	},
 
 	move: function (x, y, iGPen, iGColMode) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1019,6 +1064,8 @@ CpcVm.prototype = {
 	},
 
 	mover: function (x, y, iGPen, iGColMode) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1096,9 +1143,15 @@ CpcVm.prototype = {
 	origin: function (xOff, yOff, xLeft, xRight, yTop, yBottom) { // parameters starting from xLeft are optional
 		var tmp;
 
+		xOff = this.vmRound(xOff);
+		yOff = this.vmRound(yOff);
 		this.oCanvas.setOrigin(xOff, yOff);
 
 		if (xLeft !== undefined) {
+			xLeft = this.vmRound(xLeft);
+			xRight = this.vmRound(xRight);
+			yTop = this.vmRound(yTop);
+			yBottom = this.vmRound(yBottom);
 			if (yTop < yBottom) {
 				tmp = yTop;
 				yTop = yBottom;
@@ -1115,9 +1168,9 @@ CpcVm.prototype = {
 	paper: function (iStream, iPaper) {
 		var oWin;
 
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		oWin = this.aWindow[iStream];
-
+		iPaper = this.vmRound(iPaper);
 		oWin.iPaper = iPaper;
 		this.oCanvas.setPaper(iPaper);
 	},
@@ -1131,9 +1184,9 @@ CpcVm.prototype = {
 	pen: function (iStream, iPen) {
 		var oWin;
 
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		oWin = this.aWindow[iStream];
-
+		iPen = this.vmRound(iPen);
 		oWin.iPen = iPen;
 		this.oCanvas.setPen(iPen);
 	},
@@ -1143,6 +1196,8 @@ CpcVm.prototype = {
 	},
 
 	plot: function (x, y, iGPen, iGColMode) { // 2, up to 4 parameters
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1153,6 +1208,8 @@ CpcVm.prototype = {
 	},
 
 	plotr: function (x, y, iGPen, iGColMode) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		if (iGPen !== undefined) {
 			this.graphicsPen(iGPen);
 		}
@@ -1163,11 +1220,13 @@ CpcVm.prototype = {
 	},
 
 	poke: function (iAddr, iByte) {
+		iAddr = this.vmRound(iAddr);
+		iByte = this.vmRound(iByte);
 		this.aMem[iAddr] = iByte;
 	},
 
 	pos: function (iStream) {
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		this.vmMoveCursor2AllowedPos(iStream);
 		return this.aWindow[iStream].iPos + 1;
 	},
@@ -1535,6 +1594,7 @@ CpcVm.prototype = {
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else {
+			n = this.vmRound(n);
 			Utils.console.log("randomize: " + n);
 			if (!n) {
 				n = 1;
@@ -1566,9 +1626,11 @@ CpcVm.prototype = {
 	// rem
 
 	remain: function (iTimer) {
-		var oTimer = this.aTimer[iTimer],
+		var oTimer,
 			iTime = 0;
 
+		iTimer = this.vmRound(iTimer);
+		oTimer = this.aTimer[iTimer];
 		if (oTimer.bActive) {
 			iTime = oTimer.iNextTimeMs - Date.now();
 			iTime /= this.iFrameTimeMs;
@@ -1611,6 +1673,7 @@ CpcVm.prototype = {
 	},
 
 	right$: function (s, iLen) {
+		iLen = this.vmRound(iLen);
 		return s.slice(-iLen);
 	},
 
@@ -1671,15 +1734,18 @@ CpcVm.prototype = {
 		return Math.sin((this.bDeg) ? Utils.toRadians(n) : n);
 	},
 
-	sound: function () {
+	sound: function (iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod) {
+		this.oSound.sound(iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod);
 		//this.vmNotImplemented("sound");
 	},
 
 	space$: function (n) {
+		n = this.vmRound(n);
 		return " ".repeat(n);
 	},
 
 	spc: function (n) {
+		n = this.vmRound(n);
 		return " ".repeat(n);
 	},
 
@@ -1725,6 +1791,7 @@ CpcVm.prototype = {
 	},
 
 	string$: function (iLen, chr) {
+		iLen = this.vmRound(iLen);
 		if (typeof chr === "number") {
 			chr = String.fromCharCode(chr); // chr$
 		}
@@ -1737,14 +1804,17 @@ CpcVm.prototype = {
 		var aArgs = [],
 			i;
 
+		iChar = this.vmRound(iChar);
 		for (i = 1; i < arguments.length; i += 1) { // start with 1
-			aArgs.push(arguments[i]);
+			aArgs.push(this.vmRound(arguments[i]));
 		}
 		this.oCanvas.setCustomChar(iChar, aArgs);
 	},
 
-	symbolAfter: function () {
-		this.vmNotImplemented("symbolAfter"); // maybe not needed
+	symbolAfter: function (n) {
+		if (Utils.debug > 0) {
+			Utils.console.debug("DEBUG: symbolAfter not needed. n=" + n);
+		}
 	},
 
 	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print()
@@ -1754,6 +1824,7 @@ CpcVm.prototype = {
 		if (n === undefined) { // simulated tab in print for ","
 			n = this.iZone;
 		}
+		n = this.vmRound(n);
 		iCount = n - 1 - oWin.iPos;
 		if (iCount < 0) {
 			Utils.console.warn("tab: n=" + n + ", iCount=" + iCount);
@@ -1765,7 +1836,7 @@ CpcVm.prototype = {
 	tag: function (iStream) {
 		var oWin;
 
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		oWin = this.aWindow[iStream];
 		oWin.bTag = true;
 	},
@@ -1773,7 +1844,7 @@ CpcVm.prototype = {
 	tagoff: function (iStream) {
 		var oWin;
 
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		oWin = this.aWindow[iStream];
 		oWin.bTag = false;
 	},
@@ -1783,10 +1854,14 @@ CpcVm.prototype = {
 	},
 
 	test: function (x, y) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		return this.oCanvas.test(x, y);
 	},
 
 	testr: function (x, y) {
+		x = this.vmRound(x);
+		y = this.vmRound(y);
 		return this.oCanvas.testr(x, y);
 	},
 
@@ -1807,6 +1882,7 @@ CpcVm.prototype = {
 	},
 
 	unt: function (n) {
+		n = this.vmRound(n);
 		if (n > 32767) {
 			n -= 65536;
 		}
@@ -1821,12 +1897,52 @@ CpcVm.prototype = {
 	},
 
 	using: function (sFormat) { // varargs
-		var reFormat = /(!|&|\\ *\\|#+\.?#*[+-]?)/,
+		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/, // /(!|&|\\ *\\|(?:**|$$|**$)?\+?#+,?\.?#*[+-]?(?:^^^^)?)/,
 			s = "",
-			aFormat, i;
+			aFormat, sFrmt, iFormat, i, sArg;
 
 		aFormat = sFormat.split(reFormat);
-		i = 1;
+
+		/*
+		iArg = 1;
+		iFormat = 0;
+		while (iArg < arguments.length) {
+			sFrmt = aFormat[iFormat];
+			if (iFormat % 1) {
+				sArg = arguments[iArg];
+				iArg += 1;
+			}
+		}
+		*/
+
+		if (!aFormat.length) {
+			Utils.console.warn("using: empty format:", sFormat);
+			this.error(2); // Syntax Error
+			return "";
+		}
+
+		iFormat = 0;
+		for (i = 1; i < arguments.length; i += 1) { // start with 1
+			iFormat %= aFormat.length;
+			if (iFormat === 0) {
+				sFrmt = aFormat[iFormat];
+				iFormat += 1; // (iFormat + 1) % aFormat.length;
+				s += sFrmt;
+			}
+			if (iFormat < aFormat.length) {
+				sArg = arguments[i];
+				sFrmt = aFormat[iFormat];
+				iFormat += 1;
+				s += this.vmUsingFormat1(sFrmt, sArg);
+			}
+			if (iFormat < aFormat.length) {
+				sFrmt = aFormat[iFormat];
+				iFormat += 1; // (iFormat + 1) % aFormat.length;
+				s += sFrmt;
+			}
+		}
+
+		/*
 		while (aFormat.length) {
 			s += aFormat.shift();
 			if (aFormat.length) {
@@ -1834,6 +1950,8 @@ CpcVm.prototype = {
 			}
 			i += 1;
 		}
+		*/
+
 		return s;
 	},
 
@@ -1865,12 +1983,13 @@ CpcVm.prototype = {
 	},
 
 	vpos: function (iStream) {
-		iStream = iStream || 0;
+		iStream = this.vmRound(iStream || 0);
 		this.vmMoveCursor2AllowedPos(iStream);
 		return this.aWindow[iStream].iVpos + 1;
 	},
 
 	wait: function (iPort /* , iMask, iInv */) {
+		iPort = this.vmRound(iPort);
 		if (iPort === 0) {
 			debugger; // Testing
 		}
@@ -1887,6 +2006,10 @@ CpcVm.prototype = {
 	window: function (iStream, iLeft, iRight, iTop, iBottom) {
 		var oWin = this.aWindow[iStream];
 
+		iLeft = this.vmRound(iLeft);
+		iRight = this.vmRound(iRight);
+		iTop = this.vmRound(iTop);
+		iBottom = this.vmRound(iBottom);
 		oWin.iLeft = Math.min(iLeft, iRight) - 1;
 		oWin.iRight = Math.max(iLeft, iRight) - 1;
 		oWin.iTop = Math.min(iTop, iBottom) - 1;
@@ -1941,8 +2064,15 @@ CpcVm.prototype = {
 	},
 
 	zone: function (n) {
-		this.iZone = n;
+		this.iZone = this.vmRound(n);
 	}
+};
+
+
+CpcVm.ErrorObject = function (message, value, pos) {
+	this.message = message;
+	this.value = value;
+	this.pos = pos;
 };
 
 if (typeof module !== "undefined" && module.exports) {

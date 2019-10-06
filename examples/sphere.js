@@ -4,7 +4,7 @@
 
 cpcBasic.addItem("", function () { /*
 100 'Sphere 1 (Kugel 1)
-110 '2.12.1989
+110 'Marco Vieth, 2.12.1989
 120 '
 130 MODE 1:INK 0,0:INK 1,24:INK 3,6
 140 CLEAR:DEFINT a-z:DEFREAL a,x-z

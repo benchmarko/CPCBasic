@@ -18,6 +18,10 @@ cpcBasic.addIndex("./", function () { /*
 		"title": "Computer Art"
 	},
 	{
+		"key": "blockeditor",
+		"title": "Block Editor"
+    },
+	{
 		"key": "bmbench3",
 		"title": "BM Benchmark 3"
     },
@@ -101,6 +105,10 @@ cpcBasic.addIndex("./", function () { /*
 		"key": "simple",
 		"title": "Simple Labyrinth"
 	},
+	{
+		"key": "spacewar",
+		"title": "Spacewar Game (Textual)"
+	},
     {
 		"key": "sphere",
 		"title": "Sphere"
@@ -109,10 +117,6 @@ cpcBasic.addIndex("./", function () { /*
 		"key": "stardodger",
 		"title": "Stardodger Game (Textual)"
 	},
-	{
-		"key": "spacewar",
-		"title": "Spacewar Game (Textual)"
-    },
 	{
 		"key": "stars",
 		"title": "Stars"
