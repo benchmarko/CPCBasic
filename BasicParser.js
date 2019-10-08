@@ -1329,6 +1329,9 @@ BasicParser.prototype = {
 			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
 				if (oToken.type === "spc") {
 					advance("spc");
+					oValue2 = fnCreateFuncCall();
+					/*
+					advance("spc");
 					t = expression(0); // value
 					oValue2 = {
 						type: "fcall",
@@ -1336,16 +1339,22 @@ BasicParser.prototype = {
 						args: [t],
 						pos: aTokens[iIndex - 2].pos //TTT
 					};
+					*/
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex; // save index so we can ignore newline if spc or tab is printed last
 				} else if (oToken.type === "tab") {
 					advance("tab");
+					oValue2 = fnCreateFuncCall();
+					oValue2.type = oValue2.name; // no call but a type
+
+					/*
 					t = expression(0); // value
 					oValue2 = {
 						type: "tab",
 						args: [t],
 						pos: aTokens[iIndex - 2].pos //TTT
 					};
+					*/
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex;
 				} else if (oToken.type === "using") {
@@ -1360,27 +1369,6 @@ BasicParser.prototype = {
 					};
 					oValue2.args = fnGetArgsSepByCommaSemi();
 					oValue2.args.unshift(t);
-
-					/*
-					t = expression(0); // format
-					aFormat = t.value.split(reFormat);
-					aFormat.shift(); // remove one arg
-					oValue2 = {
-						type: "fcall",
-						name: "using",
-						args: [t]
-					};
-
-					// get number of parameters depending on format
-					while (aFormat.length) {
-						aFormat.shift();
-						if (oToken.type === ";") {
-							advance(";");
-						}
-						t = expression(0); // value
-						oValue2.args.push(t);
-					}
-					*/
 					oValue.args.push(oValue2);
 				} else if (BasicParser.mKeywords[oToken.type] && BasicParser.mKeywords[oToken.type].charAt(0) !== "f") { // stop also at keyword which is not a function
 					break;
@@ -1399,7 +1387,7 @@ BasicParser.prototype = {
 				}
 			}
 
-			bTrailingSemicolon = (aTokens[iIndex - 2].type === ";"); //TTT
+			bTrailingSemicolon = (aTokens[iIndex - 2].type === ";");
 			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
 				oValue.args.push({
 					type: "string",
@@ -1409,7 +1397,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		oSymbols["?"] = oSymbols.print; // ? is same as print
+		oSymbols["?"] = oSymbols.print; // "?" is same as print
 
 		stmt("randomize", function () {
 			var oValue = {
@@ -1440,7 +1428,7 @@ BasicParser.prototype = {
 			if (oToken.type === ",") {
 				advance(",");
 			}
-			oValue = fnCreateCmdCall(rsxToken.type + Utils.stringCapitalize(rsxToken.value));
+			oValue = fnCreateCmdCall(rsxToken.type + Utils.stringCapitalize(rsxToken.value.toLowerCase()));
 			return oValue;
 		});
 

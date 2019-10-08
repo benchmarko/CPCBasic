@@ -55,7 +55,10 @@ Controller.prototype = {
 		sExample = oModel.getProperty("example");
 		oView.setSelectValue("exampleSelect", sExample);
 
-		this.oVm = new CpcVm({}, this.oCanvas, this.oSound);
+		this.oVm = new CpcVm({
+			canvas: this.oCanvas,
+			sound: this.oSound
+		});
 		this.fnScript = null;
 
 		this.iTimeoutHandle = null;
@@ -271,9 +274,7 @@ Controller.prototype = {
 		iLine = iLine || 0;
 
 		if (!this.fnScript) {
-			oVm.vmInit({
-				variables: this.oVariables
-			});
+			oVm.vmSetVariables(this.oVariables);
 			oVm.clear(); // init variables
 			try {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
@@ -282,10 +283,10 @@ Controller.prototype = {
 				this.fnScript = null;
 			}
 		} else {
-			oVm.vmInitStack();
-			oVm.vmInitVariables();
+			oVm.vmResetStack();
+			oVm.vmResetVariables();
 		}
-		oVm.vmInitInks();
+		oVm.vmResetInks();
 		oVm.clearInput();
 
 		if (this.fnScript) {
@@ -343,7 +344,7 @@ Controller.prototype = {
 			sReason = oVm.vmGetStopReason(),
 			iTimeOut = 0;
 
-		if (!sReason) {
+		if (!sReason && this.fnScript) {
 			this.fnRunPart1();
 			sReason = oVm.vmGetStopReason();
 		}
@@ -456,9 +457,9 @@ Controller.prototype = {
 
 		this.sLabelBeforeStop = sReason;
 		this.iPrioBeforeStop = iPriority;
-		if (sReason === "input" || sReason === "key") {
-			this.oCanvas.options.fnOnKeyDown = null;
-		}
+		//if (sReason === "input" || sReason === "key") {
+		this.oCanvas.options.fnOnKeyDown = null;
+		//}
 		oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
@@ -485,6 +486,7 @@ Controller.prototype = {
 	fnReset: function () {
 		var oVm = this.oVm;
 
+		this.oCanvas.options.fnOnKeyDown = null;
 		oVm.vmStop("reset", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();

@@ -73,7 +73,7 @@ var Utils = {
 	stringEndsWith: function (str, find) {
 		return str.indexOf(find, str.length - find.length) !== -1;
 	},
-	stringCapitalize: function (str) {
+	stringCapitalize: function (str) { // capitalize first letter
 		return str.charAt(0).toUpperCase() + str.substring(1);
 	},
 	toRadians: function (deg) {
@@ -82,12 +82,6 @@ var Utils = {
 	toDegrees: function (rad) {
 		return rad * 180 / Math.PI;
 	},
-	/*
-	round: function (n) {
-		// only for positive n:
-		return (n + 0.5) | 0; // eslint-disable-line no-bitwise
-	},
-	*/
 	getChangedParameters: function (current, initial) {
 		var oChanged = {},
 			sName;

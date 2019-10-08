@@ -232,29 +232,25 @@ Canvas.prototype = {
 	},
 
 	reset: function () {
+		var iPaper = 0;
+
 		this.iMode = 1;
 		this.aCurrentInks = this.aDefaultInks.slice();
 		this.iGPen = null; // force update
 		this.iGPaper = null;
-		this.iPen = null;
-		this.iPaper = null;
+		//this.iPen = null;
+		//this.iPaper = null;
 		this.oCustomCharset = {}; // symbol
 		this.setGPen(1);
 		this.setGPaper(0);
-		this.setPen(1);
-		this.setPaper(0);
-		this.setBorder(this.aDefaultInks[this.iPaper]);
+		//this.setPen(1);
+		//this.setPaper(0);
+		this.setBorder(this.aDefaultInks[iPaper]);
 		this.setMode(1);
+		this.clearGraphics(iPaper);
 		this.clearInput();
 		this.oPressedKeys = {};
 	},
-
-	/*
-	roundPositive: function (n) {
-		// for positive numbers only, including 0
-		return (n + 0.5) | 0; // eslint-disable-line no-bitwise
-	},
-	*/
 
 	extractColorValues: function (sColor) { // from "#rrggbb"
 		return [
@@ -598,7 +594,6 @@ Canvas.prototype = {
 			iWidth = this.iWidth,
 			iScaleWidth = iCharWidth / 8,
 			iScaleHeight = iCharHeight / 8,
-			//dataset8 = this.dataset8,
 			iTransparent = this.iTransparent,
 			iBit, iPenOrPaper,
 			iCharData, row, col, idx, iCh, iCw;
@@ -612,7 +607,6 @@ Canvas.prototype = {
 					idx = (x + col * iScaleWidth) + iWidth * (y + row * iScaleHeight);
 					for (iCh = 0; iCh < iScaleHeight; iCh += 1) {
 						for (iCw = 0; iCw < iScaleWidth; iCw += 1) {
-							//dataset8[idx + iCw + iCh * iWidth] = iPenOrPaper;
 							this.setSubPixel(idx + iCw + iCh * iWidth, iPenOrPaper, iGColMode);
 						}
 					}
@@ -622,7 +616,7 @@ Canvas.prototype = {
 	},
 
 	setSubPixel: function (i, iGPen, iGColMode) {
-		switch (iGColMode) { // TODO: define separate functions
+		switch (iGColMode) {
 		case 0: // normal
 			this.dataset8[i] = iGPen;
 			break;
@@ -635,7 +629,8 @@ Canvas.prototype = {
 		case 3: // or
 			this.dataset8[i] |= iGPen; // eslint-disable-line no-bitwise
 			break;
-		default: //TTT
+		default:
+			Utils.console.warn("setSubPixel: Unknown colMode: " + iGColMode);
 			break;
 		}
 	},
@@ -656,14 +651,6 @@ Canvas.prototype = {
 		x &= ~(iLineWidth - 1); // eslint-disable-line no-bitwise
 		y &= ~(iLineHeight - 1); // eslint-disable-line no-bitwise
 
-		/*
-		if (x + iLineWidth >= this.xRight) { // limit pixel
-			iLineWidth = this.xRight - x;
-		}
-		if (y + iLineHeight >= (this.iHeight - this.yBottom)) { // limit pixel
-			iLineHeight = (this.iHeight - this.yBottom) - y;
-		}
-		*/
 		for (row = 0; row < iLineHeight; row += 1) {
 			i = x + this.iWidth * (y + row);
 			for (col = 0; col < iLineWidth; col += 1) {
@@ -685,13 +672,15 @@ Canvas.prototype = {
 
 	// https://de.wikipedia.org/wiki/Bresenham-Algorithmus
 	drawBresenhamLine: function (xstart, ystart, xend, yend) {
-		var x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
+		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
+			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
 
-		dx = xend - xstart;
-		dy = yend - ystart;
+		dx = (xend - xstart) / iLineWidth;
+		dy = (yend - ystart) / iLineHeight;
 
-		incx = Math.sign(dx);
-		incy = Math.sign(dy);
+		incx = Math.sign(dx) * iLineWidth;
+		incy = Math.sign(dy) * iLineHeight;
 		if (dx < 0) {
 			dx = -dx;
 		}
@@ -718,8 +707,6 @@ Canvas.prototype = {
 		x = xstart;
 		y = ystart;
 		err = deltafastdirection / 2;
-		//this.setPixel((x + 0.5) | 0, (y + 0.5) | 0); // eslint-disable-line no-bitwise
-		//this.setPixel(this.roundPositive(x), this.roundPositive(y));
 		this.setPixel(x, y); // we expect integers
 
 		for (t = 0; t < deltafastdirection; t += 1) {
@@ -732,8 +719,6 @@ Canvas.prototype = {
 				x += pdx;
 				y += pdy;
 			}
-			//this.setPixel((x + 0.5) | 0, (y + 0.5) | 0); // eslint-disable-line no-bitwise
-			//this.setPixel(this.roundPositive(x), this.roundPositive(y));
 			this.setPixel(x, y); // we expect integers
 		}
 	},
@@ -809,6 +794,7 @@ Canvas.prototype = {
 		// TODO
 	},
 
+	/*
 	setPen: function (iPen) {
 		iPen %= this.aModeData[this.iMode].iPens; // limit pens
 		if (iPen !== this.iPen) {
@@ -822,6 +808,7 @@ Canvas.prototype = {
 			this.iPaper = iPaper;
 		}
 	},
+	*/
 
 	setTranspartentMode: function (iTransparent) {
 		this.iTransparent = iTransparent;
@@ -836,16 +823,21 @@ Canvas.prototype = {
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);
 	},
 
-	printChar: function (iChar, x, y) {
+	printChar: function (iChar, x, y, iPen, iPaper) {
+		var oModeData = this.aModeData[this.iMode];
+
 		if (iChar >= this.aCharset.length) {
 			Utils.console.warn("printChar: Ignoring char with code " + iChar);
 			return;
 		}
 
-		x *= this.aModeData[this.iMode].iCharWidth;
-		y *= this.aModeData[this.iMode].iCharHeight;
-		this.setChar(iChar, x, y, this.iPen, this.iPaper, 0);
-		this.setNeedUpdate(x, this.iHeight - 1 - y, x + this.aModeData[this.iMode].iCharWidth, this.iHeight - 1 - (y + this.aModeData[this.iMode].iCharHeight)); //TTT
+		iPen %= oModeData.iPens;
+		iPaper %= oModeData.iPens; // also pens
+
+		x *= oModeData.iCharWidth;
+		y *= oModeData.iCharHeight;
+		this.setChar(iChar, x, y, iPen, iPaper, 0);
+		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
 	},
 
 	fnPutInRange: function (n, min, max) {
@@ -863,7 +855,7 @@ Canvas.prototype = {
 		this.move(0, 0);
 	},
 
-	setGWindow: function (xLeft, xRight, yTop, yBottom) { //TTT test!
+	setGWindow: function (xLeft, xRight, yTop, yBottom) {
 		xLeft = this.fnPutInRange(xLeft, 0, this.iWidth - 1);
 		xRight = this.fnPutInRange(xRight, 0, this.iWidth - 1);
 		yTop = this.fnPutInRange(yTop, 0, this.iHeight - 1);
@@ -888,26 +880,12 @@ Canvas.prototype = {
 		}
 	},
 
-	/*
-	clearWindow: function (iLeft, iRight, iTop, iBottom) { // clear current window
-		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight,
-			iWidth = iRight + 1 - iLeft,
-			iHeight = iBottom + 1 - iTop,
-			x = iLeft * iCharWidth,
-			y = iTop * iCharHeight;
-
-		this.fillMyRect(x, y, iWidth * iCharWidth, iHeight * iCharHeight, this.iPaper);
-		this.setNeedUpdate(x, y, x + iWidth * iCharWidth, y + iHeight * iCharHeight);
-	},
-	*/
-	clearWindow: function (iLeft, iRight, iTop, iBottom) { // clear current window
+	clearWindow: function (iLeft, iRight, iTop, iBottom, iPaper) { // clear current window
 		var iWidth = iRight + 1 - iLeft,
 			iHeight = iBottom + 1 - iTop;
 
-		this.fillTextBox(iLeft, iTop, iWidth, iHeight, this.iPaper);
+		this.fillTextBox(iLeft, iTop, iWidth, iHeight, iPaper);
 	},
-
 
 	clearGraphics: function (iClgPen) {
 		this.fillMyRect(this.xLeft, this.iHeight - 1 - this.yTop, this.xRight + 1 - this.xLeft, this.yTop + 1 - this.yBottom, iClgPen); //TTT +1? TTT
@@ -915,7 +893,7 @@ Canvas.prototype = {
 		this.setNeedUpdate(this.xLeft, this.yBottom, this.xRight - this.xLeft, this.yTop - this.yBottom);
 	},
 
-	windowScrollUp: function (iLeft, iRight, iTop, iBottom) {
+	windowScrollUp: function (iLeft, iRight, iTop, iBottom, iPen) {
 		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
 			iWidth = iRight + 1 - iLeft,
@@ -924,12 +902,11 @@ Canvas.prototype = {
 		if (iHeight > 1) { // scroll part
 			this.moveMyRectDown(iLeft * iCharWidth, (iTop + 1) * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, iTop * iCharHeight);
 		}
-		//this.fillMyRect(iLeft * iCharWidth, (iBottom - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight, this.iPaper); // clear line
-		this.fillTextBox(iLeft, iBottom, iWidth, 1, this.iPaper);
-		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight); //TTT
+		this.fillTextBox(iLeft, iBottom, iWidth, 1, iPen);
+		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
 	},
 
-	windowScrollDown: function (iLeft, iRight, iTop, iBottom) {
+	windowScrollDown: function (iLeft, iRight, iTop, iBottom, iPen) {
 		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
 			iWidth = iRight + 1 - iLeft,
@@ -938,23 +915,26 @@ Canvas.prototype = {
 		if (iHeight > 1) { // scroll part
 			this.moveMyRectUp(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, (iTop + 1) * iCharHeight);
 		}
-		//this.fillMyRect(iLeft * iCharWidth, (iTop - 0) * iCharHeight, iWidth * iCharWidth, iCharHeight, this.iPaper); // clear line
-		this.fillTextBox(iLeft, iTop, iWidth, 1, this.iPaper);
+		this.fillTextBox(iLeft, iTop, iWidth, 1, iPen);
 		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
+	},
+
+	changeMode: function (iMode) {
+		this.iMode = iMode;
 	},
 
 	setMode: function (iMode) {
 		this.iMode = iMode;
 		this.setOrigin(0, 0);
-		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0); //TTT iHeight-1??
-		this.move(0, 0);
+		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0);
+		//this.move(0, 0);
 		this.setGColMode(0);
 
 		this.setGPen(this.iGPen); // maybe different for other mode
 		this.setGPaper(this.iGPaper); // maybe different for other mode
-		this.setPen(this.iPen);
-		this.setPaper(this.iPaper);
+		//this.setPen(this.iPen);
+		//this.setPaper(this.iPaper);
 		this.iTransparent = 0;
-		this.clearGraphics(this.iPaper);
+		//this.clearGraphics(this.iPaper); //TTT
 	}
 };

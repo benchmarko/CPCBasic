@@ -11,17 +11,14 @@ if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
 
-function CpcVm(options, oCanvas, oSound) {
-	this.iStartTime = Date.now();
-	this.oRandom = new Random();
-	this.lastRnd = 0.1; // TODO this.oRandom.random();
-	this.oCanvas = oCanvas;
-	this.oSound = oSound;
+function CpcVm(options) {
 	this.vmInit(options);
 }
 
 CpcVm.prototype = {
 	iFrameTimeMs: 1000 / 50, // 50 Hz => 20 ms
+	iTimerCount: 4, // number of timers
+	iStreamCount: 10, // 0..7 window, 8 printer, 9 cassette
 
 	mWinData: [ // window data for mode mode 0,1,2,3 (we are counting from 0 here)
 		{
@@ -54,18 +51,18 @@ CpcVm.prototype = {
 		var i;
 
 		this.options = options || {};
+		this.oCanvas = this.options.canvas;
+		this.oSound = this.options.sound;
 
-		this.iNextFrameTime = Date.now() + this.iFrameTimeMs; // next time of frame fly
-		this.iTimeUntilFrame = 0;
-		this.iStopCount = 0;
+		this.oRandom = new Random();
 
-		this.iLine = 0; // current line number (or label)
+		this.vmSetVariables({});
 
 		this.oStop = {
 			sReason: "", // stop reason
 			iPriority: 0 // stop priority (higher number means higher priority which can overwrite lower priority)
 		};
-		// special stop labels and priorities:
+		// special stop reasons and priorities:
 		// "timer": 20 (timer expired)
 		// "key": 30  (wait for key)
 		// "frame": 40 (frame command: wait for frame fly)
@@ -76,17 +73,41 @@ CpcVm.prototype = {
 		// "end": 90 (end of program)
 		// "reset": 99 (reset canvas)
 
-		this.oInput = {
-			iStream: 0,
-			sInput: "",
-			sNoCRLF: "",
-			fnInputCallback: null, // callback for stop reason "input"
-			aInputValues: []
-		};
+		this.oInput = {}; // input handling
+
+		this.oGosubStack = []; // stack of line numbers for gosub/return
+
+		this.aMem = []; // for peek, poke
+
+		this.aData = []; // array for BASIC data lines (continuous)
+
+		this.aWindow = []; // window data for window 0..7
+		for (i = 0; i < this.iStreamCount - 2; i += 1) {
+			this.aWindow[i] = {};
+		}
+
+		this.aTimer = []; // BASIC timer 0..3 (3 has highest priority)
+		for (i = 0; i < this.iTimerCount; i += 1) {
+			this.aTimer[i] = {};
+		}
+	},
+
+	vmReset: function () {
+		this.iStartTime = Date.now();
+		this.oRandom.init();
+		this.lastRnd = 0;
+
+		this.iNextFrameTime = Date.now() + this.iFrameTimeMs; // next time of frame fly
+		this.iTimeUntilFrame = 0;
+		this.iStopCount = 0;
+
+		this.iLine = 0; // current line number (or label)
+
+		this.vmResetInputHandling();
 
 		this.sOut = ""; // console output
 
-		this.aData = []; // array for BASIC data lines (continuous)
+		this.aData.length = 0; // array for BASIC data lines (continuous)
 		this.iData = 0; // current index
 		this.oDataLineIndex = { // line number index for the data line buffer
 			0: 0 // for line 0: index 0
@@ -95,17 +116,33 @@ CpcVm.prototype = {
 		this.iErr = 0; // last error code
 		this.iErl = 0; // line of last error
 
-		this.oGosubStack = []; // stack of line numbers for gosub/return
+		this.vmResetStack(); // gosub stack
 		this.bDeg = false; // degree or radians
 
-
-		this.aMem = []; // for peek, poke
+		this.aMem.length = 0; // for peek, poke
 		this.iHimem = 42619; // high memory limit, just an example
 
-		this.aTimer = []; // BASIC timer 0..3 (3 has highest priority)
-		for (i = 0; i < 4; i += 1) {
-			this.aTimer.push({
-				iId: i,
+		this.vmResetTimers();
+		this.bTimersDisabled = false; // flag if timers are disabled
+
+		this.iStatFrameCount = 0; // debugging
+		this.iStatFrameCountTs = 0; // debugging
+
+		this.iZone = 13; // print tab zone value
+
+		this.oVarTypes = {}; // variable types
+		this.vmDefineVarTypes("R", "a-z");
+
+		this.iMode = null;
+		this.mode(1); // including vmResetWindowData()
+
+		this.oCanvas.reset();
+		this.oSound.reset();
+		this.iClgPen = 0;
+	},
+
+	vmResetTimers: function () {
+		var oData = {
 				iLine: 0, // gosub line when timer expires
 				bRepeat: false, // flag if timer is repeating (every) or one time (after)
 				iIntervalMs: 0, // interval or timeout
@@ -113,24 +150,65 @@ CpcVm.prototype = {
 				iNextTime: 0, // next expiration time
 				bHandlerRunning: false, // flag if handler (subroutine) is running
 				iStackIndexReturn: 0 // index in gosub stack with return, if handler is running
-			});
+			},
+			aTimer = this.aTimer,
+			i;
+
+		for (i = 0; i < this.iTimerCount; i += 1) {
+			Object.assign(aTimer[i], oData);
 		}
-		this.bTimersDisabled = false; // flag if timers are disabled
+	},
 
-		this.iStatFrameCount = 0; // debugging
-		this.iStatFrameCountTs = 0; // debugging
+	vmResetWindowData: function () {
+		var oWinData = this.mWinData[this.iMode],
+			oData = {
+				iPos: 0, // current text position in line
+				iVpos: 0,
+				iPaper: 0,
+				iPen: 1,
+				bTextEnabled: true, // text enabled
+				bTag: false // tag=text at graphics
+			},
+			i, oWin;
 
-		this.aWindow = [];
+		for (i = 0; i < this.iStreamCount - 2; i += 1) { // for window streams
+			oWin = this.aWindow[i];
+			Object.assign(oWin, oData, oWinData);
+		}
+	},
 
-		this.iZone = 13; // print tab zone value
+	vmResetInputHandling: function () {
+		var oData = {
+			iStream: 0,
+			sInput: "",
+			sNoCRLF: "",
+			fnInputCallback: null, // callback for stop reason "input"
+			aInputValues: []
+		};
 
-		this.v = options.variables || {}; // collection of BASIC variables
+		Object.assign(this.oInput, oData);
+	},
 
-		this.oVarTypes = {}; // variable types
+	vmResetStack: function () {
+		this.oGosubStack.length = 0;
+	},
 
-		this.iMode = null;
-		this.mode(1);
-		this.sInput = ""; // input handling
+	vmResetInks: function () {
+		this.oCanvas.setDefaultInks();
+	},
+
+	vmResetVariables: function () {
+		var aVariables = Object.keys(this.v),
+			i, sName;
+
+		for (i = 0; i < aVariables.length; i += 1) {
+			sName = aVariables[i];
+			this.v[sName] = this.fnGetVarDefault(sName);
+		}
+	},
+
+	vmSetVariables(oVariables) {
+		this.v = oVariables; // collection of BASIC variables
 	},
 
 	vmRound: function (n) {
@@ -183,16 +261,6 @@ CpcVm.prototype = {
 			sError = aErrors[iErr] || aErrors[aErrors.length - 1]; // Unknown error
 
 		return sError;
-	},
-
-	vmReset: function () {
-		this.oCanvas.reset();
-		this.oSound.reset();
-		this.iClgPen = 0;
-		this.oVarTypes = {};
-		this.vmDefineVarTypes("R", "a-z");
-		this.oInput.fnInputCallback = null; //TTT
-		//this.mode(this.iMode);
 	},
 
 	vmGotoLine: function (line, sMsg) {
@@ -338,32 +406,6 @@ CpcVm.prototype = {
 		return arr;
 	},
 
-	vmInitWindowData: function () {
-		var oData = {
-				iPos: 0, // current text position in line
-				iVpos: 0,
-				iPaper: 0,
-				iPen: 1,
-				bTextEnabled: true, // text enabled
-				bTag: false // tag=text at graphics
-			},
-			i;
-
-		for (i = 0; i < 8; i += 1) {
-			this.aWindow[i] = Object.assign({}, oData, this.mWinData[this.iMode]); // new object for every window
-		}
-	},
-
-	vmInitVariables: function () {
-		var aVariables = Object.keys(this.v),
-			i, sName;
-
-		for (i = 0; i < aVariables.length; i += 1) {
-			sName = aVariables[i];
-			this.v[sName] = this.fnGetVarDefault(sName);
-		}
-	},
-
 	vmDefineVarTypes: function (sType, sNameOrRange) {
 		var aRange, iFirst, iLast, i, sVarChar;
 
@@ -379,14 +421,6 @@ CpcVm.prototype = {
 			sVarChar = String.fromCharCode(i);
 			this.oVarTypes[sVarChar] = sType;
 		}
-	},
-
-	vmInitStack: function () {
-		this.oGosubStack.length = 0;
-	},
-
-	vmInitInks: function () {
-		this.oCanvas.setDefaultInks();
 	},
 
 	vmGetStopReason: function () {
@@ -554,7 +588,7 @@ CpcVm.prototype = {
 	},
 
 	clear: function () {
-		this.vmInitVariables();
+		this.vmResetVariables();
 		this.vmDefineVarTypes("R", "a-z");
 		this.rad();
 	},
@@ -586,7 +620,7 @@ CpcVm.prototype = {
 
 		iStream = this.vmRound(iStream || 0);
 		oWin = this.aWindow[iStream];
-		this.oCanvas.clearWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom); // cls window
+		this.oCanvas.clearWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom, oWin.iPaper); // cls window
 		this.sOut = "";
 		oWin.iPos = 0;
 		oWin.iVpos = 0;
@@ -1042,13 +1076,14 @@ CpcVm.prototype = {
 
 		iMode = this.vmRound(iMode);
 		this.iMode = iMode;
-		this.sOut = "";
-		this.vmInitWindowData();
+		this.vmResetWindowData();
 		oWin = this.aWindow[iStream];
-		this.pen(iStream, oWin.iPen); // set pen and paper also in canvas
-		this.paper(iStream, oWin.iPaper);
+		this.sOut = "";
+		//this.pen(iStream, oWin.iPen); // set pen and paper also in canvas, not needed any more
+		//this.paper(iStream, oWin.iPaper);
 		this.iClgPen = 0;
-		this.oCanvas.setMode(iMode);
+		this.oCanvas.setMode(iMode); // does not clear canvas
+		this.oCanvas.clearGraphics(oWin.iPaper);
 	},
 
 	move: function (x, y, iGPen, iGColMode) {
@@ -1172,7 +1207,7 @@ CpcVm.prototype = {
 		oWin = this.aWindow[iStream];
 		iPaper = this.vmRound(iPaper);
 		oWin.iPaper = iPaper;
-		this.oCanvas.setPaper(iPaper);
+		//this.oCanvas.setPaper(iPaper);
 	},
 
 	peek: function (iAddr) {
@@ -1188,7 +1223,7 @@ CpcVm.prototype = {
 		oWin = this.aWindow[iStream];
 		iPen = this.vmRound(iPen);
 		oWin.iPen = iPen;
-		this.oCanvas.setPen(iPen);
+		//this.oCanvas.setPen(iPen);
 	},
 
 	pi: function () {
@@ -1252,12 +1287,12 @@ CpcVm.prototype = {
 
 		if (y < 0) {
 			y = 0;
-			this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom);
+			this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom, oWin.iPaper);
 		}
 
 		if (y > (iBottom - iTop)) {
 			y = iBottom - iTop;
-			this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom);
+			this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom, oWin.iPaper);
 		}
 		oWin.iPos = x;
 		oWin.iVpos = y;
@@ -1267,23 +1302,6 @@ CpcVm.prototype = {
 		var oWin = this.aWindow[iStream],
 			i, iChar;
 
-		/*
-		var oWin = this.aWindow[iStream],
-			iLeft = oWin.iLeft,
-			iRight = oWin.iRight,
-			iTop = oWin.iTop,
-			iBottom = oWin.iBottom,
-			i, iChar, x, y;
-
-		x = oWin.iPos;
-		y = oWin.iVpos;
-		// TODO bringing cursor into valid position is more complex, see user manual, chapter 7.1
-		if (sStr.length <= (iRight - iLeft) && (x + sStr.length > (iRight + 1 - iLeft))) {
-			x = 0;
-			y += 1; // newline if string does not fit
-		}
-		*/
-
 		if (!oWin.bTextEnabled) {
 			if (Utils.debug > 0) {
 				Utils.console.debug("DEBUG: vmPrintChars: text output disabled: " + sStr);
@@ -1292,36 +1310,17 @@ CpcVm.prototype = {
 		}
 
 		// put cursor in next line if string does not fit in line any more
-		this.vmMoveCursor2AllowedPos(iStream); //TTT
+		this.vmMoveCursor2AllowedPos(iStream);
 		if (sStr.length <= (oWin.iRight - oWin.iLeft) && (oWin.iPos + sStr.length > (oWin.iRight + 1 - oWin.iLeft))) {
-			//this.vmPrintCharsOrControls("\r\n"); // newline if string does not fit in line (recursive call)
 			oWin.iPos = 0;
 			oWin.iVpos += 1; // "\r\n", newline if string does not fit in line
 		}
 		for (i = 0; i < sStr.length; i += 1) {
 			iChar = sStr.charCodeAt(i);
 			this.vmMoveCursor2AllowedPos(iStream);
-			/*
-			if (y > (oWin.iBottom - iTop)) {
-				y = oWin.iBottom - iTop;
-				this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom);
-			}
-			*/
-			this.oCanvas.printChar(iChar, oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop);
-			//x += 1;
-			oWin.iPos += 1; //TTT
-
-			/*
-			if (x > (iRight - iLeft)) {
-				x = 0;
-				y += 1;
-			}
-			*/
+			this.oCanvas.printChar(iChar, oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper);
+			oWin.iPos += 1;
 		}
-		/*
-		oWin.iPos = x;
-		oWin.iVpos = y;
-		*/
 	},
 
 	vmControlSymbol: function (sPara) {
@@ -1427,7 +1426,7 @@ CpcVm.prototype = {
 			oWin.bTextEnabled = false;
 			break;
 		case 0x16: // SYN
-			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0));
+			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0)); //TTT what about streams?
 			break;
 		case 0x17: // ETB
 			this.oCanvas.setGColMode(sPara.charCodeAt(0));
@@ -1583,8 +1582,20 @@ CpcVm.prototype = {
 		this.bDeg = false;
 	},
 
+	vmHashCode: function (s) {
+		var iHash = 0,
+			i, iChar;
+
+		for (i = 0; i < s.length; i += 1) {
+			iChar = s.charCodeAt(i);
+			iHash = (((iHash << 5) - iHash) + iChar) | 0; // eslint-disable-line no-bitwise
+		}
+		return iHash;
+	},
+
 	randomize: function (n) {
-		var iStream = 0,
+		var iRndInit = 0x89656c07, // an arbitrary 32 bit number <> 0 (this one is used by the CPC)
+			iStream = 0,
 			sMsg;
 
 		if (n === undefined) { // no arguments? input...
@@ -1593,13 +1604,12 @@ CpcVm.prototype = {
 			this.oInput.sInput = "";
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
-		} else {
-			n = this.vmRound(n);
-			Utils.console.log("randomize: " + n);
-			if (!n) {
-				n = 1;
+		} else { // n can also be floating point, so compute a hash value of n
+			n = this.vmHashCode(String(n));
+			if (n === 0) {
+				n = iRndInit;
 			}
-			n = Number(n);
+			Utils.console.log("randomize: " + n);
 			this.oRandom.init(n);
 		}
 	},
@@ -1681,9 +1691,9 @@ CpcVm.prototype = {
 		var x;
 
 		if (n < 0) { // TODO
-			x = this.lastRnd;
+			x = this.lastRnd || this.oRandom.random();
 		} else if (n === 0) {
-			x = this.lastRnd;
+			x = this.lastRnd || this.oRandom.random();
 		} else { // >0 or undefined
 			x = this.oRandom.random();
 			this.lastRnd = x;
@@ -1705,12 +1715,37 @@ CpcVm.prototype = {
 	},
 
 	rsxBasic: function () {
-		this.vmNotImplemented("|BASIC");
+		Utils.console.log("rsxBasic");
 		this.vmStop("reset", 90);
 	},
 
 	rsxCpm: function () {
 		this.vmNotImplemented("|CPM");
+	},
+
+	rsxMode: function (iMode, s) { //TEST
+		var oWinData = this.mWinData[this.iMode],
+			i, oWin;
+
+		Utils.console.log("rsxMode: (test) " + iMode + " " + s);
+		iMode = this.vmRound(iMode);
+		this.iMode = iMode;
+
+		for (i = 0; i < this.iStreamCount - 2; i += 1) { // for window streams
+			oWin = this.aWindow[i];
+			Object.assign(oWin, oWinData);
+		}
+
+		/*
+		this.sOut = "";
+		this.vmResetWindowData();
+		oWin = this.aWindow[iStream];
+		this.pen(iStream, oWin.iPen); // set pen and paper also in canvas
+		this.paper(iStream, oWin.iPaper);
+		this.iClgPen = 0;
+		this.oCanvas.setMode(iMode);
+		*/
+		this.oCanvas.changeMode(iMode);
 	},
 
 	run: function (numOrString) {
@@ -1736,7 +1771,6 @@ CpcVm.prototype = {
 
 	sound: function (iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod) {
 		this.oSound.sound(iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod);
-		//this.vmNotImplemented("sound");
 	},
 
 	space$: function (n) {
@@ -1897,23 +1931,11 @@ CpcVm.prototype = {
 	},
 
 	using: function (sFormat) { // varargs
-		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/, // /(!|&|\\ *\\|(?:**|$$|**$)?\+?#+,?\.?#*[+-]?(?:^^^^)?)/,
+		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/,
 			s = "",
 			aFormat, sFrmt, iFormat, i, sArg;
 
 		aFormat = sFormat.split(reFormat);
-
-		/*
-		iArg = 1;
-		iFormat = 0;
-		while (iArg < arguments.length) {
-			sFrmt = aFormat[iFormat];
-			if (iFormat % 1) {
-				sArg = arguments[iArg];
-				iArg += 1;
-			}
-		}
-		*/
 
 		if (!aFormat.length) {
 			Utils.console.warn("using: empty format:", sFormat);
@@ -1941,17 +1963,6 @@ CpcVm.prototype = {
 				s += sFrmt;
 			}
 		}
-
-		/*
-		while (aFormat.length) {
-			s += aFormat.shift();
-			if (aFormat.length) {
-				s += this.vmUsingFormat1(aFormat.shift(), arguments[i]);
-			}
-			i += 1;
-		}
-		*/
-
 		return s;
 	},
 
