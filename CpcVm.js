@@ -280,11 +280,6 @@ CpcVm.prototype = {
 		}
 		for (i = 3; i >= 0; i -= 1) { // check timers starting with highest priority first
 			oTimer = this.aTimer[i];
-			/* TTT
-			if (oTimer.bHandlerRunning) { // a running handler will also block other timer
-				break;
-			}
-			*/
 			if (oTimer.bActive && !oTimer.bHandlerRunning && iTime > oTimer.iNextTimeMs) { // timer expired?
 				this.gosub(this.iLine, oTimer.iLine);
 				oTimer.bHandlerRunning = true;
@@ -561,6 +556,10 @@ CpcVm.prototype = {
 		case 0xbb84: // TXT Cursor Off
 			// TODO
 			break;
+		case 0xbbde: // GRA Set Pen
+			// we can only set graphics pen 0 (no arg) or 1 (if there is an arg)
+			this.graphicsPen((arguments.length > 1) ? 1 : 0);
+			break;
 		case 0xbd19: // MC Wait Flyback
 			this.frame();
 			break;
@@ -588,8 +587,14 @@ CpcVm.prototype = {
 	},
 
 	clear: function () {
+		var i;
+
+		for (i = 0; i < this.iTimerCount; i += 1) {
+			this.remain(i); // stop timer, if running
+		}
 		this.vmResetVariables();
 		this.vmDefineVarTypes("R", "a-z");
+		this.restore(); // restore data line index
 		this.rad();
 	},
 
@@ -660,8 +665,15 @@ CpcVm.prototype = {
 		}
 	},
 
-	dec$: function () {
-		this.vmNotImplemented("dec$");
+	dec$: function (n, sFrmt) {
+		var sOut;
+
+		if (typeof n !== "number") {
+			this.error(13); // Type mismatch
+		} else {
+			sOut = this.vmUsingFormat1(sFrmt, n);
+		}
+		return sOut;
 	},
 
 	// def fn
@@ -852,7 +864,7 @@ CpcVm.prototype = {
 			this.error(5); // Improper argument
 		}
 		if (iTransparentMode !== undefined) {
-			this.oCanvas.setTranspartentMode(iGPen);
+			this.oCanvas.setTranspartentMode(iTransparentMode);
 		}
 	},
 
@@ -1054,9 +1066,11 @@ CpcVm.prototype = {
 		this.vmNotImplemented("merge");
 	},
 
-	mid$: function (s, iStart, iLen) { // as function
+	mid$: function (s, iStart, iLen) { // as function; iLen is optional
 		iStart = this.vmRound(iStart);
-		iLen = this.vmRound(iLen);
+		if (iLen !== undefined) {
+			iLen = this.vmRound(iLen);
+		}
 		return s.substr(iStart - 1, iLen);
 	},
 
@@ -1723,7 +1737,7 @@ CpcVm.prototype = {
 		this.vmNotImplemented("|CPM");
 	},
 
-	rsxMode: function (iMode, s) { //TEST
+	rsxMode: function (iMode, s) {
 		var oWinData = this.mWinData[this.iMode],
 			i, oWin;
 
@@ -1735,17 +1749,7 @@ CpcVm.prototype = {
 			oWin = this.aWindow[i];
 			Object.assign(oWin, oWinData);
 		}
-
-		/*
-		this.sOut = "";
-		this.vmResetWindowData();
-		oWin = this.aWindow[iStream];
-		this.pen(iStream, oWin.iPen); // set pen and paper also in canvas
-		this.paper(iStream, oWin.iPaper);
-		this.iClgPen = 0;
-		this.oCanvas.setMode(iMode);
-		*/
-		this.oCanvas.changeMode(iMode);
+		this.oCanvas.changeMode(iMode); // or setMode?
 	},
 
 	run: function (numOrString) {
@@ -1842,6 +1846,7 @@ CpcVm.prototype = {
 		for (i = 1; i < arguments.length; i += 1) { // start with 1
 			aArgs.push(this.vmRound(arguments[i]));
 		}
+		// Note: If there are less than 8 rows, the othere are assumes as 0 (actually empty)
 		this.oCanvas.setCustomChar(iChar, aArgs);
 	},
 
@@ -1948,7 +1953,7 @@ CpcVm.prototype = {
 			iFormat %= aFormat.length;
 			if (iFormat === 0) {
 				sFrmt = aFormat[iFormat];
-				iFormat += 1; // (iFormat + 1) % aFormat.length;
+				iFormat += 1;
 				s += sFrmt;
 			}
 			if (iFormat < aFormat.length) {
@@ -1959,7 +1964,7 @@ CpcVm.prototype = {
 			}
 			if (iFormat < aFormat.length) {
 				sFrmt = aFormat[iFormat];
-				iFormat += 1; // (iFormat + 1) % aFormat.length;
+				iFormat += 1;
 				s += sFrmt;
 			}
 		}

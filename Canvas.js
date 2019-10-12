@@ -238,13 +238,9 @@ Canvas.prototype = {
 		this.aCurrentInks = this.aDefaultInks.slice();
 		this.iGPen = null; // force update
 		this.iGPaper = null;
-		//this.iPen = null;
-		//this.iPaper = null;
 		this.oCustomCharset = {}; // symbol
 		this.setGPen(1);
 		this.setGPaper(0);
-		//this.setPen(1);
-		//this.setPaper(0);
 		this.setBorder(this.aDefaultInks[iPaper]);
 		this.setMode(1);
 		this.clearGraphics(iPaper);
@@ -794,22 +790,6 @@ Canvas.prototype = {
 		// TODO
 	},
 
-	/*
-	setPen: function (iPen) {
-		iPen %= this.aModeData[this.iMode].iPens; // limit pens
-		if (iPen !== this.iPen) {
-			this.iPen = iPen;
-		}
-	},
-
-	setPaper: function (iPaper) {
-		iPaper %= this.aModeData[this.iMode].iPens; // limit papers
-		if (iPaper !== this.iPaper) {
-			this.iPaper = iPaper;
-		}
-	},
-	*/
-
 	setTranspartentMode: function (iTransparent) {
 		this.iTransparent = iTransparent;
 	},
@@ -923,18 +903,13 @@ Canvas.prototype = {
 		this.iMode = iMode;
 	},
 
-	setMode: function (iMode) {
+	setMode: function (iMode) { // cet mode without clear screen
 		this.iMode = iMode;
 		this.setOrigin(0, 0);
 		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0);
-		//this.move(0, 0);
 		this.setGColMode(0);
-
 		this.setGPen(this.iGPen); // maybe different for other mode
 		this.setGPaper(this.iGPaper); // maybe different for other mode
-		//this.setPen(this.iPen);
-		//this.setPaper(this.iPaper);
 		this.iTransparent = 0;
-		//this.clearGraphics(this.iPaper); //TTT
 	}
 };

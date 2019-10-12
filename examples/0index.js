@@ -68,6 +68,10 @@ cpcBasic.addIndex("./", function () { /*
     {
     	"key": "fractions",
 		"title": "fractions: Bruchrechnen"
+	},
+    {
+    	"key": "funcspec",
+		"title": "Functional Spectrum"
     },
     {
     	"key": "graphics",
@@ -112,6 +116,10 @@ cpcBasic.addIndex("./", function () { /*
     {
 		"key": "sphere",
 		"title": "Sphere"
+	},
+    {
+		"key": "shot",
+		"title": "Shot Game (Textual)"
 	},
 	{
 		"key": "stardodger",

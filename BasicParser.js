@@ -26,171 +26,175 @@ function BasicParser(options) {
 	this.init(options);
 }
 
-BasicParser.mKeywords = { // c=command, f=function, o=operator, x=additional keyword for command
-	abs: "f",
-	after: "c",
+// first letter: c=command, f=function, o=operator, x=additional keyword for command
+// following are arguments: n=number, s=string, a=any; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+BasicParser.mKeywords = {
+	abs: "f n",
+	after: "c n n?",
 	and: "o",
-	asc: "f",
-	atn: "f",
+	asc: "f s",
+	atn: "f n",
 	auto: "c",
-	bin$: "f",
-	border: "c",
+	bin$: "f n n?",
+	border: "c n n?",
 	"break": "x",
-	call: "c",
+	call: "c n *",
 	cat: "c",
-	chain: "c", // chain, chain merge
-	chr$: "f",
-	cint: "f",
+	chain: "c s n?", // chain, chain merge
+	chr$: "f n",
+	cint: "f n",
 	clear: "c", // clear, clear input
-	clg: "c",
+	clg: "c n?",
 	closein: "c",
 	closeout: "c",
-	cls: "c",
+	cls: "c n?",
 	cont: "c",
-	copychr$: "f",
-	cos: "f",
-	creal: "f",
-	cursor: "c",
+	copychr$: "f n?",
+	cos: "f n",
+	creal: "f n",
+	cursor: "c n? n?",
 	data: "c",
-	dec$: "f",
-	def: "c",
-	defint: "c",
-	defreal: "c",
-	defstr: "c",
+	dec$: "f n s",
+	def: "c s *", // not checked
+	defint: "c v *",
+	defreal: "c v *",
+	defstr: "c v *",
 	deg: "c",
 	"delete": "c",
 	derr: "f",
 	di: "c",
-	dim: "c",
-	draw: "c",
-	drawr: "c",
-	edit: "c",
+	dim: "c v *",
+	draw: "c n n n? n?",
+	drawr: "c n n n? n?",
+	edit: "c n",
 	ei: "c",
 	"else": "x",
 	end: "c",
-	ent: "c",
-	env: "c",
+	ent: "c n *",
+	env: "c n *",
 	eof: "f",
-	erase: "c",
+	erase: "c v *",
 	erl: "f",
 	err: "f",
-	error: "c",
-	every: "c",
-	exp: "f",
-	fill: "c",
-	fix: "f",
+	error: "c n",
+	every: "c n n?",
+	exp: "f n",
+	fill: "c n",
+	fix: "f n",
 	fn: "x", // def fn??? TTT
 	"for": "c",
 	frame: "c",
-	fre: "f",
-	gosub: "c",
-	"goto": "c",
+	fre: "f a",
+	gosub: "c n",
+	"goto": "c n",
 	graphics: "c", // graphics paper, graphics pen
-	hex$: "f",
+	graphicsPaper: "x n", // special
+	graphicsPen: "x n n?", // special
+	hex$: "f n n?",
 	himem: "f",
 	"if": "c",
-	ink: "c",
-	inkey: "f",
+	ink: "c n n n?",
+	inkey: "f n",
 	inkey$: "f",
-	inp: "f",
-	input: "c",
-	instr: "f",
-	"int": "f",
-	joy: "f",
-	key: "c", // key, key def
-	left$: "f",
-	len: "f",
+	inp: "f n",
+	input: "c n",
+	instr: "f a a a?", // cannot check "f n? s s"
+	"int": "f n",
+	joy: "f n",
+	key: "c n s", // key, key def
+	left$: "f s n",
+	len: "f s",
 	let: "c",
 	line: "c", // line input
 	list: "c",
-	load: "c",
-	locate: "c",
-	log: "f",
-	log10: "f",
-	lower$: "f",
-	mask: "c",
-	max: "f",
-	memory: "c",
-	merge: "c",
-	mid$: "f",
-	min: "f",
+	load: "c s n?",
+	locate: "c n n n?", // cannot check "c n? n n"
+	log: "f n",
+	log10: "f n",
+	lower$: "f s",
+	mask: "c n? n?",
+	max: "f n *",
+	memory: "c n",
+	merge: "c s",
+	mid$: "f s n n?",
+	min: "f n *",
 	mod: "o",
-	mode: "c",
-	move: "c",
-	mover: "c",
+	mode: "c n",
+	move: "c n n n? n?",
+	mover: "c n n n? n?",
 	"new": "c",
-	next: "c",
+	next: "c *", // v*
 	not: "o",
-	on: "c", // on break cont, on break gosub, on break stop, on error goto, on <ex> gosub, on <ex> goto, on sq gosub
-	openin: "c",
-	openout: "c",
+	on: "c", // on break cont, on break gosub, on break stop, on error goto, on <ex> gosub, on <ex> goto, on sq(n) gosub
+	openin: "c s",
+	openout: "c s",
 	or: "o",
-	origin: "c",
-	out: "c",
-	paper: "c",
-	peek: "f",
-	pen: "c",
+	origin: "c n n n? n? n? n?",
+	out: "c n n",
+	paper: "c n n?", // cannot check "c n? n"
+	peek: "f n",
+	pen: "c n n? n?", // cannot check "c n? n n?"
 	pi: "f",
-	plot: "c",
-	plotr: "c",
-	poke: "c",
-	pos: "f",
-	print: "c", // print also with spc(), tab(), using
+	plot: "c n n n? n?",
+	plotr: "c n n n? n?",
+	poke: "c n n",
+	pos: "f n",
+	print: "c n? *", // print also with spc(), tab(), using
 	rad: "c",
-	randomize: "c",
-	read: "c",
-	release: "c",
+	randomize: "c n?",
+	read: "c v *",
+	release: "c n",
 	rem: "c",
-	remain: "f",
-	renum: "c",
-	restore: "c",
-	resume: "c", // resume, resume next
+	remain: "f n",
+	renum: "c n? n? n?",
+	restore: "c n?",
+	resume: "c n?", // resume, resume next
 	"return": "c",
-	right$: "f",
-	rnd: "f",
-	round: "f",
-	run: "c",
-	save: "c",
-	sgn: "f",
-	sin: "f",
-	sound: "c",
-	space$: "f",
+	right$: "f s n",
+	rnd: "f n?",
+	round: "f n n?",
+	run: "c a?", // cannot check "c s | n?"
+	save: "c s a n? n? n?",
+	sgn: "f n",
+	sin: "f n",
+	sound: "c n n n? n? n? n? n?",
+	space$: "f n",
 	spc: "x", // print spc
 	speed: "c", // speed ink, speed key, speed write
-	sq: "f",
-	sqr: "f",
+	sq: "f n",
+	sqr: "f n",
 	step: "x", // for ... to ... step
 	stop: "c",
-	str$: "f",
-	string$: "f",
+	str$: "f n",
+	string$: "f n s",
 	swap: "x", // window swap
-	symbol: "c", // symbol, symbol after
+	symbol: "c n n *", // symbol, symbol after
 	tab: "x", // print tab
-	tag: "c",
-	tagoff: "c",
-	tan: "f",
-	test: "f",
-	testr: "f",
+	tag: "c n?",
+	tagoff: "c n?",
+	tan: "f n",
+	test: "f n n",
+	testr: "f n n",
 	then: "x", // if...then
 	time: "f",
 	to: "x", // for...to
 	troff: "c",
 	tron: "c",
-	unt: "f",
-	upper$: "f",
+	unt: "f n",
+	upper$: "f s",
 	using: "x", // print using
-	val: "f",
-	vpos: "f",
-	wait: "c",
+	val: "f s",
+	vpos: "f n",
+	wait: "c n n n?",
 	wend: "c",
 	"while": "c",
-	width: "c",
-	window: "c", // window, window swap
-	write: "c",
+	width: "c n",
+	window: "c n n n n n?", // window, window swap // cannot check "c n? n n n n"
+	write: "c n?",
 	xor: "o",
 	xpos: "f",
 	ypos: "f",
-	zone: "c"
+	zone: "c n"
 };
 
 BasicParser.prototype = {
@@ -650,15 +654,47 @@ BasicParser.prototype = {
 				return x;
 			},
 
-			fnGetArgs = function () {
-				var aArgs = [];
+			fnCheckRemainingTypes = function (aTypes) {
+				var sType;
 
-				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else") {
-					aArgs.push(expression(0));
-					while (oToken.type === ",") {
-						advance(",");
-						aArgs.push(expression(0));
+				if (aTypes && aTypes.length) { // some more parameters expected?
+					do {
+						sType = aTypes.shift();
+					} while (sType && (sType === "*" || Utils.stringEndsWith(sType, "?")));
+					if (sType && !Utils.stringEndsWith(sType, "?")) {
+						throw new BasicParser.ErrorObject("Expected parameter " + sType + " for arguments after", aTokens[iIndex - 2].value, aTokens[iIndex - 1].pos);
 					}
+				}
+			},
+
+			fnGetArgs = function (aTypes) {
+				var aArgs = [],
+					sType = "ok",
+					oExpression;
+
+				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && sType) {
+					if (aTypes && sType !== "*") { // "*"= any number of parameters
+						sType = aTypes.shift();
+						if (!sType) {
+							throw new BasicParser.ErrorObject("Expected end of arguments after", aTokens[iIndex - 2].value, aTokens[iIndex - 2].pos);
+						}
+					}
+					oExpression = expression(0);
+					aArgs.push(oExpression);
+					while (oToken.type === "," && sType) {
+						if (aTypes && sType !== "*") { // "*"= any number of parameters
+							sType = aTypes.shift();
+							if (!sType) {
+								throw new BasicParser.ErrorObject("Expected end of arguments after", aTokens[iIndex - 2].value, aTokens[iIndex - 2].pos);
+							}
+						}
+						advance(",");
+						oExpression = expression(0);
+						aArgs.push(oExpression);
+					}
+				}
+				if (aTypes && aTypes.length) { // some more parameters expected?
+					fnCheckRemainingTypes(aTypes);
 				}
 				return aArgs;
 			},
@@ -677,9 +713,10 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
-			fnGetArgsInParenthesisOrBrackets = function () {
+			fnGetArgsInParenthesisOrBrackets = function (aTypes) {
 				var aArgs = [],
-					sOpen, sClose;
+					sType = "ok",
+					sOpen, sClose, oExpression;
 
 				sOpen = oToken.type;
 				if (sOpen === "(") {
@@ -691,14 +728,27 @@ BasicParser.prototype = {
 				}
 
 				if (aTokens[iIndex].type === sClose) {
-					advance(sClose);
+					advance();
 				} else {
 					do {
+						if (aTypes && sType !== "*") { // "*"= any number of parameters
+							sType = aTypes.shift();
+							if (!sType) {
+								throw new BasicParser.ErrorObject("Expected end of argument list after", aTokens[iIndex - 2].value, aTokens[iIndex - 2].pos);
+							}
+						}
 						advance();
-						aArgs.push(expression(0));
-					} while (oToken.type === ",");
+						oExpression = expression(0);
+						aArgs.push(oExpression);
+					} while (oToken.type === "," && sType);
+
 					if (oToken.type !== sClose) {
 						throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", aTokens[iIndex - 2].value, aTokens[iIndex - 1].pos);
+					}
+				}
+				if (aTypes && aTypes.length) { // some more parameters expected?
+					if (aTypes && aTypes.length) { // some more parameters expected?
+						fnCheckRemainingTypes(aTypes);
 					}
 				}
 				advance(sClose);
@@ -725,26 +775,38 @@ BasicParser.prototype = {
 
 			fnCreateCmdCall = function (sName) {
 				var oValue = {
-					type: "fcall",
-					args: null,
-					name: sName || aTokens[iIndex - 2].type,
-					pos: aTokens[iIndex - 2].pos
-				};
+						type: "fcall",
+						args: null,
+						name: sName || aTokens[iIndex - 2].type,
+						pos: aTokens[iIndex - 2].pos
+					},
+					aTypes = null,
+					sKeyOpts;
 
-				// TODO check parameter count here
-				oValue.args = fnGetArgs();
+				sKeyOpts = BasicParser.mKeywords[oValue.name];
+				if (sKeyOpts && sKeyOpts.length > 1) {
+					aTypes = sKeyOpts.substr(2).split(" ");
+				}
+				oValue.args = fnGetArgs(aTypes);
 				return oValue;
 			},
 
 			fnCreateFuncCall = function (sName) {
 				var oValue = {
-					type: "fcall",
-					args: null,
-					name: sName || aTokens[iIndex - 2].type,
-					pos: aTokens[iIndex - 2].pos
-				};
+						type: "fcall",
+						args: null,
+						name: sName || aTokens[iIndex - 2].type,
+						pos: aTokens[iIndex - 2].pos
+					},
+					aTypes = null,
+					sKeyOpts;
 
-				oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesisOrBrackets() : [];
+				sKeyOpts = BasicParser.mKeywords[oValue.name];
+				if (sKeyOpts && sKeyOpts.length > 1) {
+					aTypes = sKeyOpts.substr(2).split(" ");
+				}
+
+				oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesisOrBrackets(aTypes) : [];
 				return oValue;
 			},
 			fnGenerateKeywordSymbols = function () {
@@ -1255,11 +1317,11 @@ BasicParser.prototype = {
 
 			if (oToken.type === "break") {
 				advance("break");
+				bOnBreak = true;
 				if (oToken.type === "gosub") {
 					advance("gosub");
 					oValue.name = "onBreakGosub";
 					oValue.args = fnGetArgs();
-					bOnBreak = true;
 				} else if (oToken.type === "cont") {
 					advance("cont");
 					oValue.name = "onBreakCont";
@@ -1330,31 +1392,12 @@ BasicParser.prototype = {
 				if (oToken.type === "spc") {
 					advance("spc");
 					oValue2 = fnCreateFuncCall();
-					/*
-					advance("spc");
-					t = expression(0); // value
-					oValue2 = {
-						type: "fcall",
-						name: "spc",
-						args: [t],
-						pos: aTokens[iIndex - 2].pos //TTT
-					};
-					*/
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex; // save index so we can ignore newline if spc or tab is printed last
 				} else if (oToken.type === "tab") {
 					advance("tab");
 					oValue2 = fnCreateFuncCall();
 					oValue2.type = oValue2.name; // no call but a type
-
-					/*
-					t = expression(0); // value
-					oValue2 = {
-						type: "tab",
-						args: [t],
-						pos: aTokens[iIndex - 2].pos //TTT
-					};
-					*/
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex;
 				} else if (oToken.type === "using") {
@@ -1575,31 +1618,24 @@ BasicParser.prototype = {
 					return "!" + a;
 				},
 				mod: function (a, b) {
-					//return a + " % " + b;
 					return "(" + a + "+ 0.5) % " + b + " | 0"; // rounded remainder
 				},
 				">": function (a, b) {
-					//return a + " > " + b;
 					return a + " > " + b + " ? -1 : 0";
 				},
 				"<": function (a, b) {
-					//return a + " < " + b;
 					return a + " < " + b + " ? -1 : 0";
 				},
 				">=": function (a, b) {
-					//return a + " >= " + b;
 					return a + " >= " + b + " ? -1 : 0";
 				},
 				"<=": function (a, b) {
-					//return a + " <= " + b;
 					return a + " <= " + b + " ? -1 : 0";
 				},
 				"=": function (a, b) {
-					//return a + " === " + b;
 					return a + " === " + b + " ? -1 : 0";
 				},
 				"<>": function (a, b) {
-					//return a + " !== " + b;
 					return a + " !== " + b + " ? -1 : 0";
 				},
 				"@": function (a) {
@@ -1711,7 +1747,6 @@ BasicParser.prototype = {
 
 				value += sVarName + " += " + sStepName + ";";
 				value += "\ncase \"" + sLabel + "b\": ";
-				//value2 = parseNode(node.right);
 				value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
 				return value;
 			},

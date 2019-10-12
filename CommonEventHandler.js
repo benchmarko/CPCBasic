@@ -208,8 +208,6 @@ CommonEventHandler.prototype = {
 			link = document.getElementById("screenshotLink"),
 			sName = sExample + ".png";
 
-		//window.location.href = image; // "download"
-
 		link.setAttribute("download", sName);
 		link.setAttribute("href", image);
 		link.click();
