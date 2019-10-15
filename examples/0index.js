@@ -110,6 +110,10 @@ cpcBasic.addIndex("./", function () { /*
 		"title": "Simple Labyrinth"
 	},
 	{
+		"key": "soundtest1",
+		"title": "Sound Test 1"
+	},
+	{
 		"key": "spacewar",
 		"title": "Spacewar Game (Textual)"
 	},

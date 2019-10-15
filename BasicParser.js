@@ -81,7 +81,7 @@ BasicParser.mKeywords = {
 	exp: "f n",
 	fill: "c n",
 	fix: "f n",
-	fn: "x", // def fn??? TTT
+	fn: "f", // can also be separate
 	"for": "c",
 	frame: "c",
 	fre: "f a",
@@ -955,6 +955,30 @@ BasicParser.prototype = {
 
 		infixr("=", 30); // equal for comparison
 
+		symbol("fn", function () { // separate fn
+			var oValue = {
+				type: "fn",
+				args: null,
+				name: null,
+				pos: aTokens[iIndex - 1].pos
+			};
+
+			if (oToken.type === "identifier") {
+				oValue.name = "fn" + oToken.value;
+				advance();
+			} else {
+				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
+			}
+
+			if (oToken.type !== "(") { // FN xxx name without ()?
+				oValue.args = [];
+			} else {
+				oValue.args = fnGetArgsInParenthesisOrBrackets();
+			}
+			return oValue;
+		});
+
+
 		stmt("after", function () {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
 
@@ -996,10 +1020,18 @@ BasicParser.prototype = {
 				pos: aTokens[iIndex - 1].pos
 			};
 
-			if ((oToken.type !== "identifier") || !Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) {
+			if (oToken.type === "fn") { // fn <identifier> separate?
+				advance("fn");
+				if (oToken.type === "identifier") {
+					oValue.name = "FN" + oToken.value;
+				} else {
+					throw new BasicParser.ErrorObject("Invalid def at", oToken.type, oToken.pos);
+				}
+			} else if (oToken.type === "identifier" && Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) { // fn<identifier>
+				oValue.name = oToken.value;
+			} else {
 				throw new BasicParser.ErrorObject("Invalid def at", oToken.type, oToken.pos);
 			}
-			oValue.name = oToken.value;
 			advance();
 
 			oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesisOrBrackets() : [];
@@ -1040,7 +1072,7 @@ BasicParser.prototype = {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
 			}
 			oValue.name = expression(90); // take simple identifier, nothing more
-			if (oValue.name.type !== "identifier") { //TTT not array?
+			if (oValue.name.type !== "identifier") {
 				throw new BasicParser.ErrorObject("Expected simple identifier at", oToken.type, oToken.pos);
 			}
 			advance("=");
@@ -1313,7 +1345,8 @@ BasicParser.prototype = {
 					pos: aTokens[iIndex - 2].pos
 				},
 				bOnBreak = false,
-				bOnError = false;
+				bOnError = false,
+				bOnSq = false;
 
 			if (oToken.type === "break") {
 				advance("break");
@@ -1335,11 +1368,20 @@ BasicParser.prototype = {
 				advance("error");
 				bOnError = true;
 				oValue.name = "onErrorGoto";
+			} else if (oToken.type === "sq") { // on sq(n) gosub
+				oValue.left = expression(0);
+				oValue.left = oValue.left.args[0]; //TTT
+				if (oToken.type === "gosub") {
+					advance("gosub");
+					oValue.name = "onSqGosub";
+					oValue.args = fnGetArgs();
+				}
+				bOnSq = true;
 			} else {
 				oValue.left = expression(0);
 			}
 
-			if (oToken.type === "gosub" && !bOnError && !bOnBreak) {
+			if (oToken.type === "gosub" && !bOnError && !bOnBreak && !bOnSq) {
 				advance("gosub");
 				oValue.name = "onGosub";
 				oValue.args = fnGetArgs();
@@ -1349,7 +1391,7 @@ BasicParser.prototype = {
 					oValue.name = "onGoto";
 				}
 				oValue.args = fnGetArgs();
-			} else if (!bOnError && !bOnBreak) {
+			} else if (!bOnError && !bOnBreak && !bOnSq) {
 				throw new BasicParser.ErrorObject("Expected GOTO or GOSUB", oToken.type, oToken.pos);
 			}
 
@@ -1817,7 +1859,7 @@ BasicParser.prototype = {
 					aNodeArgs.unshift(i);
 				}
 				sName = node.name;
-				if (sName === "onGosub") {
+				if (sName === "onGosub" || sName === "onSqGosub") {
 					sLabel = that.iLine + "g" + that.iGosubCount;
 					that.iGosubCount += 1;
 					aNodeArgs.unshift('"' + sLabel + '"');
@@ -1827,7 +1869,7 @@ BasicParser.prototype = {
 					that.iStopCount += 1;
 					aNodeArgs.unshift('"' + sLabel + '"');
 					value = "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
-				} else { //TODO
+				} else { //TODO ??
 					value = "/* on(" + i + ") */  o." + sName + "(" + aNodeArgs.join(", ") + ")";
 				}
 				return value;

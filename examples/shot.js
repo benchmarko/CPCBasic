@@ -9,13 +9,13 @@ cpcBasic.addItem("", function () { /*
 130 WINDOW #1,12,27,5,10:GOSUB 900
 140 WINDOW #2,1,40,18,20:GOTO 370
 150 FOR x=1 TO 20:NEXT x
-160 c.t!=time+20:while time<c.t!:call &bd19:wend:jo=JOY(0):IF INKEY$="S" THEN STOP
-170 IF jo=0 THEN 160
-180 s=0:t=0:fe=0:IF jo AND 16 THEN fe=1:RETURN
-190 IF jo AND 8 THEN s=1
-200 IF jo AND 4 THEN s=-1
-210 IF jo AND 2 THEN t=1
-220 IF jo AND 1 THEN t=-1
+160 c.t!=time+20:while time<c.t!:call &bd19:wend:jo=JOY(0):t$=inkey$:IF upper$(t$)="S" THEN STOP
+170 IF jo=0 and t$="" THEN 160
+180 s=0:t=0:fe=0:IF jo AND 16 or t$=chr$(224) or t$=" " THEN fe=1:RETURN
+190 IF jo AND 8 or t$=chr$(243) THEN s=1
+200 IF jo AND 4 or t$=chr$(242) THEN s=-1
+210 IF jo AND 2 or t$=chr$(241) THEN t=1
+220 IF jo AND 1 or t$=chr$(240) THEN t=-1
 230 RETURN
 240 REM Positionsbestimmung:
 250 CALL &BB03
@@ -80,8 +80,8 @@ cpcBasic.addItem("", function () { /*
 840 IF z=0 THEN 460
 850 PEN 3:IF z=1 THEN x1=e:y1=f:xa=0 ELSE x1=a:y1=b:xa=28
 860 FOR i=1 TO 5:IF ch=239 THEN ch=253 ELSE ch=239
-870 GOSUB 360:SOUND 4,0,15,8-i,0,0,10-i:FOR x=1 TO 80:NEXT x,i
-880 WHILE (SQ(4) AND 128)<>0:WEND
+870 GOSUB 360:SOUND 4,0,15,8-i,0,0,10-i:FOR x=1 TO 80/10:call &bd19:NEXT x,i
+880 WHILE (SQ(4) AND 128)<>0:call &bd19:WEND
 890 LOCATE 1,22:PEN 1:IF z=1 THEN 1000 ELSE 1100
 900 'SYMBOL AFTER 254
 910 SYMBOL 255,0,0,0,24,52,106,87,0
@@ -96,7 +96,7 @@ cpcBasic.addItem("", function () { /*
 1000 RESTORE 1060
 1010 ENV 3,10,-1,10:laut=12
 1020 READ ton,dauer
-1030 IF ton=-1 THEN WHILE SQ(4)<>4:WEND:END
+1030 IF ton=-1 THEN WHILE SQ(4)<>4:call &bd19:WEND:END
 1040 SOUND 1,ton/2,dauer,laut,3:SOUND 2,ton*2,dauer,laut,3:SOUND 4,ton,dauer,laut,3
 1050 GOTO 1020
 1060 DATA 358,60,268,45,0,2,268,15,0,2,268,120,358,60,239,45,284,15,268,120,358,60,268,45,201,15,0,2,201,60,213,45,239,15,268,60,239,2,268,2,284,45,268,15,239,120
@@ -105,7 +105,7 @@ cpcBasic.addItem("", function () { /*
 1090 REM Franz Schubert: Die Forelle
 1100 ENV 2,10,-1,10
 1110 RESTORE 1150:laut1=12:laut2=10
-1120 READ ton,dauer:IF ton=-1 THEN WHILE SQ(4)<>4:WEND:STOP
+1120 READ ton,dauer:IF ton=-1 THEN WHILE SQ(4)<>4:call &bd19:WEND:STOP
 1130 IF ton=0 THEN SOUND 1,ton,dauer:SOUND 2,ton,dauer:SOUND 4,ton,dauer:GOTO 1120
 1140 dauer=dauer*1.5:SOUND 1,ton*2,dauer/2,laut1,2:SOUND 1,ton,dauer/2,laut1,2:SOUND 2,ton,dauer,laut2,2:SOUND 4,ton*0.25,dauer,laut1,2:GOTO 1120
 1150 DATA 426,25,319,25,0,2,319,25,253,25,0,2,253,25,319,50,426,25,0,2,426,25,0,2,426,25,0,2,426,25,284,12,319,12,338,12,379,12,426,75,0,2

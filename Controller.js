@@ -76,9 +76,11 @@ Controller.prototype = {
 		} else {
 			Utils.console.error("ExampleIndex not set");
 		}
-		if (Utils.debug > 0) { //TTT test sound
+		/*
+		if (Utils.debug > 0) {
 			oView.setDisabled("soundButton", false);
 		}
+		*/
 	},
 
 	// Also called from index file 0index.js
@@ -272,6 +274,10 @@ Controller.prototype = {
 			oVm = this.oVm;
 
 		iLine = iLine || 0;
+
+		if (iLine === 0) {
+			oVm.vmResetData();
+		}
 
 		if (!this.fnScript) {
 			oVm.vmSetVariables(this.oVariables);
@@ -518,12 +524,15 @@ Controller.prototype = {
 	},
 
 	fnSoundOnOff: function () {
-		var oSound = this.oSound;
+		var oSound = this.oSound,
+			soundButton = document.getElementById("soundButton"); //TTT
 
 		if (oSound.isSoundOn()) {
 			oSound.soundOff();
+			soundButton.innerText = "Sound on";
 		} else {
 			oSound.soundOn();
+			soundButton.innerText = "Sound off";
 		}
 	}
 };
