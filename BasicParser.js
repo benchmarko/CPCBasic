@@ -875,9 +875,10 @@ BasicParser.prototype = {
 			if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 				if (oToken.type !== "(") { // Fnxxx name without ()?
 					oValue = {
-						type: "fn",
+						type: "fcall",
+						name: "fn",
 						args: [],
-						name: sName,
+						left: sName,
 						pos: aTokens[iParseIndex - 1].pos
 					};
 					return oValue;
@@ -894,7 +895,9 @@ BasicParser.prototype = {
 				oValue.args = fnGetArgsInParenthesisOrBrackets();
 
 				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
-					oValue.type = "fn"; // FNxxx in e.g. print
+					oValue.type = "fcall";
+					oValue.left = oValue.name;
+					oValue.name = "fn"; // FNxxx in e.g. print
 				}
 			} else {
 				oValue = oName;
@@ -957,14 +960,14 @@ BasicParser.prototype = {
 
 		symbol("fn", function () { // separate fn
 			var oValue = {
-				type: "fn",
+				type: "fcall",
+				name: "fn",
 				args: null,
-				name: null,
 				pos: aTokens[iIndex - 1].pos
 			};
 
 			if (oToken.type === "identifier") {
-				oValue.name = "fn" + oToken.value;
+				oValue.left = "fn" + oToken.value;
 				advance();
 			} else {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
@@ -993,16 +996,6 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		stmt("call", function () {
-			var oValue = {
-				type: "call",
-				args: fnGetArgs(),
-				pos: aTokens[iIndex - 1].pos
-			};
-
-			return oValue;
-		});
-
 		stmt("clear", function () {
 			var sName = "clear";
 
@@ -1015,7 +1008,7 @@ BasicParser.prototype = {
 
 		stmt("def", function () {
 			var oValue = {
-				type: "def",
+				type: "def", // somehow special
 				args: [],
 				pos: aTokens[iIndex - 1].pos
 			};
@@ -1023,12 +1016,12 @@ BasicParser.prototype = {
 			if (oToken.type === "fn") { // fn <identifier> separate?
 				advance("fn");
 				if (oToken.type === "identifier") {
-					oValue.name = "FN" + oToken.value;
+					oValue.left = "FN" + oToken.value;
 				} else {
 					throw new BasicParser.ErrorObject("Invalid def at", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "identifier" && Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) { // fn<identifier>
-				oValue.name = oToken.value;
+				oValue.left = oToken.value;
 			} else {
 				throw new BasicParser.ErrorObject("Invalid def at", oToken.type, oToken.pos);
 			}
@@ -1038,14 +1031,6 @@ BasicParser.prototype = {
 			advance("=");
 
 			oValue.value = expression(0);
-			return oValue;
-		});
-
-		stmt("end", function () {
-			var oValue = {
-				type: "end"
-			};
-
 			return oValue;
 		});
 
@@ -1065,14 +1050,17 @@ BasicParser.prototype = {
 
 		stmt("for", function () {
 			var oValue = {
-				type: "for"
-			};
+					type: "fcall",
+					name: "for"
+				},
+				oName;
 
 			if (oToken.type !== "identifier") {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
 			}
-			oValue.name = expression(90); // take simple identifier, nothing more
-			if (oValue.name.type !== "identifier") {
+			oName = expression(90); // take simple identifier, nothing more
+			oValue.args = [oName];
+			if (oName.type !== "identifier") {
 				throw new BasicParser.ErrorObject("Expected simple identifier at", oToken.type, oToken.pos);
 			}
 			advance("=");
@@ -1090,25 +1078,6 @@ BasicParser.prototype = {
 					value: "1"
 				};
 			}
-
-			return oValue;
-		});
-
-		stmt("frame", function () {
-			var oValue = {
-				type: "frame"
-			};
-
-			return oValue;
-		});
-
-		stmt("gosub", function () {
-			var oValue = {
-				type: "gosub"
-			};
-
-			oValue.left = expression(0);
-
 			return oValue;
 		});
 
@@ -1127,7 +1096,9 @@ BasicParser.prototype = {
 
 		stmt("if", function () {
 			var oValue = {
-				type: "if"
+				type: "fcall",
+				name: "if",
+				args: [] //TTT
 			};
 
 			oValue.left = expression(0);
@@ -1160,7 +1131,8 @@ BasicParser.prototype = {
 
 		stmt("input", function () {
 			var oValue = {
-					type: "input",
+					type: "fcall",
+					name: "input",
 					args: [],
 					pos: aTokens[iIndex - 1].pos
 				},
@@ -1247,7 +1219,8 @@ BasicParser.prototype = {
 
 		stmt("line", function () {
 			var oValue = {
-					type: "lineInput",
+					type: "fcall",
+					name: "lineInput",
 					args: [],
 					pos: aTokens[iIndex - 1].pos
 				},
@@ -1319,7 +1292,8 @@ BasicParser.prototype = {
 
 		stmt("next", function () {
 			var oValue = {
-				type: "next",
+				type: "fcall",
+				name: "next",
 				args: [],
 				pos: aTokens[iIndex - 2].pos
 			};
@@ -1339,18 +1313,15 @@ BasicParser.prototype = {
 
 		stmt("on", function () {
 			var oValue = {
-					type: "on",
+					type: "fcall",
 					name: null,
-					args: null,
+					args: [],
 					pos: aTokens[iIndex - 2].pos
 				},
-				bOnBreak = false,
-				bOnError = false,
-				bOnSq = false;
+				oLeft;
 
 			if (oToken.type === "break") {
 				advance("break");
-				bOnBreak = true;
 				if (oToken.type === "gosub") {
 					advance("gosub");
 					oValue.name = "onBreakGosub";
@@ -1358,43 +1329,42 @@ BasicParser.prototype = {
 				} else if (oToken.type === "cont") {
 					advance("cont");
 					oValue.name = "onBreakCont";
-					oValue.args = [];
 				} else if (oToken.type === "stop") {
 					advance("stop");
 					oValue.name = "onBreakStop";
-					oValue.args = [];
 				}
 			} else if (oToken.type === "error") { // on error goto
 				advance("error");
-				bOnError = true;
-				oValue.name = "onErrorGoto";
+				if (oToken.type === "goto") {
+					advance("goto");
+					oValue.name = "onErrorGoto";
+					oValue.args = fnGetArgs();
+				}
 			} else if (oToken.type === "sq") { // on sq(n) gosub
-				oValue.left = expression(0);
-				oValue.left = oValue.left.args[0]; //TTT
+				oLeft = expression(0);
+				oLeft = oLeft.args[0];
 				if (oToken.type === "gosub") {
 					advance("gosub");
 					oValue.name = "onSqGosub";
 					oValue.args = fnGetArgs();
+					oValue.args.unshift(oLeft);
 				}
-				bOnSq = true;
 			} else {
-				oValue.left = expression(0);
-			}
-
-			if (oToken.type === "gosub" && !bOnError && !bOnBreak && !bOnSq) {
-				advance("gosub");
-				oValue.name = "onGosub";
-				oValue.args = fnGetArgs();
-			} else if (oToken.type === "goto") {
-				advance("goto");
-				if (!oValue.name) {
+				oLeft = expression(0);
+				if (oToken.type === "gosub") {
+					advance("gosub");
+					oValue.name = "onGosub";
+					oValue.args = fnGetArgs();
+					oValue.args.unshift(oLeft);
+				} else if (oToken.type === "goto") {
+					advance("goto");
 					oValue.name = "onGoto";
+					oValue.args = fnGetArgs();
+					oValue.args.unshift(oLeft);
+				} else {
+					throw new BasicParser.ErrorObject("Expected GOTO or GOSUB", oToken.type, oToken.pos);
 				}
-				oValue.args = fnGetArgs();
-			} else if (!bOnError && !bOnBreak && !bOnSq) {
-				throw new BasicParser.ErrorObject("Expected GOTO or GOSUB", oToken.type, oToken.pos);
 			}
-
 			return oValue;
 		});
 
@@ -1439,7 +1409,6 @@ BasicParser.prototype = {
 				} else if (oToken.type === "tab") {
 					advance("tab");
 					oValue2 = fnCreateFuncCall();
-					oValue2.type = oValue2.name; // no call but a type
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex;
 				} else if (oToken.type === "using") {
@@ -1450,7 +1419,7 @@ BasicParser.prototype = {
 						type: "fcall",
 						name: "using",
 						args: null,
-						pos: aTokens[iIndex - 2].pos //TTT
+						pos: aTokens[iIndex - 2].pos
 					};
 					oValue2.args = fnGetArgsSepByCommaSemi();
 					oValue2.args.unshift(t);
@@ -1461,7 +1430,8 @@ BasicParser.prototype = {
 					advance(";");
 				} else if (oToken.type === ",") { // default tab, simulate tab...
 					oValue.args.push({
-						type: "tab",
+						type: "fcall",
+						name: "tab",
 						args: [], // special: we use no args to get tab with current zone
 						pos: aTokens[iParseIndex - 2].pos
 					});
@@ -1484,16 +1454,6 @@ BasicParser.prototype = {
 
 		oSymbols["?"] = oSymbols.print; // "?" is same as print
 
-		stmt("randomize", function () {
-			var oValue = {
-				type: "randomize",
-				args: fnGetArgs(),
-				pos: aTokens[iIndex - 2].pos
-			};
-
-			return oValue;
-		});
-
 		stmt("resume", function () {
 			var sName = "resume",
 				oValue;
@@ -1514,13 +1474,6 @@ BasicParser.prototype = {
 				advance(",");
 			}
 			oValue = fnCreateCmdCall(rsxToken.type + Utils.stringCapitalize(rsxToken.value.toLowerCase()));
-			return oValue;
-		});
-
-		stmt("run", function () {
-			var oValue;
-
-			oValue = fnCreateCmdCall();
 			return oValue;
 		});
 
@@ -1546,15 +1499,6 @@ BasicParser.prototype = {
 			return fnCreateCmdCall(sName);
 		});
 
-		stmt("stop", function () {
-			var oValue = {
-				type: "stop",
-				pos: aTokens[iIndex - 2].pos
-			};
-
-			return oValue;
-		});
-
 		stmt("symbol", function () {
 			var sName = "symbol";
 
@@ -1565,30 +1509,10 @@ BasicParser.prototype = {
 			return fnCreateCmdCall(sName);
 		});
 
-		stmt("wend", function () {
-			var oValue = {
-				type: "wend",
-				pos: aTokens[iIndex - 2].pos
-			};
-
-			return oValue;
-		});
-
-		stmt("while", function () {
-			var oValue = {
-				type: "while",
-				pos: aTokens[iIndex - 2].pos
-			};
-
-			oValue.left = expression(0);
-
-			return oValue;
-		});
-
 		stmt("window", function () {
 			var oValue, oStream;
 
-			if (oToken.type === "swap") { // symbol after?
+			if (oToken.type === "swap") {
 				advance("swap");
 				oValue = fnCreateCmdCall("windowSwap");
 			} else {
@@ -1622,9 +1546,53 @@ BasicParser.prototype = {
 	//
 	// evaluate
 	//
-	evaluate: function (parseTree, variables, functions) {
+	evaluate: function (parseTree, variables /* , functions */) {
 		var that = this,
 			sOutput = "",
+
+			fnGetVarDefault = function (/* sName */) {
+				return 1; // during compile step, we just init all variables with 1
+			},
+
+			oDevScopeArgs = null,
+			bDevScopeArgsCollect = false,
+
+			fnAdaptVariableName = function (sName, iArrayIndices) {
+				sName = sName.toLowerCase();
+				sName = sName.replace(/\./g, "_");
+				if (Utils.stringEndsWith(sName, "!")) { // real number?
+					sName = sName.slice(0, -1) + "R"; // "!" => "R"
+				} else if (Utils.stringEndsWith(sName, "%")) { // integer number?
+					sName = sName.slice(0, -1) + "I";
+				}
+				if (iArrayIndices) {
+					sName += "A".repeat(iArrayIndices);
+				}
+				if (oDevScopeArgs) {
+					if (bDevScopeArgsCollect) {
+						oDevScopeArgs[sName] = fnGetVarDefault(sName); // declare
+					} else if (!(sName in oDevScopeArgs)) {
+						// variable
+						variables[sName] = fnGetVarDefault(sName); // declare
+						sName = "v." + sName; // access with "v."
+					}
+				} else {
+					variables[sName] = fnGetVarDefault(sName); // declare
+					sName = "v." + sName; // access with "v."
+				}
+				return sName;
+			},
+
+			fnParseArgs = function (aArgs) {
+				var aNodeArgs = [], // do not modify node.args here (could be a parameter of defined function)
+					i;
+
+				for (i = 0; i < aArgs.length; i += 1) {
+					aNodeArgs[i] = parseNode(aArgs[i]); // eslint-disable-line no-use-before-define
+				}
+				return aNodeArgs;
+			},
+
 			mOperators = {
 				"+": function (a, b) {
 					return a + " + " + b;
@@ -1687,191 +1655,259 @@ BasicParser.prototype = {
 					return a; // stream
 				}
 			},
+			mParseFunctions = {
+				call: function (aNodeArgs) {
+					var sName = that.iLine + "c" + that.iStopCount;
 
-			mFunctions = Object.assign({}, functions), // create copy of predefined functions so that they can be redefined
+					that.iStopCount += 1;
+					return "o.call(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+				},
+				data: function (aNodeArgs) {
+					aNodeArgs.unshift(that.iLine); // prepend line number
+					that.aData.push("o.data(" + aNodeArgs.join(", ") + ")"); // will be set at the beginning of the script
+					return "/* data */";
+				},
+				defint: function (aNodeArgs) {
+					var i, sName;
 
-			checkArgs = function (name, aArgs, iPos) {
-				var oFunction = mFunctions[name],
-					sFunction, sFirstLine, aMatch, iMin;
-
-				if (oFunction.length !== aArgs.length) {
-					sFunction = String(oFunction);
-					sFirstLine = sFunction.split("\n", 1)[0];
-					if (sFirstLine.indexOf("function () { // varargs") === 0) {
-						return; // no check for functions with varargs comment
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = aNodeArgs[i];
+						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
+						aNodeArgs[i] = "o.defint(\"" + sName + "\")";
 					}
-					aMatch = sFirstLine.match(/{ \/\/ optional args (\d+)/);
-					if (aMatch) {
-						if (aMatch[1]) {
-							iMin = oFunction.length - Number(aMatch[1]);
-							if (aArgs.length >= iMin && aArgs.length <= oFunction.length) {
-								return;
-							}
+					return aNodeArgs.join("; ");
+				},
+				defreal: function (aNodeArgs) {
+					var i, sName;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = aNodeArgs[i];
+						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
+						aNodeArgs[i] = "o.defreal(\"" + sName + "\")";
+					}
+					return aNodeArgs.join("; ");
+				},
+				defstr: function (aNodeArgs) {
+					var i, sName;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = aNodeArgs[i];
+						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
+						aNodeArgs[i] = "o.defstr(\"" + sName + "\")";
+					}
+					return aNodeArgs.join("; ");
+				},
+				dim: function (aNodeArgs) {
+					var i, sName, aName;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = aNodeArgs[i];
+						aName = sName.split(/\[|\]\[|\]/);
+						aName.pop(); // remove empty last element
+						sName = aName.shift();
+						aNodeArgs[i] = sName + " = o.dim(\"" + sName + "\", " + aName.join(", ") + ")";
+					}
+					return aNodeArgs.join("; ");
+				},
+				end: function () {
+					var sName = that.iLine + "s" + that.iStopCount; // same as stop, use also stopCount
+
+					that.iStopCount += 1;
+					return "o.end(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+				},
+				error: function (aNodeArgs) {
+					return "o.error(" + aNodeArgs[0] + "); break";
+				},
+				fn: function (aNodeArgs, node) {
+					var sName = fnAdaptVariableName(node.left);
+
+					return sName + "(" + aNodeArgs.join(", ") + ")";
+				},
+				"for": function (aNodeArgs, node) {
+					var sVarName, sLabel, value, sStepName, sEndName;
+
+					sVarName = aNodeArgs[0];
+					sLabel = that.iLine + "f" + that.iForCount;
+					that.oStack.f.push(sLabel);
+					that.iForCount += 1;
+
+					sStepName = sVarName + "Step";
+					value = sStepName.substr(2); // remove preceiding "v."
+					variables[value] = 0; // declare also step variable
+					sEndName = sVarName + "End";
+					value = sEndName.substr(2); // remove preceiding "v."
+					variables[value] = 0; // declare also step variable
+
+					value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sEndName + " = " + parseNode(node.right) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+					value += "\ncase \"" + sLabel + "\": ";
+
+					value += sVarName + " += " + sStepName + ";";
+					value += "\ncase \"" + sLabel + "b\": ";
+					value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
+					return value;
+				},
+				frame: function () {
+					var sName = that.iLine + "s" + that.iStopCount; // use also stopCount for frame
+
+					that.iStopCount += 1;
+					return "o.frame(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+				},
+				gosub: function (aNodeArgs) {
+					var sName = that.iLine + "g" + that.iGosubCount;
+
+					that.iGosubCount += 1;
+					return 'o.gosub("' + sName + '", ' + aNodeArgs + '); break; \ncase "' + sName + '":';
+				},
+				"goto": function (aNodeArgs) {
+					return "o.goto(" + aNodeArgs[0] + "); break";
+				},
+				"if": function (aNodeArgsUnused, node) {
+					var aNodeArgs, sLabel, value, sPart;
+
+					sLabel = that.iLine + "i" + that.iIfCount;
+					that.iIfCount += 1;
+
+					value = "if (" + parseNode(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
+					if (node.third) {
+						aNodeArgs = fnParseArgs(node.third);
+						sPart = aNodeArgs.join("; ");
+						value += "/* else */ " + sPart + "; ";
+					}
+					value += 'o.goto("' + sLabel + 'e"); break;';
+					aNodeArgs = fnParseArgs(node.right);
+					sPart = aNodeArgs.join("; ");
+					value += '\ncase "' + sLabel + '": ' + sPart + ";";
+					value += '\ncase "' + sLabel + 'e": ';
+					return value;
+				},
+				input: function (aNodeArgs) {
+					var sLabel, value, i, sStream, sNoCRLF, sMsg;
+
+					sLabel = that.iLine + "s" + that.iStopCount;
+					that.iStopCount += 1;
+
+					sStream = aNodeArgs.shift();
+					sNoCRLF = aNodeArgs.shift();
+					sMsg = aNodeArgs.shift();
+
+					value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
+					}
+
+					return value;
+				},
+				lineInput: function (aNodeArgs) {
+					var sLabel, value, i, sStream, sNoCRLF, sMsg;
+
+					sLabel = that.iLine + "s" + that.iStopCount;
+					that.iStopCount += 1;
+
+					sStream = aNodeArgs.shift();
+					sNoCRLF = aNodeArgs.shift();
+					sMsg = aNodeArgs.shift();
+
+					value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
+					}
+					return value;
+				},
+				next: function (aNodeArgs, node) {
+					var i, sName;
+
+					if (!aNodeArgs.length) {
+						aNodeArgs.push(""); // we have no variable, so use empty argument
+					}
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = that.oStack.f.pop();
+						if (sName === undefined) {
+							throw new BasicParser.ErrorObject("Unexpected NEXT at", node.name, node.pos);
 						}
+						aNodeArgs[i] = "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					}
-					throw new BasicParser.ErrorObject("Wrong number of arguments for function", name, iPos);
-				}
-			},
+					return aNodeArgs.join("; ");
+				},
+				onGosub: function (aNodeArgs, node) {
+					var sName = node.name,
+						sLabel = that.iLine + "g" + that.iGosubCount;
 
-			fnGetVarDefault = function (/* sName */) {
-				return 1; // during compile step, we just init all variables with 1
-			},
+					that.iGosubCount += 1;
+					aNodeArgs.unshift('"' + sLabel + '"');
+					return "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
+				},
+				onGoto: function (aNodeArgs, node) {
+					var sName = node.name,
+						sLabel = that.iLine + "s" + that.iStopCount;
 
-			oDevScopeArgs = null,
-			bDevScopeArgsCollect = false,
+					that.iStopCount += 1;
+					aNodeArgs.unshift('"' + sLabel + '"');
+					return "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
+				},
+				randomize: function (aNodeArgs) {
+					var value, sName;
 
-			fnAdaptVariableName = function (sName, iArrayIndices) {
-				sName = sName.toLowerCase();
-				sName = sName.replace(/\./g, "_");
-				if (Utils.stringEndsWith(sName, "!")) { // real number?
-					sName = sName.slice(0, -1) + "R"; // "!" => "R"
-				} else if (Utils.stringEndsWith(sName, "%")) { // integer number?
-					sName = sName.slice(0, -1) + "I";
-				}
-				if (iArrayIndices) {
-					sName += "A".repeat(iArrayIndices);
-				}
-				if (oDevScopeArgs) {
-					if (bDevScopeArgsCollect) {
-						oDevScopeArgs[sName] = fnGetVarDefault(sName); // declare
-					} else if (!(sName in oDevScopeArgs)) {
-						// variable
-						variables[sName] = fnGetVarDefault(sName); // declare
-						sName = "v." + sName; // access with "v."
+					if (aNodeArgs.length) {
+						value = "o.randomize(" + aNodeArgs.join(", ") + ")";
+					} else {
+						sName = that.iLine + "s" + that.iStopCount; // use also stopCount for randomize? TTT
+						that.iStopCount += 1;
+						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetInput())";
 					}
-				} else {
-					variables[sName] = fnGetVarDefault(sName); // declare
-					sName = "v." + sName; // access with "v."
-				}
-				return sName;
-			},
+					return value;
+				},
+				read: function (aNodeArgs) {
+					var i, sName;
 
-			fnParseArgs = function (aArgs) {
-				var aNodeArgs = [], // do not modify node.args here (could be a parameter of defined function)
-					i;
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = aNodeArgs[i];
+						aNodeArgs[i] = sName + " = o.read(\"" + sName + "\")";
+					}
+					return aNodeArgs.join("; ");
+				},
+				"return": function () {
+					return "o.return(); break;";
+				},
+				run: function (aNodeArgs) {
+					return "o.run(" + aNodeArgs.join(", ") + "); break;";
+				},
+				stop: function () {
+					var sName = that.iLine + "s" + that.iStopCount;
 
-				for (i = 0; i < aArgs.length; i += 1) {
-					aNodeArgs[i] = parseNode(aArgs[i]); // eslint-disable-line no-use-before-define
+					that.iStopCount += 1;
+					return "o.stop(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+				},
+				tab: function (aNodeArgs) {
+					return "{type: \"tab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the tab() call until print() is called
+				},
+				wend: function (aNodeArgs, node) {
+					var sName = that.oStack.w.pop();
+
+					if (sName === undefined) {
+						throw new BasicParser.ErrorObject("Unexpected WEND at", node.name, node.pos);
+					}
+					return "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
+				},
+				"while": function (aNodeArgs) {
+					var sName = that.iLine + "w" + that.iWhileCount;
+
+					that.oStack.w.push(sName);
+					that.iWhileCount += 1;
+					return "\ncase \"" + sName + "\": if (!(" + aNodeArgs + ")) { o.goto(\"" + sName + "e\"); break; }";
 				}
-				return aNodeArgs;
 			},
 
 			fnParseDef = function (node) {
 				var aNodeArgs, sName, value;
 
-				sName = fnAdaptVariableName(node.name);
+				sName = fnAdaptVariableName(node.left);
 				oDevScopeArgs = {};
 				bDevScopeArgsCollect = true;
 				aNodeArgs = fnParseArgs(node.args);
 				bDevScopeArgsCollect = false;
-				value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + parseNode(node.value) + "; };";
+				value = parseNode(node.value);
 				oDevScopeArgs = null;
-				return value;
-			},
-
-			fnParseFor = function (node) {
-				var sVarName, sLabel, value, sStepName, sEndName;
-
-				sVarName = parseNode(node.name);
-				sLabel = that.iLine + "f" + that.iForCount;
-				that.oStack.f.push(sLabel);
-				that.iForCount += 1;
-
-				sStepName = sVarName + "Step";
-				value = sStepName.substr(2); // remove preceiding "v."
-				variables[value] = 0; // declare also step variable
-				sEndName = sVarName + "End";
-				value = sEndName.substr(2); // remove preceiding "v."
-				variables[value] = 0; // declare also step variable
-
-				value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sEndName + " = " + parseNode(node.right) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
-				value += "\ncase \"" + sLabel + "\": ";
-
-				value += sVarName + " += " + sStepName + ";";
-				value += "\ncase \"" + sLabel + "b\": ";
-				value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
-				return value;
-			},
-
-			fnParseIf = function (node) {
-				var aNodeArgs, sLabel, value, sPart;
-
-				sLabel = that.iLine + "i" + that.iIfCount;
-				that.iIfCount += 1;
-
-				value = "if (" + parseNode(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
-				if (node.third) {
-					aNodeArgs = fnParseArgs(node.third);
-					sPart = aNodeArgs.join("; ");
-					value += "/* else */ " + sPart + "; ";
-				}
-				value += 'o.goto("' + sLabel + 'e"); break;';
-				aNodeArgs = fnParseArgs(node.right);
-				sPart = aNodeArgs.join("; ");
-				value += '\ncase "' + sLabel + '": ' + sPart + ";";
-				value += '\ncase "' + sLabel + 'e": ';
-				return value;
-			},
-
-			fnParseInput = function (node) {
-				var aNodeArgs, sLabel, value, i, sStream, sNoCRLF, sMsg;
-
-				sLabel = that.iLine + "s" + that.iStopCount;
-				that.iStopCount += 1;
-
-				aNodeArgs = fnParseArgs(node.args);
-				sStream = aNodeArgs.shift();
-				sNoCRLF = aNodeArgs.shift();
-				sMsg = aNodeArgs.shift();
-
-				value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
-				for (i = 0; i < aNodeArgs.length; i += 1) {
-					value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
-				}
-
-				return value;
-			},
-
-			fnParseLineInput = function (node) {
-				var aNodeArgs, sLabel, value, i, sStream, sNoCRLF, sMsg;
-
-				sLabel = that.iLine + "s" + that.iStopCount;
-				that.iStopCount += 1;
-
-				aNodeArgs = fnParseArgs(node.args);
-				sStream = aNodeArgs.shift();
-				sNoCRLF = aNodeArgs.shift();
-				sMsg = aNodeArgs.shift();
-
-				value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
-				for (i = 0; i < aNodeArgs.length; i += 1) {
-					value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
-				}
-				return value;
-			},
-
-			fnParseOn = function (node) {
-				var aNodeArgs, i, sName, sLabel, value;
-
-				aNodeArgs = fnParseArgs(node.args);
-				if (node.left) {
-					i = parseNode(node.left);
-					aNodeArgs.unshift(i);
-				}
-				sName = node.name;
-				if (sName === "onGosub" || sName === "onSqGosub") {
-					sLabel = that.iLine + "g" + that.iGosubCount;
-					that.iGosubCount += 1;
-					aNodeArgs.unshift('"' + sLabel + '"');
-					value = "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
-				} else if (sName === "onGoto") {
-					sLabel = that.iLine + "s" + that.iStopCount;
-					that.iStopCount += 1;
-					aNodeArgs.unshift('"' + sLabel + '"');
-					value = "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
-				} else { //TODO ??
-					value = "/* on(" + i + ") */  o." + sName + "(" + aNodeArgs.join(", ") + ")";
-				}
+				value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + value + "; };";
 				return value;
 			},
 
@@ -1928,54 +1964,18 @@ BasicParser.prototype = {
 				case "fcall":
 					aNodeArgs = fnParseArgs(node.args);
 					sName = node.name;
-					if (mFunctions[sName] === undefined) {
-						if (Utils.debug > 2) {
-							Utils.console.debug("NOTE: Generating default call for function ", sName, " pos ", node.pos);
-						}
-						value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
+					if (mParseFunctions[sName]) { // function for special handling?
+						value = mParseFunctions[sName](aNodeArgs, node);
 					} else {
-						checkArgs(sName, aNodeArgs, node.pos);
-						value = mFunctions[sName].apply(node, aNodeArgs);
+						sName = node.name;
+						value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
 					}
 					break;
 
-				case "call":
-					sName = that.iLine + "c" + that.iStopCount;
-					that.iStopCount += 1;
-					value = "o.call(" + fnParseArgs(node.args).join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					break;
-				case "def":
+				case "def": // somehow special because we need to get plain variables
 					value = fnParseDef(node);
 					break;
-				case "end": // same as stop, use also stopCount
-					sName = that.iLine + "s" + that.iStopCount;
-					that.iStopCount += 1;
-					value = "o.end(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					break;
-				case "fn": // FNxxx function call
-					aNodeArgs = fnParseArgs(node.args);
-					sName = fnAdaptVariableName(node.name);
-					value = sName + "(" + aNodeArgs.join(", ") + ")";
-					break;
-				case "for":
-					value = fnParseFor(node);
-					break;
-				case "frame":
-					sName = that.iLine + "s" + that.iStopCount; // use also stopCount for frame? TTT
-					that.iStopCount += 1;
-					value = "o.frame(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					break;
-				case "gosub":
-					sName = that.iLine + "g" + that.iGosubCount;
-					that.iGosubCount += 1;
-					value = 'o.gosub("' + sName + '", ' + parseNode(node.left) + '); break; \ncase "' + sName + '":';
-					break;
-				case "if":
-					value = fnParseIf(node);
-					break;
-				case "input":
-					value = fnParseInput(node);
-					break;
+
 				case "label":
 					that.iLine = node.value;
 					aNodeArgs = fnParseArgs(node.left);
@@ -1986,61 +1986,6 @@ BasicParser.prototype = {
 							value += ";";
 						}
 					}
-					break;
-				case "lineInput":
-					value = fnParseLineInput(node);
-					break;
-				case "next":
-					aNodeArgs = fnParseArgs(node.args);
-					value = "";
-					if (!aNodeArgs.length) {
-						aNodeArgs.push(""); // we have no variable, so use empty argument
-					}
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						sName = that.oStack.f.pop();
-						if (sName === undefined) {
-							throw new BasicParser.ErrorObject("Unexpected NEXT at", node.type, node.pos);
-						}
-						value += "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
-					}
-					break;
-				case "on":
-					value = fnParseOn(node);
-					break;
-				case "randomize":
-					aNodeArgs = fnParseArgs(node.args);
-					if (aNodeArgs.length) {
-						value = "o.randomize(" + aNodeArgs.join(", ") + ")";
-					} else {
-						sName = that.iLine + "s" + that.iStopCount; // use also stopCount for randomize? TTT
-						that.iStopCount += 1;
-						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetInput())";
-					}
-					break;
-				case "return":
-					value = "o.return(); break;";
-					break;
-				case "stop":
-					sName = that.iLine + "s" + that.iStopCount;
-					that.iStopCount += 1;
-					value = "o.stop(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					break;
-				case "tab":
-					aNodeArgs = fnParseArgs(node.args);
-					value = "{type: \"tab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the tab() call until print() is called
-					break;
-				case "wend":
-					sName = that.oStack.w.pop();
-					if (sName === undefined) {
-						throw new BasicParser.ErrorObject("Unexpected WEND at", node.type, node.pos);
-					}
-					value = "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
-					break;
-				case "while":
-					sName = that.iLine + "w" + that.iWhileCount;
-					value = "\ncase \"" + sName + "\": if (!(" + parseNode(node.left) + ")) { o.goto(\"" + sName + "e\"); break; }";
-					that.oStack.w.push(sName);
-					that.iWhileCount += 1;
 					break;
 				default:
 					if (mOperators[node.type]) {
@@ -2089,99 +2034,7 @@ BasicParser.prototype = {
 	},
 
 	calculate: function (input, variables) {
-		var that = this,
-			mFunctions = {
-				data: function () { // varargs
-					var	aArgs = [],
-						sData, i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						aArgs.push(arguments[i]);
-					}
-					aArgs.unshift(that.iLine); // prepend line number
-					sData = "o.data(" + aArgs.join(", ") + ")";
-					that.aData.push(sData); // will be set at the beginning of the script
-					return "/* data */";
-				},
-				defint: function () { // varargs
-					var	aArgs = [],
-						sName, i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						sName = arguments[i];
-						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
-						aArgs.push("o.defint(\"" + sName + "\")");
-					}
-					return aArgs.join("; ");
-				},
-				defreal: function () { // varargs
-					var	aArgs = [],
-						sName, i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						sName = arguments[i];
-						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
-						aArgs.push("o.defreal(\"" + sName + "\")");
-					}
-					return aArgs.join("; ");
-				},
-				defstr: function () { // varargs
-					var	aArgs = [],
-						sName, i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						sName = arguments[i];
-						sName = sName.replace(/v\./g, ""); // remove preceiding "v."
-						aArgs.push("o.defstr(\"" + sName + "\")");
-					}
-					return aArgs.join("; ");
-				},
-				dim: function () { // varargs
-					var	aArgs = [],
-						sName, aName, i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						sName = arguments[i];
-						aName = sName.split(/\[|\]\[|\]/);
-						aName.pop(); // remove empty last element
-						sName = aName.shift();
-						aArgs.push(sName + " = o.dim(\"" + sName + "\", " + aName.join(", ") + ")");
-					}
-					return aArgs.join("; ");
-				},
-
-				error: function (n) {
-					return "o.error(" + n + "); break";
-				},
-
-				"goto": function (n) {
-					return "o.goto(" + n + "); break";
-				},
-
-				read: function () { // varargs
-					var	aArgs = [],
-						sName, i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						sName = arguments[i];
-						aArgs.push(sName + " = o.read(\"" + sName + "\")");
-					}
-					return aArgs.join("; ");
-				},
-				"return": function () {
-					return "o.return(); break";
-				},
-				run: function () { // varargs
-					var	aArgs = [],
-						i;
-
-					for (i = 0; i < arguments.length; i += 1) {
-						aArgs.push(arguments[i]);
-					}
-					return "o.run(" + aArgs.join(", ") + "); break;";
-				}
-			},
-			fnCombineData = function (aData) {
+		var fnCombineData = function (aData) {
 				var sData = "";
 
 				sData = aData.join(";\n");
@@ -2198,7 +2051,7 @@ BasicParser.prototype = {
 		try {
 			aTokens = this.lex(input);
 			aParseTree = this.parse(aTokens);
-			sOutput = this.evaluate(aParseTree, variables, mFunctions);
+			sOutput = this.evaluate(aParseTree, variables);
 			oOut.text = "var v=o.v;\n";
 			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n" + fnCombineData(this.aData) + sOutput + "\ncase \"end\": o.vmStop(\"end\", 90); break;\ndefault: o.error(8); o.goto(\"end\"); break;\n}}\n";
 		} catch (e) {

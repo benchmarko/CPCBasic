@@ -115,6 +115,8 @@ CpcVm.prototype = {
 
 		this.sOut = ""; // console output
 
+		this.vmStop("", 0, true);
+
 		this.vmResetData();
 		/*
 		this.aData.length = 0; // array for BASIC data lines (continuous)
@@ -1192,8 +1194,6 @@ CpcVm.prototype = {
 		this.vmResetWindowData();
 		oWin = this.aWindow[iStream];
 		this.sOut = "";
-		//this.pen(iStream, oWin.iPen); // set pen and paper also in canvas, not needed any more
-		//this.paper(iStream, oWin.iPaper);
 		this.iClgPen = 0;
 		this.oCanvas.setMode(iMode); // does not clear canvas
 		this.oCanvas.clearGraphics(oWin.iPaper);
@@ -1349,7 +1349,6 @@ CpcVm.prototype = {
 		oWin = this.aWindow[iStream];
 		iPaper = this.vmRound(iPaper);
 		oWin.iPaper = iPaper;
-		//this.oCanvas.setPaper(iPaper);
 	},
 
 	peek: function (iAddr) {
@@ -1365,7 +1364,6 @@ CpcVm.prototype = {
 		oWin = this.aWindow[iStream];
 		iPen = this.vmRound(iPen);
 		oWin.iPen = iPen;
-		//this.oCanvas.setPen(iPen);
 	},
 
 	pi: function () {
@@ -1511,8 +1509,8 @@ CpcVm.prototype = {
 		case 0x06: // ACK
 			oWin.bTextEnabled = true;
 			break;
-		case 0x07: //TODO BEL
-			Utils.console.log("vmHandleControlCode: BEL");
+		case 0x07: // BEL
+			this.sound(135, 90, 20, 12, 0, 0, 0);
 			break;
 		case 0x08: // BS
 			this.vmMoveCursor2AllowedPos(iStream);

@@ -396,6 +396,7 @@ Controller.prototype = {
 
 		case "reset":
 			oVm.vmReset();
+			oVm.vmStop("reset", 0); // keep reset, but with priority 0, so that "compile only" still works
 			oVm.sOut = "";
 			this.view.setAreaValue("outputText", "");
 			//TTT variables?
@@ -463,9 +464,7 @@ Controller.prototype = {
 
 		this.sLabelBeforeStop = sReason;
 		this.iPrioBeforeStop = iPriority;
-		//if (sReason === "input" || sReason === "key") {
 		this.oCanvas.options.fnOnKeyDown = null;
-		//}
 		oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
@@ -514,7 +513,7 @@ Controller.prototype = {
 		for (i = 0; i < sInput.length; i += 1) {
 			this.oCanvas.putKeyInBuffer(sInput.charAt(i));
 		}
-		this.oCanvas.putKeyInBuffer("\r"); //TTT
+		this.oCanvas.putKeyInBuffer("\r");
 		if (sReason === "input") {
 			this.fnWaitForInput();
 		} else if (sReason === "key") {
@@ -525,7 +524,7 @@ Controller.prototype = {
 
 	fnSoundOnOff: function () {
 		var oSound = this.oSound,
-			soundButton = document.getElementById("soundButton"); //TTT
+			soundButton = document.getElementById("soundButton");
 
 		if (oSound.isSoundOn()) {
 			oSound.soundOff();
