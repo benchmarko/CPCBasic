@@ -1871,6 +1871,12 @@ BasicParser.prototype = {
 				run: function (aNodeArgs) {
 					return "o.run(" + aNodeArgs.join(", ") + "); break;";
 				},
+				sound: function (aNodeArgs) {
+					var sName = that.iLine + "s" + that.iStopCount;
+
+					that.iStopCount += 1;
+					return "o.sound(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":"; // maybe queue is full, so insert break
+				},
 				stop: function () {
 					var sName = that.iLine + "s" + that.iStopCount;
 

@@ -10,6 +10,8 @@ function Sound(options) {
 
 Sound.prototype = {
 	init: function (options) {
+		//var i;
+
 		this.bIsSoundOn = false;
 		this.context = null;
 		this.oMergerNode = null;
@@ -17,7 +19,16 @@ Sound.prototype = {
 		this.aOscillators = []; // 3 oscillators left, right, middle
 		this.aQueues = []; // node queues for the three channels
 		this.aNextNoteTimes = []; // = audioContext.currentTime;
+		/*
+		this.aQueueInfo = [];
+		for (i = 0; i < 3; i += 1) {
+			this.aQueueInfo[i] = {};
+		}
+		*/
 		this.fScheduleAheadTime = 0.1;
+		this.aVolEnv = [];
+		this.aToneEnv = [];
+		this.iReleaseMask = 0;
 	},
 
 	reset: function () {
@@ -30,7 +41,12 @@ Sound.prototype = {
 			if (aOscillators[i]) {
 				this.stopOscillator(i);
 			}
+
 		}
+
+		this.aVolEnv.length = 0;
+		this.aToneEnv.length = 0;
+		this.iReleaseMask = 0;
 	},
 
 	stopOscillator: function (n) {
@@ -113,61 +129,155 @@ Sound.prototype = {
 	},
 	*/
 
-	scheduleNote: function (iOscillator, fTime, oQueue) {
+	scheduleNote: function (iOscillator, fTime, oSoundData) {
 		var ctx = this.context,
-			oOscillator;
+			oOscillator, oGain, iDuration, aVolData, iPart, iTime, iVolume, iVolSteps, iVolDiff, iVolTime, i, fDuration;
 
 		oOscillator = ctx.createOscillator();
 		oOscillator.type = "square";
-		oOscillator.frequency.value = oQueue.iFrequency;
+
+		//fFrequency = (oSoundData.iPeriod >= 3) ? 62500 / oSoundData.iPeriod : 0;
+		//fDuration = ((oSoundData.iDuration !== undefined) ? oSoundData.iDuration : 20) / 100; // duration unit: 1/100 sec=10 ms, convert to sec
+		//iVolume = oSoundData.iVolume % 16; /// 15; // iVolume: 0..15
+
+		oOscillator.frequency.value = (oSoundData.iPeriod >= 3) ? 62500 / oSoundData.iPeriod : 0;
+
 		//oOscillator.connect(this.oMergerNode, 0, iOscillator); //connect output #0 of the oscillator to input #i of the mergerNode
 		oOscillator.connect(this.aGainNodes[iOscillator]);
 		if (fTime < ctx.currentTime) {
 			Utils.console.log("TTT: scheduleNote: " + fTime + " < " + ctx.currentTime);
 		}
-		this.aGainNodes[iOscillator].gain.setValueAtTime(oQueue.fVolume, fTime);
+
+		iDuration = oSoundData.iDuration;
+		iVolume = oSoundData.iVolume;
+
+		oGain = this.aGainNodes[iOscillator].gain;
+
+		oGain.setValueAtTime(iVolume / 15, fTime); // start volume
+
+		if (oSoundData.iVolEnv && this.aVolEnv[oSoundData.iVolEnv]) { // some volume envelope?
+			aVolData = this.aVolEnv[oSoundData.iVolEnv];
+			iTime = 0;
+			for (iPart = 0; iPart < aVolData.length; iPart += 3) {
+				// number of steps, size(volume) of step, time per step
+				iVolSteps = aVolData[iPart];
+				iVolDiff = aVolData[iPart + 1];
+				iVolTime = aVolData[iPart + 2];
+				for (i = 0; i < iVolSteps; i += 1) {
+					iVolume = (iVolume + iVolDiff) % 16;
+					oGain.setValueAtTime(iVolume / 15, fTime + iTime / 100);
+					iTime += iVolTime;
+					if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
+						break;
+					}
+				}
+			}
+			if (iDuration === 0) {
+				iDuration = iTime;
+			}
+		}
+
 		oOscillator.start(fTime);
-		//this.iStopTime = ctx.currentTime + fDuration;
-		oOscillator.stop(fTime + oQueue.fDuration);
+		fDuration = iDuration / 100;
+		oOscillator.stop(fTime + fDuration); // duration unit: 1/100 sec=10 ms, convert to sec
 		this.aOscillators[iOscillator] = oOscillator;
+		return fDuration;
 	},
 
-	sound: function (iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod) {
+	testCanQueue: function (iState) {
 		var aQueues = this.aQueues,
-			iFrequency, fDuration, fVolume, i;
+			bCanQueue = true;
+
+		// 0x80: flush
+		if (aQueues.length && !(iState & 0x80)) { // eslint-disable-line no-bitwise
+			if ((iState & 0x01 && aQueues[0].length >= 4) // eslint-disable-line no-bitwise
+				|| (iState & 0x02 && aQueues[1].length >= 4) // eslint-disable-line no-bitwise
+				|| (iState & 0x04 && aQueues[2].length >= 4)) { // eslint-disable-line no-bitwise
+				bCanQueue = false;
+			}
+		}
+
+		return bCanQueue;
+	},
+
+	testCanPlay: function (i) {
+		var aQueues = this.aQueues,
+			bCanPlay = true,
+			iState;
+
+		iState = aQueues[i][0].iState;
+		// 0x40: hold
+		if (iState & 0x40) { // eslint-disable-line no-bitwise
+			bCanPlay = false;
+		}
+		return bCanPlay;
+	},
+
+	sound: function (oSoundData) {
+		var aQueues = this.aQueues,
+			i, iState;
+
+		/*
+		oSoundData = {
+			iState: iState,
+			iPeriod: iPeriod,
+			iDuration: iDuration,
+			iVolume: iVolume,
+			iVolEnv: iVolEnv,
+			iToneEnv: iToneEnv,
+			iNoise: iNoise
+		};
+		*/
 
 		if (!this.bIsSoundOn) {
 			return;
 		}
-		iFrequency = (iPeriod > 0) ? 62500 / iPeriod : 0;
 
-		if (iDuration === undefined) {
-			iDuration = 20;
-		}
-		fDuration = iDuration / 100; // duration unit: 1/100 sec=10 ms, convert to sec
+		/*
+		fFrequency = (oSoundData.iPeriod >= 3) ? 62500 / oSoundData.iPeriod : 0;
+		fDuration = ((oSoundData.iDuration !== undefined) ? oSoundData.iDuration : 20) / 100; // duration unit: 1/100 sec=10 ms, convert to sec
+		iVolume = oSoundData.iVolume % 16; /// 15; // iVolume: 0..15
+		*/
 
-		fVolume = iVolume / 15; // iVolume: 0..15
+		iState = oSoundData.iState;
 
 		for (i = 0; i < 3; i += 1) {
 			if ((iState >> i) & 0x01) { // eslint-disable-line no-bitwise
 				if (iState & 0x80) { // eslint-disable-line no-bitwise
-					aQueues[i].length = 0;
+					aQueues[i].length = 0; // flush queue
+					//this.aQueueInfo[i].fNextNoteTime = 0;
 					this.aNextNoteTimes[i] = 0;
 					this.stopOscillator(i);
 				}
+				/*
 				aQueues[i].push({
-					iFrequency: iFrequency,
+					iState: iState & 0x78, // eslint-disable-line no-bitwise
+					// iState: keep bits 3-5 (rendevous) and 6 (hold)
+					iPeriod: iPeriod,
 					fDuration: fDuration,
-					fVolume: fVolume
+					iVolume: iVolume,
+					iVolEnv: oSoundData.iVolEnv,
+					iToneEnv: oSoundData.iToneEnv,
+					iNoise: oSoundData.iNoise
 				});
+				*/
+				aQueues[i].push(oSoundData); // just a reference
 			}
 		}
+	},
+
+	setVolEnv(iVolEnv, aVolEnvData) {
+		this.aVolEnv[iVolEnv] = aVolEnvData;
+	},
+
+	setToneEnv(iToneEnv, aToneEnvData) {
+		this.aToneEnv[iToneEnv] = aToneEnvData;
 	},
 
 	scheduler: function () {
 		var i, aQueue, oQueue,
 			aNextNoteTimes = this.aNextNoteTimes,
-			fNextNodeTime;
+			fDuration;
 
 		if (!this.bIsSoundOn) {
 			return;
@@ -183,10 +293,10 @@ Sound.prototype = {
 			if (aNextNoteTimes[i] < this.context.currentTime) {
 				aNextNoteTimes[i] = this.context.currentTime;
 			}
-			while (aQueue.length && aNextNoteTimes[i] < this.context.currentTime + this.fScheduleAheadTime) {
+			while (aQueue.length && aNextNoteTimes[i] < this.context.currentTime + this.fScheduleAheadTime && this.testCanPlay(i)) {
 				oQueue = aQueue.shift();
-				this.scheduleNote(i, aNextNoteTimes[i], oQueue);
-				aNextNoteTimes[i] += oQueue.fDuration;
+				fDuration = this.scheduleNote(i, aNextNoteTimes[i], oQueue);
+				aNextNoteTimes[i] += fDuration;
 				//this.scheduleNote(this.current16thNote, this.aNextNoteTimes[i]);
 				//this.nextNote(); //TTT
 			}
@@ -198,6 +308,22 @@ Sound.prototype = {
 		}
 	},
 
+	release: function (iReleaseMask) {
+		var aQueues = this.aQueues,
+			i;
+
+		if (!aQueues.length) {
+			return;
+		}
+
+		for (i = 0; i < 3; i += 1) {
+			if (((iReleaseMask >> i) & 0x01) && aQueues[i].length && (aQueues[i][0].iState & 0x40)) { // eslint-disable-line no-bitwise
+				aQueues[i][0].iState &= ~0x40; // eslint-disable-line no-bitwise
+			}
+		}
+		//this.iReleaseMask = iReleaseMask;
+	},
+
 	sq: function (n) {
 		var aQueue = this.aQueues[n],
 			iSq;
@@ -205,6 +331,9 @@ Sound.prototype = {
 		iSq = 4 - (aQueue ? aQueue.length : 0);
 		if (iSq < 0) {
 			iSq = 0;
+		}
+		if (aQueue && aQueue.length && (aQueue[0].iState & 0x40)) {
+			iSq += 0x40;
 		}
 		if (this.aOscillators[n] && this.aNextNoteTimes[n] > this.context.currentTime) { // note still playing?
 			iSq += 0x80;

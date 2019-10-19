@@ -240,6 +240,34 @@ Controller.prototype = {
 		}
 	},
 
+	fnWaitForSound: function () {
+		var aSoundData = this.oVm.vmGetSoundData(); //this.oVm.aSoundData; //vmGetSoundObject();
+
+		this.oSound.scheduler();
+
+		/*
+		if (aSoundData.length) {
+			if (this.oSound.testCanQueue(aSoundData[0].iState)) {
+				oSoundData = aSoundData.shift();
+				this.oSound.sound(oSoundData);
+				if (!aSoundData.length) {
+					this.oVm.vmStop("", 0, true); // no more wait
+				}
+			}
+		} else {
+			this.oVm.vmStop("", 0, true); // no more wait
+		}
+		*/
+
+		while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
+			this.oSound.sound(aSoundData.shift());
+		}
+		if (!aSoundData.length) {
+			this.oVm.vmStop("", 0, true); // no more wait
+		}
+
+	},
+
 	fnParse2: function () {
 		var sInput = this.view.getAreaValue("inputText"),
 			oParseOptions, oOutput, oError, iEndPos, sOutput;
@@ -406,6 +434,12 @@ Controller.prototype = {
 			this.fnRun2(oVm.vmGetNextInput(""));
 			break;
 
+		case "sound": //TTT TODO
+			//oVm.vmStop("", 0, true);
+			this.fnWaitForSound();
+			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
+			break;
+
 		case "stop":
 			break;
 
@@ -419,7 +453,7 @@ Controller.prototype = {
 		}
 
 		sReason = oVm.vmGetStopReason();
-		if (!sReason) {
+		if (!sReason || sReason === "sound") {
 			this.iTimeoutHandle = setTimeout(this.fnRunStart1Handler, iTimeOut);
 		} else {
 			this.view.setAreaValue("resultText", oVm.sOut);

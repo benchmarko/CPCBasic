@@ -18,7 +18,7 @@ function CpcVm(options) {
 CpcVm.prototype = {
 	iFrameTimeMs: 1000 / 50, // 50 Hz => 20 ms
 	iTimerCount: 4, // number of timers
-	//iSqTimerCount: 3, // sound queue timers
+	iSqTimerCount: 3, // sound queue timers
 	iStreamCount: 10, // 0..7 window, 8 printer, 9 cassette
 
 	mWinData: [ // window data for mode mode 0,1,2,3 (we are counting from 0 here)
@@ -67,7 +67,8 @@ CpcVm.prototype = {
 		// "timer": 20 (timer expired)
 		// "key": 30  (wait for key)
 		// "frame": 40 (frame command: wait for frame fly)
-		// "input": 45  (wait for input: input, line input, randomize without parameter)
+		// "sound": 43 (wait for sound queue) //TTT
+		// "input": 45 (wait for input: input, line input, randomize without parameter)
 		// "error": 50 (BASIC error, error command)
 		// "stop": 60 (stop or end command)
 		// "break": 80 (break pressed)
@@ -92,12 +93,12 @@ CpcVm.prototype = {
 			this.aTimer[i] = {};
 		}
 
-		/*
+		this.aSoundData = [];
+
 		this.aSqTimer = []; // Sound queue timer 0..2
 		for (i = 0; i < this.iSqTimerCount; i += 1) {
 			this.aSqTimer[i] = {};
 		}
-		*/
 	},
 
 	vmReset: function () {
@@ -118,13 +119,6 @@ CpcVm.prototype = {
 		this.vmStop("", 0, true);
 
 		this.vmResetData();
-		/*
-		this.aData.length = 0; // array for BASIC data lines (continuous)
-		this.iData = 0; // current index
-		this.oDataLineIndex = { // line number index for the data line buffer
-			0: 0 // for line 0: index 0
-		};
-		*/
 
 		this.iErr = 0; // last error code
 		this.iErl = 0; // line of last error
@@ -151,6 +145,7 @@ CpcVm.prototype = {
 
 		this.oCanvas.reset();
 		this.oSound.reset();
+		this.aSoundData.length = 0;
 		this.iClgPen = 0;
 	},
 
@@ -165,19 +160,17 @@ CpcVm.prototype = {
 				iStackIndexReturn: 0 // index in gosub stack with return, if handler is running
 			},
 			aTimer = this.aTimer,
-			//aSqTimer = this.aSqTimer,
+			aSqTimer = this.aSqTimer,
 			i;
 
 		for (i = 0; i < this.iTimerCount; i += 1) {
 			Object.assign(aTimer[i], oData);
 		}
 
-		/*
 		// sound queue timer
 		for (i = 0; i < this.iSqTimerCount; i += 1) {
 			Object.assign(aSqTimer[i], oData);
 		}
-		*/
 	},
 
 	vmResetWindowData: function () {
@@ -324,7 +317,6 @@ CpcVm.prototype = {
 		}
 	},
 
-	/*
 	vmCheckSqTimer: function (iTime) {
 		var oTimer, i;
 
@@ -338,13 +330,13 @@ CpcVm.prototype = {
 				this.gosub(this.iLine, oTimer.iLine);
 				oTimer.bHandlerRunning = true;
 				oTimer.iStackIndexReturn = this.oGosubStack.length;
+				oTimer.bRepeat = false; // one shot
 				//iDelta = iTime - oTimer.iNextTimeMs;
 				//oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
 				break; // TODO: found expired timer. What happens with timers with lower priority?
 			}
 		}
 	},
-	*/
 
 	vmCheckTimerHandlers: function () {
 		var i, oTimer;
@@ -360,7 +352,6 @@ CpcVm.prototype = {
 		}
 	},
 
-	/*
 	vmCheckSqTimerHandlers: function () {
 		var i, oTimer;
 
@@ -370,11 +361,13 @@ CpcVm.prototype = {
 				if (oTimer.iStackIndexReturn > this.oGosubStack.length) {
 					oTimer.bHandlerRunning = false;
 					oTimer.iStackIndexReturn = 0;
+					if (!oTimer.bRepeat) { // not reloaded
+						oTimer.bActive = false;
+					}
 				}
 			}
 		}
 	},
-	*/
 
 	vmStatStart: function () {
 		var iTime = Date.now();
@@ -406,7 +399,7 @@ CpcVm.prototype = {
 				this.iNextFrameTime += this.iFrameTimeMs;
 			}
 			this.vmCheckTimer(iTime); // check BASIC timers
-			//this.vmCheckSqTimer(iTime); // check Sound Queue
+			this.vmCheckSqTimer(iTime); // check Sound Queue
 			this.oSound.scheduler(); //TTT
 		}
 	},
@@ -564,6 +557,10 @@ CpcVm.prototype = {
 
 	vmGetInputObject: function () {
 		return this.oInput;
+	},
+
+	vmGetSoundData: function () {
+		return this.aSoundData;
 	},
 
 
@@ -844,26 +841,34 @@ CpcVm.prototype = {
 		this.stop(sLabel);
 	},
 
-	ent: function () { // varargs
+	ent: function (iToneEnv) { // varargs
 		var aArgs = [],
 			i;
 
-		for (i = 0; i < arguments.length; i += 1) {
-			aArgs.push(this.vmRound(arguments[i]));
+		iToneEnv = this.vmRound(iToneEnv);
+		if (iToneEnv > -16 && iToneEnv < 16) {
+			for (i = 1; i < arguments.length; i += 1) { // starting with 1
+				aArgs.push(this.vmRound(arguments[i]));
+			}
+			this.oSound.setToneEnv(iToneEnv, aArgs);
+		} else {
+			this.error(5); // Improper argument
 		}
-		Utils.console.log("ent: " + aArgs.join(","));
-		this.vmNotImplemented("ent");
 	},
 
-	env: function () { // varargs
+	env: function (iVolEnv) { // varargs
 		var aArgs = [],
 			i;
 
-		for (i = 0; i < arguments.length; i += 1) {
-			aArgs.push(this.vmRound(arguments[i]));
+		iVolEnv = this.vmRound(iVolEnv);
+		if (iVolEnv > 0 && iVolEnv < 16) {
+			for (i = 1; i < arguments.length; i += 1) { // starting with 1
+				aArgs.push(this.vmRound(arguments[i]));
+			}
+			this.oSound.setVolEnv(iVolEnv, aArgs);
+		} else {
+			this.error(5); // Improper argument
 		}
-		Utils.console.log("env: " + aArgs.join(","));
-		this.vmNotImplemented("env");
 	},
 
 	eof: function () {
@@ -1276,11 +1281,9 @@ CpcVm.prototype = {
 		this.vmGotoLine(iLine, "onGoto (n=" + n + ", ret=" + retLabel + ", iLine=" + iLine + ")");
 	},
 
-	/*
-	onSqGosubXX: function (iChannel, iLine) {
+	onSqGosub: function (iChannel, iLine) {
 		var oSqTimer;
 
-		this.vmNotImplemented("on sq gosub");
 		iChannel = this.vmRound(iChannel);
 		if (iChannel === 4) {
 			iChannel = 3;
@@ -1289,9 +1292,10 @@ CpcVm.prototype = {
 		oSqTimer = this.aSqTimer[iChannel];
 		oSqTimer.iLine = iLine;
 		oSqTimer.bActive = true;
+		oSqTimer.bRepeat = true; // means reloaded for sq
 	},
-	*/
 
+	/*
 	onSqGosub: function (retLabel, iChannel, n) {
 		var iSq;
 
@@ -1306,6 +1310,7 @@ CpcVm.prototype = {
 			this.oGosubStack.push(retLabel);
 		}
 	},
+	*/
 
 	openin: function () {
 		this.vmNotImplemented("openin");
@@ -1770,8 +1775,8 @@ CpcVm.prototype = {
 		return item;
 	},
 
-	release: function () {
-		this.vmNotImplemented("release");
+	release: function (iChannelMask) {
+		this.oSound.release(iChannelMask);
 	},
 
 	// rem
@@ -1822,7 +1827,7 @@ CpcVm.prototype = {
 			this.vmGotoLine(iLine, "return");
 		}
 		this.vmCheckTimerHandlers();
-		//this.vmCheckSqTimerHandlers();
+		this.vmCheckSqTimerHandlers();
 	},
 
 	right$: function (s, iLen) {
@@ -1902,14 +1907,43 @@ CpcVm.prototype = {
 		return Math.sin((this.bDeg) ? Utils.toRadians(n) : n);
 	},
 
-	sound: function (iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod) {
+	vmSoundCallback: function (sInput) { //TTT
+		var oSoundData;
+
+		Utils.console.log("vmSoundCallback: " + sInput);
+		if (this.aSoundData.length) {
+			oSoundData = this.aSoundData.shift();
+			this.oSound.sound(oSoundData);
+		}
+		//this.oInput.aInputValues = sInput.split(",");
+	},
+
+	sound: function (iState, iPeriod, iDuration, iVolume, iVolEnv, iToneEnv, iNoise) {
+		var oSoundData;
+
 		if (iDuration === undefined) {
 			iDuration = 20;
 		}
 		if (iVolume === undefined) {
 			iVolume = 12;
 		}
-		this.oSound.sound(iState, iPeriod, iDuration, iVolume, iVolMod, iToneMod, iNoisePeriod);
+
+		oSoundData = {
+			iState: iState,
+			iPeriod: iPeriod,
+			iDuration: iDuration,
+			iVolume: iVolume,
+			iVolEnv: iVolEnv,
+			iToneEnv: iToneEnv,
+			iNoise: iNoise
+		};
+
+		if (this.oSound.testCanQueue(iState)) {
+			this.oSound.sound(oSoundData);
+		} else {
+			this.aSoundData.push(oSoundData);
+			this.vmStop("sound", 43);
+		}
 	},
 
 	space$: function (n) {
