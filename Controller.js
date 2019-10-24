@@ -317,8 +317,9 @@ Controller.prototype = {
 				this.fnScript = null;
 			}
 		} else {
+			oVm.clear(); // we do a clear as well here //TTT
 			oVm.vmResetStack();
-			oVm.vmResetVariables();
+			//oVm.vmResetVariables();
 		}
 		oVm.vmResetInks();
 		oVm.clearInput();
@@ -478,6 +479,7 @@ Controller.prototype = {
 	},
 
 	fnRun: function () {
+		this.oCanvas.options.fnOnKeyDown = null;
 		this.oVm.vmStop("run", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
@@ -485,6 +487,7 @@ Controller.prototype = {
 	},
 
 	fnParseRun: function () {
+		this.oCanvas.options.fnOnKeyDown = null;
 		this.oVm.vmStop("parseRun", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();

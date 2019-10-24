@@ -19,9 +19,12 @@ CPCBasic Links:
 - Runs locally without a server (even on mobile devices, but without input)
 - HTML5 / JavaScript without external libraries
 
-![A sample with cpcbasic](./img/cpcbasic.gif)
+[![A sample with cpcbasic](./img/cpcbasic.gif)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=cpcbasic)]
 
-![Art](./img/art.png) ![Graphics](./img/graphics.png) ![Labyrinth](./img/labyrinth.png) ![Landscape](./img/landscape.png)
+[![Art](./img/art.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=art)]
+[![Graphics](./img/graphics.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=graphics)]
+[![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=labyrinth)]
+[![Landscape](./img/landscape.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=landscape)]
 
 ## Why CPCBasic
 
@@ -52,7 +55,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - It is BASIC only and can not execute Z80 machine code
 - Unimplemented commands, eg. *KEY*, *KEY DEF*, ...
 - RESTORE on lines without *DATA*
-- No sound
+- Sound: No *ENT* (tone envelopes); no hardware volume envelopes or tones with sepcial *ENV* syntax "="
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - Few checks of the program
 - Almost no type checking
@@ -68,11 +71,12 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [fixed: *TEST*, *TESTR* can not distinguish between pens of the same color]
 - [fixed: Changing the color with *INK*, existing drawings will not be changed and the colors will
   not flash. Currently you have to redraw the screen with another color to get a flashing effect.]
-- [fixed: Comparison with equal in assignment ispossible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
+- [fixed: Comparison with equal in assignment is possible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
+- [fixed: No sound]
 
 ## Extensions
 
-- *MODE 3*: High resolution with real 640x480 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=rectangles)
+- *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=rectangles)
 - Computations are not limited to 16 bits
 - Peek&Poke can access "large" memory, not only 64K or 512K.
 
@@ -83,7 +87,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 ## Possible Future Enhancements
 
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
-- Sound support
 - Separate sample library; sample category
 - DSK images support
 - Pause key
@@ -97,7 +100,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Links
 
-- [CPC 6128 User Instructions](http://www.cpcwiki.eu/manuals/AmstradCPC6128-hypertext-en-Sinewalker.pdf) - (I have the German verison)
+- [CPC 6128 User Instructions](http://www.cpcwiki.eu/manuals/AmstradCPC6128-hypertext-en-Sinewalker.pdf) - (I have the German version)
 
 - [ROM-Listing CPC 464/664/6128](http://www.cpcwiki.eu/index.php/ROM-Listing_CPC_464/664/6128) - German, excellent information
 

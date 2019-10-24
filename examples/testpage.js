@@ -3,8 +3,9 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 rem test1
-110 'wait 0,0
+100 REM Test Page
+110 REM Marco Vieth, 2019
+115 'wait 0,0
 120 'clear
 130 mode 2:'comment
 135 cls: cls#0: a=2: cls #(a*3)

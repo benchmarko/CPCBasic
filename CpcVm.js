@@ -680,6 +680,7 @@ CpcVm.prototype = {
 		this.restore(); // restore data line index
 		this.rad();
 		this.oSound.resetQueue();
+		this.aSoundData.length = 0;
 	},
 
 	clearInput: function () {
@@ -864,6 +865,16 @@ CpcVm.prototype = {
 		if (iVolEnv > 0 && iVolEnv < 16) {
 			for (i = 1; i < arguments.length; i += 1) { // starting with 1
 				aArgs.push(this.vmRound(arguments[i]));
+			}
+			for (i = 0; i < aArgs.length; i += 3) { // we assume 3 parameters per section
+				/* eslint-disable no-bitwise */
+				aArgs[i] &= 0x7f; // number of steps: 0..127
+				aArgs[i + 1] &= 0x0f; // size (volume) of steps: 0..15
+				aArgs[i + 2] &= 0xff; // time per step: 0..255 (0=256)
+				if (!aArgs[i + 2]) {
+					aArgs[i + 2] = 256;
+				}
+				/* eslint-enable no-bitwise */
 			}
 			this.oSound.setVolEnv(iVolEnv, aArgs);
 		} else {
@@ -1728,15 +1739,27 @@ CpcVm.prototype = {
 		this.bDeg = false;
 	},
 
+	// https://en.wikipedia.org/wiki/Jenkins_hash_function
 	vmHashCode: function (s) {
 		var iHash = 0,
-			i, iChar;
+			i;
 
+		/* eslint-disable no-bitwise */
 		for (i = 0; i < s.length; i += 1) {
-			iChar = s.charCodeAt(i);
-			iHash = (((iHash << 5) - iHash) + iChar) | 0; // eslint-disable-line no-bitwise
+			iHash += s.charCodeAt(i);
+			iHash += iHash << 10;
+			iHash ^= iHash >> 6;
 		}
+		iHash += iHash << 3;
+		iHash ^= iHash >> 11;
+		iHash += iHash << 15;
+		/* eslint-enable no-bitwise */
 		return iHash;
+	},
+
+	vmRandomizeCallback: function (sInput) {
+		Utils.console.log("vmRandomizeCallback: " + sInput);
+		this.oInput.aInputValues = [sInput];
 	},
 
 	randomize: function (n) {
@@ -1746,7 +1769,7 @@ CpcVm.prototype = {
 
 		if (n === undefined) { // no arguments? input...
 			sMsg = "Random number seed?";
-			this.oInput.fnInputCallback = null; // we do not need it
+			this.oInput.fnInputCallback = this.vmRandomizeCallback.bind(this);
 			this.oInput.sInput = "";
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);

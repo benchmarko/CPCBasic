@@ -1424,7 +1424,7 @@ BasicParser.prototype = {
 					oValue2.args = fnGetArgsSepByCommaSemi();
 					oValue2.args.unshift(t);
 					oValue.args.push(oValue2);
-				} else if (BasicParser.mKeywords[oToken.type] && BasicParser.mKeywords[oToken.type].charAt(0) !== "f") { // stop also at keyword which is not a function
+				} else if (BasicParser.mKeywords[oToken.type] && (BasicParser.mKeywords[oToken.type].charAt(0) === "c" || BasicParser.mKeywords[oToken.type].charAt(0) === "x")) { // stop also at keyword which is c=command or x=command addition
 					break;
 				} else if (oToken.type === ";") {
 					advance(";");
@@ -1598,8 +1598,8 @@ BasicParser.prototype = {
 					return a + " + " + b;
 				},
 				"-": function (a, b) {
-					if (b === undefined) {
-						return "-" + a;
+					if (b === undefined) { // unary minus?
+						return "-(" + a + ")"; // a can be an expression
 					}
 					return a + " - " + b;
 				},
@@ -1625,7 +1625,7 @@ BasicParser.prototype = {
 					return a + " ^ " + b;
 				},
 				not: function (a) {
-					return "!" + a;
+					return "~(" + a + ")"; // a can be an expression
 				},
 				mod: function (a, b) {
 					return "(" + a + "+ 0.5) % " + b + " | 0"; // rounded remainder
@@ -1852,7 +1852,7 @@ BasicParser.prototype = {
 					} else {
 						sName = that.iLine + "s" + that.iStopCount; // use also stopCount for randomize? TTT
 						that.iStopCount += 1;
-						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetInput())";
+						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetNextInput(\"$\"))";
 					}
 					return value;
 				},

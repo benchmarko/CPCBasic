@@ -57,7 +57,7 @@ Canvas.prototype = {
 			iPens: 4,
 			iLineWidth: 2,
 			iLineHeight: 2,
-			iCharWidth: 8 * 2,
+			iCharWidth: 8 * 2, //  * 2, //TTT TEST
 			iCharHeight: 16
 		},
 		{
@@ -72,7 +72,7 @@ Canvas.prototype = {
 			iLineWidth: 1,
 			iLineHeight: 1,
 			iCharWidth: 8,
-			iCharHeight: 8 //TTT 8 or 16
+			iCharHeight: 8
 		}
 	],
 
@@ -583,16 +583,15 @@ Canvas.prototype = {
 		}
 	},
 
-	setChar: function (iChar, x, y, iPen, iPaper, iGColMode) {
+	setChar: function (iChar, x, y, iPen, iPaper, iGColMode, bTextAtGraphics) {
 		var aCharData = this.oCustomCharset[iChar] || this.aCharset[iChar],
 			iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
-			iWidth = this.iWidth,
 			iScaleWidth = iCharWidth / 8,
 			iScaleHeight = iCharHeight / 8,
 			iTransparent = this.iTransparent,
 			iBit, iPenOrPaper,
-			iCharData, row, col, idx, iCh, iCw;
+			iCharData, row, col;
 
 		for (row = 0; row < 8; row += 1) {
 			for (col = 0; col < 8; col += 1) {
@@ -600,17 +599,25 @@ Canvas.prototype = {
 				iBit = iCharData & (0x80 >> col); // eslint-disable-line no-bitwise
 				if (!(iTransparent && !iBit)) { // do not set background pixel in transparent mode
 					iPenOrPaper = (iBit) ? iPen : iPaper;
-					idx = (x + col * iScaleWidth) + iWidth * (y + row * iScaleHeight);
+					//idx = (x + col * iScaleWidth) + iWidth * (y + row * iScaleHeight);
+					if (bTextAtGraphics) {
+						this.setPixel(x + col * iScaleWidth, y - row * iScaleHeight, iPenOrPaper, iGColMode);
+					} else { // text mode
+						this.setSubPixels(x + col * iScaleWidth, y + row * iScaleHeight, iPenOrPaper, iGColMode); // iColMode always 0 in text mode
+					}
+					/*
 					for (iCh = 0; iCh < iScaleHeight; iCh += 1) {
 						for (iCw = 0; iCw < iScaleWidth; iCw += 1) {
 							this.setSubPixel(idx + iCw + iCh * iWidth, iPenOrPaper, iGColMode);
 						}
 					}
+					*/
 				}
 			}
 		}
 	},
 
+	/*
 	setSubPixel: function (i, iGPen, iGColMode) {
 		switch (iGColMode) {
 		case 0: // normal
@@ -630,20 +637,54 @@ Canvas.prototype = {
 			break;
 		}
 	},
+	*/
 
-	setPixel: function (x, y) {
-		var iGPen, iGColMode, iLineWidth, iLineHeight, i, col, row;
+	setSubPixels: function (x, y, iGPen, iGColMode) {
+		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
+			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iWidth = this.iWidth,
+			row, col, i;
+
+		x &= ~(iLineWidth - 1); // eslint-disable-line no-bitwise
+		y &= ~(iLineHeight - 1); // eslint-disable-line no-bitwise
+
+		for (row = 0; row < iLineHeight; row += 1) {
+			i = x + iWidth * (y + row);
+			for (col = 0; col < iLineWidth; col += 1) {
+				//this.setSubPixel(i + col, iGPen, iGColMode);
+				switch (iGColMode) {
+				case 0: // normal
+					this.dataset8[i] = iGPen;
+					break;
+				case 1: // xor
+					this.dataset8[i] ^= iGPen; // eslint-disable-line no-bitwise
+					break;
+				case 2: // and
+					this.dataset8[i] &= iGPen; // eslint-disable-line no-bitwise
+					break;
+				case 3: // or
+					this.dataset8[i] |= iGPen; // eslint-disable-line no-bitwise
+					break;
+				default:
+					Utils.console.warn("setSubPixels: Unknown colMode: " + iGColMode);
+					break;
+				}
+				i += 1;
+			}
+		}
+	},
+
+	setPixel: function (x, y, iGPen, iGColMode) {
+		//var iLineWidth, iLineHeight, i, col, row;
 
 		x += this.xOrig;
 		y = this.iHeight - 1 - (y + this.yOrig);
 		if (x < this.xLeft || x > this.xRight || y < (this.iHeight - 1 - this.yTop) || y > (this.iHeight - 1 - this.yBottom)) {
 			return; // not in graphics window
 		}
-		iGPen = this.iGPen;
-		iGColMode = this.iGColMode;
+		/*
 		iLineWidth = this.aModeData[this.iMode].iLineWidth;
 		iLineHeight = this.aModeData[this.iMode].iLineHeight;
-
 		x &= ~(iLineWidth - 1); // eslint-disable-line no-bitwise
 		y &= ~(iLineHeight - 1); // eslint-disable-line no-bitwise
 
@@ -653,6 +694,8 @@ Canvas.prototype = {
 				this.setSubPixel(i + col, iGPen, iGColMode);
 			}
 		}
+		*/
+		this.setSubPixels(x, y, iGPen, iGColMode);
 	},
 
 	testPixel: function (x, y) {
@@ -670,6 +713,8 @@ Canvas.prototype = {
 	drawBresenhamLine: function (xstart, ystart, xend, yend) {
 		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
 			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iGPen = this.iGPen,
+			iGColMode = this.iGColMode,
 			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
 
 		dx = (xend - xstart) / iLineWidth;
@@ -703,7 +748,7 @@ Canvas.prototype = {
 		x = xstart;
 		y = ystart;
 		err = deltafastdirection / 2;
-		this.setPixel(x, y); // we expect integers
+		this.setPixel(x, y, iGPen, iGColMode); // we expect integers
 
 		for (t = 0; t < deltafastdirection; t += 1) {
 			err -= deltaslowdirection;
@@ -715,7 +760,7 @@ Canvas.prototype = {
 				x += pdx;
 				y += pdy;
 			}
-			this.setPixel(x, y); // we expect integers
+			this.setPixel(x, y, iGPen, iGColMode); // we expect integers
 		}
 	},
 
@@ -747,7 +792,7 @@ Canvas.prototype = {
 
 	plot: function (x, y) {
 		this.move(x, y);
-		this.setPixel(this.xPos, this.yPos); // use rounded values from move
+		this.setPixel(this.xPos, this.yPos, this.iGPen, this.iGColMode); // use rounded values from move
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos, this.yPos);
 	},
 
@@ -795,10 +840,12 @@ Canvas.prototype = {
 	},
 
 	printGChar: function (iChar) {
+		/*
 		var x = this.xPos + this.xOrig,
 			y = this.iHeight - 1 - (this.yPos + this.yOrig);
+		*/
 
-		this.setChar(iChar, x, y, this.iGPen, this.iGPaper, this.iGColMode);
+		this.setChar(iChar, this.xPos, this.yPos, this.iGPen, this.iGPaper, this.iGColMode, true);
 		this.xPos += this.aModeData[this.iMode].iCharWidth;
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);
 	},
@@ -816,7 +863,11 @@ Canvas.prototype = {
 
 		x *= oModeData.iCharWidth;
 		y *= oModeData.iCharHeight;
-		this.setChar(iChar, x, y, iPen, iPaper, 0);
+
+		//x -= this.xOrig;
+		//y = this.iHeight - 1 - (y + this.yOrig); // convert to graphical coordinates without origin
+
+		this.setChar(iChar, x, y, iPen, iPaper, 0, false);
 		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
 	},
 
