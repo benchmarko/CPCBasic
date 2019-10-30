@@ -1,4 +1,6 @@
-// Canvas.js - ...
+// Canvas.js - Graphics output to HTML canvas
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 //
 /* globals Utils */
 
@@ -223,7 +225,7 @@ Canvas.prototype = {
 		if (this.options.onload) {
 			this.options.onload(this);
 		}
-		canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false);
+		//canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false); // called by CommonEventHandler
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
 		window.addEventListener("click", this.onWindowClick.bind(this), false);
@@ -344,13 +346,14 @@ Canvas.prototype = {
 		this.setGPen(this.iGPen); // set stroke color
 	},
 
-	onCpcCanvasClick: function (event) {
-		var oTarget = event.target,
-			canvas = oTarget;
-
+	setFocusOnCanvas: function () {
 		this.cpcAreaBox.style.background = "#463c3c";
-		canvas.focus();
+		this.canvas.focus();
 		this.bHasFocus = true;
+	},
+
+	onCpcCanvasClick: function (/* event */) {
+		this.setFocusOnCanvas();
 		event.stopPropagation();
 	},
 
@@ -599,45 +602,15 @@ Canvas.prototype = {
 				iBit = iCharData & (0x80 >> col); // eslint-disable-line no-bitwise
 				if (!(iTransparent && !iBit)) { // do not set background pixel in transparent mode
 					iPenOrPaper = (iBit) ? iPen : iPaper;
-					//idx = (x + col * iScaleWidth) + iWidth * (y + row * iScaleHeight);
 					if (bTextAtGraphics) {
 						this.setPixel(x + col * iScaleWidth, y - row * iScaleHeight, iPenOrPaper, iGColMode);
 					} else { // text mode
 						this.setSubPixels(x + col * iScaleWidth, y + row * iScaleHeight, iPenOrPaper, iGColMode); // iColMode always 0 in text mode
 					}
-					/*
-					for (iCh = 0; iCh < iScaleHeight; iCh += 1) {
-						for (iCw = 0; iCw < iScaleWidth; iCw += 1) {
-							this.setSubPixel(idx + iCw + iCh * iWidth, iPenOrPaper, iGColMode);
-						}
-					}
-					*/
 				}
 			}
 		}
 	},
-
-	/*
-	setSubPixel: function (i, iGPen, iGColMode) {
-		switch (iGColMode) {
-		case 0: // normal
-			this.dataset8[i] = iGPen;
-			break;
-		case 1: // xor
-			this.dataset8[i] ^= iGPen; // eslint-disable-line no-bitwise
-			break;
-		case 2: // and
-			this.dataset8[i] &= iGPen; // eslint-disable-line no-bitwise
-			break;
-		case 3: // or
-			this.dataset8[i] |= iGPen; // eslint-disable-line no-bitwise
-			break;
-		default:
-			Utils.console.warn("setSubPixel: Unknown colMode: " + iGColMode);
-			break;
-		}
-	},
-	*/
 
 	setSubPixels: function (x, y, iGPen, iGColMode) {
 		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
@@ -651,7 +624,6 @@ Canvas.prototype = {
 		for (row = 0; row < iLineHeight; row += 1) {
 			i = x + iWidth * (y + row);
 			for (col = 0; col < iLineWidth; col += 1) {
-				//this.setSubPixel(i + col, iGPen, iGColMode);
 				switch (iGColMode) {
 				case 0: // normal
 					this.dataset8[i] = iGPen;
@@ -675,26 +647,11 @@ Canvas.prototype = {
 	},
 
 	setPixel: function (x, y, iGPen, iGColMode) {
-		//var iLineWidth, iLineHeight, i, col, row;
-
 		x += this.xOrig;
 		y = this.iHeight - 1 - (y + this.yOrig);
 		if (x < this.xLeft || x > this.xRight || y < (this.iHeight - 1 - this.yTop) || y > (this.iHeight - 1 - this.yBottom)) {
 			return; // not in graphics window
 		}
-		/*
-		iLineWidth = this.aModeData[this.iMode].iLineWidth;
-		iLineHeight = this.aModeData[this.iMode].iLineHeight;
-		x &= ~(iLineWidth - 1); // eslint-disable-line no-bitwise
-		y &= ~(iLineHeight - 1); // eslint-disable-line no-bitwise
-
-		for (row = 0; row < iLineHeight; row += 1) {
-			i = x + this.iWidth * (y + row);
-			for (col = 0; col < iLineWidth; col += 1) {
-				this.setSubPixel(i + col, iGPen, iGColMode);
-			}
-		}
-		*/
 		this.setSubPixels(x, y, iGPen, iGColMode);
 	},
 
@@ -840,11 +797,6 @@ Canvas.prototype = {
 	},
 
 	printGChar: function (iChar) {
-		/*
-		var x = this.xPos + this.xOrig,
-			y = this.iHeight - 1 - (this.yPos + this.yOrig);
-		*/
-
 		this.setChar(iChar, this.xPos, this.yPos, this.iGPen, this.iGPaper, this.iGColMode, true);
 		this.xPos += this.aModeData[this.iMode].iCharWidth;
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);
@@ -863,9 +815,6 @@ Canvas.prototype = {
 
 		x *= oModeData.iCharWidth;
 		y *= oModeData.iCharHeight;
-
-		//x -= this.xOrig;
-		//y = this.iHeight - 1 - (y + this.yOrig); // convert to graphical coordinates without origin
 
 		this.setChar(iChar, x, y, iPen, iPaper, 0, false);
 		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));

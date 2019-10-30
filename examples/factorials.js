@@ -4,9 +4,9 @@
 
 cpcBasic.addItem("", function () { /*
 100 rem Big Factorials (Berechnung grosser Fakultaeten)
-110 MODE 1:CLEAR
-120 PRINT"    Fakultaet grosser Zahlen"
-130 PRINT:INPUT"Fakultaet welcher Zahl:";n
+110 MODE 2:CLEAR
+120 PRINT"    Big Factorials"
+130 PRINT:INPUT"Which number (up to 252):";n
 140 PRINT:PRINT n"!="
 150 DIM r(100)
 160 'Zahl der Fuenferbloecke
@@ -25,7 +25,7 @@ cpcBasic.addItem("", function () { /*
 290 IF r(r%)=0 THEN r%=r%-1:GOTO 290
 300 FOR i=r% TO 1 STEP -1
 310 r$=STR$(r(i)):r$=RIGHT$(r$,LEN(r$)-1)
-320 PRINT RIGHT$("0000"+r$,5);"  ";
+320 PRINT RIGHT$("0000"+r$,5);" ";
 330 IF (r%-i+1) MOD 10=0 THEN PRINT
 340 NEXT
 350 call &bb18

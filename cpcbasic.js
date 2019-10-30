@@ -1,4 +1,4 @@
-// cpcbasic.js - GCFiddle
+// cpcbasic.js - CPCBasic for the Browser
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
@@ -20,7 +20,8 @@ cpcBasic = {
 		showCpc: true,
 		showOutput: false,
 		showResult: false,
-		showVariable: false
+		showVariable: false,
+		sound: false
 	},
 	model: null,
 	view: null,

@@ -1,9 +1,10 @@
-// View.js - View
+// View.js - View Module to access HTML DOM
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 //
 /* globals Utils */
 
 "use strict";
-
 
 function View(options) {
 	this.init(options);

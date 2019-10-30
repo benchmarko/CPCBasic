@@ -1,4 +1,6 @@
-// 'Sound'.js - ...
+// Sound.js - Sound output via WebAudio
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 //
 /* globals Utils */
 
@@ -27,11 +29,11 @@ Sound.prototype = {
 			};
 		}
 
-		this.fScheduleAheadTime = 0.1; //0.1;
+		this.fScheduleAheadTime = 0.1; // 100 ms
 		this.aVolEnv = [];
 		this.aToneEnv = [];
 		this.iReleaseMask = 0;
-		this.fNextEarliestNoteTime = 0;
+		//this.fNextEarliestNoteTime = 0;
 		if (Utils.debug > 1) {
 			this.aDebugLog = []; // access: cpcBasic.controller.oSound.aDebugLog
 		}
@@ -87,7 +89,7 @@ Sound.prototype = {
 			oQueue.bOnHold = false;
 			oQueue.iRendevousMask = 0;
 		}
-		this.fNextEarliestNoteTime = 0;
+		//this.fNextEarliestNoteTime = 0;
 	},
 
 	createSoundContext: function () {
@@ -143,7 +145,7 @@ Sound.prototype = {
 			i100ms2sec = 100, // time duration unit: 1/100 sec=10 ms, convert to sec
 			ctx = this.context,
 			iVolEnvRepeat = 1,
-			iLoop, oOscillator, oGain, iDuration, aVolData, iPart, iTime, iVolume, iVolSteps, iVolDiff, iVolTime, i, fDuration;
+			iLoop, oOscillator, oGain, iDuration, aVolData, iPart, iTime, iVolume, iVolSteps, iVolDiff, iVolTime, i, fDuration, fVolume;
 
 		if (Utils.debug > 1) {
 			this.debugLog("scheduleNote: " + iOscillator + " " + fTime);
@@ -163,7 +165,8 @@ Sound.prototype = {
 
 		oGain = this.aGainNodes[iOscillator].gain;
 
-		oGain.setValueAtTime(iVolume / iMaxVolume, fTime); // start volume
+		fVolume = iVolume / iMaxVolume;
+		oGain.setValueAtTime(fVolume * fVolume, fTime); // start volume
 
 		if (iDuration < 0) { // <0: repeat volume envelope?
 			iVolEnvRepeat = Math.min(5, -iDuration); // we limit repeat to 5 times sice we precompute duration
@@ -179,11 +182,18 @@ Sound.prototype = {
 					iVolSteps = aVolData[iPart];
 					iVolDiff = aVolData[iPart + 1];
 					iVolTime = aVolData[iPart + 2];
+					if (!iVolSteps) { // steps=0
+						iVolSteps = 1;
+						iVolume = 0; // we will set iVolDiff as absolute volume
+					}
 					for (i = 0; i < iVolSteps; i += 1) {
 						iVolume = (iVolume + iVolDiff) % (iMaxVolume + 1);
-						oGain.setValueAtTime(iVolume / iMaxVolume, fTime + iTime / i100ms2sec);
+						fVolume = iVolume / iMaxVolume;
+						oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
 						iTime += iVolTime;
 						if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
+							iLoop = iVolEnvRepeat;
+							iPart = aVolData.length;
 							break;
 						}
 					}
@@ -222,22 +232,6 @@ Sound.prototype = {
 		return bCanQueue;
 	},
 
-	/*
-	testCanPlay: function (i) {
-		var aQueues = this.aQueues,
-			oQueue = aQueues[i],
-			bCanPlay = true;
-
-		//iState = oQueue.aSoundData[0].iState;
-		// 0x40: hold
-		//if (iState & 0x40) { // eslint-disable-line no-bitwise
-		if (oQueue.bOnHold) {
-			bCanPlay = false;
-		}
-		return bCanPlay;
-	},
-	*/
-
 	sound: function (oSoundData) {
 		var aQueues = this.aQueues,
 			i, oQueue, iState;
@@ -253,7 +247,7 @@ Sound.prototype = {
 				if (iState & 0x80) { // eslint-disable-line no-bitwise
 					oQueue.aSoundData.length = 0; // flush queue
 					oQueue.fNextNoteTime = 0;
-					this.fNextEarliestNoteTime = 0;
+					//this.fNextEarliestNoteTime = 0;
 					this.stopOscillator(i);
 				}
 				oQueue.aSoundData.push(oSoundData); // just a reference
@@ -261,11 +255,6 @@ Sound.prototype = {
 					this.debugLog("sound: " + i + " " + iState + ":" + oQueue.aSoundData.length);
 				}
 				this.updateQueueStatus(i, oQueue);
-				/*
-				if (oQueue.aSoundData.length && (oQueue.aSoundData[0].iState & 0x40)) { // check if next note on hold
-					oQueue.bOnHold = true;
-				}
-				*/
 			}
 		}
 	},
@@ -277,86 +266,6 @@ Sound.prototype = {
 	setToneEnv(iToneEnv, aToneEnvData) {
 		this.aToneEnv[iToneEnv] = aToneEnvData;
 	},
-
-	/*
-	// idea from: https://www.html5rocks.com/en/tutorials/audio/scheduling/
-	scheduler_ok1: function () {
-		var aQueues = this.aQueues,
-			iCanPlayMask = 0,
-			oQueue,	i, oSoundData, iRendevousMask;
-
-		if (!this.bIsSoundOn) {
-			return;
-		}
-
-		for (i = 0; i < 3; i += 1) {
-			oQueue = aQueues[i];
-			if (oQueue.aSoundData.length && !oQueue.bOnHold && oQueue.fNextNoteTime < this.context.currentTime + this.fScheduleAheadTime) { // something to schedule and not on hold and time reached
-				//RendevousMask = (oQueue.aSoundData[0].iState >> 3) & 0x07;
-				iCanPlayMask |= (1 << i);
-			}
-		}
-
-		if (!iCanPlayMask) { // no channel can play
-			return;
-		}
-
-		for (i = 0; i < 3; i += 1) {
-			oQueue = aQueues[i];
-			if ((iCanPlayMask >> i) & 0x01) { // we can play, if...
-				iRendevousMask = (oQueue.aSoundData[0].iState >> 3) & 0x07;
-				if ((iRendevousMask & iCanPlayMask) === iRendevousMask) {
-					oSoundData = oQueue.aSoundData.shift();
-					if (oQueue.fNextNoteTime < this.context.currentTime) {
-						oQueue.fNextNoteTime = this.context.currentTime;
-					}
-					oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
-					if (oQueue.aSoundData.length && (oQueue.aSoundData[0].iState & 0x40)) { // check if next note on hold
-						oQueue.bOnHold = true;
-					}
-				}
-			}
-		}
-	},
-
-	// idea from: https://www.html5rocks.com/en/tutorials/audio/scheduling/
-	scheduler_ok2: function () {
-		var aQueues = this.aQueues,
-			iCanPlayMask = 0,
-			oQueue,	i, oSoundData;
-
-		if (!this.bIsSoundOn) {
-			return;
-		}
-
-		for (i = 0; i < 3; i += 1) {
-			oQueue = aQueues[i];
-			if (oQueue.aSoundData.length && !oQueue.bOnHold && oQueue.fNextNoteTime < this.context.currentTime + this.fScheduleAheadTime) { // something to schedule and not on hold and time reached
-				iCanPlayMask |= (1 << i);
-			}
-		}
-
-		if (!iCanPlayMask) { // no channel can play
-			return;
-		}
-
-		for (i = 0; i < 3; i += 1) {
-			oQueue = aQueues[i];
-			if ((iCanPlayMask >> i) & 0x01 && ((oQueue.iRendevousMask & iCanPlayMask) === oQueue.iRendevousMask)) { // we can play, if in rendevous
-				oSoundData = oQueue.aSoundData.shift();
-				if (oQueue.fNextNoteTime < this.context.currentTime) {
-					oQueue.fNextNoteTime = this.context.currentTime;
-				}
-				oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
-				this.updateQueueStatus(i, oQueue);
-				/  *
-				if (oQueue.aSoundData.length && (oQueue.aSoundData[0].iState & 0x40)) { // check if next note on hold
-					oQueue.bOnHold = true;
-				}
-				*  /
-			}
-		}
-	*/
 
 	updateQueueStatus: function (i, oQueue) {
 		var aSoundData = oQueue.aSoundData;
@@ -383,9 +292,11 @@ Sound.prototype = {
 			return;
 		}
 		fCurrentTime = this.context.currentTime;
+		/* does not work for some reason...
 		if (fCurrentTime < (this.fNextEarliestNoteTime - this.fScheduleAheadTime)) {
-			return; //TTT
+			return;
 		}
+		*/
 
 		aQueues = this.aQueues;
 		for (i = 0; i < 3; i += 1) {
@@ -398,12 +309,14 @@ Sound.prototype = {
 						oQueue.fNextNoteTime = fCurrentTime;
 					}
 					oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
-					this.updateQueueStatus(i, oQueue);
+					this.updateQueueStatus(i, oQueue); // check if next note on hold
+					/*
 					if (this.fNextEarliestNoteTime < fCurrentTime) {
 						this.fNextEarliestNoteTime = oQueue.fNextNoteTime;
 					} else {
 						this.fNextEarliestNoteTime = Math.min(this.fNextEarliestNoteTime, oQueue.fNextNoteTime);
 					}
+					*/
 				} else { // need rendevous
 					iCanPlayMask |= (1 << i); // eslint-disable-line no-bitwise
 					break;
@@ -425,35 +338,16 @@ Sound.prototype = {
 					oQueue.fNextNoteTime = fCurrentTime;
 				}
 				oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
-				this.updateQueueStatus(i, oQueue);
+				this.updateQueueStatus(i, oQueue); // check if next note on hold
+				/*
 				if (this.fNextEarliestNoteTime < fCurrentTime) {
 					this.fNextEarliestNoteTime = oQueue.fNextNoteTime;
 				} else {
 					this.fNextEarliestNoteTime = Math.min(this.fNextEarliestNoteTime, oQueue.fNextNoteTime);
 				}
-				/*
-				if (oQueue.aSoundData.length && (oQueue.aSoundData[0].iState & 0x40)) { // check if next note on hold
-					oQueue.bOnHold = true;
-				}
 				*/
 			}
 		}
-
-		/*
-		for (i = 0; i < 3; i += 1) {
-			oQueue = aQueues[i];
-			if (oQueue.fNextNoteTime < this.context.currentTime) {
-				oQueue.fNextNoteTime = this.context.currentTime;
-			}
-			while (oQueue.aSoundData.length && oQueue.fNextNoteTime < this.context.currentTime + this.fScheduleAheadTime && this.testCanPlay(i)) {
-				oSoundData = oQueue.aSoundData.shift();
-				oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
-				if (oQueue.aSoundData.length && (oQueue.aSoundData[0].iState & 0x40)) { // check if next note on hold?
-					oQueue.bOnHold = true;
-				}
-			}
-		}
-		*/
 	},
 
 	release: function (iReleaseMask) {
@@ -488,11 +382,10 @@ Sound.prototype = {
 			iSq = 0;
 		}
 		iSq |= (oQueue.iRendevousMask << 3); // eslint-disable-line no-bitwise
-		if (aSoundData.length && (aSoundData[0].iState & 0x40)) { // eslint-disable-line no-bitwise
-			iSq |= 0x40; // eslint-disable-line no-bitwise
-		}
 		if (this.aOscillators[n] && aQueues[n].fNextNoteTime > this.context.currentTime) { // note still playing?
 			iSq |= 0x80; // eslint-disable-line no-bitwise
+		} else if (aSoundData.length && (aSoundData[0].iState & 0x40)) { // eslint-disable-line no-bitwise
+			iSq |= 0x40; // eslint-disable-line no-bitwise
 		}
 		return iSq;
 	},
@@ -508,11 +401,6 @@ Sound.prototype = {
 			}
 			this.oMergerNode.connect(this.context.destination);
 			this.bIsSoundOn = true;
-			/* not really needed
-			for (i = 0; i < 3; i += 1) {
-				this.aQueues[i].fNextNoteTimes[i] = 0;
-			}
-			*/
 			Utils.console.log("Test sound: on");
 		}
 	},

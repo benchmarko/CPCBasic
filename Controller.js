@@ -1,4 +1,6 @@
 // Controller.js - Controller
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 //
 /* globals CommonEventHandler cpcBasicCharset  */
 
@@ -52,6 +54,11 @@ Controller.prototype = {
 
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
+		if (oModel.getProperty("sound")) { // activate sound needs user action
+			document.getElementById("soundButton").innerText = "Sound waiting";
+			this.commonEventHandler.fnActivateUserAction(this.onUserAction.bind(this));
+		}
+
 		sExample = oModel.getProperty("example");
 		oView.setSelectValue("exampleSelect", sExample);
 
@@ -81,6 +88,13 @@ Controller.prototype = {
 			oView.setDisabled("soundButton", false);
 		}
 		*/
+	},
+
+	onUserAction: function (event, sId) {
+		this.commonEventHandler.fnDeactivateUserAction();
+		if (!this.oSound.isSoundOn() && sId !== "soundButton") { // sound not on and no click on soundButton
+			this.fnSoundOnOff(); // click sound on
+		}
 	},
 
 	// Also called from index file 0index.js
@@ -201,7 +215,7 @@ Controller.prototype = {
 			sKey;
 
 		do {
-			sKey = this.oVm.inkey$(); // or: this.oCanvas.getKeyFromBuffer()
+			sKey = this.oCanvas.getKeyFromBuffer(); // (inkey$ could insert frame if checked too often)
 			// chr13 shows as empty string!
 			if (sKey !== "") {
 				if (sKey === "\x7f") { // del?
@@ -241,24 +255,9 @@ Controller.prototype = {
 	},
 
 	fnWaitForSound: function () {
-		var aSoundData = this.oVm.vmGetSoundData(); //this.oVm.aSoundData; //vmGetSoundObject();
+		var aSoundData = this.oVm.vmGetSoundData();
 
-		this.oSound.scheduler();
-
-		/*
-		if (aSoundData.length) {
-			if (this.oSound.testCanQueue(aSoundData[0].iState)) {
-				oSoundData = aSoundData.shift();
-				this.oSound.sound(oSoundData);
-				if (!aSoundData.length) {
-					this.oVm.vmStop("", 0, true); // no more wait
-				}
-			}
-		} else {
-			this.oVm.vmStop("", 0, true); // no more wait
-		}
-		*/
-
+		this.oSound.scheduler(); // we need to schedule here as well to free queue
 		while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
 			this.oSound.sound(aSoundData.shift());
 		}
@@ -318,7 +317,7 @@ Controller.prototype = {
 			}
 		} else {
 			oVm.clear(); // we do a clear as well here //TTT
-			oVm.vmResetStack();
+			//oVm.vmResetStack();
 			//oVm.vmResetVariables();
 		}
 		oVm.vmResetInks();
@@ -333,9 +332,11 @@ Controller.prototype = {
 			this.view.setDisabled("stopButton", false);
 			this.view.setDisabled("continueButton", true);
 
+			/*
 			if (Utils.debug > 0) {
 				oVm.vmStatStart(); //TTT
 			}
+			*/
 		}
 		if (Utils.debug > 1) {
 			Utils.console.debug("DEBUG: End of fnRun2");
@@ -472,7 +473,7 @@ Controller.prototype = {
 	},
 
 	fnParse: function () {
-		this.oVm.vmStop("parse", 90);
+		this.oVm.vmStop("parse", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
 		}

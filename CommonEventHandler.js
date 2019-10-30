@@ -1,6 +1,6 @@
-// CommonEventHandler.js - CommonEventHandler
-//
-/* globals */
+// CommonEventHandler.js - Common event handler for browser events
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 
 "use strict";
 
@@ -22,6 +22,7 @@ CommonEventHandler.prototype = {
 		this.view = oView;
 		this.controller = oController;
 
+		this.fnUserAction = null;
 		this.attachEventHandler();
 	},
 
@@ -30,6 +31,9 @@ CommonEventHandler.prototype = {
 			sId = (oTarget) ? oTarget.getAttribute("id") : oTarget,
 			sType, sHandler;
 
+		if (this.fnUserAction) {
+			this.fnUserAction(event, sId);
+		}
 		if (sId) {
 			if (!oTarget.disabled) { // check needed for IE which also fires for disabled buttons
 				sType = event.type; // click or change
@@ -60,6 +64,20 @@ CommonEventHandler.prototype = {
 		var bShow = !this.view.toogleHidden(sId).getHidden(sId);
 
 		this.model.setProperty(sProp, bShow);
+	},
+
+	/*
+	onUserAction: function () {
+		//this.fnDeactivateUserAction();
+	},
+	*/
+
+	fnActivateUserAction: function (fnAction) {
+		this.fnUserAction = fnAction;
+	},
+
+	fnDeactivateUserAction: function () {
+		this.fnUserAction = null;
 	},
 
 	onSpecialLegendClick: function () {
@@ -104,16 +122,18 @@ CommonEventHandler.prototype = {
 		this.controller.fnStop();
 	},
 
-	onContinueButtonClick: function () {
+	onContinueButtonClick: function (event) {
 		this.controller.fnContinue();
+		this.onCpcCanvasClick(event);
 	},
 
 	onResetButtonClick: function () {
 		this.controller.fnReset();
 	},
 
-	onParseRunButtonClick: function () {
+	onParseRunButtonClick: function (event) {
 		this.controller.fnParseRun();
+		this.onCpcCanvasClick(event);
 	},
 
 	onHelpButtonClick: function () {
@@ -218,7 +238,12 @@ CommonEventHandler.prototype = {
 	},
 
 	onSoundButtonClick: function () {
+		this.model.setProperty("sound", !this.model.getProperty("sound"));
 		this.controller.fnSoundOnOff();
+	},
+
+	onCpcCanvasClick: function (event) {
+		this.controller.oCanvas.onCpcCanvasClick(event);
 	}
 };
 

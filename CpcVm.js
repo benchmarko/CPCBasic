@@ -1,6 +1,7 @@
 // CpcVm.js - CPC Virtual Machine
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 //
-/* globals */
 
 "use strict";
 
@@ -44,7 +45,7 @@ CpcVm.prototype = {
 			iLeft: 0, // mode 3 not available on CPC
 			iRight: 79,
 			iTop: 0,
-			iBottom: 49 //24
+			iBottom: 49
 		}
 	],
 
@@ -77,7 +78,9 @@ CpcVm.prototype = {
 
 		this.oInput = {}; // input handling
 
-		this.oGosubStack = []; // stack of line numbers for gosub/return
+		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "frame"
+
+		this.aGosubStack = []; // stack of line numbers for gosub/return
 
 		this.aMem = []; // for peek, poke
 
@@ -123,7 +126,7 @@ CpcVm.prototype = {
 		this.iErr = 0; // last error code
 		this.iErl = 0; // line of last error
 
-		this.vmResetStack(); // gosub stack
+		this.aGosubStack.length = 0;
 		this.bDeg = false; // degree or radians
 
 		this.aMem.length = 0; // for peek, poke
@@ -132,8 +135,10 @@ CpcVm.prototype = {
 		this.vmResetTimers();
 		this.bTimersDisabled = false; // flag if timers are disabled
 
+		/*
 		this.iStatFrameCount = 0; // debugging
 		this.iStatFrameCountTs = 0; // debugging
+		*/
 
 		this.iZone = 13; // print tab zone value
 
@@ -147,6 +152,8 @@ CpcVm.prototype = {
 		this.oSound.reset();
 		this.aSoundData.length = 0;
 		this.iClgPen = 0;
+
+		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "frame"
 	},
 
 	vmResetTimers: function () {
@@ -211,9 +218,11 @@ CpcVm.prototype = {
 		};
 	},
 
+	/*
 	vmResetStack: function () {
-		this.oGosubStack.length = 0;
+		this.aGosubStack.length = 0;
 	},
+	*/
 
 	vmResetInks: function () {
 		this.oCanvas.setDefaultInks();
@@ -238,7 +247,7 @@ CpcVm.prototype = {
 			Utils.console.warn("vmRound: expected number but got:", n);
 			this.error(13); // "Type mismatch"
 			n = 0;
-			throw new CpcVm.ErrorObject("Type mismatch", n, this.iLine); //TTT
+			throw new CpcVm.ErrorObject("Type mismatch", n, this.iLine);
 		}
 		return (n >= 0) ? (n + 0.5) | 0 : (n - 0.5) | 0; // eslint-disable-line no-bitwise
 	},
@@ -294,48 +303,55 @@ CpcVm.prototype = {
 		this.iLine = line;
 	},
 
-	vmCheckTimer: function (iTime) {
-		var iDelta, oTimer, i;
+	fnCheckSqTimer: function () {
+		var bTimerExpired = false,
+			oTimer, i;
 
-		if (this.bTimersDisabled) { // BASIC timers are disabled?
-			return;
-		}
-		for (i = this.iTimerCount - 1; i >= 0; i -= 1) { // check timers starting with highest priority first
-			oTimer = this.aTimer[i];
-			if (oTimer.bActive && !oTimer.bHandlerRunning && iTime > oTimer.iNextTimeMs) { // timer expired?
-				this.gosub(this.iLine, oTimer.iLine);
-				oTimer.bHandlerRunning = true;
-				oTimer.iStackIndexReturn = this.oGosubStack.length;
-				if (!oTimer.bRepeat) { // not repeating
-					oTimer.bActive = false;
-				} else {
-					iDelta = iTime - oTimer.iNextTimeMs;
-					oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
+		if (!this.bTimersDisabled) { // BASIC timers not disabled?
+			for (i = 0; i < this.iSqTimerCount; i += 1) {
+				oTimer = this.aSqTimer[i];
+
+				// use oSound.sq(i) and not this.sq(i) since that would reset onSq timer
+				if (oTimer.bActive && !oTimer.bHandlerRunning && (this.oSound.sq(i) & 0x07)) { // eslint-disable-line no-bitwise
+					this.gosub(this.iLine, oTimer.iLine);
+					oTimer.bHandlerRunning = true;
+					oTimer.iStackIndexReturn = this.aGosubStack.length;
+					oTimer.bRepeat = false; // one shot
+					bTimerExpired = true;
+					break; // found expired timer
 				}
-				break; // TODO: found expired timer. What happens with timers with lower priority?
 			}
 		}
+		return bTimerExpired;
 	},
 
-	vmCheckSqTimer: function (iTime) {
-		var oTimer, i;
+	vmCheckTimer: function (iTime) {
+		var bTimerExpired = false,
+			iDelta, oTimer, i;
 
-		if (this.bTimersDisabled) { // BASIC timers are disabled?
-			return;
-		}
-		for (i = 0; i < this.iSqTimerCount; i += 1) {
-			oTimer = this.aSqTimer[i];
-
-			if (oTimer.bActive && !oTimer.bHandlerRunning && (this.oSound.sq(i) & 0x07)) {
-				this.gosub(this.iLine, oTimer.iLine);
-				oTimer.bHandlerRunning = true;
-				oTimer.iStackIndexReturn = this.oGosubStack.length;
-				oTimer.bRepeat = false; // one shot
-				//iDelta = iTime - oTimer.iNextTimeMs;
-				//oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
-				break; // TODO: found expired timer. What happens with timers with lower priority?
+		if (!this.bTimersDisabled) { // BASIC timers not disabled?
+			for (i = this.iTimerCount - 1; i >= 0; i -= 1) { // check timers starting with highest priority first
+				oTimer = this.aTimer[i];
+				if (oTimer.bActive && !oTimer.bHandlerRunning && iTime > oTimer.iNextTimeMs) { // timer expired?
+					this.gosub(this.iLine, oTimer.iLine);
+					oTimer.bHandlerRunning = true;
+					oTimer.iStackIndexReturn = this.aGosubStack.length;
+					if (!oTimer.bRepeat) { // not repeating
+						oTimer.bActive = false;
+					} else {
+						iDelta = iTime - oTimer.iNextTimeMs;
+						oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
+					}
+					bTimerExpired = true;
+					break; // found expired timer
+				} else if (i === 2) { // for priority 2 we check the sq timers which also have priority 2
+					if (this.fnCheckSqTimer()) {
+						break; // found expired timer
+					}
+				}
 			}
 		}
+		return bTimerExpired;
 	},
 
 	vmCheckTimerHandlers: function () {
@@ -344,7 +360,7 @@ CpcVm.prototype = {
 		for (i = this.iTimerCount - 1; i >= 0; i -= 1) {
 			oTimer = this.aTimer[i];
 			if (oTimer.bHandlerRunning) {
-				if (oTimer.iStackIndexReturn > this.oGosubStack.length) {
+				if (oTimer.iStackIndexReturn > this.aGosubStack.length) {
 					oTimer.bHandlerRunning = false;
 					oTimer.iStackIndexReturn = 0;
 				}
@@ -353,22 +369,27 @@ CpcVm.prototype = {
 	},
 
 	vmCheckSqTimerHandlers: function () {
-		var i, oTimer;
+		var bTimerReloaded = false,
+			i, oTimer;
 
 		for (i = this.iSqTimerCount - 1; i >= 0; i -= 1) {
 			oTimer = this.aSqTimer[i];
 			if (oTimer.bHandlerRunning) {
-				if (oTimer.iStackIndexReturn > this.oGosubStack.length) {
+				if (oTimer.iStackIndexReturn > this.aGosubStack.length) {
 					oTimer.bHandlerRunning = false;
 					oTimer.iStackIndexReturn = 0;
 					if (!oTimer.bRepeat) { // not reloaded
 						oTimer.bActive = false;
+					} else {
+						bTimerReloaded = true;
 					}
 				}
 			}
 		}
+		return bTimerReloaded;
 	},
 
+	/*
 	vmStatStart: function () {
 		var iTime = Date.now();
 
@@ -383,24 +404,26 @@ CpcVm.prototype = {
 
 		return iFps;
 	},
+	*/
 
 	vmCheckNextFrame: function (iTime) {
 		var	iDelta;
 
 		if (iTime >= this.iNextFrameTime) { // next time of frame fly
 			iDelta = iTime - this.iNextFrameTime;
+			/*
 			if (Utils.debug) {
 				this.iStatFrameCount += 1;
 			}
+			*/
 
 			if (iDelta > this.iFrameTimeMs) {
 				this.iNextFrameTime += this.iFrameTimeMs * Math.ceil(iDelta / this.iFrameTimeMs);
 			} else {
 				this.iNextFrameTime += this.iFrameTimeMs;
 			}
-			this.vmCheckTimer(iTime); // check BASIC timers
-			this.vmCheckSqTimer(iTime); // check Sound Queue
-			this.oSound.scheduler(); //TTT
+			this.vmCheckTimer(iTime); // check BASIC timers and sound queue
+			this.oSound.scheduler();
 		}
 	},
 
@@ -464,12 +487,6 @@ CpcVm.prototype = {
 			}
 			this.initVal = value; //TTT fast hack
 			aValue = this.fnCreateNDimArray.apply(this, aArgs);
-			/*
-			aValue = [];
-			for (i = 0; i <= 10; i += 1) { // arrays without declaration
-				aValue.push(value);
-			}
-			*/
 			value = aValue;
 		}
 		return value;
@@ -669,12 +686,20 @@ CpcVm.prototype = {
 	},
 
 	clear: function () {
-		var i;
+		//var i;
 
+		this.vmResetTimers();
+		/*
 		for (i = 0; i < this.iTimerCount; i += 1) {
 			this.remain(i); // stop timer, if running
 		}
+		for (i = 0; i < this.iSqTimerCount; i += 1) {
+			// stop sq timer, if running
+			this.sq(1 << i); // eslint-disable-line no-bitwise
+		}
+		*/
 		this.iErr = 0;
+		this.aGosubStack.length = 0;
 		this.vmResetVariables();
 		this.vmDefineVarTypes("R", "a-z");
 		this.restore(); // restore data line index
@@ -714,6 +739,21 @@ CpcVm.prototype = {
 		this.sOut = "";
 		oWin.iPos = 0;
 		oWin.iVpos = 0;
+	},
+
+	commaTab: function (iStream) { // special function used for comma in print (ROM &F25C), called delayed by print
+		var	oWin = this.aWindow[iStream],
+			iZone = this.iZone,
+			iCount;
+
+		iStream = this.vmRound(iStream || 0);
+		iCount = iZone - (oWin.iPos % iZone);
+		if (oWin.iPos + iCount > oWin.iRight) {
+			oWin.iPos += iCount;
+			this.vmMoveCursor2AllowedPos(iStream);
+			iCount = 0;
+		}
+		return " ".repeat(iCount);
 	},
 
 	cont: function () {
@@ -957,7 +997,7 @@ CpcVm.prototype = {
 
 	gosub: function (retLabel, n) {
 		this.vmGotoLine(n, "gosub (ret=" + retLabel + ")");
-		this.oGosubStack.push(retLabel);
+		this.aGosubStack.push(retLabel);
 	},
 
 	"goto": function (n) {
@@ -1017,8 +1057,19 @@ CpcVm.prototype = {
 	},
 
 	inkey$: function () {
-		var sKey = this.oCanvas.getKeyFromBuffer();
+		var sKey = this.oCanvas.getKeyFromBuffer(),
+			iNow;
 
+		// do some slowdown, if checked too early again without key press
+		if (sKey !== "") { // some key pressed?
+			this.iInkeyTime = 0;
+		} else { // no key
+			iNow = Date.now();
+			if (this.iInkeyTimeMs && iNow < this.iInkeyTimeMs) { // last inkey without key was in tange of frame fly?
+				this.frame(); // then insert a frame fly
+			}
+			this.iInkeyTimeMs = iNow + this.iFrameTimeMs; // next time of frame fly
+		}
 		return sKey;
 	},
 
@@ -1048,6 +1099,10 @@ CpcVm.prototype = {
 
 		if (this.vmDetermineVarType(sVar) !== "$") { // no string?
 			sValue = Number(sValue);
+			if (isNaN(sValue)) {
+				this.print(this.oInput.iStream, "?Redo from start\r\n");
+				sValue = 0; // the best we can do here
+			}
 		}
 		return sValue;
 	},
@@ -1118,15 +1173,21 @@ CpcVm.prototype = {
 		this.oInput.aInputValues = [sInput];
 	},
 
-	lineInput: function (iStream, sNoCRLF, sMsg /* , sVar*/) { // sVar must be string variable
+	lineInput: function (iStream, sNoCRLF, sMsg, sVar) { // sVar must be string variable
 		iStream = this.vmRound(iStream);
 		if (iStream < 8) {
+			this.print(iStream, sMsg);
 			this.oInput.iStream = iStream;
 			this.oInput.sNoCRLF = sNoCRLF;
-			this.oInput.fnInputCallback = this.vmLineInputCallback.bind(this);
 			this.oInput.sInput = "";
-			this.print(iStream, sMsg);
-			this.vmStop("input", 45);
+
+			if (this.vmDetermineVarType(sVar) !== "$") { // not string?
+				this.print(iStream, "\r\n");
+				this.error(13); // Type mismatch
+			} else {
+				this.oInput.fnInputCallback = this.vmLineInputCallback.bind(this);
+				this.vmStop("input", 45);
+			}
 		} else if (iStream === 8) {
 			this.oInput.aInputValues = [];
 			this.vmNotImplemented("line input #8");
@@ -1273,7 +1334,7 @@ CpcVm.prototype = {
 			iLine = retLabel;
 		} else {
 			iLine = arguments[n + 1]; // n=1...; start with argument 2
-			this.oGosubStack.push(retLabel);
+			this.aGosubStack.push(retLabel);
 		}
 		this.vmGotoLine(iLine, "onGosub (n=" + n + ", ret=" + retLabel + ", iLine=" + iLine + ")");
 	},
@@ -1292,36 +1353,25 @@ CpcVm.prototype = {
 		this.vmGotoLine(iLine, "onGoto (n=" + n + ", ret=" + retLabel + ", iLine=" + iLine + ")");
 	},
 
+	fnChannel2ChannelIndex: function (iChannel) {
+		if (iChannel === 4) {
+			iChannel = 2;
+		} else {
+			iChannel -= 1;
+		}
+		return iChannel;
+	},
+
 	onSqGosub: function (iChannel, iLine) {
 		var oSqTimer;
 
 		iChannel = this.vmRound(iChannel);
-		if (iChannel === 4) {
-			iChannel = 3;
-		}
-		iChannel -= 1;
+		iChannel = this.fnChannel2ChannelIndex(iChannel);
 		oSqTimer = this.aSqTimer[iChannel];
 		oSqTimer.iLine = iLine;
 		oSqTimer.bActive = true;
 		oSqTimer.bRepeat = true; // means reloaded for sq
 	},
-
-	/*
-	onSqGosub: function (retLabel, iChannel, n) {
-		var iSq;
-
-		iChannel = this.vmRound(iChannel);
-		if (iChannel === 4) {
-			iChannel = 3;
-		}
-		iChannel -= 1;
-		iSq = this.oSound.sq(iChannel);
-		if (iSq & 0x07) {
-			this.vmGotoLine(n, "gosub (ret=" + retLabel + ")");
-			this.oGosubStack.push(retLabel);
-		}
-	},
-	*/
 
 	openin: function () {
 		this.vmNotImplemented("openin");
@@ -1467,7 +1517,6 @@ CpcVm.prototype = {
 
 		// put cursor in next line if string does not fit in line any more
 		this.vmMoveCursor2AllowedPos(iStream);
-		//if (sStr.length <= (oWin.iRight - oWin.iLeft) && (oWin.iPos + sStr.length > (oWin.iRight + 1 - oWin.iLeft)))
 		if (oWin.iPos && (oWin.iPos + sStr.length > (oWin.iRight + 1 - oWin.iLeft))) {
 			oWin.iPos = 0;
 			oWin.iVpos += 1; // "\r\n", newline if string does not fit in line
@@ -1711,7 +1760,7 @@ CpcVm.prototype = {
 		if (iStream < 8) {
 			for (i = 1; i < arguments.length; i += 1) {
 				arg = arguments[i];
-				if (typeof arg === "object") { // delayed call for e.g. tab()
+				if (typeof arg === "object") { // delayed call for spc(), tab(), commaTab()
 					aSpecialArgs = arg.args; // TODO: copy?
 					aSpecialArgs.unshift(iStream);
 					sStr = this[arg.type].apply(this, aSpecialArgs);
@@ -1842,15 +1891,17 @@ CpcVm.prototype = {
 	},
 
 	"return": function () {
-		var iLine = this.oGosubStack.pop();
+		var iLine = this.aGosubStack.pop();
 
 		if (iLine === undefined) {
 			this.error(3); // Unexpected Return [in <line>]
 		} else {
 			this.vmGotoLine(iLine, "return");
 		}
-		this.vmCheckTimerHandlers();
-		this.vmCheckSqTimerHandlers();
+		this.vmCheckTimerHandlers(); // if we are at end of a BASIC timer handler, delete handler flag
+		if (this.vmCheckSqTimerHandlers()) { // same for sq timers, timer reloaded?
+			this.fnCheckSqTimer(); // next one early
+		}
 	},
 
 	right$: function (s, iLen) {
@@ -1930,7 +1981,7 @@ CpcVm.prototype = {
 		return Math.sin((this.bDeg) ? Utils.toRadians(n) : n);
 	},
 
-	vmSoundCallback: function (sInput) { //TTT
+	vmSoundCallback: function (sInput) {
 		var oSoundData;
 
 		Utils.console.log("vmSoundCallback: " + sInput);
@@ -1938,11 +1989,10 @@ CpcVm.prototype = {
 			oSoundData = this.aSoundData.shift();
 			this.oSound.sound(oSoundData);
 		}
-		//this.oInput.aInputValues = sInput.split(",");
 	},
 
 	sound: function (iState, iPeriod, iDuration, iVolume, iVolEnv, iToneEnv, iNoise) {
-		var oSoundData;
+		var oSoundData, i, oSqTimer;
 
 		if (iDuration === undefined) {
 			iDuration = 20;
@@ -1966,6 +2016,12 @@ CpcVm.prototype = {
 		} else {
 			this.aSoundData.push(oSoundData);
 			this.vmStop("sound", 43);
+			for (i = 0; i < 3; i += 1) {
+				if (iState & (1 << i)) { // eslint-disable-line no-bitwise
+					oSqTimer = this.aSqTimer[i];
+					oSqTimer.bActive = false; // set onSq timer to inactive
+				}
+			}
 		}
 	},
 
@@ -1974,7 +2030,13 @@ CpcVm.prototype = {
 		return " ".repeat(n);
 	},
 
-	spc: function (n) {
+	spc: function (iStream, n) { // special spc function with additional parameter iStream, which is called delayed by print (ROM &F277)
+		var oWin = this.aWindow[iStream],
+			iWidth = oWin.iRight - oWin.iLeft + 1;
+
+		if (iWidth) {
+			n %= iWidth;
+		}
 		n = this.vmRound(n);
 		return " ".repeat(n);
 	},
@@ -1992,14 +2054,17 @@ CpcVm.prototype = {
 	},
 
 	sq: function (iChannel) {
-		var n, iSq;
+		var oSqTimer, iSq;
 
 		iChannel = this.vmRound(iChannel);
-		n = iChannel - 1;
-		if (n === 3) {
-			n = 2;
+		iChannel = this.fnChannel2ChannelIndex(iChannel);
+		iSq = this.oSound.sq(iChannel);
+
+		oSqTimer = this.aSqTimer[iChannel];
+		// no space in queue and handler active?
+		if (!(iSq & 0x07) && oSqTimer.bActive) { // eslint-disable-line no-bitwise
+			oSqTimer.bActive = false; // set onSq timer to inactive
 		}
-		iSq = this.oSound.sq(n);
 		return iSq;
 	},
 
@@ -2053,18 +2118,22 @@ CpcVm.prototype = {
 		}
 	},
 
-	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print()
+	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print (ROM &F280)
 		var	oWin = this.aWindow[iStream],
+			iWidth = oWin.iRight - oWin.iLeft + 1,
 			iCount;
 
-		if (n === undefined) { // simulated tab in print for ","
-			n = this.iZone;
-		}
 		n = this.vmRound(n);
-		iCount = n - 1 - oWin.iPos;
-		if (iCount < 0) {
-			Utils.console.warn("tab: n=" + n + ", iCount=" + iCount);
-			iCount = 0;
+		n -= 1;
+		if (iWidth) {
+			n %= iWidth;
+		}
+
+		iCount = n - oWin.iPos;
+		if (iCount < 0) { // does it fit until tab position?
+			oWin.iPos = oWin.iRight + 1;
+			this.vmMoveCursor2AllowedPos(iStream);
+			iCount = n; // set tab in next line
 		}
 		return " ".repeat(iCount);
 	},

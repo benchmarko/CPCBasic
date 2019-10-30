@@ -1,4 +1,6 @@
-// Utils.js - Utils...
+// Utils.js - Utililities for CPCBasic
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 //
 
 "use strict";

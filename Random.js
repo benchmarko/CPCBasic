@@ -1,16 +1,8 @@
-// Random.js - Random
-//
-/* globals */
+// Random.js - Random Number Generator
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
 
 "use strict";
-
-/*
-var Utils;
-
-if (typeof require !== "undefined") {
-	Utils = require("./Utils.js"); // eslint-disable-line global-require
-}
-*/
 
 //
 // Random number generator taken from:

@@ -1,4 +1,8 @@
-// BasicParser.js - Parse Locomotive BASIC 1.1 for Amstrad CPC 6128
+// BasicParser.js - BASIC Parser
+// (c) Marco Vieth, 2019
+// https://benchmarko.github.io/CPCBasic/
+//
+// BASIC lexer and parser for Locomotive BASIC 1.1 for Amstrad CPC 6128; and compiler for JavaScript
 //
 
 "use strict";
@@ -340,6 +344,9 @@ BasicParser.prototype = {
 							if (sChar === '"') { // not for newline
 								sChar = advance();
 							}
+						} else if (sChar === ",") { // empty argument?
+							sToken = "";
+							addToken("string", sToken, iStartPos);
 						} else {
 							sToken = advanceWhile(isUnquotedData);
 							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
@@ -1152,14 +1159,18 @@ BasicParser.prototype = {
 			if (oToken.type === "string") {
 				sText += oToken.value;
 				advance();
-				if (oToken.type === ";") { // ";" => append "?"
-					sText += "?";
+				if (oToken.type === ";") { // ";" => append "? "
+					sText += "? ";
 					advance(";");
 				} else if (oToken.type === ",") {
 					advance(",");
 				} else {
 					throw new BasicParser.ErrorObject("Expected ; or , at", oToken.type, oToken.pos);
 				}
+			}
+
+			if (sText === "") { // no message => also append "? "
+				sText = "? ";
 			}
 
 			oValue.args.push({
@@ -1242,14 +1253,18 @@ BasicParser.prototype = {
 			if (oToken.type === "string") {
 				sText += oToken.value;
 				advance();
-				if (oToken.type === ";") { // ";" => append "?"
-					sText += "?";
+				if (oToken.type === ";") { // ";" => append "? "
+					sText += "? ";
 					advance();
 				} else if (oToken.type === ",") {
 					advance();
 				} else {
 					throw new BasicParser.ErrorObject("Expected ; or , at", oToken.type, oToken.pos);
 				}
+			}
+
+			if (sText === "") { // no message => also append "? "
+				sText = "? ";
 			}
 
 			oValue.args.push({
@@ -1428,11 +1443,11 @@ BasicParser.prototype = {
 					break;
 				} else if (oToken.type === ";") {
 					advance(";");
-				} else if (oToken.type === ",") { // default tab, simulate tab...
+				} else if (oToken.type === ",") { // comma tabulator
 					oValue.args.push({
 						type: "fcall",
-						name: "tab",
-						args: [], // special: we use no args to get tab with current zone
+						name: "commaTab",
+						args: [],
 						pos: aTokens[iParseIndex - 2].pos
 					});
 					advance(",");
@@ -1569,6 +1584,9 @@ BasicParser.prototype = {
 					sName += "A".repeat(iArrayIndices);
 				}
 				if (oDevScopeArgs) {
+					if (sName === "o") { // we must not use format parameter "o" since this is out vm object
+						sName = "oNo"; // change variable name so something we cannot set in BASIC
+					}
 					if (bDevScopeArgsCollect) {
 						oDevScopeArgs[sName] = fnGetVarDefault(sName); // declare
 					} else if (!(sName in oDevScopeArgs)) {
@@ -1661,6 +1679,9 @@ BasicParser.prototype = {
 
 					that.iStopCount += 1;
 					return "o.call(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+				},
+				commaTab: function (aNodeArgs) {
+					return "{type: \"commaTab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the commaTab() call until print() is called
 				},
 				data: function (aNodeArgs) {
 					aNodeArgs.unshift(that.iLine); // prepend line number
@@ -1876,6 +1897,9 @@ BasicParser.prototype = {
 
 					that.iStopCount += 1;
 					return "o.sound(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":"; // maybe queue is full, so insert break
+				},
+				spc: function (aNodeArgs) {
+					return "{type: \"spc\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the spc() call until print() is called because we need stream
 				},
 				stop: function () {
 					var sName = that.iLine + "s" + that.iStopCount;
