@@ -15,6 +15,7 @@ Sound.prototype = {
 		var i;
 
 		this.bIsSoundOn = false;
+		this.bIsActivatedByUser = false;
 		this.context = null;
 		this.oMergerNode = null;
 		this.aGainNodes = [];
@@ -219,8 +220,10 @@ Sound.prototype = {
 		var aQueues = this.aQueues,
 			bCanQueue = true;
 
+		if (this.bIsSoundOn && !this.bIsActivatedByUser) { // sound on but not yet activated? -> say cannot queue
+			bCanQueue = false;
 		/* eslint-disable no-bitwise */
-		if (!(iState & 0x80)) { // 0x80: flush
+		} else if (!(iState & 0x80)) { // 0x80: flush
 			if ((iState & 0x01 && aQueues[0].aSoundData.length >= 4)
 				|| (iState & 0x02 && aQueues[1].aSoundData.length >= 4)
 				|| (iState & 0x04 && aQueues[2].aSoundData.length >= 4)) {
@@ -392,6 +395,14 @@ Sound.prototype = {
 
 	isSoundOn: function () {
 		return this.bIsSoundOn;
+	},
+
+	setActivatedByUser: function () {
+		this.bIsActivatedByUser = true;
+	},
+
+	isActivatedByUser: function () {
+		return this.bIsActivatedByUser;
 	},
 
 	soundOn: function () {

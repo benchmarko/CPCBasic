@@ -164,10 +164,76 @@ CommonEventHandler.prototype = {
 		window.location.search = "?" + this.fnEncodeUriParam(oChanged); // jQuery.param(oChanged, true)
 	},
 
+	onDatabaseSelectChange: function () {
+		var that = this,
+			sDatabase = this.view.getSelectValue("databaseSelect"),
+			sUrl, oDatabase,
+
+			fnDatabaseLoaded = function (/* sFullUrl */) {
+				oDatabase.loaded = true;
+				Utils.console.log("fnDatabaseLoaded: database loaded: " + sDatabase + ": " + sUrl);
+				//that.controller.fnSetFilterCategorySelectOptions();
+				that.controller.fnSetExampleSelectOptions();
+				if (oDatabase.error) {
+					Utils.console.error("fnDatabaseLoaded: database contains errors: " + sDatabase + ": " + sUrl);
+					that.view.setAreaValue("inputText", oDatabase.script);
+					that.view.setAreaValue("resultText", oDatabase.error);
+				} else {
+					that.onExampleSelectChange();
+				}
+			},
+			fnDatabaseError = function (/* sFullUrl */) {
+				oDatabase.loaded = false;
+				Utils.console.error("fnDatabaseError: database error: " + sDatabase + ": " + sUrl);
+				//that.controller.fnSetFilterCategorySelectOptions();
+				that.controller.fnSetExampleSelectOptions();
+				that.onExampleSelectChange();
+				that.view.setAreaValue("inputText", "");
+				that.view.setAreaValue("resultText", "Cannot load database: " + sDatabase);
+			},
+			fnLoadDatabaseLocalStorage = function () {
+				var	oStorage = Utils.localStorage,
+					i, sKey, sItem;
+
+				for (i = 0; i < oStorage.length; i += 1) {
+					sKey = oStorage.key(i);
+					sItem = oStorage.getItem(sKey);
+					that.controller.fnAddItem(sKey, sItem);
+				}
+				fnDatabaseLoaded("", sDatabase);
+			};
+
+		this.model.setProperty("database", sDatabase);
+		this.view.setSelectTitleFromSelectedOption("databaseSelect");
+		oDatabase = this.model.getDatabase();
+		if (!oDatabase) {
+			Utils.console.error("onDatabaseSelectChange: database not available: " + sDatabase);
+			return;
+		}
+
+		if (oDatabase.loaded) {
+			//that.controller.fnSetFilterCategorySelectOptions();
+			this.controller.fnSetExampleSelectOptions();
+			this.onExampleSelectChange();
+		} else {
+			this.view.setAreaValue("inputText", "#loading database " + sDatabase + "...");
+			if (sDatabase === "saved") {
+				sUrl = "localStorage";
+				fnLoadDatabaseLocalStorage(sDatabase);
+			} else {
+				//sUrl = this.model.getProperty("exampleDir") + "/" + oDatabase.src;
+				sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
+				Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);
+			}
+		}
+		//this.fnSetDeleteButtonStatus();
+	},
+
+
 	onExampleSelectChange: function () {
 		var that = this,
 			sExample = this.view.getSelectValue("exampleSelect"),
-			sUrl, oExample,
+			sUrl, oExample, sDatabaseDir,
 
 			fnParseRunExample = function ()	{
 				that.controller.fnParseRun();
@@ -183,14 +249,14 @@ CommonEventHandler.prototype = {
 				oExample = that.model.getExample(sExample);
 				sInput = oExample.script;
 				that.view.setAreaValue("inputText", sInput);
-				that.view.setAreaValue("outputText", "");
+				that.view.setAreaValue("resultText", "");
 				that.controller.fnReset();
 				setTimeout(fnParseRunExample, 100); // hopefully the reset is done already
 			},
 			fnExampleError = function () {
 				Utils.console.log("Example " + sUrl + " error");
 				that.view.setAreaValue("inputText", "");
-				that.view.setAreaValue("outputText", "Cannot load example: " + sExample);
+				that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
 			};
 
 		this.model.setProperty("example", sExample);
@@ -200,9 +266,17 @@ CommonEventHandler.prototype = {
 			fnExampleLoaded("", true);
 		} else if (sExample && oExample) { // need to load
 			this.view.setAreaValue("inputText", "#loading " + sExample + "...");
-			this.view.setAreaValue("outputText", "waiting...");
+			this.view.setAreaValue("resultText", "waiting...");
 
-			sUrl = this.model.getProperty("exampleDir") + "/" + sExample + ".js";
+			/*
+			sPath = "";
+			oDatabase = this.model.getDatabase();
+			if (oDatabase.src) {
+				sPath = oDatabase.src.split("/").slice(0, -1).join("/");
+			}
+			*/
+			sDatabaseDir = this.model.getDatabase().src;
+			sUrl = sDatabaseDir + "/" + sExample + ".js";
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
 		} else {
 			this.view.setAreaValue("inputText", "");
@@ -239,7 +313,7 @@ CommonEventHandler.prototype = {
 
 	onSoundButtonClick: function () {
 		this.model.setProperty("sound", !this.model.getProperty("sound"));
-		this.controller.fnSoundOnOff();
+		this.controller.fnSetSoundActive();
 	},
 
 	onCpcCanvasClick: function (event) {

@@ -12,9 +12,10 @@ var cpcBasicExternalConfig, cpcBasic;
 cpcBasic = {
 	config: {
 		debug: 0,
+		databaseDirs: "examples", // example base directories (comma separated)
+		database: "examples", // examples, apps, saved
 		example: "cpcbasic",
-		exampleDir: "examples", // example base directory
-		exampleIndex: "0index.js", // example index in exampleDir
+		exampleIndex: "0index.js", // example index for every exampleDir
 		showInput: true,
 		showInp2: false,
 		showCpc: true,
@@ -85,7 +86,7 @@ cpcBasic = {
 			oStartConfig = this.config,
 			oInitialConfig,	iDebug;
 
-		Object.assign(oStartConfig, cpcBasicExternalConfig || {}); // merge external config from cpcconfig.js (TODO)
+		Object.assign(oStartConfig, cpcBasicExternalConfig || {}); // merge external config from cpcconfig.js
 		oInitialConfig = Object.assign({}, oStartConfig); // save config
 		this.fnParseUri(oStartConfig); // modify config with URL parameters
 		this.model = new Model(oStartConfig, oInitialConfig);

@@ -130,7 +130,8 @@ CpcVm.prototype = {
 		this.bDeg = false; // degree or radians
 
 		this.aMem.length = 0; // for peek, poke
-		this.iHimem = 42619; // high memory limit, just an example
+		this.iHimem = 42747; // high memory limit (42747 after symbol after 256)
+		this.symbolAfter(240);
 
 		this.vmResetTimers();
 		this.bTimersDisabled = false; // flag if timers are disabled
@@ -2113,9 +2114,12 @@ CpcVm.prototype = {
 	},
 
 	symbolAfter: function (n) {
+		this.iHimem = 42747 - (256 - n) * 8;
+		/*
 		if (Utils.debug > 0) {
 			Utils.console.debug("DEBUG: symbolAfter not needed. n=" + n);
 		}
+		*/
 	},
 
 	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print (ROM &F280)

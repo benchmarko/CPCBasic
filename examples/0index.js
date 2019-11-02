@@ -3,7 +3,7 @@
 
 "use strict";
 
-cpcBasic.addIndex("./", function () { /*
+cpcBasic.addIndex("./examples", function () { /*
 [
     {
 		"key": "1st",
@@ -113,10 +113,6 @@ cpcBasic.addIndex("./", function () { /*
 		"key": "soundtest1",
 		"title": "Sound Test 1"
 	},
-	{
-		"key": "spacewar",
-		"title": "Spacewar Game (Textual)"
-	},
     {
 		"key": "sphere",
 		"title": "Sphere"
@@ -124,10 +120,6 @@ cpcBasic.addIndex("./", function () { /*
     {
 		"key": "shot",
 		"title": "Shot Game (Textual)"
-	},
-	{
-		"key": "stardodger",
-		"title": "Stardodger Game (Textual)"
 	},
 	{
 		"key": "stars",

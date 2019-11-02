@@ -22,16 +22,7 @@ function Controller(oModel, oView) {
 
 Controller.prototype = {
 	init: function (oModel, oView) {
-		var that = this,
-			sUrl, sExample,
-			onExampleIndexLoaded = function () {
-				Utils.console.log(sUrl + " loaded");
-				that.fnSetExampleSelectOptions();
-				that.commonEventHandler.onExampleSelectChange();
-			},
-			onExampleIndexError = function () {
-				Utils.console.log(sUrl + " error");
-			};
+		var sExample;
 
 		this.model = oModel;
 		this.view = oView;
@@ -50,14 +41,13 @@ Controller.prototype = {
 			view: this.view
 		});
 
-		this.oSound = new Sound();
-
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
+		this.oSound = new Sound();
 		if (oModel.getProperty("sound")) { // activate sound needs user action
-			document.getElementById("soundButton").innerText = "Sound waiting";
-			this.commonEventHandler.fnActivateUserAction(this.onUserAction.bind(this));
+			this.fnSetSoundActive(); // activate in waiting state
 		}
+		this.commonEventHandler.fnActivateUserAction(this.onUserAction.bind(this)); // check first user action, also if sound is not yet on
 
 		sExample = oModel.getProperty("example");
 		oView.setSelectValue("exampleSelect", sExample);
@@ -70,31 +60,47 @@ Controller.prototype = {
 
 		this.iTimeoutHandle = null;
 
-		this.sLabelBeforeStop = ""; //TTT
+		this.sLabelBeforeStop = "";
 		this.iPrioBeforeStop = 0;
 
 		this.fnRunStart1Handler = this.fnRunStart1.bind(this);
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
 		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
 
-		sUrl = oModel.getProperty("exampleDir") + "/" + oModel.getProperty("exampleIndex");
-		if (sUrl) {
-			Utils.loadScript(sUrl, onExampleIndexLoaded, onExampleIndexError);
-		} else {
-			Utils.console.error("ExampleIndex not set");
+		this.fnInitDatabases();
+	},
+
+	fnInitDatabases: function () {
+		var oModel = this.model,
+			oDatabases = {},
+			aDatabaseDirs, i, sDatabaseDir, aParts, sName;
+
+		aDatabaseDirs = oModel.getProperty("databaseDirs").split(",");
+		for (i = 0; i < aDatabaseDirs.length; i += 1) {
+			sDatabaseDir = aDatabaseDirs[i];
+			aParts = sDatabaseDir.split("/");
+			sName = aParts[aParts.length - 1];
+			oDatabases[sName] = {
+				text: sName,
+				title: sName,
+				src: sDatabaseDir
+			};
 		}
-		/*
-		if (Utils.debug > 0) {
-			oView.setDisabled("soundButton", false);
-		}
-		*/
+		this.model.addDatabases(oDatabases);
+
+		this.fnSetDatabaseSelectOptions();
+		this.commonEventHandler.onDatabaseSelectChange();
 	},
 
 	onUserAction: function (event, sId) {
 		this.commonEventHandler.fnDeactivateUserAction();
+		/*
 		if (!this.oSound.isSoundOn() && sId !== "soundButton") { // sound not on and no click on soundButton
 			this.fnSoundOnOff(); // click sound on
 		}
+		*/
+		this.oSound.setActivatedByUser(true);
+		this.fnSetSoundActive();
 	},
 
 	// Also called from index file 0index.js
@@ -104,6 +110,7 @@ Controller.prototype = {
 		sInput = input.trim();
 		aIndex = JSON.parse(sInput);
 		for (i = 0; i < aIndex.length; i += 1) {
+			aIndex[i].dir = sDir;
 			this.model.setExample(aIndex[i]);
 		}
 	},
@@ -133,8 +140,34 @@ Controller.prototype = {
 		return sKey;
 	},
 
+	fnSetDatabaseSelectOptions: function () {
+		var sSelect = "databaseSelect",
+			aItems = [],
+			oDatabases = this.model.getAllDatabases(),
+			sDatabase = this.model.getProperty("database"),
+			sValue, oDb, oItem;
+
+		for (sValue in oDatabases) {
+			if (oDatabases.hasOwnProperty(sValue)) {
+				oDb = oDatabases[sValue];
+				oItem = {
+					value: sValue,
+					text: oDb.text,
+					title: oDb.title
+				};
+				if (sValue === sDatabase) {
+					oItem.selected = true;
+				}
+				aItems.push(oItem);
+			}
+		}
+		this.view.setSelectOptions(sSelect, aItems);
+	},
+
 	fnSetExampleSelectOptions: function () {
-		var sSelect = "exampleSelect",
+		var iMaxTitleLength = 160,
+			iMaxTextLength = 60, //32 visible?
+			sSelect = "exampleSelect",
 			aItems = [],
 			sExample = this.model.getProperty("example"),
 			oAllExamples = this.model.getAllExamples(),
@@ -145,9 +178,9 @@ Controller.prototype = {
 				oExample = oAllExamples[sKey];
 				oItem = {
 					value: oExample.key,
-					title: (oExample.key + ": " + oExample.title).substr(0, 160)
+					title: (oExample.key + ": " + oExample.title).substr(0, iMaxTitleLength)
 				};
-				oItem.text = oItem.title.substr(0, 34);
+				oItem.text = oItem.title.substr(0, iMaxTextLength);
 				if (oExample.key === sExample) {
 					oItem.selected = true;
 				}
@@ -158,7 +191,8 @@ Controller.prototype = {
 	},
 
 	fnSetVarSelectOptions: function (sSelect, oVariables) {
-		var aItems = [],
+		var iMaxVarLength = 35,
+			aItems = [],
 			oItem, sKey, sValue, sTitle, sStrippedTitle,
 			fnSortByString = function (a, b) {
 				var x = a.value,
@@ -176,7 +210,7 @@ Controller.prototype = {
 			if (oVariables.hasOwnProperty(sKey)) {
 				sValue = oVariables[sKey];
 				sTitle = sKey + "=" + sValue;
-				sStrippedTitle = sTitle.substr(0, 35); // limit length
+				sStrippedTitle = sTitle.substr(0, iMaxVarLength); // limit length
 				if (sTitle !== sStrippedTitle) {
 					sStrippedTitle += " ...";
 				}
@@ -255,16 +289,20 @@ Controller.prototype = {
 	},
 
 	fnWaitForSound: function () {
-		var aSoundData = this.oVm.vmGetSoundData();
+		var aSoundData;
+
+		if (!this.oSound.isActivatedByUser()) { // not yet activated?
+			return;
+		}
 
 		this.oSound.scheduler(); // we need to schedule here as well to free queue
+		aSoundData = this.oVm.vmGetSoundData();
 		while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
 			this.oSound.sound(aSoundData.shift());
 		}
 		if (!aSoundData.length) {
 			this.oVm.vmStop("", 0, true); // no more wait
 		}
-
 	},
 
 	fnParse2: function () {
@@ -317,8 +355,6 @@ Controller.prototype = {
 			}
 		} else {
 			oVm.clear(); // we do a clear as well here //TTT
-			//oVm.vmResetStack();
-			//oVm.vmResetVariables();
 		}
 		oVm.vmResetInks();
 		oVm.clearInput();
@@ -442,6 +478,11 @@ Controller.prototype = {
 			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
 			break;
 
+		/*
+		case "soundInit":
+			break;
+		*/
+
 		case "stop":
 			break;
 
@@ -472,6 +513,11 @@ Controller.prototype = {
 		}
 	},
 
+	fnSetStopLabelPrio: function (sReason, iPriority) {
+		this.sLabelBeforeStop = sReason;
+		this.iPrioBeforeStop = iPriority;
+	},
+
 	fnParse: function () {
 		this.oVm.vmStop("parse", 99);
 		if (this.iTimeoutHandle === null) {
@@ -480,6 +526,7 @@ Controller.prototype = {
 	},
 
 	fnRun: function () {
+		this.fnSetStopLabelPrio("", 0);
 		this.oCanvas.options.fnOnKeyDown = null;
 		this.oVm.vmStop("run", 99);
 		if (this.iTimeoutHandle === null) {
@@ -488,6 +535,7 @@ Controller.prototype = {
 	},
 
 	fnParseRun: function () {
+		this.fnSetStopLabelPrio("", 0);
 		this.oCanvas.options.fnOnKeyDown = null;
 		this.oVm.vmStop("parseRun", 99);
 		if (this.iTimeoutHandle === null) {
@@ -500,8 +548,7 @@ Controller.prototype = {
 			sReason = oVm.vmGetStopReason(),
 			iPriority = oVm.vmGetStopPriority();
 
-		this.sLabelBeforeStop = sReason;
-		this.iPrioBeforeStop = iPriority;
+		this.fnSetStopLabelPrio(sReason, iPriority);
 		this.oCanvas.options.fnOnKeyDown = null;
 		oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
@@ -518,8 +565,7 @@ Controller.prototype = {
 		this.view.setDisabled("continueButton", true);
 		if (sReason === "break" || sReason === "stop") {
 			oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
-			this.sLabelBeforeStop = "";
-			this.iPrioBeforeStop = 0;
+			this.fnSetStopLabelPrio("", 0);
 		}
 		if (this.iTimeoutHandle === null) {
 			this.fnRunStart1();
@@ -529,6 +575,7 @@ Controller.prototype = {
 	fnReset: function () {
 		var oVm = this.oVm;
 
+		this.fnSetStopLabelPrio("", 0);
 		this.oCanvas.options.fnOnKeyDown = null;
 		oVm.vmStop("reset", 99);
 		if (this.iTimeoutHandle === null) {
@@ -560,16 +607,19 @@ Controller.prototype = {
 		this.view.setAreaValue("inp2Text", "");
 	},
 
-	fnSoundOnOff: function () {
+	fnSetSoundActive: function () {
 		var oSound = this.oSound,
-			soundButton = document.getElementById("soundButton");
+			soundButton = document.getElementById("soundButton"),
+			bActive = this.model.getProperty("sound"),
+			sText = "";
 
-		if (oSound.isSoundOn()) {
-			oSound.soundOff();
-			soundButton.innerText = "Sound on";
-		} else {
+		if (bActive) {
 			oSound.soundOn();
-			soundButton.innerText = "Sound off";
+			sText = (oSound.isActivatedByUser()) ? "Sound is on" : "Sound on (waiting)";
+		} else {
+			oSound.soundOff();
+			sText = "Sound is off";
 		}
+		soundButton.innerText = sText;
 	}
 };

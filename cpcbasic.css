@@ -60,3 +60,8 @@ body {
 .invalid {
 	border-color: red;
 }
+
+.selectWrap select { 
+	max-width: calc(22em - 6px);
+	text-overflow: ellipsis;
+}
