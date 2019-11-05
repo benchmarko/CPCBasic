@@ -141,12 +141,127 @@ Sound.prototype = {
 		noise.stop(fTime + fDuration);
 	},
 
+	applyVolEnv: function (aVolData, oGain, fTime, iVolume, iDuration, iVolEnvRepeat) {
+		var iMaxVolume = 15,
+			i100ms2sec = 100, // time duration unit: 1/100 sec=10 ms, convert to sec
+			iLoop, iPart, iTime, oGroup, fVolume, iVolSteps, iVolDiff, iVolTime, i, iRegister, iPeriod;
+
+		iTime = 0;
+		for (iLoop = 0; iLoop < iVolEnvRepeat; iLoop += 1) {
+			for (iPart = 0; iPart < aVolData.length; iPart += 1) {
+				oGroup = aVolData[iPart];
+				if (oGroup.steps !== undefined) {
+					iVolSteps = oGroup.steps;
+					iVolDiff = oGroup.diff;
+					iVolTime = oGroup.time;
+					if (!iVolSteps) { // steps=0
+						iVolSteps = 1;
+						iVolume = 0; // we will set iVolDiff as absolute volume
+					}
+					for (i = 0; i < iVolSteps; i += 1) {
+						iVolume = (iVolume + iVolDiff) % (iMaxVolume + 1);
+						fVolume = iVolume / iMaxVolume;
+						oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
+						iTime += iVolTime;
+						if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
+							iLoop = iVolEnvRepeat;
+							iPart = aVolData.length;
+							break;
+						}
+					}
+				} else { // register
+					iRegister = oGroup.register;
+					iPeriod = oGroup.period;
+					//TTT TODO
+					if (iRegister === 0) {
+						iVolume = 15;
+						fVolume = iVolume / iMaxVolume;
+						oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
+						iVolTime = iPeriod; //TTT ??
+						iTime += iVolTime;
+						fVolume = 0;
+						oGain.linearRampToValueAtTime(fVolume, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
+					}
+				}
+			}
+			/*
+			for (iPart = 0; iPart < aVolData.length; iPart += 3) {
+				// number of steps, size(volume) of step, time per step
+				iVolSteps = aVolData[iPart];
+				iVolDiff = aVolData[iPart + 1];
+				iVolTime = aVolData[iPart + 2];
+				if (!iVolSteps) { // steps=0
+					iVolSteps = 1;
+					iVolume = 0; // we will set iVolDiff as absolute volume
+				}
+				for (i = 0; i < iVolSteps; i += 1) {
+					iVolume = (iVolume + iVolDiff) % (iMaxVolume + 1);
+					fVolume = iVolume / iMaxVolume;
+					oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
+					iTime += iVolTime;
+					if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
+						iLoop = iVolEnvRepeat;
+						iPart = aVolData.length;
+						break;
+					}
+				}
+			}
+			*/
+		}
+		if (iDuration === 0) {
+			iDuration = iTime;
+		}
+		return iDuration;
+	},
+
+	applyToneEnv: function (aToneData, oFrequency, fTime, iPeriod, iDuration) { //TTT TODO
+		var iToneEnvRepeat = 1,
+			i100ms2sec = 100, // time duration unit: 1/100 sec=10 ms, convert to sec
+			iLoop, iPart, iTime, oGroup, iToneSteps, iToneDiff, iToneTime, i, fFrequency;
+
+		iTime = 0;
+		for (iLoop = 0; iLoop < iToneEnvRepeat; iLoop += 1) {
+			for (iPart = 0; iPart < aToneData.length; iPart += 1) {
+				oGroup = aToneData[iPart];
+				if (oGroup.steps !== undefined) {
+					iToneSteps = oGroup.steps;
+					iToneDiff = oGroup.diff;
+					iToneTime = oGroup.time;
+					if (!iToneSteps) { // steps=0
+						iToneSteps = 1;
+					}
+					for (i = 0; i < iToneSteps; i += 1) {
+						fFrequency = (iPeriod >= 3) ? 62500 / iPeriod : 0;
+						oFrequency.setValueAtTime(fFrequency, fTime + iTime / i100ms2sec);
+						iPeriod += iToneDiff;
+						iTime += iToneTime;
+						if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
+							iLoop = iToneEnvRepeat;
+							iPart = aToneData.length;
+							break;
+						}
+					}
+				} else { // absolute period
+					iPeriod = oGroup.period;
+					iToneTime = oGroup.time;
+					fFrequency = (iPeriod >= 3) ? 62500 / iPeriod : 0;
+					oFrequency.setValueAtTime(fFrequency, fTime + iTime / i100ms2sec);
+					//TTT TODO
+					iTime += iToneTime;
+					//oFrequency.linearRampToValueAtTime(fXXX, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
+				}
+			}
+		}
+	},
+
 	scheduleNote: function (iOscillator, fTime, oSoundData) {
 		var iMaxVolume = 15,
 			i100ms2sec = 100, // time duration unit: 1/100 sec=10 ms, convert to sec
 			ctx = this.context,
+			iVolEnv = oSoundData.iVolEnv,
+			iToneEnv = oSoundData.iToneEnv,
 			iVolEnvRepeat = 1,
-			iLoop, oOscillator, oGain, iDuration, aVolData, iPart, iTime, iVolume, iVolSteps, iVolDiff, iVolTime, i, fDuration, fVolume;
+			oOscillator, oGain, iDuration, iVolume, fDuration, fVolume;
 
 		if (Utils.debug > 1) {
 			this.debugLog("scheduleNote: " + iOscillator + " " + fTime);
@@ -174,35 +289,12 @@ Sound.prototype = {
 			iDuration = 0;
 		}
 
-		if (oSoundData.iVolEnv && this.aVolEnv[oSoundData.iVolEnv]) { // some volume envelope?
-			aVolData = this.aVolEnv[oSoundData.iVolEnv];
-			iTime = 0;
-			for (iLoop = 0; iLoop < iVolEnvRepeat; iLoop += 1) {
-				for (iPart = 0; iPart < aVolData.length; iPart += 3) {
-					// number of steps, size(volume) of step, time per step
-					iVolSteps = aVolData[iPart];
-					iVolDiff = aVolData[iPart + 1];
-					iVolTime = aVolData[iPart + 2];
-					if (!iVolSteps) { // steps=0
-						iVolSteps = 1;
-						iVolume = 0; // we will set iVolDiff as absolute volume
-					}
-					for (i = 0; i < iVolSteps; i += 1) {
-						iVolume = (iVolume + iVolDiff) % (iMaxVolume + 1);
-						fVolume = iVolume / iMaxVolume;
-						oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
-						iTime += iVolTime;
-						if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
-							iLoop = iVolEnvRepeat;
-							iPart = aVolData.length;
-							break;
-						}
-					}
-				}
-			}
-			if (iDuration === 0) {
-				iDuration = iTime;
-			}
+		if (iVolEnv && this.aVolEnv[iVolEnv]) { // some volume envelope?
+			iDuration = this.applyVolEnv(this.aVolEnv[iVolEnv], oGain, fTime, iVolume, iDuration, iVolEnvRepeat);
+		}
+
+		if (iToneEnv && this.aToneEnv[iToneEnv]) { // some tone envelope?
+			this.applyToneEnv(this.aToneEnv[iToneEnv], oOscillator.frequency, fTime, oSoundData.iPeriod, iDuration);
 		}
 
 		fDuration = iDuration / i100ms2sec;

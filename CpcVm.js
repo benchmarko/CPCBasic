@@ -748,11 +748,14 @@ CpcVm.prototype = {
 			iCount;
 
 		iStream = this.vmRound(iStream || 0);
+		this.vmMoveCursor2AllowedPos(iStream);
 		iCount = iZone - (oWin.iPos % iZone);
-		if (oWin.iPos + iCount > oWin.iRight) {
-			oWin.iPos += iCount;
-			this.vmMoveCursor2AllowedPos(iStream);
-			iCount = 0;
+		if (oWin.iPos) { // <>0: not begin of line
+			if (oWin.iPos + iCount + iZone > (oWin.iRight + 1 - oWin.iLeft)) {
+				oWin.iPos += iCount + iZone;
+				this.vmMoveCursor2AllowedPos(iStream);
+				iCount = 0;
+			}
 		}
 		return " ".repeat(iCount);
 	},
@@ -848,7 +851,7 @@ CpcVm.prototype = {
 	draw: function (x, y, iGPen, iGColMode) {
 		x = this.vmRound(x);
 		y = this.vmRound(y);
-		if (iGPen !== undefined) {
+		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
@@ -860,7 +863,7 @@ CpcVm.prototype = {
 	drawr: function (x, y, iGPen, iGColMode) {
 		x = this.vmRound(x);
 		y = this.vmRound(y);
-		if (iGPen !== undefined) {
+		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
@@ -885,12 +888,26 @@ CpcVm.prototype = {
 
 	ent: function (iToneEnv) { // varargs
 		var aArgs = [],
-			i;
+			i, oArg;
 
 		iToneEnv = this.vmRound(iToneEnv);
 		if (iToneEnv > -16 && iToneEnv < 16) {
-			for (i = 1; i < arguments.length; i += 1) { // starting with 1
-				aArgs.push(this.vmRound(arguments[i]));
+			for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
+				/* eslint-disable no-bitwise */
+				if (arguments[i] !== null) {
+					oArg = {
+						steps: this.vmRound(arguments[i]), // number of steps: 0..239
+						diff: this.vmRound(arguments[i + 1]), // size (period change) of steps: -128..+127
+						time: this.vmRound(arguments[i + 2]) & 0xff // time per step: 0..255 (0=256)
+					};
+				} else { // special handling
+					oArg = {
+						period: this.vmRound(arguments[i + 1]), // absolute period
+						time: this.vmRound(arguments[i + 2]) & 0xff // time: 0..255 (0=256)
+					};
+				}
+				/* eslint-enable no-bitwise */
+				aArgs.push(oArg);
 			}
 			this.oSound.setToneEnv(iToneEnv, aArgs);
 		} else {
@@ -900,22 +917,34 @@ CpcVm.prototype = {
 
 	env: function (iVolEnv) { // varargs
 		var aArgs = [],
-			i;
+			i, oArg;
 
 		iVolEnv = this.vmRound(iVolEnv);
 		if (iVolEnv > 0 && iVolEnv < 16) {
+			/*
 			for (i = 1; i < arguments.length; i += 1) { // starting with 1
 				aArgs.push(this.vmRound(arguments[i]));
 			}
-			for (i = 0; i < aArgs.length; i += 3) { // we assume 3 parameters per section
+			*/
+			for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
 				/* eslint-disable no-bitwise */
-				aArgs[i] &= 0x7f; // number of steps: 0..127
-				aArgs[i + 1] &= 0x0f; // size (volume) of steps: 0..15
-				aArgs[i + 2] &= 0xff; // time per step: 0..255 (0=256)
-				if (!aArgs[i + 2]) {
-					aArgs[i + 2] = 256;
+				if (arguments[i] !== null) {
+					oArg = {
+						steps: this.vmRound(arguments[i]) & 0x7f, // number of steps: 0..127
+						diff: this.vmRound(arguments[i + 1]) & 0x0f, // size (volume) of steps: 0..15
+						time: this.vmRound(arguments[i + 2]) & 0xff // time per step: 0..255 (0=256)
+					};
+					if (!oArg.time) { // (0=256)
+						oArg.time = 256;
+					}
+				} else { // special handling for register parameters
+					oArg = {
+						register: this.vmRound(arguments[i + 1]), // register: 0..15
+						period: this.vmRound(arguments[i + 2])
+					};
 				}
 				/* eslint-enable no-bitwise */
+				aArgs.push(oArg);
 			}
 			this.oSound.setVolEnv(iVolEnv, aArgs);
 		} else {
@@ -1280,7 +1309,7 @@ CpcVm.prototype = {
 	move: function (x, y, iGPen, iGColMode) {
 		x = this.vmRound(x);
 		y = this.vmRound(y);
-		if (iGPen !== undefined) {
+		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
@@ -1292,7 +1321,7 @@ CpcVm.prototype = {
 	mover: function (x, y, iGPen, iGColMode) {
 		x = this.vmRound(x);
 		y = this.vmRound(y);
-		if (iGPen !== undefined) {
+		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
@@ -1424,13 +1453,20 @@ CpcVm.prototype = {
 		return iByte;
 	},
 
-	pen: function (iStream, iPen) {
+	pen: function (iStream, iPen, iTransparent) {
 		var oWin;
 
-		iStream = this.vmRound(iStream || 0);
-		oWin = this.aWindow[iStream];
-		iPen = this.vmRound(iPen);
-		oWin.iPen = iPen;
+		if (iPen !== null) {
+			iStream = this.vmRound(iStream || 0);
+			oWin = this.aWindow[iStream];
+			iPen = this.vmRound(iPen);
+			oWin.iPen = iPen;
+		}
+
+		if (iTransparent !== null && iTransparent !== undefined) {
+			iTransparent = this.vmRound(iTransparent);
+			this.oCanvas.setTranspartentMode(iTransparent);
+		}
 	},
 
 	pi: function () {
@@ -1440,7 +1476,7 @@ CpcVm.prototype = {
 	plot: function (x, y, iGPen, iGColMode) { // 2, up to 4 parameters
 		x = this.vmRound(x);
 		y = this.vmRound(y);
-		if (iGPen !== undefined) {
+		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
@@ -1452,7 +1488,7 @@ CpcVm.prototype = {
 	plotr: function (x, y, iGPen, iGColMode) {
 		x = this.vmRound(x);
 		y = this.vmRound(y);
-		if (iGPen !== undefined) {
+		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
@@ -1633,7 +1669,8 @@ CpcVm.prototype = {
 			oWin.bTextEnabled = false;
 			break;
 		case 0x16: // SYN
-			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0)); //TTT what about streams?
+			// parameter: only bit 0 relevant (ROM: &14E3)
+			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0) & 0x01); // eslint-disable-line no-bitwise
 			break;
 		case 0x17: // ETB
 			this.oCanvas.setGColMode(sPara.charCodeAt(0));
@@ -1998,7 +2035,7 @@ CpcVm.prototype = {
 		if (iDuration === undefined) {
 			iDuration = 20;
 		}
-		if (iVolume === undefined) {
+		if (iVolume === undefined || iVolume === null) {
 			iVolume = 12;
 		}
 

@@ -31,7 +31,7 @@ function BasicParser(options) {
 }
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, a=any; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
 	abs: "f n",
 	after: "c n n?",
@@ -68,8 +68,8 @@ BasicParser.mKeywords = {
 	derr: "f",
 	di: "c",
 	dim: "c v *",
-	draw: "c n n n? n?",
-	drawr: "c n n n? n?",
+	draw: "c n n n0? n?",
+	drawr: "c n n n0? n?",
 	edit: "c n",
 	ei: "c",
 	"else": "x",
@@ -101,7 +101,7 @@ BasicParser.mKeywords = {
 	inkey: "f n",
 	inkey$: "f",
 	inp: "f n",
-	input: "c n",
+	input: "c #0? *", // not checked
 	instr: "f a a a?", // cannot check "f n? s s"
 	"int": "f n",
 	joy: "f n",
@@ -109,10 +109,10 @@ BasicParser.mKeywords = {
 	left$: "f s n",
 	len: "f s",
 	let: "c",
-	line: "c", // line input
+	line: "c", // line input (not checked)
 	list: "c",
 	load: "c s n?",
-	locate: "c n n n?", // cannot check "c n? n n"
+	locate: "c #0? n n",
 	log: "f n",
 	log10: "f n",
 	lower$: "f s",
@@ -124,8 +124,8 @@ BasicParser.mKeywords = {
 	min: "f n *",
 	mod: "o",
 	mode: "c n",
-	move: "c n n n? n?",
-	mover: "c n n n? n?",
+	move: "c n n n0? n?",
+	mover: "c n n n0? n?",
 	"new": "c",
 	next: "c *", // v*
 	not: "o",
@@ -135,15 +135,15 @@ BasicParser.mKeywords = {
 	or: "o",
 	origin: "c n n n? n? n? n?",
 	out: "c n n",
-	paper: "c n n?", // cannot check "c n? n"
+	paper: "c #0? n",
 	peek: "f n",
-	pen: "c n n? n?", // cannot check "c n? n n?"
+	pen: "c #0? n0 n?",
 	pi: "f",
-	plot: "c n n n? n?",
-	plotr: "c n n n? n?",
+	plot: "c n n n0? n?",
+	plotr: "c n n n0? n?",
 	poke: "c n n",
 	pos: "f n",
-	print: "c n? *", // print also with spc(), tab(), using
+	print: "c #0? *", // print also with spc(), tab(), using
 	rad: "c",
 	randomize: "c n?",
 	read: "c v *",
@@ -161,7 +161,7 @@ BasicParser.mKeywords = {
 	save: "c s a n? n? n?",
 	sgn: "f n",
 	sin: "f n",
-	sound: "c n n n? n? n? n? n?",
+	sound: "c n n n? n0? n0? n0? n?",
 	space$: "f n",
 	spc: "x", // print spc
 	speed: "c", // speed ink, speed key, speed write
@@ -193,8 +193,8 @@ BasicParser.mKeywords = {
 	wend: "c",
 	"while": "c",
 	width: "c n",
-	window: "c n n n n n?", // window, window swap // cannot check "c n? n n n n"
-	write: "c n?",
+	window: "c #0? n n n n", // window, window swap
+	write: "c #0? *", // not checked
 	xor: "o",
 	xpos: "f",
 	ypos: "f",
@@ -661,6 +661,25 @@ BasicParser.prototype = {
 				return x;
 			},
 
+			fnGetOptionalStream = function () {
+				var oValue;
+
+				if (oToken.type === "#") { // stream?
+					advance("#");
+					oValue = expression(0);
+					if (oToken.type === ",") {
+						advance(",");
+					}
+				} else {
+					oValue = {
+						type: "number",
+						value: 0,
+						bInserted: true // inserted value
+					};
+				}
+				return oValue;
+			},
+
 			fnCheckRemainingTypes = function (aTypes) {
 				var sType;
 
@@ -674,7 +693,8 @@ BasicParser.prototype = {
 				}
 			},
 
-			fnGetArgs = function (aTypes) {
+			/*
+			fnGetArgs = function (aTypes, fnSeparatorAndArg) { // optional fnSeparatorAndArg
 				var aArgs = [],
 					sType = "ok",
 					oExpression;
@@ -695,10 +715,71 @@ BasicParser.prototype = {
 								throw new BasicParser.ErrorObject("Expected end of arguments after", aTokens[iIndex - 2].value, aTokens[iIndex - 2].pos);
 							}
 						}
-						advance(",");
-						oExpression = expression(0);
+						if (fnSeparatorAndArg) {
+							oExpression = fnSeparatorAndArg(sType);
+						} else {
+							advance(",");
+							oExpression = expression(0);
+						}
 						aArgs.push(oExpression);
 					}
+				}
+				if (aTypes && aTypes.length) { // some more parameters expected?
+					fnCheckRemainingTypes(aTypes);
+				}
+				return aArgs;
+			},
+			*/
+
+			fnGetArgs = function (aTypes) {
+				var aArgs = [],
+					sSeparator = ",",
+					bNeedMore = false,
+					sType = "ok",
+					oExpression;
+
+				while (bNeedMore || (sType && oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else")) {
+					if (aTypes && sType !== "*") { // "*"= any number of parameters
+						sType = aTypes.shift();
+						if (!sType) {
+							throw new BasicParser.ErrorObject("Expected end of arguments", aTokens[iIndex - 2].type, aTokens[iIndex - 2].pos);
+						}
+					}
+					if (sType === "#0?") { // optional stream?
+						//oExpression = fnGetOptionalStream(); //TTT
+						if (oToken.type === "#") { // stream?
+							advance("#");
+							oExpression = expression(0);
+							if (oToken.type === ",") {
+								advance(",");
+								bNeedMore = true;
+							}
+						} else { // insert default stream number 0
+							oExpression = {
+								type: "number",
+								value: 0
+								//bInserted: true // inserted value
+							};
+						}
+					} else {
+						if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
+							oExpression = {
+								type: "null",
+								value: null
+								//bInserted: true // inserted value
+							};
+						} else {
+							oExpression = expression(0);
+						}
+						if (oToken.type === sSeparator) {
+							advance(sSeparator);
+							bNeedMore = true;
+						} else {
+							bNeedMore = false;
+							sType = ""; // stop
+						}
+					}
+					aArgs.push(oExpression);
 				}
 				if (aTypes && aTypes.length) { // some more parameters expected?
 					fnCheckRemainingTypes(aTypes);
@@ -760,24 +841,6 @@ BasicParser.prototype = {
 				}
 				advance(sClose);
 				return aArgs;
-			},
-
-			fnGetOptionalStream = function () {
-				var oValue;
-
-				if (oToken.type === "#") { // stream?
-					advance("#");
-					oValue = expression(0);
-					if (oToken.type === ",") {
-						advance(",");
-					}
-				} else {
-					oValue = {
-						type: "number",
-						value: 0
-					};
-				}
-				return oValue;
 			},
 
 			fnCreateCmdCall = function (sName) {
@@ -1041,6 +1104,66 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("ent", function () {
+			var oValue = {
+					type: "fcall",
+					name: "ent",
+					args: []
+				},
+				iCount = 0,
+				oExpression;
+
+			oValue.args.push(expression(0)); // should be number or variable
+
+			while (oToken.type === ",") {
+				advance(",");
+				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
+					advance("=");
+					oExpression = { // insert null parameter
+						type: "null",
+						value: null
+					};
+					oValue.args.push(oExpression);
+					iCount += 1;
+				}
+				oExpression = expression(0);
+				oValue.args.push(oExpression);
+				iCount += 1;
+			}
+
+			return oValue;
+		});
+
+		stmt("env", function () {
+			var oValue = {
+					type: "fcall",
+					name: "env",
+					args: []
+				},
+				iCount = 0,
+				oExpression;
+
+			oValue.args.push(expression(0)); // should be number or variable
+
+			while (oToken.type === ",") {
+				advance(",");
+				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
+					advance("=");
+					oExpression = { // insert null parameter
+						type: "null",
+						value: null
+					};
+					oValue.args.push(oExpression);
+					iCount += 1;
+				}
+				oExpression = expression(0);
+				oValue.args.push(oExpression);
+				iCount += 1;
+			}
+
+			return oValue;
+		});
+
 		stmt("every", function () {
 			var oValue = fnCreateCmdCall("everyGosub"); // interval and optional timer
 
@@ -1058,7 +1181,8 @@ BasicParser.prototype = {
 		stmt("for", function () {
 			var oValue = {
 					type: "fcall",
-					name: "for"
+					name: "for",
+					args: null
 				},
 				oName;
 
@@ -1105,7 +1229,7 @@ BasicParser.prototype = {
 			var oValue = {
 				type: "fcall",
 				name: "if",
-				args: [] //TTT
+				args: []
 			};
 
 			oValue.left = expression(0);
@@ -1297,6 +1421,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
 		stmt("locate", function () {
 			var oStream = fnGetOptionalStream(),
 				oValue = fnCreateCmdCall("locate");
@@ -1304,6 +1429,7 @@ BasicParser.prototype = {
 			oValue.args.unshift(oStream);
 			return oValue;
 		});
+		*/
 
 		stmt("next", function () {
 			var oValue = {
@@ -1383,6 +1509,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
 		stmt("paper", function () {
 			var oStream = fnGetOptionalStream(),
 				oValue = fnCreateCmdCall("paper");
@@ -1393,11 +1520,13 @@ BasicParser.prototype = {
 
 		stmt("pen", function () {
 			var oStream = fnGetOptionalStream(),
+				//oValue = fnCreateCmdCall("pen", oStream.bInserted ? 1 : 0);
 				oValue = fnCreateCmdCall("pen");
 
 			oValue.args.unshift(oStream);
 			return oValue;
 		});
+		*/
 
 		stmt("print", function () {
 			var oValue = {
@@ -1492,6 +1621,31 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
+		stmt("sound", function () {
+			var sName = "sound",
+				iParaCount = 0,
+				fnGetSpecialArg = function (sType) {
+					var oExpression;
+
+					if (oToken.type !== ",") {
+						oExpression = expression(0);
+					} else { // empty arg? => insert number 0
+						oExpression = {
+							type: "number",
+							value: 0
+						};
+					}
+					iParaCount += 1;
+					return oExpression;
+				},
+				oValue;
+
+			oValue = fnCreateCmdCall(sName, fnGetSpecialArg);
+			return oValue;
+		});
+		*/
+
 		stmt("speed", function () {
 			var sName = "";
 
@@ -1525,15 +1679,13 @@ BasicParser.prototype = {
 		});
 
 		stmt("window", function () {
-			var oValue, oStream;
+			var oValue;
 
 			if (oToken.type === "swap") {
 				advance("swap");
 				oValue = fnCreateCmdCall("windowSwap");
 			} else {
-				oStream = fnGetOptionalStream();
 				oValue = fnCreateCmdCall("window");
-				oValue.args.unshift(oStream);
 			}
 			return oValue;
 		});
@@ -1968,6 +2120,9 @@ BasicParser.prototype = {
 					break;
 				case "identifier":
 					value = fnAdaptVariableName(node.value); // here we use node.value
+					break;
+				case "null": // means: no parameter specified?
+					value = "null";
 					break;
 				case "array":
 					aNodeArgs = fnParseArgs(node.args);
