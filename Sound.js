@@ -184,29 +184,6 @@ Sound.prototype = {
 					}
 				}
 			}
-			/*
-			for (iPart = 0; iPart < aVolData.length; iPart += 3) {
-				// number of steps, size(volume) of step, time per step
-				iVolSteps = aVolData[iPart];
-				iVolDiff = aVolData[iPart + 1];
-				iVolTime = aVolData[iPart + 2];
-				if (!iVolSteps) { // steps=0
-					iVolSteps = 1;
-					iVolume = 0; // we will set iVolDiff as absolute volume
-				}
-				for (i = 0; i < iVolSteps; i += 1) {
-					iVolume = (iVolume + iVolDiff) % (iMaxVolume + 1);
-					fVolume = iVolume / iMaxVolume;
-					oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
-					iTime += iVolTime;
-					if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
-						iLoop = iVolEnvRepeat;
-						iPart = aVolData.length;
-						break;
-					}
-				}
-			}
-			*/
 		}
 		if (iDuration === 0) {
 			iDuration = iTime;
@@ -217,7 +194,12 @@ Sound.prototype = {
 	applyToneEnv: function (aToneData, oFrequency, fTime, iPeriod, iDuration) { //TTT TODO
 		var iToneEnvRepeat = 1,
 			i100ms2sec = 100, // time duration unit: 1/100 sec=10 ms, convert to sec
-			iLoop, iPart, iTime, oGroup, iToneSteps, iToneDiff, iToneTime, i, fFrequency;
+			bRepeat, iLoop, iPart, iTime, oGroup, iToneSteps, iToneDiff, iToneTime, i, fFrequency;
+
+		bRepeat = aToneData[0];
+		if (bRepeat) {
+			iToneEnvRepeat = 5; // we use at most 5 //TTT
+		}
 
 		iTime = 0;
 		for (iLoop = 0; iLoop < iToneEnvRepeat; iLoop += 1) {
@@ -354,11 +336,11 @@ Sound.prototype = {
 		}
 	},
 
-	setVolEnv(iVolEnv, aVolEnvData) {
+	setVolEnv: function (iVolEnv, aVolEnvData) {
 		this.aVolEnv[iVolEnv] = aVolEnvData;
 	},
 
-	setToneEnv(iToneEnv, aToneEnvData) {
+	setToneEnv: function (iToneEnv, aToneEnvData) {
 		this.aToneEnv[iToneEnv] = aToneEnvData;
 	},
 
@@ -387,11 +369,6 @@ Sound.prototype = {
 			return;
 		}
 		fCurrentTime = this.context.currentTime;
-		/* does not work for some reason...
-		if (fCurrentTime < (this.fNextEarliestNoteTime - this.fScheduleAheadTime)) {
-			return;
-		}
-		*/
 
 		aQueues = this.aQueues;
 		for (i = 0; i < 3; i += 1) {
@@ -400,18 +377,10 @@ Sound.prototype = {
 				if (!oQueue.iRendevousMask) { // no rendevous needed, schedule now
 					oSoundData = oQueue.aSoundData.shift();
 					if (oQueue.fNextNoteTime < fCurrentTime) {
-						//Utils.console.log("TTT2 scheduler: " + oQueue.fNextNoteTime + " < " + this.context.currentTime);
 						oQueue.fNextNoteTime = fCurrentTime;
 					}
 					oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
 					this.updateQueueStatus(i, oQueue); // check if next note on hold
-					/*
-					if (this.fNextEarliestNoteTime < fCurrentTime) {
-						this.fNextEarliestNoteTime = oQueue.fNextNoteTime;
-					} else {
-						this.fNextEarliestNoteTime = Math.min(this.fNextEarliestNoteTime, oQueue.fNextNoteTime);
-					}
-					*/
 				} else { // need rendevous
 					iCanPlayMask |= (1 << i); // eslint-disable-line no-bitwise
 					break;
@@ -429,18 +398,10 @@ Sound.prototype = {
 			if ((iCanPlayMask >> i) & 0x01 && ((oQueue.iRendevousMask & iCanPlayMask) === oQueue.iRendevousMask)) { // eslint-disable-line no-bitwise
 				oSoundData = oQueue.aSoundData.shift();
 				if (oQueue.fNextNoteTime < fCurrentTime) {
-					//Utils.console.log("TTT3: scheduler: " + oQueue.fNextNoteTime + " < " + this.context.currentTime);
 					oQueue.fNextNoteTime = fCurrentTime;
 				}
 				oQueue.fNextNoteTime += this.scheduleNote(i, oQueue.fNextNoteTime, oSoundData);
 				this.updateQueueStatus(i, oQueue); // check if next note on hold
-				/*
-				if (this.fNextEarliestNoteTime < fCurrentTime) {
-					this.fNextEarliestNoteTime = oQueue.fNextNoteTime;
-				} else {
-					this.fNextEarliestNoteTime = Math.min(this.fNextEarliestNoteTime, oQueue.fNextNoteTime);
-				}
-				*/
 			}
 		}
 	},

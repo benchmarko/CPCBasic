@@ -49,6 +49,36 @@ CpcVm.prototype = {
 		}
 	],
 
+	mUtf8ToCpc: { // needed for UTF-8 character data in openin / input#9
+		8364: 128,
+		8218: 130,
+		402: 131,
+		8222: 132,
+		8230: 133,
+		8224: 134,
+		8225: 135,
+		710: 136,
+		8240: 137,
+		352: 138,
+		8249: 139,
+		338: 140,
+		381: 142,
+		8216: 145,
+		8217: 146,
+		8220: 147,
+		8221: 148,
+		8226: 149,
+		8211: 150,
+		8212: 151,
+		732: 152,
+		8482: 153,
+		353: 154,
+		8250: 155,
+		339: 156,
+		382: 158,
+		376: 159
+	},
+
 	vmInit: function (options) {
 		var i;
 
@@ -62,7 +92,8 @@ CpcVm.prototype = {
 
 		this.oStop = {
 			sReason: "", // stop reason
-			iPriority: 0 // stop priority (higher number means higher priority which can overwrite lower priority)
+			iPriority: 0, // stop priority (higher number means higher priority which can overwrite lower priority)
+			oPara: null // stop parameters (currently not used)
 		};
 		// special stop reasons and priorities:
 		// "timer": 20 (timer expired)
@@ -77,6 +108,8 @@ CpcVm.prototype = {
 		// "reset": 99 (reset canvas)
 
 		this.oInput = {}; // input handling
+
+		this.oInFile = {}; // file handline
 
 		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "frame"
 
@@ -114,8 +147,10 @@ CpcVm.prototype = {
 		this.iStopCount = 0;
 
 		this.iLine = 0; // current line number (or label)
+		this.iStartLine = 0; // line to start
 
 		this.vmResetInputHandling();
+		this.vmResetInFileHandling();
 
 		this.sOut = ""; // console output
 
@@ -135,11 +170,6 @@ CpcVm.prototype = {
 
 		this.vmResetTimers();
 		this.bTimersDisabled = false; // flag if timers are disabled
-
-		/*
-		this.iStatFrameCount = 0; // debugging
-		this.iStatFrameCountTs = 0; // debugging
-		*/
 
 		this.iZone = 13; // print tab zone value
 
@@ -211,6 +241,21 @@ CpcVm.prototype = {
 		Object.assign(this.oInput, oData);
 	},
 
+	vmResetInFileHandling: function () {
+		var oData = {
+			bOpen: false, // file open flag
+			sCommand: "", // the command which started the file open (chain, chainMerge, load, merge, openin, run)
+			sState: "", // state: loading, loaded
+			sName: "", // file name
+			iAddress: null,
+			iLine: null,
+			fnFileCallback: null, // callback for stop reason "loadFile"
+			aInput: [] // file contents for input#9
+		};
+
+		Object.assign(this.oInFile, oData);
+	},
+
 	vmResetData: function () {
 		this.aData.length = 0; // array for BASIC data lines (continuous)
 		this.iData = 0; // current index
@@ -218,12 +263,6 @@ CpcVm.prototype = {
 			0: 0 // for line 0: index 0
 		};
 	},
-
-	/*
-	vmResetStack: function () {
-		this.aGosubStack.length = 0;
-	},
-	*/
 
 	vmResetInks: function () {
 		this.oCanvas.setDefaultInks();
@@ -239,8 +278,12 @@ CpcVm.prototype = {
 		}
 	},
 
-	vmSetVariables(oVariables) {
+	vmSetVariables: function (oVariables) {
 		this.v = oVariables; // collection of BASIC variables
+	},
+
+	vmSetStartLine: function (iLine) {
+		this.iStartLine = iLine;
 	},
 
 	vmRound: function (n) {
@@ -390,33 +433,11 @@ CpcVm.prototype = {
 		return bTimerReloaded;
 	},
 
-	/*
-	vmStatStart: function () {
-		var iTime = Date.now();
-
-		this.iStatFrameCount = 0;
-		this.iStatFrameCountTs = iTime;
-	},
-
-	vmStatStop: function () {
-		var iTime = Date.now(),
-			iDelta = iTime - this.iStatFrameCountTs,
-			iFps = this.iStatFrameCount * 1000 / iDelta;
-
-		return iFps;
-	},
-	*/
-
 	vmCheckNextFrame: function (iTime) {
 		var	iDelta;
 
 		if (iTime >= this.iNextFrameTime) { // next time of frame fly
 			iDelta = iTime - this.iNextFrameTime;
-			/*
-			if (Utils.debug) {
-				this.iStatFrameCount += 1;
-			}
-			*/
 
 			if (iDelta > this.iFrameTimeMs) {
 				this.iNextFrameTime += this.iFrameTimeMs * Math.ceil(iDelta / this.iFrameTimeMs);
@@ -510,6 +531,7 @@ CpcVm.prototype = {
 		}
 	},
 
+	/*
 	vmGetStopReason: function () {
 		return this.oStop.sReason;
 	},
@@ -517,12 +539,14 @@ CpcVm.prototype = {
 	vmGetStopPriority: function () {
 		return this.oStop.iPriority;
 	},
+	*/
 
-	vmStop: function (sReason, iPriority, bForce) {
+	vmStop: function (sReason, iPriority, bForce, oPara) { // optional bForce, oPara
 		iPriority = iPriority || 0;
 		if (bForce || iPriority >= this.oStop.iPriority) {
 			this.oStop.iPriority = iPriority;
 			this.oStop.sReason = sReason;
+			this.oStop.oPara = oPara;
 		}
 	},
 
@@ -569,12 +593,20 @@ CpcVm.prototype = {
 		return sStr;
 	},
 
+	vmGetStopObject: function () {
+		return this.oStop;
+	},
+
 	vmSetInputParas: function (sInput) {
 		this.oInput.sInput = sInput;
 	},
 
 	vmGetInputObject: function () {
 		return this.oInput;
+	},
+
+	vmGetFileObject: function () {
+		return this.oInFile;
 	},
 
 	vmGetSoundData: function () {
@@ -612,7 +644,14 @@ CpcVm.prototype = {
 	// and
 
 	asc: function (s) {
-		return String(s).charCodeAt(0);
+		var iCode = String(s).charCodeAt(0);
+
+		if (iCode > 255) { // map some UTF-8 character codes
+			if (this.mUtf8ToCpc[iCode]) {
+				iCode = this.mUtf8ToCpc[iCode];
+			}
+		}
+		return iCode;
 	},
 
 	atn: function (n) {
@@ -673,8 +712,28 @@ CpcVm.prototype = {
 		this.vmNotImplemented("cat");
 	},
 
-	chain: function () {
-		this.vmNotImplemented("chain, chain merge");
+	chain: function (sName, iLine) { // optional iLine
+		var oInFile = this.oInFile;
+
+		this.closein();
+		oInFile.bOpen = true;
+		oInFile.sCommand = "chain";
+		oInFile.sName = sName;
+		oInFile.iLine = iLine;
+		this.vmStop("loadFile", 90);
+		//this.vmNotImplemented("chain");
+	},
+
+	chainMerge: function (sName, iLine) { // optional iLine; TODO more parameters: delete numner range
+		var oInFile = this.oInFile;
+
+		this.closein();
+		oInFile.bOpen = true;
+		oInFile.sCommand = "chainMerge";
+		oInFile.sName = sName;
+		oInFile.iLine = iLine;
+		this.vmStop("loadFile", 90);
+		//this.vmNotImplemented("chain merge");
 	},
 
 	chr$: function (n) {
@@ -687,18 +746,8 @@ CpcVm.prototype = {
 	},
 
 	clear: function () {
-		//var i;
-
 		this.vmResetTimers();
-		/*
-		for (i = 0; i < this.iTimerCount; i += 1) {
-			this.remain(i); // stop timer, if running
-		}
-		for (i = 0; i < this.iSqTimerCount; i += 1) {
-			// stop sq timer, if running
-			this.sq(1 << i); // eslint-disable-line no-bitwise
-		}
-		*/
+		this.vmSetStartLine(0); //TTT
 		this.iErr = 0;
 		this.aGosubStack.length = 0;
 		this.vmResetVariables();
@@ -707,6 +756,8 @@ CpcVm.prototype = {
 		this.rad();
 		this.oSound.resetQueue();
 		this.aSoundData.length = 0;
+		this.closein();
+		this.closeout();
 	},
 
 	clearInput: function () {
@@ -724,11 +775,21 @@ CpcVm.prototype = {
 	},
 
 	closein: function () {
-		this.vmNotImplemented("closein");
+		var oInFile = this.oInFile;
+
+		if (oInFile.bOpen) {
+			//oInFile.bOpen = false;
+			this.vmResetInFileHandling();
+		}
+		/*
+		} else {
+			this.error(31); // File not open
+		}
+		*/
 	},
 
 	closeout: function () {
-		this.vmNotImplemented("closeout");
+		//this.vmNotImplemented("closeout");
 	},
 
 	cls: function (iStream) {
@@ -888,10 +949,15 @@ CpcVm.prototype = {
 
 	ent: function (iToneEnv) { // varargs
 		var aArgs = [],
+			bRepeat = false,
 			i, oArg;
 
 		iToneEnv = this.vmRound(iToneEnv);
-		if (iToneEnv > -16 && iToneEnv < 16) {
+		if (iToneEnv < 0) {
+			iToneEnv = -iToneEnv;
+			bRepeat = true;
+		}
+		if (iToneEnv > 0 && iToneEnv < 16) {
 			for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
 				/* eslint-disable no-bitwise */
 				if (arguments[i] !== null) {
@@ -900,6 +966,9 @@ CpcVm.prototype = {
 						diff: this.vmRound(arguments[i + 1]), // size (period change) of steps: -128..+127
 						time: this.vmRound(arguments[i + 2]) & 0xff // time per step: 0..255 (0=256)
 					};
+					if (bRepeat) {
+						oArg.repeat = true;
+					}
 				} else { // special handling
 					oArg = {
 						period: this.vmRound(arguments[i + 1]), // absolute period
@@ -921,11 +990,6 @@ CpcVm.prototype = {
 
 		iVolEnv = this.vmRound(iVolEnv);
 		if (iVolEnv > 0 && iVolEnv < 16) {
-			/*
-			for (i = 1; i < arguments.length; i += 1) { // starting with 1
-				aArgs.push(this.vmRound(arguments[i]));
-			}
-			*/
 			for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
 				/* eslint-disable no-bitwise */
 				if (arguments[i] !== null) {
@@ -953,8 +1017,13 @@ CpcVm.prototype = {
 	},
 
 	eof: function () {
-		this.vmNotImplemented("eof");
-		return -1;
+		var oInFile = this.oInFile,
+			iEof = -1;
+
+		if (oInFile.bOpen && oInFile.aInput.length) {
+			iEof = 0;
+		}
+		return iEof;
 	},
 
 	erase: function () {
@@ -1124,7 +1193,7 @@ CpcVm.prototype = {
 		var aInputValues = this.oInput.aInputValues,
 			sValue;
 
-		Utils.console.log("vmGetInput: " + sVar);
+		// Utils.console.debug("vmGetInput: " + sVar);
 		sValue = aInputValues.shift();
 
 		if (this.vmDetermineVarType(sVar) !== "$") { // no string?
@@ -1155,8 +1224,15 @@ CpcVm.prototype = {
 			this.oInput.aInputValues = [];
 			this.vmNotImplemented("input #8");
 		} else if (iStream === 9) {
+			this.oInput.iStream = iStream;
 			this.oInput.aInputValues = [];
-			this.vmNotImplemented("input #9");
+			if (!this.oInFile.bOpen) {
+				this.error(31); // File not open
+			} else if (this.eof()) {
+				this.error(24); // EOF met
+			} else {
+				this.oInput.aInputValues = this.oInFile.aInput.splice(0, arguments.length - 3);
+			}
 		}
 	},
 
@@ -1231,8 +1307,16 @@ CpcVm.prototype = {
 		this.vmNotImplemented("list");
 	},
 
-	load: function () {
-		this.vmNotImplemented("load");
+	load: function (sName, iAddress) { // optional iAddress
+		var oInFile = this.oInFile;
+
+		this.closein();
+		oInFile.bOpen = true;
+		oInFile.sCommand = "load";
+		oInFile.sName = sName;
+		oInFile.iAddress = iAddress;
+		this.vmStop("loadFile", 90);
+		//this.vmNotImplemented("load");
 	},
 
 	locate: function (iStream, iPos, iVpos) {
@@ -1270,8 +1354,15 @@ CpcVm.prototype = {
 		this.iHimem = n;
 	},
 
-	merge: function () {
-		this.vmNotImplemented("merge");
+	merge: function (sName) {
+		var oInFile = this.oInFile;
+
+		this.closein();
+		oInFile.bOpen = true;
+		oInFile.sCommand = "merge";
+		oInFile.sName = sName;
+		this.vmStop("loadFile", 90);
+		//this.vmNotImplemented("merge");
 	},
 
 	mid$: function (s, iStart, iLen) { // as function; iLen is optional
@@ -1403,8 +1494,36 @@ CpcVm.prototype = {
 		oSqTimer.bRepeat = true; // means reloaded for sq
 	},
 
-	openin: function () {
-		this.vmNotImplemented("openin");
+	vmOpeninCallback: function (sInput) {
+		var oInFile = this.oInFile;
+
+		//oInFile.loaded = true; //TTT
+		if (sInput !== null) {
+			//oInFile.bOpen = true; //TTT
+			oInFile.aInput = sInput.split("\n");
+			oInFile.sState = "loaded";
+		} else {
+			Utils.console.error("Cannot open file: ", oInFile.sName);
+			this.error(32); // broken in
+			this.closein();
+		}
+	},
+
+	openin: function (sName) {
+		var oInFile = this.oInFile;
+
+		if (!oInFile.bOpen) {
+			if (sName) {
+				oInFile.bOpen = true;
+				oInFile.sCommand = "openin";
+				oInFile.sName = sName;
+				//oInFile.sState = "";
+				oInFile.fnFileCallback = this.vmOpeninCallback.bind(this);
+				this.vmStop("loadFile", 90);
+			}
+		} else {
+			this.error(27); // file already open
+		}
 	},
 
 	openout: function () {
@@ -1998,11 +2117,33 @@ CpcVm.prototype = {
 		this.oCanvas.changeMode(iMode); // or setMode?
 	},
 
+	vmRunCallback: function (sInput) {
+		var oInFile = this.oInFile;
+
+		if (sInput !== null) {
+			//oInFile.sState = "loaded";
+			//TODO
+			this.oInput.aInputValues = [oInFile.iLine]; // we misuse aInputValues
+			this.vmStop("run", 90);
+		} else {
+			Utils.console.error("Cannot open file: ", oInFile.sName);
+			this.error(32); // broken in
+			this.closein();
+		}
+	},
+
 	run: function (numOrString) {
-		this.oInput.aInputValues = [numOrString]; // we misuse aInputValues
+		var oInFile = this.oInFile;
+
 		if (typeof numOrString === "string") { // filename?
+			this.closein();
+			oInFile.bOpen = true;
+			oInFile.sCommand = "run";
+			oInFile.sName = numOrString;
+			oInFile.fnFileCallback = this.vmRunCallback.bind(this);
 			this.vmStop("loadFile", 90);
 		} else {
+			this.oInput.aInputValues = [numOrString]; // we misuse aInputValues
 			this.vmStop("run", 90); // number or undefined
 		}
 	},
@@ -2112,8 +2253,8 @@ CpcVm.prototype = {
 
 	// step
 
-	stop: function (iLine) {
-		this.vmGotoLine(iLine, "stop");
+	stop: function (sLabel) {
+		this.vmGotoLine(sLabel, "stop");
 		this.vmStop("stop", 60);
 	},
 
@@ -2152,11 +2293,7 @@ CpcVm.prototype = {
 
 	symbolAfter: function (n) {
 		this.iHimem = 42747 - (256 - n) * 8;
-		/*
-		if (Utils.debug > 0) {
-			Utils.console.debug("DEBUG: symbolAfter not needed. n=" + n);
-		}
-		*/
+		// symbolAfter not needed
 	},
 
 	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print (ROM &F280)

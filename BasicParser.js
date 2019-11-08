@@ -693,44 +693,6 @@ BasicParser.prototype = {
 				}
 			},
 
-			/*
-			fnGetArgs = function (aTypes, fnSeparatorAndArg) { // optional fnSeparatorAndArg
-				var aArgs = [],
-					sType = "ok",
-					oExpression;
-
-				if (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && sType) {
-					if (aTypes && sType !== "*") { // "*"= any number of parameters
-						sType = aTypes.shift();
-						if (!sType) {
-							throw new BasicParser.ErrorObject("Expected end of arguments after", aTokens[iIndex - 2].value, aTokens[iIndex - 2].pos);
-						}
-					}
-					oExpression = expression(0);
-					aArgs.push(oExpression);
-					while (oToken.type === "," && sType) {
-						if (aTypes && sType !== "*") { // "*"= any number of parameters
-							sType = aTypes.shift();
-							if (!sType) {
-								throw new BasicParser.ErrorObject("Expected end of arguments after", aTokens[iIndex - 2].value, aTokens[iIndex - 2].pos);
-							}
-						}
-						if (fnSeparatorAndArg) {
-							oExpression = fnSeparatorAndArg(sType);
-						} else {
-							advance(",");
-							oExpression = expression(0);
-						}
-						aArgs.push(oExpression);
-					}
-				}
-				if (aTypes && aTypes.length) { // some more parameters expected?
-					fnCheckRemainingTypes(aTypes);
-				}
-				return aArgs;
-			},
-			*/
-
 			fnGetArgs = function (aTypes) {
 				var aArgs = [],
 					sSeparator = ",",
@@ -746,7 +708,6 @@ BasicParser.prototype = {
 						}
 					}
 					if (sType === "#0?") { // optional stream?
-						//oExpression = fnGetOptionalStream(); //TTT
 						if (oToken.type === "#") { // stream?
 							advance("#");
 							oExpression = expression(0);
@@ -758,7 +719,6 @@ BasicParser.prototype = {
 							oExpression = {
 								type: "number",
 								value: 0
-								//bInserted: true // inserted value
 							};
 						}
 					} else {
@@ -766,7 +726,6 @@ BasicParser.prototype = {
 							oExpression = {
 								type: "null",
 								value: null
-								//bInserted: true // inserted value
 							};
 						} else {
 							oExpression = expression(0);
@@ -1064,6 +1023,16 @@ BasicParser.prototype = {
 			advance("gosub");
 			oValue.args.push(expression(0)); // line
 			return oValue;
+		});
+
+		stmt("chain", function () {
+			var sName = "chain";
+
+			if (oToken.type === "merge") { // chain merge?
+				advance("merge");
+				sName = "chainMerge";
+			}
+			return fnCreateCmdCall(sName);
 		});
 
 		stmt("clear", function () {
@@ -1421,16 +1390,6 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		/*
-		stmt("locate", function () {
-			var oStream = fnGetOptionalStream(),
-				oValue = fnCreateCmdCall("locate");
-
-			oValue.args.unshift(oStream);
-			return oValue;
-		});
-		*/
-
 		stmt("next", function () {
 			var oValue = {
 				type: "fcall",
@@ -1508,25 +1467,6 @@ BasicParser.prototype = {
 			}
 			return oValue;
 		});
-
-		/*
-		stmt("paper", function () {
-			var oStream = fnGetOptionalStream(),
-				oValue = fnCreateCmdCall("paper");
-
-			oValue.args.unshift(oStream);
-			return oValue;
-		});
-
-		stmt("pen", function () {
-			var oStream = fnGetOptionalStream(),
-				//oValue = fnCreateCmdCall("pen", oStream.bInserted ? 1 : 0);
-				oValue = fnCreateCmdCall("pen");
-
-			oValue.args.unshift(oStream);
-			return oValue;
-		});
-		*/
 
 		stmt("print", function () {
 			var oValue = {
@@ -1620,31 +1560,6 @@ BasicParser.prototype = {
 			oValue = fnCreateCmdCall(rsxToken.type + Utils.stringCapitalize(rsxToken.value.toLowerCase()));
 			return oValue;
 		});
-
-		/*
-		stmt("sound", function () {
-			var sName = "sound",
-				iParaCount = 0,
-				fnGetSpecialArg = function (sType) {
-					var oExpression;
-
-					if (oToken.type !== ",") {
-						oExpression = expression(0);
-					} else { // empty arg? => insert number 0
-						oExpression = {
-							type: "number",
-							value: 0
-						};
-					}
-					iParaCount += 1;
-					return oExpression;
-				},
-				oValue;
-
-			oValue = fnCreateCmdCall(sName, fnGetSpecialArg);
-			return oValue;
-		});
-		*/
 
 		stmt("speed", function () {
 			var sName = "";
@@ -1826,11 +1741,30 @@ BasicParser.prototype = {
 				}
 			},
 			mParseFunctions = {
-				call: function (aNodeArgs) {
+				fnCommandWithGoto: function (aNodeArgs, node) {
+					var sCommand = node.name,
+						sLabel, sValue;
+
+					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
+					that.iStopCount += 1;
+					sValue = "o." + sCommand + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					return sValue;
+				},
+
+				call: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+					/*
 					var sName = that.iLine + "c" + that.iStopCount;
 
 					that.iStopCount += 1;
 					return "o.call(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+					*/
+				},
+				chain: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+				},
+				chainMerge: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
 				},
 				commaTab: function (aNodeArgs) {
 					return "{type: \"commaTab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the commaTab() call until print() is called
@@ -1919,11 +1853,14 @@ BasicParser.prototype = {
 					value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
 					return value;
 				},
-				frame: function () {
+				frame: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+					/*
 					var sName = that.iLine + "s" + that.iStopCount; // use also stopCount for frame
 
 					that.iStopCount += 1;
 					return "o.frame(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+					*/
 				},
 				gosub: function (aNodeArgs) {
 					var sName = that.iLine + "g" + that.iGosubCount;
@@ -1986,6 +1923,12 @@ BasicParser.prototype = {
 					}
 					return value;
 				},
+				load: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+				},
+				merge: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+				},
 				next: function (aNodeArgs, node) {
 					var i, sName;
 
@@ -2017,15 +1960,29 @@ BasicParser.prototype = {
 					aNodeArgs.unshift('"' + sLabel + '"');
 					return "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
 				},
-				randomize: function (aNodeArgs) {
+				openin: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+					/*
 					var value, sName;
 
+					sName = that.iLine + "s" + that.iStopCount; // use also stopCount
+					that.iStopCount += 1;
+					value = "o.openin(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
+					return value;
+					*/
+				},
+				randomize: function (aNodeArgs, node) {
+					var value;
+
 					if (aNodeArgs.length) {
-						value = "o.randomize(" + aNodeArgs.join(", ") + ")";
+						value = "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
 					} else {
+						/*
 						sName = that.iLine + "s" + that.iStopCount; // use also stopCount for randomize? TTT
 						that.iStopCount += 1;
 						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetNextInput(\"$\"))";
+						*/
+						value = this.fnCommandWithGoto(aNodeArgs, node) + " o.randomize(o.vmGetNextInput(\"$\"))";
 					}
 					return value;
 				},
@@ -2041,14 +1998,20 @@ BasicParser.prototype = {
 				"return": function () {
 					return "o.return(); break;";
 				},
-				run: function (aNodeArgs) {
+				run: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node);
+					/*
 					return "o.run(" + aNodeArgs.join(", ") + "); break;";
+					*/
 				},
-				sound: function (aNodeArgs) {
+				sound: function (aNodeArgs, node) {
+					return this.fnCommandWithGoto(aNodeArgs, node); // maybe queue is full, so insert break
+					/*
 					var sName = that.iLine + "s" + that.iStopCount;
 
 					that.iStopCount += 1;
 					return "o.sound(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":"; // maybe queue is full, so insert break
+					*/
 				},
 				spc: function (aNodeArgs) {
 					return "{type: \"spc\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the spc() call until print() is called because we need stream
@@ -2142,7 +2105,7 @@ BasicParser.prototype = {
 						sName = fnAdaptVariableName(node.left.value);
 						value = "";
 					} else {
-						value = "error "; //TTT
+						throw new BasicParser.ErrorObject("Unexpected assing type", node.name, node.pos); // should not occur
 					}
 					value = sName + value + " = " + parseNode(node.right);
 					break;
@@ -2238,7 +2201,11 @@ BasicParser.prototype = {
 			aParseTree = this.parse(aTokens);
 			sOutput = this.evaluate(aParseTree, variables);
 			oOut.text = "var v=o.v;\n";
-			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n" + fnCombineData(this.aData) + sOutput + "\ncase \"end\": o.vmStop(\"end\", 90); break;\ndefault: o.error(8); o.goto(\"end\"); break;\n}}\n";
+			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"
+				+ fnCombineData(this.aData)
+				+ " o.goto(o.iStartLine ? o.iStartLine : \"start\"); break;\ncase \"start\":\n"
+				+ sOutput
+				+ "\ncase \"end\": o.vmStop(\"end\", 90); break;\ndefault: o.error(8); o.goto(\"end\"); break;\n}}\n";
 		} catch (e) {
 			oOut.error = e;
 		}

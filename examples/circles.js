@@ -4,6 +4,8 @@
 
 cpcBasic.addItem("", function () { /*
 100 REM Drawing circles
+105 rem
+107 chain merge "cpclib",110:'subroutines at 5000
 110 DEG
 112 c.m%=3:gosub 5060:'check mode
 114 for m=0 to 3
@@ -26,14 +28,5 @@ cpcBasic.addItem("", function () { /*
 440 PLOT px,py
 450 NEXT
 460 return
-4990'
-5000 'CPCBasic lib v0.1
-5010 '1. wait c.iv 1/50 sec
-5020 c.t!=time+c.iv%*6:while time<c.t!:call &bd19:wend:return
-5030 '2. wait c.iv% 1/50 sec, or until keypress (return c.t$)
-5040 c.t$="":c.t!=time+c.iv%*6:while time<c.t! and c.t$="":call &bd19:c.t$=inkey$:wend:return
-5050 '3. set mode c.m% (return c.m%; if not available, c.m%=-1)
-5060 on error goto 5070:mode c.m%:on error goto 0:return
-5070 if err=5 then c.m%=-1:resume next else error err
-5080 '
+5000 'cpclib will be merged...
 */ });

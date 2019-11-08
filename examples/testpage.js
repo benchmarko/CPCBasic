@@ -33,5 +33,12 @@ cpcBasic.addItem("", function () { /*
 1030 drawr 50,0
 1040 drawr 0,-50
 1050 next:move 348,0:fill 3
+1190 '
+1200 openin "testdat1"
+1210 for i=33 to 255:input #9,t$
+1220 t=asc(t$):?t$;: if t<>i then ?"Warning: ";i;"<>";t
+1230 next
+1240 ?
+1250 closein
 9000 print "ok"
 */ });

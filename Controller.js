@@ -63,7 +63,7 @@ Controller.prototype = {
 		this.sLabelBeforeStop = "";
 		this.iPrioBeforeStop = 0;
 
-		this.fnRunStart1Handler = this.fnRunStart1.bind(this);
+		this.fnRunLoopHandler = this.fnRunLoop.bind(this);
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
 		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
 
@@ -92,13 +92,8 @@ Controller.prototype = {
 		this.commonEventHandler.onDatabaseSelectChange();
 	},
 
-	onUserAction: function (event, sId) {
+	onUserAction: function (/* event, sId */) {
 		this.commonEventHandler.fnDeactivateUserAction();
-		/*
-		if (!this.oSound.isSoundOn() && sId !== "soundButton") { // sound not on and no click on soundButton
-			this.fnSoundOnOff(); // click sound on
-		}
-		*/
 		this.oSound.setActivatedByUser(true);
 		this.fnSetSoundActive();
 	},
@@ -238,7 +233,7 @@ Controller.prototype = {
 		this.oVm.vmStop("", 0, true);
 		Utils.console.log("Wait for key: " + sKey);
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
@@ -283,7 +278,7 @@ Controller.prototype = {
 				oInput.fnInputCallback(sInput);
 			}
 			if (this.iTimeoutHandle === null) {
-				this.fnRunStart1();
+				this.fnRunLoop();
 			}
 		}
 	},
@@ -303,6 +298,155 @@ Controller.prototype = {
 		if (!aSoundData.length) {
 			this.oVm.vmStop("", 0, true); // no more wait
 		}
+	},
+
+	// merge two scripts with sorted line numbers, lines from script2 overwrite lines from script1
+	fnMergeScripts: function (sScript1, sScript2) {
+		var aLines1 = sScript1.split("\n"),
+			aLines2 = sScript2.split("\n"),
+			aResult = [],
+			iLine1, iLine2;
+
+		while (aLines1.length && aLines2.length) {
+			iLine1 = iLine1 || parseInt(aLines1[0], 10);
+			iLine2 = iLine2 || parseInt(aLines2[0], 10);
+			if (iLine1 < iLine2) {
+				aResult.push(aLines1.shift());
+				iLine1 = 0;
+			} else {
+				aResult.push(aLines2.shift());
+				if (iLine1 === iLine2) {
+					aLines1.shift(); // overwrite line1
+					iLine1 = 0;
+				}
+				iLine2 = 0;
+			}
+		}
+		aResult = aResult.concat(aLines1, aLines2); // put in remaining lines from one source
+		return aResult.join("\n");
+	},
+
+	fnLoadFile: function () {
+		var that = this,
+			oVm = this.oVm,
+			oInFile = this.oVm.vmGetFileObject(),
+			sPath = "",
+			sDatabaseDir, sName, sExample, oExample, sKey, iLastSlash, sUrl,
+
+			fnContinue = function (sInput) {
+				var sCommand = oInFile.sCommand,
+					iStartLine = 0;
+
+				that.model.setProperty("example", oInFile.sMemorizedExample);
+				that.oVm.vmStop("", 0, true);
+				if (oInFile.fnFileCallback) {
+					oInFile.fnFileCallback(sInput);
+				}
+				if (sInput) {
+					switch (sCommand) {
+					case "openin":
+						break;
+					case "chainMerge":
+						sInput = that.fnMergeScripts(that.view.getAreaValue("inputText"), sInput);
+						that.view.setAreaValue("inputText", sInput);
+						that.view.setAreaValue("resultText", "");
+						//that.fnReset2();
+						iStartLine = oInFile.iLine || 0;
+						that.fnParseRun2();
+						break;
+					case "load":
+						that.view.setAreaValue("inputText", sInput);
+						that.view.setAreaValue("resultText", "");
+						that.fnInvalidateScript();
+						break;
+					case "merge":
+						sInput = that.fnMergeScripts(that.view.getAreaValue("inputText"), sInput);
+						that.view.setAreaValue("inputText", sInput);
+						that.view.setAreaValue("resultText", "");
+						that.fnInvalidateScript();
+						break;
+					case "chain": // run through...
+					case "run":
+						that.view.setAreaValue("inputText", sInput);
+						that.view.setAreaValue("resultText", "");
+						iStartLine = oInFile.iLine || 0;
+						that.fnReset2();
+						that.fnParseRun2();
+						break;
+					default:
+						Utils.console.error("fnLoadFile: Unknown command:", sCommand);
+						break;
+					}
+					that.oVm.vmSetStartLine(iStartLine);
+				}
+				if (that.iTimeoutHandle === null) {
+					that.fnRunLoop();
+				}
+			},
+
+			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
+				var sInput;
+
+				if (!bSuppressLog) {
+					Utils.console.log("Example " + sUrl + " loaded");
+				}
+
+				oExample = that.model.getExample(sExample);
+				sInput = oExample.script;
+				fnContinue(sInput);
+			},
+			fnExampleError = function () {
+				Utils.console.log("Example " + sUrl + " error");
+				//that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
+				fnContinue(null);
+			};
+
+		sName = oInFile.sName;
+		sKey = this.model.getProperty("example");
+		oInFile.sMemorizedExample = sKey;
+		iLastSlash = sKey.lastIndexOf("/");
+		if (iLastSlash >= 0) {
+			sPath = sKey.substr(0, iLastSlash); // take path from selected example
+			sName = sPath + "/" + sName;
+		}
+		sExample = sName;
+
+		if (Utils.debug > 0) {
+			Utils.console.debug("DEBUG: fnLoadFile: sName=" + sName + " (current=" + sKey + ")");
+		}
+
+		this.model.setProperty("example", sExample);
+		oExample = this.model.getExample(sExample); // already loaded
+		if (oExample && oExample.loaded) {
+			fnExampleLoaded("", true);
+		} else if (sExample && oExample) { // need to load
+			sDatabaseDir = this.model.getDatabase().src;
+			sUrl = sDatabaseDir + "/" + sExample + ".js";
+			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
+		} else {
+			Utils.console.warn("fnLoadFile: Unknown file:", sExample);
+			oVm.error(32); //TODO: set also derr=146 (xx not found)
+		}
+	},
+
+	fnWaitForFile: function () {
+		var oInFile = this.oVm.vmGetFileObject(),
+			sName = oInFile.sName;
+
+		if (!oInFile.sState) {
+			oInFile.sState = "loading";
+			this.fnLoadFile(sName);
+		} else if (oInFile.sState === "loaded") { //TTT
+		}
+	},
+
+	fnReset2: function () {
+		var oVm = this.oVm;
+
+		oVm.vmReset();
+		oVm.vmStop("reset", 0); // keep reset, but with priority 0, so that "compile only" still works
+		oVm.sOut = "";
+		this.view.setAreaValue("outputText", "");
 	},
 
 	fnParse2: function () {
@@ -341,6 +485,7 @@ Controller.prototype = {
 		iLine = iLine || 0;
 
 		if (iLine === 0) {
+			this.oVm.vmSetStartLine(0);
 			oVm.vmResetData();
 		}
 
@@ -367,12 +512,6 @@ Controller.prototype = {
 			this.view.setDisabled("runButton", true);
 			this.view.setDisabled("stopButton", false);
 			this.view.setDisabled("continueButton", true);
-
-			/*
-			if (Utils.debug > 0) {
-				oVm.vmStatStart(); //TTT
-			}
-			*/
 		}
 		if (Utils.debug > 1) {
 			Utils.console.debug("DEBUG: End of fnRun2");
@@ -389,17 +528,6 @@ Controller.prototype = {
 		}
 	},
 
-	fnLoadFile: function (sName) {
-		var oVm = this.oVm;
-
-		if (sName) {
-			this.view.setSelectValue("exampleSelect", sName);
-			this.commonEventHandler.onExampleSelectChange();
-		} else {
-			oVm.error(32); //TODO: set also derr=146 (xx not found)
-		}
-	},
-
 	fnRunPart1: function () {
 		var oVm = this.oVm;
 
@@ -411,17 +539,35 @@ Controller.prototype = {
 		}
 	},
 
-	fnRunStart1: function () { // eslint-disable-line complexity
+	fnExitLoop: function () {
 		var oVm = this.oVm,
-			sReason = oVm.vmGetStopReason(),
+			oStop = oVm.vmGetStopObject(),
+			sReason = oStop.sReason;
+
+		this.view.setAreaValue("resultText", oVm.sOut);
+		this.view.setAreaScrollTop("resultText"); // scroll to bottom
+
+		this.view.setDisabled("runButton", false);
+		this.view.setDisabled("stopButton", sReason !== "input" && sReason !== "key" && sReason !== "loadFile");
+		this.view.setDisabled("continueButton", sReason === "end" || sReason === "reset" || sReason === "input" || sReason === "key" || sReason === "loadFile");
+		if (this.oVariables) {
+			this.fnSetVarSelectOptions("varSelect", this.oVariables);
+			this.commonEventHandler.onVarSelectChange();
+		}
+		this.iTimeoutHandle = null; // not running any more
+	},
+
+	fnRunLoop: function () {
+		var oVm = this.oVm,
+			oStop = oVm.vmGetStopObject(),
 			iTimeOut = 0;
 
-		if (!sReason && this.fnScript) {
-			this.fnRunPart1();
-			sReason = oVm.vmGetStopReason();
+		if (!oStop.sReason && this.fnScript) {
+			this.fnRunPart1(); // could change sReason
+			//sReason = oVm.vmGetStopReason();
 		}
 
-		switch (sReason) {
+		switch (oStop.sReason) {
 		case "":
 			break;
 
@@ -449,7 +595,9 @@ Controller.prototype = {
 			break;
 
 		case "loadFile":
-			this.fnLoadFile(oVm.vmGetNextInput("$"));
+			//this.fnLoadFile(oVm.vmGetNextInput("$"));
+			this.fnWaitForFile();
+			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
 			break;
 
 		case "parse":
@@ -461,27 +609,24 @@ Controller.prototype = {
 			break;
 
 		case "reset":
+			this.fnReset2();
+			/*
 			oVm.vmReset();
 			oVm.vmStop("reset", 0); // keep reset, but with priority 0, so that "compile only" still works
 			oVm.sOut = "";
 			this.view.setAreaValue("outputText", "");
-			//TTT variables?
+			*/
 			break;
 
-		case "run": // TODO: run with line number
-			this.fnRun2(oVm.vmGetNextInput(""));
+		case "run":
+			this.fnRun2();
+			this.oVm.vmSetStartLine(oVm.vmGetNextInput("")); // set start line number (after line 0)
 			break;
 
-		case "sound": //TTT TODO
-			//oVm.vmStop("", 0, true);
+		case "sound":
 			this.fnWaitForSound();
 			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
 			break;
-
-		/*
-		case "soundInit":
-			break;
-		*/
 
 		case "stop":
 			break;
@@ -491,25 +636,14 @@ Controller.prototype = {
 			break;
 
 		default:
-			Utils.console.warn("fnRunStart1: Unknown run mode: " + sReason);
+			Utils.console.warn("fnRunLoop: Unknown run mode: " + oStop.sReason);
 			break;
 		}
 
-		sReason = oVm.vmGetStopReason();
-		if (!sReason || sReason === "sound") {
-			this.iTimeoutHandle = setTimeout(this.fnRunStart1Handler, iTimeOut);
+		if (!oStop.sReason || oStop.sReason === "sound") {
+			this.iTimeoutHandle = setTimeout(this.fnRunLoopHandler, iTimeOut);
 		} else {
-			this.view.setAreaValue("resultText", oVm.sOut);
-			this.view.setAreaScrollTop("resultText"); // scroll to bottom
-
-			this.view.setDisabled("runButton", false);
-			this.view.setDisabled("stopButton", sReason !== "input" && sReason !== "key");
-			this.view.setDisabled("continueButton", sReason === "end" || sReason === "reset" || sReason === "input" || sReason === "key");
-			if (this.oVariables) {
-				this.fnSetVarSelectOptions("varSelect", this.oVariables);
-				this.commonEventHandler.onVarSelectChange();
-			}
-			this.iTimeoutHandle = null; // not running any more
+			this.fnExitLoop();
 		}
 	},
 
@@ -521,7 +655,7 @@ Controller.prototype = {
 	fnParse: function () {
 		this.oVm.vmStop("parse", 99);
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
@@ -530,7 +664,7 @@ Controller.prototype = {
 		this.oCanvas.options.fnOnKeyDown = null;
 		this.oVm.vmStop("run", 99);
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
@@ -539,36 +673,35 @@ Controller.prototype = {
 		this.oCanvas.options.fnOnKeyDown = null;
 		this.oVm.vmStop("parseRun", 99);
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
 	fnStop: function () {
 		var oVm = this.oVm,
-			sReason = oVm.vmGetStopReason(),
-			iPriority = oVm.vmGetStopPriority();
+			oStop = oVm.vmGetStopObject();
 
-		this.fnSetStopLabelPrio(sReason, iPriority);
+		this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
 		this.oCanvas.options.fnOnKeyDown = null;
 		oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
 	fnContinue: function () {
 		var oVm = this.oVm,
-			sReason = oVm.vmGetStopReason();
+			oStop = oVm.vmGetStopObject();
 
 		this.view.setDisabled("runButton", true);
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
-		if (sReason === "break" || sReason === "stop") {
+		if (oStop.sReason === "break" || oStop.sReason === "stop") {
 			oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
 			this.fnSetStopLabelPrio("", 0);
 		}
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
@@ -579,7 +712,7 @@ Controller.prototype = {
 		this.oCanvas.options.fnOnKeyDown = null;
 		oVm.vmStop("reset", 99);
 		if (this.iTimeoutHandle === null) {
-			this.fnRunStart1();
+			this.fnRunLoop();
 		}
 	},
 
@@ -591,7 +724,7 @@ Controller.prototype = {
 
 	fnEnter: function () {
 		var oVm = this.oVm,
-			sReason = oVm.vmGetStopReason(),
+			oStop = oVm.vmGetStopObject(),
 			sInput = this.view.getAreaValue("inp2Text"),
 			i;
 
@@ -599,9 +732,9 @@ Controller.prototype = {
 			this.oCanvas.putKeyInBuffer(sInput.charAt(i));
 		}
 		this.oCanvas.putKeyInBuffer("\r");
-		if (sReason === "input") {
+		if (oStop.sReason === "input") {
 			this.fnWaitForInput();
-		} else if (sReason === "key") {
+		} else if (oStop.sReason === "key") {
 			this.fnWaitForKey();
 		}
 		this.view.setAreaValue("inp2Text", "");
@@ -614,8 +747,13 @@ Controller.prototype = {
 			sText = "";
 
 		if (bActive) {
-			oSound.soundOn();
-			sText = (oSound.isActivatedByUser()) ? "Sound is on" : "Sound on (waiting)";
+			try {
+				oSound.soundOn();
+				sText = (oSound.isActivatedByUser()) ? "Sound is on" : "Sound on (waiting)";
+			} catch (e) {
+				Utils.console.error("soundOn: ", e);
+				sText = "Sound unavailable";
+			}
 		} else {
 			oSound.soundOff();
 			sText = "Sound is off";

@@ -5,6 +5,9 @@
 cpcBasic.addItem("", function () { /*
 100 REM Graphics CPC Demo
 110 REM Known from CPC CP/M Disk
+112 '
+113 chain merge "cpclib",115:'subroutines at 5000
+114 '
 115 dim md(2):md(0)=1:md(1)=0
 116 c.m%=3:gosub 5060:'check mode
 117 if c.m%=3 then md(2)=3 else md(2)=-1
@@ -41,13 +44,5 @@ cpcBasic.addItem("", function () { /*
 1790 '
 1800 r=remain(1):locate 1,1:?space$(5):?space$(3):return
 4990 '
-5000 'CPCBasic lib v0.1
-5010 '1. wait c.iv 1/50 sec
-5020 c.t!=time+c.iv%*6:while time<c.t!:call &bd19:wend:return
-5030 '2. wait c.iv% 1/50 sec, or until keypress (return c.t$)
-5040 c.t$="":c.t!=time+c.iv%*6:while time<c.t! and c.t$="":call &bd19:c.t$=inkey$:wend:return
-5050 '3. set mode c.m% (return c.m%; if not available, c.m%=-1)
-5060 on error goto 5070:mode c.m%:on error goto 0:return
-5070 if err=5 then c.m%=-1:resume next else error err
-5080 '
+5000 'cpclib will be merged...
 */ });

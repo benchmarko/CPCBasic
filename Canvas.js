@@ -3,6 +3,7 @@
 // https://benchmarko.github.io/CPCBasic/
 //
 /* globals Utils */
+/* globals ArrayBuffer Uint8ClampedArray Uint32Array Uint8Array */
 
 "use strict";
 

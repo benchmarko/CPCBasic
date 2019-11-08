@@ -66,12 +66,6 @@ CommonEventHandler.prototype = {
 		this.model.setProperty(sProp, bShow);
 	},
 
-	/*
-	onUserAction: function () {
-		//this.fnDeactivateUserAction();
-	},
-	*/
-
 	fnActivateUserAction: function (fnAction) {
 		this.fnUserAction = fnAction;
 	},
@@ -172,7 +166,6 @@ CommonEventHandler.prototype = {
 			fnDatabaseLoaded = function (/* sFullUrl */) {
 				oDatabase.loaded = true;
 				Utils.console.log("fnDatabaseLoaded: database loaded: " + sDatabase + ": " + sUrl);
-				//that.controller.fnSetFilterCategorySelectOptions();
 				that.controller.fnSetExampleSelectOptions();
 				if (oDatabase.error) {
 					Utils.console.error("fnDatabaseLoaded: database contains errors: " + sDatabase + ": " + sUrl);
@@ -185,7 +178,6 @@ CommonEventHandler.prototype = {
 			fnDatabaseError = function (/* sFullUrl */) {
 				oDatabase.loaded = false;
 				Utils.console.error("fnDatabaseError: database error: " + sDatabase + ": " + sUrl);
-				//that.controller.fnSetFilterCategorySelectOptions();
 				that.controller.fnSetExampleSelectOptions();
 				that.onExampleSelectChange();
 				that.view.setAreaValue("inputText", "");
@@ -212,21 +204,18 @@ CommonEventHandler.prototype = {
 		}
 
 		if (oDatabase.loaded) {
-			//that.controller.fnSetFilterCategorySelectOptions();
 			this.controller.fnSetExampleSelectOptions();
 			this.onExampleSelectChange();
 		} else {
 			this.view.setAreaValue("inputText", "#loading database " + sDatabase + "...");
-			if (sDatabase === "saved") {
+			if (sDatabase === "saved") { //TODO (currently not used)
 				sUrl = "localStorage";
 				fnLoadDatabaseLocalStorage(sDatabase);
 			} else {
-				//sUrl = this.model.getProperty("exampleDir") + "/" + oDatabase.src;
 				sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
 				Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);
 			}
 		}
-		//this.fnSetDeleteButtonStatus();
 	},
 
 
@@ -235,9 +224,11 @@ CommonEventHandler.prototype = {
 			sExample = this.view.getSelectValue("exampleSelect"),
 			sUrl, oExample, sDatabaseDir,
 
+			/*
 			fnParseRunExample = function ()	{
 				that.controller.fnParseRun();
 			},
+			*/
 
 			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
 				var sInput;
@@ -250,8 +241,10 @@ CommonEventHandler.prototype = {
 				sInput = oExample.script;
 				that.view.setAreaValue("inputText", sInput);
 				that.view.setAreaValue("resultText", "");
-				that.controller.fnReset();
-				setTimeout(fnParseRunExample, 100); // hopefully the reset is done already
+				//that.controller.fnReset();
+				//setTimeout(fnParseRunExample, 100); // hopefully the reset is done already
+				that.controller.fnReset2();
+				that.controller.fnParseRun();
 			},
 			fnExampleError = function () {
 				Utils.console.log("Example " + sUrl + " error");

@@ -50,6 +50,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "CPC Basic"
 	},
 	{
+    	"key": "cpclib",
+		"title": "CPC Lib"
+	},
+	{
     	"key": "cpcmhz",
 		"title": "CPC Mhz"
 	},
@@ -128,6 +132,10 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
 		"key": "states",
 		"title": "States of the Earth"
+	},
+	{
+    	"key": "testdat1",
+		"title": "testdat1 - Test data for Test Page"
 	},
     {
 		"key": "testpage",
