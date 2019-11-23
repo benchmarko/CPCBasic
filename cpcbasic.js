@@ -22,7 +22,8 @@ cpcBasic = {
 		showOutput: false,
 		showResult: false,
 		showVariable: false,
-		sound: false
+		sound: false,
+		tron: false // trace on
 	},
 	model: null,
 	view: null,

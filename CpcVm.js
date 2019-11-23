@@ -164,6 +164,8 @@ CpcVm.prototype = {
 		this.aGosubStack.length = 0;
 		this.bDeg = false; // degree or radians
 
+		this.bTron = this.options.tron || false; // trace flag
+
 		this.aMem.length = 0; // for peek, poke
 		this.iHimem = 42747; // high memory limit (42747 after symbol after 256)
 		this.symbolAfter(240);
@@ -613,6 +615,12 @@ CpcVm.prototype = {
 		return this.aSoundData;
 	},
 
+	vmTrace: function (iLine) {
+		if (this.bTron) {
+			this.print(0, "[" + iLine + "]");
+		}
+	},
+
 
 	abs: function (n) {
 		return Math.abs(n);
@@ -692,8 +700,8 @@ CpcVm.prototype = {
 			// TODO
 			break;
 		case 0xbbde: // GRA Set Pen
-			// we can only set graphics pen 0 (no arg) or 1 (if there is an arg)
-			this.graphicsPen((arguments.length > 1) ? 1 : 0);
+			// we can only set graphics pen depending on number of additional args (0=no arg, 1=one arg)
+			this.graphicsPen(arguments.length - 1);
 			break;
 		case 0xbbff: // SCR Initialize
 			this.mode(1);
@@ -1553,8 +1561,11 @@ CpcVm.prototype = {
 		}
 	},
 
-	out: function () {
+	out: function (iPort, iByte) {
 		this.vmNotImplemented("out");
+		if (Utils.debug > 0) {
+			Utils.console.debug("DEBUG: out", Number(iPort).toString(16, 4), iByte);
+		}
 	},
 
 	paper: function (iStream, iPaper) {
@@ -2357,11 +2368,11 @@ CpcVm.prototype = {
 	// to
 
 	troff: function () {
-		this.vmNotImplemented("troff");
+		this.bTron = false;
 	},
 
 	tron: function () {
-		this.vmNotImplemented("tron");
+		this.bTron = true;
 	},
 
 	unt: function (n) {

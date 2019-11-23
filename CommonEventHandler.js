@@ -224,12 +224,6 @@ CommonEventHandler.prototype = {
 			sExample = this.view.getSelectValue("exampleSelect"),
 			sUrl, oExample, sDatabaseDir,
 
-			/*
-			fnParseRunExample = function ()	{
-				that.controller.fnParseRun();
-			},
-			*/
-
 			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
 				var sInput;
 
@@ -241,8 +235,6 @@ CommonEventHandler.prototype = {
 				sInput = oExample.script;
 				that.view.setAreaValue("inputText", sInput);
 				that.view.setAreaValue("resultText", "");
-				//that.controller.fnReset();
-				//setTimeout(fnParseRunExample, 100); // hopefully the reset is done already
 				that.controller.fnReset2();
 				that.controller.fnParseRun();
 			},
@@ -260,14 +252,6 @@ CommonEventHandler.prototype = {
 		} else if (sExample && oExample) { // need to load
 			this.view.setAreaValue("inputText", "#loading " + sExample + "...");
 			this.view.setAreaValue("resultText", "waiting...");
-
-			/*
-			sPath = "";
-			oDatabase = this.model.getDatabase();
-			if (oDatabase.src) {
-				sPath = oDatabase.src.split("/").slice(0, -1).join("/");
-			}
-			*/
 			sDatabaseDir = this.model.getDatabase().src;
 			sUrl = sDatabaseDir + "/" + sExample + ".js";
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);

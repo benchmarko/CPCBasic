@@ -34,7 +34,6 @@ Sound.prototype = {
 		this.aVolEnv = [];
 		this.aToneEnv = [];
 		this.iReleaseMask = 0;
-		//this.fNextEarliestNoteTime = 0;
 		if (Utils.debug > 1) {
 			this.aDebugLog = []; // access: cpcBasic.controller.oSound.aDebugLog
 		}
@@ -90,7 +89,6 @@ Sound.prototype = {
 			oQueue.bOnHold = false;
 			oQueue.iRendevousMask = 0;
 		}
-		//this.fNextEarliestNoteTime = 0;
 	},
 
 	createSoundContext: function () {
@@ -324,7 +322,6 @@ Sound.prototype = {
 				if (iState & 0x80) { // eslint-disable-line no-bitwise
 					oQueue.aSoundData.length = 0; // flush queue
 					oQueue.fNextNoteTime = 0;
-					//this.fNextEarliestNoteTime = 0;
 					this.stopOscillator(i);
 				}
 				oQueue.aSoundData.push(oSoundData); // just a reference

@@ -54,7 +54,8 @@ Controller.prototype = {
 
 		this.oVm = new CpcVm({
 			canvas: this.oCanvas,
-			sound: this.oSound
+			sound: this.oSound,
+			tron: oModel.getProperty("tron")
 		});
 		this.fnScript = null;
 
@@ -454,7 +455,7 @@ Controller.prototype = {
 			oParseOptions, oOutput, oError, iEndPos, sOutput;
 
 		oParseOptions = {
-			ignoreVarCase: true
+			tron: this.model.getProperty("tron")
 		};
 		this.oVariables = {};
 		oOutput = new BasicParser(oParseOptions).calculate(sInput, this.oVariables);
@@ -610,12 +611,6 @@ Controller.prototype = {
 
 		case "reset":
 			this.fnReset2();
-			/*
-			oVm.vmReset();
-			oVm.vmStop("reset", 0); // keep reset, but with priority 0, so that "compile only" still works
-			oVm.sOut = "";
-			this.view.setAreaValue("outputText", "");
-			*/
 			break;
 
 		case "run":

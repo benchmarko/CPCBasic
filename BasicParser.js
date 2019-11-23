@@ -203,7 +203,7 @@ BasicParser.mKeywords = {
 
 BasicParser.prototype = {
 	init: function (options) {
-		this.options = options || {}; // ignoreFuncCase, ignoreVarCase
+		this.options = options || {}; // e.g. tron
 
 		this.iLine = 0; // current line (label)
 
@@ -218,6 +218,9 @@ BasicParser.prototype = {
 		this.iWhileCount = 0; // stack needed
 
 		this.aData = []; // collected data from data lines
+
+		this.oLabels = {}; // labels or line numbers
+		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
 	},
 
 	lex: function (input) { // eslint-disable-line complexity
@@ -649,6 +652,7 @@ BasicParser.prototype = {
 			prefix = function (id, rbp) {
 				symbol(id, function () {
 					return {
+						pos: aTokens[iIndex - 2].pos,
 						type: id,
 						right: expression(rbp)
 					};
@@ -1011,6 +1015,7 @@ BasicParser.prototype = {
 		});
 
 
+		// statements ...
 		stmt("after", function () {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
 
@@ -1030,7 +1035,7 @@ BasicParser.prototype = {
 
 			if (oToken.type === "merge") { // chain merge?
 				advance("merge");
-				sName = "chainMerge";
+				sName = "chainMerge"; // TODO: optional DELETE
 			}
 			return fnCreateCmdCall(sName);
 		});
@@ -1057,12 +1062,12 @@ BasicParser.prototype = {
 				if (oToken.type === "identifier") {
 					oValue.left = "FN" + oToken.value;
 				} else {
-					throw new BasicParser.ErrorObject("Invalid def at", oToken.type, oToken.pos);
+					throw new BasicParser.ErrorObject("Invalid DEF at", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "identifier" && Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) { // fn<identifier>
 				oValue.left = oToken.value;
 			} else {
-				throw new BasicParser.ErrorObject("Invalid def at", oToken.type, oToken.pos);
+				throw new BasicParser.ErrorObject("Invalid DEF at", oToken.type, oToken.pos);
 			}
 			advance();
 
@@ -1189,7 +1194,7 @@ BasicParser.prototype = {
 				advance(oToken.type);
 				oValue = fnCreateCmdCall(sName);
 			} else {
-				throw new BasicParser.ErrorObject("Expected pen or paper at", oToken.type, oToken.pos);
+				throw new BasicParser.ErrorObject("Expected PEN or PAPER at", oToken.type, oToken.pos);
 			}
 			return oValue;
 		});
@@ -1432,6 +1437,8 @@ BasicParser.prototype = {
 				} else if (oToken.type === "stop") {
 					advance("stop");
 					oValue.name = "onBreakStop";
+				} else {
+					throw new BasicParser.ErrorObject("Expected GOSUB, CONT or STOP", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "error") { // on error goto
 				advance("error");
@@ -1439,6 +1446,8 @@ BasicParser.prototype = {
 					advance("goto");
 					oValue.name = "onErrorGoto";
 					oValue.args = fnGetArgs();
+				} else {
+					throw new BasicParser.ErrorObject("Expected GOTO", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "sq") { // on sq(n) gosub
 				oLeft = expression(0);
@@ -1448,6 +1457,8 @@ BasicParser.prototype = {
 					oValue.name = "onSqGosub";
 					oValue.args = fnGetArgs();
 					oValue.args.unshift(oLeft);
+				} else {
+					throw new BasicParser.ErrorObject("Expected GOSUB", oToken.type, oToken.pos);
 				}
 			} else {
 				oLeft = expression(0);
@@ -1578,7 +1589,7 @@ BasicParser.prototype = {
 				advance("write");
 				break;
 			default:
-				break;
+				throw new BasicParser.ErrorObject("Expected INK, KEY or WRITE", oToken.type, oToken.pos);
 			}
 			return fnCreateCmdCall(sName);
 		});
@@ -1741,6 +1752,17 @@ BasicParser.prototype = {
 				}
 			},
 			mParseFunctions = {
+				fnAddReferenceLabel: function (sLabel, node) {
+					if (that.oLabels[sLabel] === undefined) {
+						Utils.console.warn("fnAddReferenceLabel: line does not exist: " + sLabel);
+						if (!that.bMergeFound) {
+							throw new BasicParser.ErrorObject("Line does not exist", sLabel, node.pos);
+						}
+					} else {
+						that.oLabels[sLabel] += 1;
+					}
+				},
+
 				fnCommandWithGoto: function (aNodeArgs, node) {
 					var sCommand = node.name,
 						sLabel, sValue;
@@ -1751,19 +1773,18 @@ BasicParser.prototype = {
 					return sValue;
 				},
 
+				afterGosub: function (aNodeArgs, node) {
+					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
+					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				},
 				call: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node);
-					/*
-					var sName = that.iLine + "c" + that.iStopCount;
-
-					that.iStopCount += 1;
-					return "o.call(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					*/
 				},
 				chain: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node);
 				},
 				chainMerge: function (aNodeArgs, node) {
+					that.bMergeFound = true;
 					return this.fnCommandWithGoto(aNodeArgs, node);
 				},
 				commaTab: function (aNodeArgs) {
@@ -1825,6 +1846,10 @@ BasicParser.prototype = {
 				error: function (aNodeArgs) {
 					return "o.error(" + aNodeArgs[0] + "); break";
 				},
+				everyGosub: function (aNodeArgs, node) {
+					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
+					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				},
 				fn: function (aNodeArgs, node) {
 					var sName = fnAdaptVariableName(node.left);
 
@@ -1855,21 +1880,20 @@ BasicParser.prototype = {
 				},
 				frame: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node);
-					/*
-					var sName = that.iLine + "s" + that.iStopCount; // use also stopCount for frame
-
-					that.iStopCount += 1;
-					return "o.frame(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					*/
 				},
-				gosub: function (aNodeArgs) {
-					var sName = that.iLine + "g" + that.iGosubCount;
+				gosub: function (aNodeArgs, node) {
+					var iLine = aNodeArgs[0],
+						sName = that.iLine + "g" + that.iGosubCount;
 
 					that.iGosubCount += 1;
-					return 'o.gosub("' + sName + '", ' + aNodeArgs + '); break; \ncase "' + sName + '":';
+					this.fnAddReferenceLabel(iLine, node.args[0]);
+					return 'o.gosub("' + sName + '", ' + iLine + '); break; \ncase "' + sName + '":';
 				},
-				"goto": function (aNodeArgs) {
-					return "o.goto(" + aNodeArgs[0] + "); break";
+				"goto": function (aNodeArgs, node) {
+					var iLine = aNodeArgs[0];
+
+					this.fnAddReferenceLabel(iLine, node.args[0]);
+					return "o.goto(" + iLine + "); break";
 				},
 				"if": function (aNodeArgsUnused, node) {
 					var aNodeArgs, sLabel, value, sPart;
@@ -1927,6 +1951,7 @@ BasicParser.prototype = {
 					return this.fnCommandWithGoto(aNodeArgs, node);
 				},
 				merge: function (aNodeArgs, node) {
+					that.bMergeFound = true;
 					return this.fnCommandWithGoto(aNodeArgs, node);
 				},
 				next: function (aNodeArgs, node) {
@@ -1944,32 +1969,50 @@ BasicParser.prototype = {
 					}
 					return aNodeArgs.join("; ");
 				},
+				onBreakGosub: function (aNodeArgs, node) {
+					var iLine = aNodeArgs[0];
+
+					this.fnAddReferenceLabel(iLine, node.args[0]);
+					return "o." + node.name + "(" + iLine + ")";
+				},
+				onErrorGoto: function (aNodeArgs, node) {
+					var iLine = aNodeArgs[0];
+
+					if (iLine) { // only for lines > 0
+						this.fnAddReferenceLabel(iLine, node.args[0]);
+					}
+					return "o." + node.name + "(" + iLine + ")";
+				},
 				onGosub: function (aNodeArgs, node) {
 					var sName = node.name,
-						sLabel = that.iLine + "g" + that.iGosubCount;
+						sLabel = that.iLine + "g" + that.iGosubCount,
+						i;
 
 					that.iGosubCount += 1;
+					for (i = 1; i < aNodeArgs.length; i += 1) { // start with argument 1
+						this.fnAddReferenceLabel(aNodeArgs[i], node.args[i]);
+					}
 					aNodeArgs.unshift('"' + sLabel + '"');
 					return "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
 				},
 				onGoto: function (aNodeArgs, node) {
 					var sName = node.name,
-						sLabel = that.iLine + "s" + that.iStopCount;
+						sLabel = that.iLine + "s" + that.iStopCount,
+						i;
 
 					that.iStopCount += 1;
+					for (i = 1; i < aNodeArgs.length; i += 1) { // start with argument 1
+						this.fnAddReferenceLabel(aNodeArgs[i], node.args[i]);
+					}
 					aNodeArgs.unshift('"' + sLabel + '"');
 					return "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
 				},
+				onSqGosub: function (aNodeArgs, node) {
+					this.fnAddReferenceLabel(aNodeArgs[1], node.args[1]); // argument 1: line number
+					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				},
 				openin: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node);
-					/*
-					var value, sName;
-
-					sName = that.iLine + "s" + that.iStopCount; // use also stopCount
-					that.iStopCount += 1;
-					value = "o.openin(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
-					return value;
-					*/
 				},
 				randomize: function (aNodeArgs, node) {
 					var value;
@@ -1977,11 +2020,6 @@ BasicParser.prototype = {
 					if (aNodeArgs.length) {
 						value = "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
 					} else {
-						/*
-						sName = that.iLine + "s" + that.iStopCount; // use also stopCount for randomize? TTT
-						that.iStopCount += 1;
-						value = "o.randomize(); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\": o.randomize(o.vmGetNextInput(\"$\"))";
-						*/
 						value = this.fnCommandWithGoto(aNodeArgs, node) + " o.randomize(o.vmGetNextInput(\"$\"))";
 					}
 					return value;
@@ -1995,23 +2033,32 @@ BasicParser.prototype = {
 					}
 					return aNodeArgs.join("; ");
 				},
+				restore: function (aNodeArgs, node) {
+					if (aNodeArgs.length) {
+						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
+					}
+					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				},
+				resume: function (aNodeArgs, node) {
+					if (aNodeArgs.length) {
+						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
+					}
+					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				},
 				"return": function () {
 					return "o.return(); break;";
 				},
 				run: function (aNodeArgs, node) {
+					if (aNodeArgs.length) {
+						if (typeof aNodeArgs[0] === "number") { // with line number?
+							this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]);
+						}
+					}
+
 					return this.fnCommandWithGoto(aNodeArgs, node);
-					/*
-					return "o.run(" + aNodeArgs.join(", ") + "); break;";
-					*/
 				},
 				sound: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node); // maybe queue is full, so insert break
-					/*
-					var sName = that.iLine + "s" + that.iStopCount;
-
-					that.iStopCount += 1;
-					return "o.sound(" + aNodeArgs.join(", ") + "); o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "\":"; // maybe queue is full, so insert break
-					*/
 				},
 				spc: function (aNodeArgs) {
 					return "{type: \"spc\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the spc() call until print() is called because we need stream
@@ -2128,6 +2175,9 @@ BasicParser.prototype = {
 					that.iLine = node.value;
 					aNodeArgs = fnParseArgs(node.left);
 					value = "case " + node.value + ":";
+					if (that.options.tron) {
+						value += " o.vmTrace(" + that.iLine + ");";
+					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						value += " " + aNodeArgs[i];
 						if (!(/[}:;]$/).test(value)) { // does not end with "}" ":" ";"
@@ -2158,8 +2208,23 @@ BasicParser.prototype = {
 				return value;
 			},
 
+			fnCommentUnusedCases = function (sOutput2, oLabels2) {
+				sOutput2 = sOutput2.replace(/^case (\d+):/gm, function (sAll, sLine) {
+					return (oLabels2[sLine]) ? sAll : "/* " + sAll + " */";
+				});
+				return sOutput2;
+			},
+
+			oLabels = this.oLabels,
 			i,
 			sNode;
+
+		// create labels map
+		for (i = 0; i < parseTree.length; i += 1) {
+			if (parseTree[i].type === "label") {
+				oLabels[parseTree[i].value] = 0; // init call count
+			}
+		}
 
 		for (i = 0; i < parseTree.length; i += 1) {
 			if (Utils.debug > 2) {
@@ -2177,6 +2242,29 @@ BasicParser.prototype = {
 					sOutput = ""; // cls (clear output when sNode is set to null)
 				}
 			}
+		}
+
+		/*
+		if (Utils.debug > 1) {
+			Utils.console.debug("evaluate: line number reference counts:");
+			for (sNode in oLabels) {
+				if (oLabels[sNode]) {
+					Utils.console.debug("evaluate: line", sNode, "count", oLabels[sNode]);
+				}
+			}
+		}
+		*/
+
+		// optional: comment lines which are not referenced
+		if (!this.bMergeFound) {
+			sOutput = fnCommentUnusedCases(sOutput, oLabels);
+			/*
+			for (sNode in oLabels) {
+				if (!oLabels[sNode]) { // not referenced? => comment "case"
+					sOutput = sOutput.replace(/^case /, "xxx");
+				}
+			}
+			*/
 		}
 		return sOutput;
 	},
