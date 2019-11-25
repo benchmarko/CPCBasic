@@ -4,7 +4,7 @@ CPCBasic lets you run CPC BASIC programs in a browser. The supported BASIC style
 BASIC programs are compiled to JavaScript which can be run in the browser. A library provides the functionality of the commands that are not directly available in JavaScript.
 
 CPCBasic Links:
-[CpcBasic Demo](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=cpcbasic),
+[CPCBasic Demo](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=cpcbasic),
 [Colors CPC Demo](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=colors),
 [Source code](https://github.com/benchmarko/CPCBasic/),
 [HTML Readme](https://github.com/benchmarko/CPCBasic/#readme),
@@ -26,6 +26,8 @@ CPCBasic Links:
 [![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=labyrinth)]
 [![Landscape](./img/landscape.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=landscape)]
 
+More examples are in the sample library [CPCBasicApps](https://github.com/benchmarko/CPCBasicApps/#readme). They are included in CPCBasic as [apps](https://benchmarko.github.io/CPCBasic/cpcbasic.html?database=apps).
+
 ## Why CPCBasic
 
 There are several great CPC emulators which emulate a complete CPC with exact timing and allow demos to run, pushing CPC hardware to its limits.
@@ -36,28 +38,31 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - Just open cpcbasic.html in a browser.
   The user interface shows several boxes, which can be reduced and expanded by pressing the **green** buttons.
-- Use the selection field to select a sample program, reset the CPC, and run the program.
+- Use the first selection field select the example library: CPCBasic *examples* or CPCBasicApps *apps*.
+- Use the second selection field to select a sample program. It will reset the CPC, and run the program.
 - If you change the BASIC program, press the **Run** button to compile and run the BASIC program in JavaScript. The **Compile only** button compiles the program without running it.
 - If the focus is on the CPC screen, keystrokes will be detected by a running program.
   The *Input* window is an alternative way to send input to the CPC. This works also on mobile devices.
 - The **Break** button stops the simulation. You can continue with the "Continue" button.
 - The **Reset** button resets the CPC.
+- The **Screenshot** button creates a screenshot of the current CPC screen.
+- The **Sound** button activates sound.
 - Textual output is also written to the *Console* Window. This is useful for copying and pasting the output.
 - The *Variables* window allows you to see the variables used by the program.
 - In the *JavaScript* window you will see the compiled JavaScript code. It can be changed and then executed with the *Run* button in this window. So it is possible to use the simulated CPC directly with JavaScript.
-
 - The **Reload** button reloads the page with the current settings. (Please note that changes to the script are lost!)
+  - If you use *Reload* with sound activated, sound need to be activated again. Just do a user action, e.g. click somewhere. This is a browser limitation.
 - The **Help** button opens the readme file on the server.
 
 ## Restrictions
 
-- CPCBasic is still in progress and not complete or accurate
+- CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands, eg. *KEY*, *KEY DEF*, ...
-- RESTORE on lines without *DATA*
-- Sound: No *ENT* (tone envelopes); no hardware volume envelopes or tones with sepcial *ENV* syntax "="
+- Unimplemented commands: *AUTO*, *CAT*, *CONT*, *COPYCHR$*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *KEY*,
+  *KEY DEF*, *LIST*, *MASK*, *MID$()=*, *NEW*, *ON BREAK*, *ON ERROR*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME*, *SAVE*, *SPEED INK/KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
-- Few checks of the program
+- No complete check of the BASIC program
 - Almost no type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
   `defint a: a=1: a%=2: ?a,a%`
@@ -73,26 +78,36 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   not flash. Currently you have to redraw the screen with another color to get a flashing effect.]
 - [fixed: Comparison with equal in assignment is possible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
 - [fixed: No sound]
+- [fixed: *ENT* (tone envelopes); hardware volume envelopes with sepcial *ENV* syntax "="]
+- [fixed: RESTORE for lines without *DATA*: search next *DATA* line]
+- [done: Separate sample library; sample category]
 
-## Extensions
+## Extensions and Features
 
 - *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=rectangles)
+- *|MODE,n*: Change mode without *CLS* (experimental)
 - Computations are not limited to 16 bits
-- Peek&Poke can access "large" memory, not only 64K or 512K.
+- *PEEK&POKE* can access "large" memory, not only 64 KB or 512 KB.
 
 ## Programming hints
 
-- It is BASIC with "wrap factor". However, do not use busy waiting. Put in *FRAME* or *CALL &BD19* commands.
+- CPCBasic is BASIC with "wrap factor". However, do not use busy waiting. Put in *FRAME* or *CALL &BD19* commands.
+  - There is a special feature for the *INKEY$* function: If it returns no key more than once during a frame, a *FRAME* is implicitely called.
+- Use URL parameter "tron=true" to activate line tracing mode with *TRON* and *TROFF*
+- Use *OPENIN* and *INPUT#9* to load data from a file in the current "directory"
+- If the program is complete (that means, no *MERGE* or *CHAIN MERGE* inside), line number destinations are checked for existence. For example, if the *line number* in *GOTO line* does not exist, the compilation fails.
+- Most commands and functions are checked for number of arguments but not for argument types.
 
 ## Possible Future Enhancements
 
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
-- Separate sample library; sample category
 - DSK images support
 - Pause key
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
 - RSX extension libraries / plugins programmed in JavaScript
 - Can we detect Busy Loops and insert *FRAME* automatically?
+- Access screen memory with *PEEK&POKE*
+- Shall we support hardware scrolling with *OUT* or is it already a hardware emulation feature?
 - Extension: More colors, e.g. 256
 - Optimizations of the resulting JavaScript code
 - Further checks during compile time
@@ -129,4 +144,4 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - [Locomotive Software](https://www.cpcwiki.eu/index.php/Locomotive_Software) - The developer of CPCs BASIC and operating system
 
-### **mv, 09/2019**
+### **mv, 11/2019**

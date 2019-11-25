@@ -10,7 +10,7 @@ cpcBasic.addItem("", function () { /*
 12  ' **                       **
 13  ' **     Marco  Vieth      **
 14  ' **  Atteln , Okt. 1988   **
-15  ' *************************** 
+15  ' ***************************
 16 '
 17 CLEAR
 18 SYMBOL AFTER 255:SYMBOL 255,0,0,0,0,0,0,0,126

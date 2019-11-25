@@ -329,6 +329,7 @@ Sound.prototype = {
 					this.debugLog("sound: " + i + " " + iState + ":" + oQueue.aSoundData.length);
 				}
 				this.updateQueueStatus(i, oQueue);
+				this.scheduler(); // schedule early
 			}
 		}
 	},
@@ -346,7 +347,7 @@ Sound.prototype = {
 
 		if (aSoundData.length) {
 			/* eslint-disable no-bitwise */
-			oQueue.bOnHold = aSoundData[0].iState & 0x40; // check if next note on hold
+			oQueue.bOnHold = Boolean(aSoundData[0].iState & 0x40); // check if next note on hold
 			oQueue.iRendevousMask = (aSoundData[0].iState & 0x07); // get channel bits
 			oQueue.iRendevousMask &= ~(1 << i); // mask out our channel
 			oQueue.iRendevousMask |= (aSoundData[0].iState >> 3) & 0x07; // and combine rendevous

@@ -7,11 +7,14 @@ cpcBasic.addItem("", function () { /*
 110 '
 120 CLEAR:MODE 1
 130 PRINT"  Division langer Zahlen
-150 PRINT"Divident:":LINE INPUT a$:PRINT
-160 PRINT"Divisor:":LINE INPUT b$:PRINT
+145 'a$="123456789":b$="37"
+150 PRINT"Divident:":if a$="" then LINE INPUT a$ else PRINT a$
+155 PRINT
+160 PRINT"Divisor:":if b$="" then LINE INPUT b$ else PRINT b$
+165 PRINT
 190 m=LEN(a$):n=LEN(b$):m=m-n
 200 IF m>0 THEN 220
-210 PRINT"Divident muss > als Divisor sein":END
+210 PRINT"Divident muss > als Divisor sein":?:goto 150
 220 DIM u(n+m),v(n),w(n),q(m)
 240 FOR i=1 TO n+m
 250 u(i)=VAL(MID$(a$,i,1))
@@ -71,5 +74,6 @@ cpcBasic.addItem("", function () { /*
 870 FOR i=m+1 TO n+m
 880 PRINT hex$(u(i));
 890 NEXT
-900 END
+900 call &bb18
+910 goto 120
 */ });

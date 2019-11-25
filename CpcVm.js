@@ -1034,8 +1034,32 @@ CpcVm.prototype = {
 		return iEof;
 	},
 
-	erase: function () {
-		this.vmNotImplemented("erase");
+	vmFindArrayVariable: function (sName) {
+		var aNames;
+
+		sName += "A";
+		if (sName in this.v) { // one dim array variable?
+			return sName;
+		}
+
+		aNames = Object.keys(this.v).filter(function (sVar) {
+			return (sVar.indexOf(sName) === 0) ? sVar : null;
+		});
+		return aNames[0];
+	},
+
+	erase: function () { // varargs
+		var i, sName;
+
+		for (i = 0; i < arguments.length; i += 1) {
+			sName = this.vmFindArrayVariable(arguments[i]);
+			if (sName) {
+				this.v[sName] = this.fnGetVarDefault(sName); // reset variable
+			} else {
+				Utils.console.warn("Array variable not found:", arguments[i]);
+				this.error(5); // Improper argument
+			}
+		}
 	},
 
 	erl: function () {
@@ -1172,7 +1196,7 @@ CpcVm.prototype = {
 			this.iInkeyTime = 0;
 		} else { // no key
 			iNow = Date.now();
-			if (this.iInkeyTimeMs && iNow < this.iInkeyTimeMs) { // last inkey without key was in tange of frame fly?
+			if (this.iInkeyTimeMs && iNow < this.iInkeyTimeMs) { // last inkey without key was in range of frame fly?
 				this.frame(); // then insert a frame fly
 			}
 			this.iInkeyTimeMs = iNow + this.iFrameTimeMs; // next time of frame fly
@@ -1278,9 +1302,7 @@ CpcVm.prototype = {
 		return s.length;
 	},
 
-	let: function () {
-		this.vmNotImplemented("let");
-	},
+	// let
 
 	vmLineInputCallback: function (sInput) {
 		Utils.console.log("vmLineInputCallback: " + sInput);
@@ -1324,7 +1346,6 @@ CpcVm.prototype = {
 		oInFile.sName = sName;
 		oInFile.iAddress = iAddress;
 		this.vmStop("loadFile", 90);
-		//this.vmNotImplemented("load");
 	},
 
 	locate: function (iStream, iPos, iVpos) {
@@ -1370,7 +1391,6 @@ CpcVm.prototype = {
 		oInFile.sCommand = "merge";
 		oInFile.sName = sName;
 		this.vmStop("loadFile", 90);
-		//this.vmNotImplemented("merge");
 	},
 
 	mid$: function (s, iStart, iLen) { // as function; iLen is optional
@@ -2040,13 +2060,28 @@ CpcVm.prototype = {
 	},
 
 	restore: function (iLine) {
+		var oDataLineIndex = this.oDataLineIndex,
+			iDataLine;
+
 		iLine = iLine || 0;
-		if (iLine in this.oDataLineIndex) {
-			this.iData = this.oDataLineIndex[iLine];
+		if (iLine in oDataLineIndex) {
+			this.iData = oDataLineIndex[iLine];
 		} else {
-			Utils.console.warn("restore: " + iLine + " not found or no data line");
-			// TODO try to find next data line > iLine
-			this.error(8); // Line does not exist
+			Utils.console.log("restore: search for dataLine>" + iLine);
+			for (iDataLine in oDataLineIndex) { // linear search a data line > line
+				if (oDataLineIndex.hasOwnProperty(iDataLine)) {
+					if (iDataLine >= iLine) {
+						oDataLineIndex[iLine] = oDataLineIndex[iDataLine]; // set data index also for iLine
+						break;
+					}
+				}
+			}
+			if (iLine in oDataLineIndex) { // now found a data line?
+				this.iData = oDataLineIndex[iLine];
+			} else {
+				Utils.console.warn("restore: " + iLine + " not found");
+				this.error(8); // Line does not exist
+			}
 		}
 	},
 

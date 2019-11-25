@@ -12,7 +12,7 @@ cpcBasic.addItem("", function () { /*
 160 'Zahl der Fuenferbloecke
 170 l=1:r(1)=1
 180 FOR i=2 TO n:l=l+LOG(i):NEXT
-190 l=l*0.434295000042766:r%=int(l/5+1)
+190 l=l*0.434295:r%=int(l/5+1)
 200 'Multi-Schleife
 210 l=1:FOR i=n TO 2 STEP -1
 220 l=l+LOG(i)*0.434294575010426:l%=l/5+1:u=0

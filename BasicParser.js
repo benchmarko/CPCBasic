@@ -1138,6 +1138,14 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("erase", function () { // somehow special since arguments are only names of array variables
+			var oValue;
+
+			oValue = fnCreateCmdCall("erase");
+			oValue.type = oValue.name;
+			return oValue;
+		});
+
 		stmt("every", function () {
 			var oValue = fnCreateCmdCall("everyGosub"); // interval and optional timer
 
@@ -1753,13 +1761,13 @@ BasicParser.prototype = {
 			},
 			mParseFunctions = {
 				fnAddReferenceLabel: function (sLabel, node) {
-					if (that.oLabels[sLabel] === undefined) {
+					if (sLabel in that.oLabels) {
+						that.oLabels[sLabel] += 1;
+					} else {
 						Utils.console.warn("fnAddReferenceLabel: line does not exist: " + sLabel);
 						if (!that.bMergeFound) {
 							throw new BasicParser.ErrorObject("Line does not exist", sLabel, node.pos);
 						}
-					} else {
-						that.oLabels[sLabel] += 1;
 					}
 				},
 
@@ -1843,6 +1851,16 @@ BasicParser.prototype = {
 					that.iStopCount += 1;
 					return "o.end(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 				},
+				/*
+				erase: function (aNodeArgs, node) {
+					var i;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						aNodeArgs[i] = '"' + aNodeArgs[i].replace(/v\./, "") + '"'; // remove  preceiding "v.", put in quotes
+					}
+					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				},
+				*/
 				error: function (aNodeArgs) {
 					return "o.error(" + aNodeArgs[0] + "); break";
 				},
@@ -1868,7 +1886,7 @@ BasicParser.prototype = {
 					variables[value] = 0; // declare also step variable
 					sEndName = sVarName + "End";
 					value = sEndName.substr(2); // remove preceiding "v."
-					variables[value] = 0; // declare also step variable
+					variables[value] = 0; // declare also end variable
 
 					value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sEndName + " = " + parseNode(node.right) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
 					value += "\ncase \"" + sLabel + "\": ";
@@ -2103,6 +2121,21 @@ BasicParser.prototype = {
 				return value;
 			},
 
+			fnParseErase = function (node) {
+				var aNodeArgs, i;
+
+				oDevScopeArgs = {};
+				bDevScopeArgsCollect = true;
+				aNodeArgs = fnParseArgs(node.args);
+				bDevScopeArgsCollect = false;
+				oDevScopeArgs = null;
+
+				for (i = 0; i < aNodeArgs.length; i += 1) {
+					aNodeArgs[i] = '"' + aNodeArgs[i] + '"'; // put in quotes
+				}
+				return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+			},
+
 			parseNode = function (node) { // eslint-disable-line complexity
 				var i, value, value2, sName, aNodeArgs;
 
@@ -2169,6 +2202,10 @@ BasicParser.prototype = {
 
 				case "def": // somehow special because we need to get plain variables
 					value = fnParseDef(node);
+					break;
+
+				case "erase": // somehow special because we need to get plain variables
+					value = fnParseErase(node);
 					break;
 
 				case "label":
