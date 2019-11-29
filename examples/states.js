@@ -12,7 +12,7 @@ cpcBasic.addItem("", function () { /*
 14  ' **  Atteln , Okt. 1988   **
 15  ' ***************************
 16 '
-17 CLEAR
+17 CLEAR:DEFINT i-z:DEFSTR a-h: 'gosub 1800
 18 SYMBOL AFTER 255:SYMBOL 255,0,0,0,0,0,0,0,126
 19 '
 20 MODE 1:BORDER 2:PAPER 0:PEN 1
@@ -22,14 +22,14 @@ cpcBasic.addItem("", function () { /*
 24 PEN 1:LOCATE 4,8:PRINT"Bei diesem Spiel koennen bis zu 4"
 25 PRINT CHR$(10)TAB(4)"Mitspieler mitmachen !"
 26 PEN 3:PRINT CHR$(10)CHR$(10)TAB(4)"Beim  Loesen der  Aufgaben  hilft"
-27 PRINT CHR$(10)TAB(4)"die COPY - Taste , Buchstaben des"   
+27 PRINT CHR$(10)TAB(4)"die COPY - Taste , Buchstaben des"
 28 PRINT CHR$(10)TAB(4)"Loesungswortes anzeigt ."
 29 '
 30 REM ***************
 31 REM ** TITELBILD **
 32 REM ***************
 33 'MEMORY &75FF
-34 CLEAR:DEFINT i-z:DEFSTR a-h
+34 'CLEAR:DEFINT i-z:DEFSTR a-h
 35 'LOAD"!STAATEN.BIN",&A000:CALL &A000
 36 'LOAD"!STAATEN.SCN",&8000
 37 LOCATE 7,25:PEN 3:PRINT"(Bitte eine Taste druecken)":PEN 1:CALL &BB18
@@ -145,7 +145,7 @@ cpcBasic.addItem("", function () { /*
 1080 NEXT
 1090 PEN 3:LOCATE 10,25:PRINT"BITTE TASTE DRUECKEN":CALL &BB18
 1100 CLS#3:GOTO 1710:'ENDE
-1110 ' 
+1110 '
 1120 REM *************
 1130 REM ** KORREKT **
 1140 REM *************
@@ -158,13 +158,13 @@ cpcBasic.addItem("", function () { /*
 1210 PLOT x(r)-10,y(r)-10,1:DRAWR 20,20:PLOT x(r)-10,y(r)+10:DRAWR 20,-20
 1220 INK 1,16,24
 1230 RESTORE 2000:la=32:note=0
-1240 d=INKEY$:IF note<>-1 AND d="" THEN ON SQ(1) GOSUB 1900:call &bd19: GOTO 1240
-1250 IF d="" THEN IF (SQ(1) AND 128)=128 THEN call &bd19: goto 1250
-1260 INK 1,24
+1240 d="":WHILE d="" and note<>-1:d=INKEY$:gosub 1900
+1250 wend
+1260 sound 135,0,0:INK 1,24
 1270 IF UPPER$(d)="E" THEN LOCATE 1,1:STOP
 1280 CALL &BCA7:RETURN
 1290 '
-1300 REM ************ 
+1300 REM ************
 1310 REM ** FEHLER **
 1320 REM ************
 1330 PRINT #3,"F E H L E R  !";:PEN #4,3
@@ -175,7 +175,7 @@ cpcBasic.addItem("", function () { /*
 1380 '
 1390 REM  ********************
 1400 REM  **  Zeitansprung  **
-1410 REM  ******************** 
+1410 REM  ********************
 1420 PRINT#3,CHR$(ti+48);" ";:SOUND 1,600,10,5
 1430 ti=ti+1:IF ti<10 THEN RETURN
 1440 ti=REMAIN(0):ti=0
@@ -214,10 +214,11 @@ cpcBasic.addItem("", function () { /*
 1770 LOCATE 12,10:PRINT"Scores:"
 1780 FOR p=1 TO pl:LOCATE 12,p*2+10:PRINT c(p)+" ";sc(p):NEXT
 1790 LOCATE 12,24:PRINT "Taste druecken ..."
-1800 PAPER 0:RESTORE 2000:la=40:note=0
-1810 d="":WHILE d="":d=INKEY$:ON SQ(1) GOSUB 1900
-1820 IF note=-1 THEN FOR i=1 TO 7000/1000: call&bd19:NEXT:RESTORE 2000
+1800 PAPER 0:RESTORE 2000:la=40:note=-1
+1810 d="":WHILE d="":d=INKEY$:gosub 1900
+1820 IF note=-1 THEN while sq(4)<>4:call &bd19:wend:FOR i=1 TO 7000/1000: call &bd19:NEXT:RESTORE 2000
 1830 call &bd19:WEND
+1836 sound 135,0,0
 1840 CALL &BCA7
 1850 RETURN
 1860 '

@@ -11,7 +11,7 @@ function Sound(options) {
 }
 
 Sound.prototype = {
-	init: function (options) {
+	init: function (/* options */) {
 		var i;
 
 		this.bIsSoundOn = false;
@@ -109,7 +109,7 @@ Sound.prototype = {
 
 	playNoise: function (iOscillator, fTime, fDuration, iNoise) { //TTT
 		var ctx = this.context,
-			bandHz, q,
+			bandHz, //q,
 			bufferSize = ctx.sampleRate * fDuration, // set the time of the note
 			buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate), // create an empty buffer
 			data = buffer.getChannelData(0), // get data
@@ -329,9 +329,9 @@ Sound.prototype = {
 					this.debugLog("sound: " + i + " " + iState + ":" + oQueue.aSoundData.length);
 				}
 				this.updateQueueStatus(i, oQueue);
-				this.scheduler(); // schedule early
 			}
 		}
+		this.scheduler(); // schedule early to allow SQ busy check immiediately (can channels go out of sync by this?)
 	},
 
 	setVolEnv: function (iVolEnv, aVolEnvData) {
@@ -435,12 +435,23 @@ Sound.prototype = {
 		if (iSq < 0) {
 			iSq = 0;
 		}
-		iSq |= (oQueue.iRendevousMask << 3); // eslint-disable-line no-bitwise
+		/* eslint-disable no-bitwise */
+		iSq |= (oQueue.iRendevousMask << 3);
 		if (this.aOscillators[n] && aQueues[n].fNextNoteTime > this.context.currentTime) { // note still playing?
 			iSq |= 0x80; // eslint-disable-line no-bitwise
-		} else if (aSoundData.length && (aSoundData[0].iState & 0x40)) { // eslint-disable-line no-bitwise
-			iSq |= 0x40; // eslint-disable-line no-bitwise
+		} else if (aSoundData.length && (aSoundData[0].iState & 0x40)) {
+			iSq |= 0x40;
 		}
+
+		/*
+		// some special handling: if a note could start playing, mark channel already as busy (to allow very fast check SQ busy after SOUND)
+		if (iSq < 4) { // not busy, not hold or rendevous, at lease one note in queue
+			if (aSoundData.length && !oQueue.bOnHold && !oQueue.iRendevousMask) {
+				iSq |= 0x80;
+			}
+		}
+		*/
+		/* eslint-enable no-bitwise */
 		return iSq;
 	},
 

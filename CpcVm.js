@@ -729,10 +729,9 @@ CpcVm.prototype = {
 		oInFile.sName = sName;
 		oInFile.iLine = iLine;
 		this.vmStop("loadFile", 90);
-		//this.vmNotImplemented("chain");
 	},
 
-	chainMerge: function (sName, iLine) { // optional iLine; TODO more parameters: delete numner range
+	chainMerge: function (sName, iLine) { // optional iLine; TODO more parameters: delete number range
 		var oInFile = this.oInFile;
 
 		this.closein();
@@ -741,7 +740,6 @@ CpcVm.prototype = {
 		oInFile.sName = sName;
 		oInFile.iLine = iLine;
 		this.vmStop("loadFile", 90);
-		//this.vmNotImplemented("chain merge");
 	},
 
 	chr$: function (n) {
@@ -755,7 +753,7 @@ CpcVm.prototype = {
 
 	clear: function () {
 		this.vmResetTimers();
-		this.vmSetStartLine(0); //TTT
+		this.vmSetStartLine(0);
 		this.iErr = 0;
 		this.aGosubStack.length = 0;
 		this.vmResetVariables();
@@ -1401,8 +1399,17 @@ CpcVm.prototype = {
 		return s.substr(iStart - 1, iLen);
 	},
 
-	mid$Cmd: function () {
-		this.vmNotImplemented("mid$ as cmd");
+	mid$Assign: function (s, iStart, iLen, sNew) {
+		iStart = this.vmRound(iStart) - 1;
+		iLen = (iLen !== null) ? this.vmRound(iLen) : sNew.length;
+		if (iLen > sNew.length) {
+			iLen = sNew.length;
+		}
+		if (iLen > s.length - iStart) {
+			iLen = s.length - iStart;
+		}
+		s = s.substr(0, iStart) + sNew.substr(0, iLen) + s.substr(iStart + iLen);
+		return s;
 	},
 
 	min: function () { // varargs

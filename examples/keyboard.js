@@ -5,9 +5,9 @@
 cpcBasic.addItem("", function () { /*
 100 REM Keyboard Test
 110 REM Marco Vieth, 2019
-112 mode 2
+112 mode 2:defint a-z
 115 window #0,1,40,3,25:window #1,41,80,3,25:window #2,1,80,1,2
-120 ?#2,"Keyboard Test: Focus window and press some keys..."
+120 ?#2,"Keyboard Test: Press some keys..."
 140 'every 50*2 gosub 800
 150 for i=0 to 79
 160 x=inkey(i)

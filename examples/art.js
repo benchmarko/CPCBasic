@@ -6,9 +6,8 @@ cpcBasic.addItem("", function () { /*
 100 REM Computer Art (Computerkunst+Kreativitaet)
 110 'Marco Vieth,  16.6.1988
 120 '
-125 chain merge "cpclib",130:'subroutines at 5000
-126 '
 130 CLEAR:DEFINT h-p
+132 c.c=1:gosub 9010:'initCpcLib
 135 m=0
 150 unten=9:'untere Bildsch.grenze
 160 h=20:'Anzahl der Huegel
@@ -26,11 +25,13 @@ cpcBasic.addItem("", function () { /*
 260 y=y+a(p,0)*(1+SIN(p*w  +a(p,1)))
 270 DRAW i-1,y,a(p,2)
 280 NEXT p,i
-290 c.iv%=250:gosub 5040:'wait
+290 c.c=3:c.iv%=250:gosub 9020:'waitOrKey
 300 goto 185
 310 '
 320 'a(i,0)=Amplitude der Fourier-Synthese
 330 'a(i,1)=entsprechende Phasen
 340 'a(i,2)=entsprechende Farben
-5000 'cpclib will be merged...
+9000 'cpclib will be merged...
+9010 chain merge "cpclib"
+9020 return
 */ });

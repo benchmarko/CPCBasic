@@ -6,12 +6,13 @@ cpcBasic.addItem("", function () { /*
 100 REM Graphics CPC Demo
 110 REM Known from CPC CP/M Disk
 112 '
-113 chain merge "cpclib",115:'subroutines at 5000
-114 '
-115 dim md(2):md(0)=1:md(1)=0
-116 c.m%=3:gosub 5060:'check mode
-117 if c.m%=3 then md(2)=3 else md(2)=-1
-118 '
+113 clear:defreal a:defint b-z
+114 c.c=1:gosub 9010:'initCpcLib
+115 '
+116 dim md(2):md(0)=1:md(1)=0
+117 c.c=4:c.m%=3:gosub 9020:'checkMode
+118 if c.m%=3 then md(2)=3 else md(2)=-1
+119 '
 120 for i2=0 to 2
 125 m=md(i2)
 130 if m>-1 then gosub 1500
@@ -33,7 +34,7 @@ cpcBasic.addItem("", function () { /*
 1630 NEXT
 1635 after 50,1 gosub 1800
 1640 EVERY 5 GOSUB 1680
-1665 c.iv%=350:gosub 5040:'wait
+1665 c.c=3:c.iv%=350:gosub 9020:'waitOrKey
 1670 R=REMAIN(0)+remain(1)
 1675 return
 1677 '
@@ -43,6 +44,7 @@ cpcBasic.addItem("", function () { /*
 1710 stop
 1790 '
 1800 r=remain(1):locate 1,1:?space$(5):?space$(3):return
-4990 '
-5000 'cpclib will be merged...
+9000 'cpclib will be merged...
+9010 chain merge "cpclib"
+9020 return
 */ });

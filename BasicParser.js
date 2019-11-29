@@ -121,6 +121,7 @@ BasicParser.mKeywords = {
 	memory: "c n",
 	merge: "c s",
 	mid$: "f s n n?",
+	mid$Assign: "c s n n?", // mid$ as assign, not really a command because it has parenthesis
 	min: "f n *",
 	mod: "o",
 	mode: "c n",
@@ -1399,6 +1400,36 @@ BasicParser.prototype = {
 				};
 			}
 			oValue.args.push(oValue2);
+
+			return oValue;
+		});
+
+		stmt("mid$", function () { // mid$Assign
+			var oValue = {
+					type: "assign",
+					pos: aTokens[iIndex - 1].pos
+				},
+				oMid, oRight;
+
+			oMid = fnCreateFuncCall("mid$Assign");
+			if (oMid.args[0].type !== "identifier") {
+				throw new BasicParser.ErrorObject("Expected identifier at", oMid.args[0].type, oMid.args[0].pos);
+			}
+
+			if (oMid.args.length < 3) {
+				oMid.args.push({ // add dummy parameter for iLen
+					type: "null",
+					value: null
+				});
+			}
+
+			oValue.left = Object.assign({}, oMid.args[0]); // set identifier also on left side
+
+			advance("="); // equal as assignment
+			oRight = expression(0);
+
+			oMid.args.push(oRight);
+			oValue.right = oMid; // put it on right side
 
 			return oValue;
 		});
