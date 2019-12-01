@@ -135,7 +135,8 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
     	"key": "testdat1",
-		"title": "testdat1 - Test data for Test Page"
+		"title": "testdat1 - Test data for Test Page",
+		"type": "data"
 	},
     {
 		"key": "testpage",

@@ -324,14 +324,16 @@ BasicParser.prototype = {
 			},
 			fnParseKeyword = function () {
 				sToken = sToken.toLowerCase();
-				if (sToken === "rem") { // ignore comment
-					if (isNotNewLine(sChar)) {
-						advanceWhile(isNotNewLine);
+				addToken(sToken, 0, iStartPos);
+				if (sToken === "rem") { // special handling for line comment
+					if (sChar === " ") {
+						sChar = advance();
 					}
-				} else {
-					addToken(sToken, 0, iStartPos);
-				}
-				if (sToken === "data") { // special handling since strings in data lines need not be quoted
+					if (isNotNewLine(sChar)) {
+						sToken = advanceWhile(isNotNewLine);
+						addToken("string", sToken, iStartPos + 1); //TTT
+					}
+				} else if (sToken === "data") { // special handling because strings in data lines need not be quoted
 					if (isWhiteSpace(sChar)) {
 						advanceWhile(isWhiteSpace);
 					}
@@ -374,7 +376,12 @@ BasicParser.prototype = {
 				addToken("(eol)", 0, iStartPos);
 				sChar = advance();
 			} else if (isComment(sChar)) {
-				advanceWhile(isNotNewLine);
+				addToken(sChar, 0, iStartPos);
+				sChar = advance();
+				if (isNotNewLine(sChar)) {
+					sToken = advanceWhile(isNotNewLine);
+					addToken("string", sToken, iStartPos);
+				}
 			} else if (isOperator(sChar)) {
 				addToken(sChar, 0, iStartPos);
 				sChar = advance();
@@ -615,19 +622,19 @@ BasicParser.prototype = {
 			},
 
 			line = function () {
-				var t = oToken,
-					h;
+				var oValue = {
+					type: "label",
+					value: oToken.value,
+					pos: oToken.pos,
+					left: null
+				};
 
 				advance("number");
-				h = {
-					type: "label",
-					value: t.value,
-					left: statements()
-				};
+				oValue.left = statements();
 				if (oToken.type === "(eol)") {
 					advance("(eol)");
 				}
-				return h;
+				return oValue;
 			},
 
 			infix = function (id, lbp, rbp, led) {
@@ -705,7 +712,7 @@ BasicParser.prototype = {
 					sType = "ok",
 					oExpression;
 
-				while (bNeedMore || (sType && oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else")) {
+				while (bNeedMore || (sType && oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && oToken.type !== "rem" && oToken.type !== "'")) {
 					if (aTypes && sType !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
 						if (!sType) {
@@ -754,7 +761,7 @@ BasicParser.prototype = {
 			fnGetArgsSepByCommaSemi = function () {
 				var aArgs = [];
 
-				while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else") {
+				while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && oToken.type !== "rem" && oToken.type !== "'") {
 					aArgs.push(expression(0));
 					if (oToken.type === "," || oToken.type === ";") {
 						advance();
@@ -1017,6 +1024,24 @@ BasicParser.prototype = {
 
 
 		// statements ...
+		stmt("'", function () { // apostrophe comment
+			var oValue;
+
+			oValue = {
+				type: "comment",
+				name: "'",
+				value: "",
+				pos: aTokens[iIndex - 1].pos
+			};
+
+			if (oToken.type === "string") {
+				oValue.value = oToken.value;
+				advance();
+			}
+
+			return oValue;
+		});
+
 		stmt("after", function () {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
 
@@ -1076,6 +1101,30 @@ BasicParser.prototype = {
 			advance("=");
 
 			oValue.value = expression(0);
+			return oValue;
+		});
+
+		stmt("defint", function () { // somehow special since arguments are only first characters of variables
+			var oValue;
+
+			oValue = fnCreateCmdCall("defint");
+			oValue.type = oValue.name;
+			return oValue;
+		});
+
+		stmt("defreal", function () { // somehow special since arguments are only first characters of variables
+			var oValue;
+
+			oValue = fnCreateCmdCall("defreal");
+			oValue.type = oValue.name;
+			return oValue;
+		});
+
+		stmt("defstr", function () { // somehow special since arguments are only first characters of variables
+			var oValue;
+
+			oValue = fnCreateCmdCall("defstr");
+			oValue.type = oValue.name;
 			return oValue;
 		});
 
@@ -1210,10 +1259,11 @@ BasicParser.prototype = {
 
 		stmt("if", function () {
 			var oValue = {
-				type: "fcall",
-				name: "if",
-				args: []
-			};
+					type: "fcall",
+					name: "if",
+					args: []
+				},
+				oValue2, oToken2;
 
 			oValue.left = expression(0);
 			if (oToken.type === "goto") {
@@ -1222,7 +1272,14 @@ BasicParser.prototype = {
 			} else {
 				advance("then");
 				if (oToken.type === "number") {
-					oValue.right = [fnCreateCmdCall("goto")];
+					oValue2 = fnCreateCmdCall("goto");
+					oToken2 = oToken;
+					oValue.right = statements("else");
+					if (oValue.right.length) {
+						Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos);
+						// throw new BasicParser.ErrorObject("Unreachable code after THEN at", oToken2.type, oToken2.pos);
+					}
+					oValue.right.unshift(oValue2);
 				} else {
 					oValue.right = statements("else");
 				}
@@ -1231,7 +1288,14 @@ BasicParser.prototype = {
 			if (oToken.type === "else") {
 				advance("else");
 				if (oToken.type === "number") {
-					oValue.third = [fnCreateCmdCall("goto")];
+					oValue2 = fnCreateCmdCall("goto");
+					oToken2 = oToken;
+					oValue.third = statements("else");
+					if (oValue.third.length) {
+						Utils.console.warn("IF: Unreachable code after ELSE at pos", oToken2.pos);
+						// throw new BasicParser.ErrorObject("Unreachable code after ELSE at", oToken2.type, oToken2.pos);
+					}
+					oValue.third.unshift(oValue2);
 				} else if (oToken.type === "if") {
 					oValue.third = [statement()];
 				} else {
@@ -1588,6 +1652,24 @@ BasicParser.prototype = {
 
 		oSymbols["?"] = oSymbols.print; // "?" is same as print
 
+		stmt("rem", function () {
+			var oValue;
+
+			oValue = {
+				type: "comment",
+				name: "rem",
+				value: "",
+				pos: aTokens[iIndex - 1].pos
+			};
+
+			if (oToken.type === "string") {
+				oValue.value = oToken.value;
+				advance();
+			}
+
+			return oValue;
+		});
+
 		stmt("resume", function () {
 			var sName = "resume",
 				oValue;
@@ -1701,8 +1783,8 @@ BasicParser.prototype = {
 					sName += "A".repeat(iArrayIndices);
 				}
 				if (oDevScopeArgs) {
-					if (sName === "o") { // we must not use format parameter "o" since this is out vm object
-						sName = "oNo"; // change variable name so something we cannot set in BASIC
+					if (sName === "o") { // we must not use format parameter "o" since this is our vm object
+						sName = "oNo"; // change variable name to something we cannot set in BASIC
 					}
 					if (bDevScopeArgsCollect) {
 						oDevScopeArgs[sName] = fnGetVarDefault(sName); // declare
@@ -1834,6 +1916,7 @@ BasicParser.prototype = {
 					that.aData.push("o.data(" + aNodeArgs.join(", ") + ")"); // will be set at the beginning of the script
 					return "/* data */";
 				},
+				/*
 				defint: function (aNodeArgs) {
 					var i, sName;
 
@@ -1864,6 +1947,7 @@ BasicParser.prototype = {
 					}
 					return aNodeArgs.join("; ");
 				},
+				*/
 				dim: function (aNodeArgs) {
 					var i, sName, aName;
 
@@ -1882,16 +1966,6 @@ BasicParser.prototype = {
 					that.iStopCount += 1;
 					return "o.end(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 				},
-				/*
-				erase: function (aNodeArgs, node) {
-					var i;
-
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						aNodeArgs[i] = '"' + aNodeArgs[i].replace(/v\./, "") + '"'; // remove  preceiding "v.", put in quotes
-					}
-					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
-				},
-				*/
 				error: function (aNodeArgs) {
 					return "o.error(" + aNodeArgs[0] + "); break";
 				},
@@ -2152,6 +2226,22 @@ BasicParser.prototype = {
 				return value;
 			},
 
+			fnParseDefIntRealStr = function (node) {
+				var aNodeArgs, i;
+
+				oDevScopeArgs = {};
+				bDevScopeArgsCollect = true;
+				aNodeArgs = fnParseArgs(node.args);
+				bDevScopeArgsCollect = false;
+				oDevScopeArgs = null;
+
+				for (i = 0; i < aNodeArgs.length; i += 1) {
+					aNodeArgs[i] = "o." + node.name + '("' + aNodeArgs[i] + '")';
+				}
+				//return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+				return aNodeArgs.join("; ");
+			},
+
 			fnParseErase = function (node) {
 				var aNodeArgs, i;
 
@@ -2174,6 +2264,10 @@ BasicParser.prototype = {
 					Utils.console.debug("evaluate: parseNode node=%o type=" + node.type + " name=" + node.name + " value=" + node.value + " left=%o right=%o args=%o", node, node.left, node.right, node.args);
 				}
 				switch (node.type) {
+				case "comment":
+					//value = "";
+					value = "// " + node.value + "\n"; // TTT
+					break;
 				case "number":
 					value = node.value;
 					break;
@@ -2235,6 +2329,18 @@ BasicParser.prototype = {
 					value = fnParseDef(node);
 					break;
 
+				case "defint": // somehow special because we need to get first character of variable only
+					value = fnParseDefIntRealStr(node);
+					break;
+
+				case "defreal": // somehow special because we need to get first character of variable only
+					value = fnParseDefIntRealStr(node);
+					break;
+
+				case "defstr": // somehow special because we need to get first character of variable only
+					value = fnParseDefIntRealStr(node);
+					break;
+
 				case "erase": // somehow special because we need to get plain variables
 					value = fnParseErase(node);
 					break;
@@ -2247,9 +2353,14 @@ BasicParser.prototype = {
 						value += " o.vmTrace(" + that.iLine + ");";
 					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value += " " + aNodeArgs[i];
-						if (!(/[}:;]$/).test(value)) { // does not end with "}" ":" ";"
-							value += ";";
+						value2 = aNodeArgs[i];
+						if (value2 !== "") {
+							if (!(/[}:;\n]$/).test(value2)) { // does not end with } : ; \n
+								value2 += ";";
+							} else if (value2.substr(-1) === "\n") {
+								value2 = value2.substr(0, value2.length - 1);
+							}
+							value += " " + value2;
 						}
 					}
 					break;
@@ -2290,6 +2401,9 @@ BasicParser.prototype = {
 		// create labels map
 		for (i = 0; i < parseTree.length; i += 1) {
 			if (parseTree[i].type === "label") {
+				if (parseTree[i].value in oLabels) {
+					throw new BasicParser.ErrorObject("Duplicate line number", parseTree[i].value, parseTree[i].pos);
+				}
 				oLabels[parseTree[i].value] = 0; // init call count
 			}
 		}

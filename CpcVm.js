@@ -175,6 +175,7 @@ CpcVm.prototype = {
 
 		this.iZone = 13; // print tab zone value
 
+		//this.vmResetVariables(); //TTT
 		this.oVarTypes = {}; // variable types
 		this.vmDefineVarTypes("R", "a-z");
 
@@ -1209,11 +1210,14 @@ CpcVm.prototype = {
 	vmDetermineVarType: function (sName) {
 		var sType, aMatch, sChar;
 
+		if (sName.indexOf("v.") === 0) {
+			sName = sName.substr(2); // remove preceiding "v."
+		}
 		aMatch = sName.match(/[IR$]/); // explicit type?
 		if (aMatch) {
 			sType = aMatch[0];
 		} else {
-			sChar = sName.substr(2, 1); // remove preceiding "v.", take first character
+			sChar = sName.charAt(0); // take first character of variable name
 			sType = this.oVarTypes[sChar];
 		}
 		return sType;

@@ -444,10 +444,13 @@ Controller.prototype = {
 	fnReset2: function () {
 		var oVm = this.oVm;
 
+		this.oVariables = {};
+		oVm.vmResetVariables();
 		oVm.vmReset();
 		oVm.vmStop("reset", 0); // keep reset, but with priority 0, so that "compile only" still works
 		oVm.sOut = "";
 		this.view.setAreaValue("outputText", "");
+		this.fnInvalidateScript();
 	},
 
 	fnParse2: function () {
@@ -548,9 +551,9 @@ Controller.prototype = {
 		this.view.setAreaValue("resultText", oVm.sOut);
 		this.view.setAreaScrollTop("resultText"); // scroll to bottom
 
-		this.view.setDisabled("runButton", false);
+		this.view.setDisabled("runButton", sReason === "reset");
 		this.view.setDisabled("stopButton", sReason !== "input" && sReason !== "key" && sReason !== "loadFile");
-		this.view.setDisabled("continueButton", sReason === "end" || sReason === "reset" || sReason === "input" || sReason === "key" || sReason === "loadFile");
+		this.view.setDisabled("continueButton", sReason === "end" || sReason === "reset" || sReason === "input" || sReason === "key" || sReason === "loadFile" || sReason === "parse");
 		if (this.oVariables) {
 			this.fnSetVarSelectOptions("varSelect", this.oVariables);
 			this.commonEventHandler.onVarSelectChange();

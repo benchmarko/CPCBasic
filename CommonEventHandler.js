@@ -236,7 +236,9 @@ CommonEventHandler.prototype = {
 				that.view.setAreaValue("inputText", sInput);
 				that.view.setAreaValue("resultText", "");
 				that.controller.fnReset2();
-				that.controller.fnParseRun();
+				if (!oExample.type || oExample.type !== "data") {
+					that.controller.fnParseRun();
+				}
 			},
 			fnExampleError = function () {
 				Utils.console.log("Example " + sUrl + " error");
@@ -271,6 +273,25 @@ CommonEventHandler.prototype = {
 			sValue = "";
 		}
 		this.view.setAreaValue("varText", sValue);
+	},
+
+	onVarTextChange: function () {
+		var sPar = this.view.getSelectValue("varSelect"),
+			sValue = this.view.getSelectValue("varText"),
+			oVariables = this.controller.oVariables,
+			sType, value;
+
+		sType = this.controller.oVm.vmDetermineVarType(sPar);
+		if (sType !== "$") { // not string? => convert to number
+			value = parseFloat(sValue);
+		} else {
+			value = sValue;
+		}
+		Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
+		oVariables[sPar] = value;
+
+		this.controller.fnSetVarSelectOptions("varSelect", oVariables);
+		this.onVarSelectChange(); // title change?
 	},
 
 	onScreenshotButtonClick: function () {
