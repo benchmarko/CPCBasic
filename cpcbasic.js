@@ -11,6 +11,7 @@ var cpcBasicExternalConfig, cpcBasic;
 
 cpcBasic = {
 	config: {
+		bench: 0, // debug: number of parse bench loops
 		debug: 0,
 		databaseDirs: "examples", // example base directories (comma separated)
 		database: "examples", // examples, apps, saved

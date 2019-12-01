@@ -262,69 +262,83 @@ BasicParser.prototype = {
 				if (sType === "identifier" && BasicParser.mKeywords[oLexToken.value.toLowerCase()]) {
 					sType = oLexToken.value.toLowerCase(); // modify type identifier => keyword xy
 					//oLexToken.type = sType; //TTT currently we need to change it also here because we use aTokens at other places
+					oLexToken.type = sType; //TTT
 				}
 				oSym = oSymbols[sType];
-
 				if (!oSym) {
-					Utils.console.error("parse: Undefined object: type=" + sType + " t=%o", oLexToken);
-					oSym = {}; // just to continue
+					//Utils.console.error("parse: Undefined object: type=" + sType + " t=%o", oLexToken);
+					//oSym = {}; // just to continue
+					throw new BasicParser.ErrorObject("Unknown token", oLexToken.type, oLexToken.pos);
 				}
+				/*
 				oToken = Object.create(oSym);
 				oToken.type = sType;
 				oToken.value = oLexToken.value;
 				oToken.pos = oLexToken.pos;
+				*/
+				oToken = oLexToken; // reuse
 				return oToken;
 			},
 
 			expression = function (rbp) {
 				var left,
-					t = oToken;
+					t = oToken,
+					s = oSymbols[t.type];
 
 				if (Utils.debug > 3) {
 					Utils.console.debug("parse: expression rbp=" + rbp + " type=" + t.type + " t=%o", t);
 				}
 				advance();
-				if (!t.nud) {
+				if (!s.nud) {
 					if (t.type === "(end)") {
 						throw new BasicParser.ErrorObject("Unexpected end of file", "", t.pos);
 					} else {
 						throw new BasicParser.ErrorObject("Unexpected token", t.type, t.pos);
 					}
 				}
-				left = t.nud(t); // process literals, variables, and prefix operators
-				while (rbp < oToken.lbp) { // as long as the right binding power is less than the left binding power of the next token...
+				left = s.nud(t); // process literals, variables, and prefix operators
+				while (rbp < oSymbols[oToken.type].lbp) { // as long as the right binding power is less than the left binding power of the next token...
 					t = oToken;
+					s = oSymbols[t.type];
 					advance();
-					if (!t.led) {
+					if (!s.led) {
 						throw new BasicParser.ErrorObject("Unexpected token", t.type, t.pos); //TTT how to get this error?
 					}
-					left = t.led(left); // ...the led method is invoked on the following token (infix and suffix operators), can be recursive
+					left = s.led(left); // ...the led method is invoked on the following token (infix and suffix operators), can be recursive
 				}
 				return left;
 			},
 
-			assignment = function () { // similar to let
-				var oValue = {
+			assignment = function () { // "=" as assignment, similar to let
+				var oValue, oLeft;
+				/*
+				var oValue = { // new token
 					type: "assign",
-					pos: oToken.pos
+					pos: oToken.pos,
+					len: 1 //TTT not in source, is rather 0
 				};
+				*/
 
 				if (oToken.type !== "identifier") {
 					throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
 				}
-				oValue.left = expression(90); // take it (can also be an array) and stop
+				oLeft = expression(90); // take it (can also be an array) and stop
+				oValue = oToken;
 				advance("="); // equal as assignment
+				oValue.left = oLeft;
 				oValue.right = expression(0);
+				oValue.type = "assign"; // replace "="
 				return oValue;
 			},
 
 			statement = function () {
 				var t = oToken,
+					s = oSymbols[t.type],
 					v;
 
-				if (t.std) { // statement?
+				if (s.std) { // statement?
 					advance();
-					return t.std();
+					return s.std();
 				}
 
 				if (t.type === "identifier") {
@@ -347,7 +361,7 @@ BasicParser.prototype = {
 						break;
 					}
 					if (oToken.type === ":") {
-						advance();
+						advance(":");
 					} else {
 						oStatement = statement();
 						aStatements.push(oStatement);
@@ -357,15 +371,22 @@ BasicParser.prototype = {
 			},
 
 			line = function () {
-				var oValue = {
+				var oValue;
+
+				/*
+				var oValue = { // create new
 					type: "label",
 					value: oToken.value,
 					pos: oToken.pos,
 					left: null
 				};
+				*/
 
+				oValue = oToken; // number
 				advance("number");
 				oValue.left = statements();
+				oValue.type = "label"; // number => label
+
 				if (oToken.type === "(eol)") {
 					advance("(eol)");
 				}
@@ -375,30 +396,59 @@ BasicParser.prototype = {
 			infix = function (id, lbp, rbp, led) {
 				rbp = rbp || lbp;
 				symbol(id, null, lbp, led || function (left) {
+					var oValue = oPreviousToken;
+
+					if (oValue.type !== id) { //TTT
+						throw new BasicParser.ErrorObject("Expected", id, oValue.pos);
+					}
+					/*
 					return {
 						type: id,
 						left: left,
 						right: expression(rbp)
 					};
+					*/
+					oValue.left = left;
+					oValue.right = expression(rbp);
+					return oValue;
 				});
 			},
 			infixr = function (id, lbp, rbp, led) {
 				rbp = rbp || lbp;
 				symbol(id, null, lbp, led || function (left) {
+					var oValue = oPreviousToken;
+
+					if (oValue.type !== id) { //TTT
+						throw new BasicParser.ErrorObject("Expected", id, oValue.pos);
+					}
+					/*
 					return {
 						type: id,
 						left: left,
 						right: expression(rbp - 1)
 					};
+					*/
+					oValue.left = left;
+					oValue.right = expression(rbp - 1);
+					return oValue;
 				});
 			},
 			prefix = function (id, rbp) {
 				symbol(id, function () {
+					var oValue = oPreviousToken;
+
+					if (oValue.type !== id) { //TTT
+						throw new BasicParser.ErrorObject("Expected", id, oValue.pos);
+					}
+					/*
 					return {
 						pos: oPreviousToken.pos,
 						type: id,
 						right: expression(rbp)
 					};
+					*/
+					oValue.right = expression(rbp);
+					return oValue;
 				});
 			},
 			stmt = function (s, f) {
@@ -417,10 +467,11 @@ BasicParser.prototype = {
 					if (oToken.type === ",") {
 						advance(",");
 					}
-				} else {
+				} else { // create number token
 					oValue = {
 						type: "number",
 						value: 0,
+						len: 0,
 						bInserted: true // inserted value
 					};
 				}
@@ -465,14 +516,16 @@ BasicParser.prototype = {
 						} else { // insert default stream number 0
 							oExpression = {
 								type: "number",
-								value: 0
+								value: 0,
+								len: 0
 							};
 						}
 					} else {
 						if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
 							oExpression = {
 								type: "null",
-								value: null
+								value: null,
+								len: 0
 							};
 						} else {
 							oExpression = expression(0);
@@ -550,14 +603,23 @@ BasicParser.prototype = {
 			},
 
 			fnCreateCmdCall = function (sName) {
-				var oValue = {
-						type: "fcall",
-						args: null,
-						name: sName || oPreviousToken.type,
-						pos: oPreviousToken.pos
-					},
+				var oValue = oPreviousToken,
+					/*
+					var oValue = {
+							type: "fcall",
+							args: null,
+							name: sName || oPreviousToken.type,
+							pos: oPreviousToken.pos
+						},
+					*/
 					aTypes = null,
 					sKeyOpts;
+
+				oValue.name = oValue.type;
+				oValue.type = "fcall";
+				if (sName) {
+					oValue.name = sName;
+				}
 
 				sKeyOpts = BasicParser.mKeywords[oValue.name];
 				if (sKeyOpts && sKeyOpts.length > 1) {
@@ -568,14 +630,23 @@ BasicParser.prototype = {
 			},
 
 			fnCreateFuncCall = function (sName) {
-				var oValue = {
-						type: "fcall",
-						args: null,
-						name: sName || oPreviousToken.type,
-						pos: oPreviousToken.pos
-					},
+				var oValue = oPreviousToken,
+					/*
+					var oValue = {
+							type: "fcall",
+							args: null,
+							name: sName || oPreviousToken.type,
+							pos: oPreviousToken.pos
+						},
+					*/
 					aTypes = null,
 					sKeyOpts;
+
+				oValue.name = oValue.type;
+				oValue.type = "fcall";
+				if (sName) {
+					oValue.name = sName;
+				}
 
 				sKeyOpts = BasicParser.mKeywords[oValue.name];
 				if (sKeyOpts && sKeyOpts.length > 1) {
@@ -650,6 +721,7 @@ BasicParser.prototype = {
 
 			if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 				if (oToken.type !== "(") { // Fnxxx name without ()?
+					/*
 					oValue = {
 						type: "fcall",
 						name: "fn",
@@ -657,17 +729,29 @@ BasicParser.prototype = {
 						left: sName,
 						pos: oToken.pos
 					};
+					*/
+					oValue = oPreviousToken; // identifier => fcall
+					oValue.type = "fcall";
+					oValue.name = "fn";
+					oValue.args = [];
+					oValue.left = sName; // .value
+
 					return oValue;
 				}
 			}
 
 			if (oToken.type === "(" || oToken.type === "[") {
+				oValue = oPreviousToken;
+				oValue.type = "array"; // identifier => array
+				oValue.name = oValue.value; //TTT
+				/*
 				oValue = {
 					type: "array",
 					args: null,
 					name: sName,
 					pos: oToken.pos
 				};
+				*/
 				oValue.args = fnGetArgsInParenthesisOrBrackets();
 
 				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
@@ -683,24 +767,24 @@ BasicParser.prototype = {
 
 		symbol("(", function () {
 			var //iParseIndex = iIndex,
-				value = expression(0);
+				oValue = expression(0);
 
 			if (oToken.type !== ")") {
 				throw new BasicParser.ErrorObject("Expected closing parenthesis", ")", oPreviousToken.pos);
 			}
-			advance();
-			return value;
+			advance(")");
+			return oValue;
 		});
 
 		symbol("[", function () {
 			var //iParseIndex = iIndex, //aTokens[iParseIndex].pos
-				value = expression(0);
+				oValue = expression(0);
 
 			if (oToken.type !== "]") {
 				throw new BasicParser.ErrorObject("Expected closing brackets", "]", oPreviousToken.pos);
 			}
-			advance();
-			return value;
+			advance("]");
+			return oValue;
 		});
 
 		infix("^", 90, 80);
@@ -735,12 +819,18 @@ BasicParser.prototype = {
 		infixr("=", 30); // equal for comparison
 
 		symbol("fn", function () { // separate fn
+			var oValue = oPreviousToken;
+
+			/*
 			var oValue = {
 				type: "fcall",
 				name: "fn",
 				args: null,
 				pos: oToken.pos
 			};
+			*/
+			oValue.name = oValue.type; //TTT fn
+			oValue.type = "fcall";
 
 			if (oToken.type === "identifier") {
 				oValue.left = "fn" + oToken.value;
@@ -760,14 +850,19 @@ BasicParser.prototype = {
 
 		// statements ...
 		stmt("'", function () { // apostrophe comment
-			var oValue;
+			var oValue = oPreviousToken;
 
+			/*
 			oValue = {
 				type: "comment",
 				name: "'",
 				value: "",
 				pos: oToken.pos
 			};
+			*/
+
+			oValue.type = "comment"; //TTT
+			oValue.value = ""; //TTT
 
 			if (oToken.type === "string") {
 				oValue.value = oToken.value;
@@ -781,7 +876,7 @@ BasicParser.prototype = {
 			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
 
 			if (oValue.args.length < 2) { // add default timer 0
-				oValue.args.push({
+				oValue.args.push({ // create
 					type: "number",
 					value: 0
 				});
@@ -811,12 +906,16 @@ BasicParser.prototype = {
 			return fnCreateCmdCall(sName);
 		});
 
-		stmt("def", function () {
+		stmt("def", function () { // somehow special
+			var oValue = oPreviousToken;
+
+			/*
 			var oValue = {
 				type: "def", // somehow special
 				args: [],
 				pos: oToken.pos
 			};
+			*/
 
 			if (oToken.type === "fn") { // fn <identifier> separate?
 				advance("fn");
@@ -864,13 +963,20 @@ BasicParser.prototype = {
 		});
 
 		stmt("ent", function () {
-			var oValue = {
-					type: "fcall",
-					name: "ent",
-					args: []
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: "ent",
+						args: []
+					},
+				*/
 				iCount = 0,
 				oExpression;
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall"; //TTT
+			oValue.args = [];
 
 			oValue.args.push(expression(0)); // should be number or variable
 
@@ -894,13 +1000,20 @@ BasicParser.prototype = {
 		});
 
 		stmt("env", function () {
-			var oValue = {
-					type: "fcall",
-					name: "env",
-					args: []
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: "env",
+						args: []
+					},
+				*/
 				iCount = 0,
 				oExpression;
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall"; //TTT
+			oValue.args = [];
 
 			oValue.args.push(expression(0)); // should be number or variable
 
@@ -934,7 +1047,7 @@ BasicParser.prototype = {
 			var oValue = fnCreateCmdCall("everyGosub"); // interval and optional timer
 
 			if (oValue.args.length < 2) { // add default timer
-				oValue.args.push({
+				oValue.args.push({ // create
 					type: "number",
 					value: 0
 				});
@@ -945,12 +1058,18 @@ BasicParser.prototype = {
 		});
 
 		stmt("for", function () {
-			var oValue = {
-					type: "fcall",
-					name: "for",
-					args: null
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: "for",
+						args: null
+					},
+				*/
 				oName;
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall";
 
 			if (oToken.type !== "identifier") {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
@@ -970,7 +1089,7 @@ BasicParser.prototype = {
 				advance("step");
 				oValue.third = expression(0);
 			} else {
-				oValue.third = {
+				oValue.third = { // created
 					type: "number",
 					value: "1"
 				};
@@ -992,12 +1111,19 @@ BasicParser.prototype = {
 		});
 
 		stmt("if", function () {
-			var oValue = {
-					type: "fcall",
-					name: "if",
-					args: []
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: "if",
+						args: []
+					},
+				*/
 				oValue2, oToken2;
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall";
+			oValue.args = [];
 
 			oValue.left = expression(0);
 			if (oToken.type === "goto") {
@@ -1042,18 +1168,25 @@ BasicParser.prototype = {
 		});
 
 		stmt("input", function () {
-			var oValue = {
-					type: "fcall",
-					name: "input",
-					args: [],
-					pos: oToken.pos
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: "input",
+						args: [],
+						pos: oToken.pos
+					},
+				*/
 				sText = "",
-				sName, oValue2;
+				oValue2;
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall";
+			oValue.args = [];
 
 			oValue.args.push(fnGetOptionalStream());
 
-			oValue.args.push({
+			oValue.args.push({ // create
 				type: "string",
 				value: (oToken.type === ";") ? ";" : ""
 			});
@@ -1087,6 +1220,14 @@ BasicParser.prototype = {
 				if (oToken.type !== "identifier") {
 					throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
 				}
+				oValue2 = oToken;
+				advance();
+				if (oToken.type === "(") {
+					oValue2.type = "array";
+					oValue2.name = oValue2.value; //TTT
+					oValue2.args = fnGetArgsInParenthesisOrBrackets();
+				}
+				/*
 				sName = oToken.value;
 				advance();
 				if (oToken.type === "(") {
@@ -1103,6 +1244,7 @@ BasicParser.prototype = {
 						value: sName
 					};
 				}
+				*/
 				oValue.args.push(oValue2);
 			} while ((oToken.type === ",") && advance());
 			return oValue;
@@ -1119,10 +1261,13 @@ BasicParser.prototype = {
 		});
 
 		stmt("let", function () {
+			var oValue = oPreviousToken;
+			/*
 			var oValue = {
 				type: "assign",
 				pos: oToken.pos
 			};
+			*/
 
 			if (oToken.type !== "identifier") {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
@@ -1134,20 +1279,27 @@ BasicParser.prototype = {
 		});
 
 		stmt("line", function () {
-			var oValue = {
-					type: "fcall",
-					name: "lineInput",
-					args: [],
-					pos: oToken.pos
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: "lineInput",
+						args: [],
+						pos: oToken.pos
+					},
+				*/
 				sText = "",
-				sName, oValue2;
+				oValue2;
 
 			advance("input");
 
+			oValue.name = "lineInput"; //oValue.type; //TTT
+			oValue.type = "fcall";
+			oValue.args = [];
+
 			oValue.args.push(fnGetOptionalStream());
 
-			oValue.args.push({
+			oValue.args.push({ // create
 				type: "string",
 				value: (oToken.type === ";") ? ";" : ""
 			});
@@ -1181,6 +1333,14 @@ BasicParser.prototype = {
 			if (oToken.type !== "identifier") {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
 			}
+			oValue2 = oToken;
+			advance();
+			if (oToken.type === "(") {
+				oValue2.type = "array";
+				oValue2.name = oValue2.value; //TTT
+				oValue2.args = fnGetArgsInParenthesisOrBrackets();
+			}
+			/*
 			sName = oToken.value;
 			advance();
 			if (oToken.type === "(") {
@@ -1197,13 +1357,14 @@ BasicParser.prototype = {
 					value: sName
 				};
 			}
+			*/
 			oValue.args.push(oValue2);
 
 			return oValue;
 		});
 
 		stmt("mid$", function () { // mid$Assign
-			var oValue = {
+			var oValue = { // create
 					type: "assign",
 					pos: oToken.pos
 				},
@@ -1233,18 +1394,28 @@ BasicParser.prototype = {
 		});
 
 		stmt("next", function () {
+			var oValue = oPreviousToken;
+			/*
 			var oValue = {
 				type: "fcall",
 				name: "next",
 				args: [],
 				pos: oPreviousToken.pos
 			};
+			*/
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall";
+			oValue.args = [];
 
 			while (oToken.type === "identifier") {
+				oValue.args.push(oToken);
+				/*
 				oValue.args.push({
 					type: "identifier",
 					value: oToken.value
 				});
+				*/
 				advance();
 				if (oToken.type === ",") {
 					advance(",");
@@ -1254,13 +1425,20 @@ BasicParser.prototype = {
 		});
 
 		stmt("on", function () {
-			var oValue = {
-					type: "fcall",
-					name: null,
-					args: [],
-					pos: oPreviousToken.pos
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						name: null,
+						args: [],
+						pos: oPreviousToken.pos
+					},
+				*/
 				oLeft;
+
+			//oValue.name = oValue.type; //TTT
+			oValue.type = "fcall";
+			oValue.args = [];
 
 			if (oToken.type === "break") {
 				advance("break");
@@ -1317,17 +1495,23 @@ BasicParser.prototype = {
 		});
 
 		stmt("print", function () {
-			var oValue = {
-					type: "fcall",
-					args: [],
-					name: "print",
-					pos: oPreviousToken.pos
-				},
+			var oValue = oPreviousToken,
+				/*
+				var oValue = {
+						type: "fcall",
+						args: [],
+						name: "print",
+						pos: oPreviousToken.pos
+					},
+				*/
 				oValue2,
-				iPos = oPreviousToken.pos,
 				bTrailingSemicolon = false,
 				iSpcOrTabEnd = 0,
 				t, oStream;
+
+			oValue.name = oValue.type; //TTT
+			oValue.type = "fcall";
+			oValue.args = [];
 
 			oStream = fnGetOptionalStream();
 			oValue.args.push(oStream);
@@ -1344,6 +1528,16 @@ BasicParser.prototype = {
 					oValue.args.push(oValue2);
 					iSpcOrTabEnd = iIndex;
 				} else if (oToken.type === "using") {
+					oValue2 = oToken;
+					advance("using");
+
+					oValue2.name = oValue2.type; //TTT
+					oValue2.type = "fcall";
+
+					t = expression(0); // format
+					advance(";");
+
+					/*
 					advance("using");
 					t = expression(0); // format
 					advance(";");
@@ -1353,6 +1547,7 @@ BasicParser.prototype = {
 						args: null,
 						pos: oPreviousToken.pos
 					};
+					*/
 					oValue2.args = fnGetArgsSepByCommaSemi();
 					oValue2.args.unshift(t);
 					oValue.args.push(oValue2);
@@ -1361,13 +1556,20 @@ BasicParser.prototype = {
 				} else if (oToken.type === ";") {
 					advance(";");
 				} else if (oToken.type === ",") { // comma tabulator
-					oValue.args.push({
+					oValue2 = oToken;
+					advance(",");
+					oValue2.name = "commaTab"; //oValue2.type; //TTT
+					oValue2.type = "fcall";
+					oValue2.args = [];
+					oValue.args.push(oValue2);
+					/*
+					oValue.args.push({ // create
 						type: "fcall",
 						name: "commaTab",
 						args: [],
 						pos: iPos
 					});
-					advance(",");
+					*/
 				} else {
 					t = expression(0);
 					oValue.args.push(t);
@@ -1376,7 +1578,7 @@ BasicParser.prototype = {
 
 			bTrailingSemicolon = (oPreviousToken.type === ";");
 			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
-				oValue.args.push({
+				oValue.args.push({ // create
 					type: "string",
 					value: "\\r\\n"
 				});
@@ -1384,17 +1586,22 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		oSymbols["?"] = oSymbols.print; // "?" is same as print
+		oSymbols["?"] = oSymbols.print; // "?" is same as print //TTT
 
 		stmt("rem", function () {
-			var oValue;
+			var oValue = oPreviousToken;
 
+			/*
 			oValue = {
 				type: "comment",
 				name: "rem",
 				value: "",
 				pos: oToken.pos
 			};
+			*/
+			oValue.name = oValue.type; //TTT
+			oValue.type = "comment"; //TTT
+			oValue.value = ""; //TTT
 
 			if (oToken.type === "string") {
 				oValue.value = oToken.value;
@@ -1404,7 +1611,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		stmt("resume", function () {
+		stmt("resume", function () { //TTT
 			var sName = "resume",
 				oValue;
 

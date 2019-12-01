@@ -181,6 +181,12 @@ CodeGeneratorJs.prototype = {
 					return sValue;
 				},
 
+				"?": function (aNodeArgs) { // map to print
+					var sName = "print";
+
+					return "o." + sName + "(" + aNodeArgs.join(", ") + ")";
+				},
+
 				afterGosub: function (aNodeArgs, node) {
 					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
 					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
@@ -467,6 +473,25 @@ CodeGeneratorJs.prototype = {
 				}
 			},
 
+			fnParseAssign = function (node) {
+				var aNodeArgs, sName, value;
+
+				if (node.left.type === "array") {
+					aNodeArgs = fnParseArgs(node.left.args);
+					sName = fnAdaptVariableName(node.left.name, aNodeArgs.length);
+					value = aNodeArgs.map(function (val) {
+						return "[" + val + "]";
+					}).join("");
+				} else if (node.left.type === "identifier") {
+					sName = fnAdaptVariableName(node.left.value);
+					value = "";
+				} else {
+					throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.name, node.pos); // should not occur
+				}
+				value = sName + value + " = " + parseNode(node.right);
+				return value;
+			},
+
 			fnParseDef = function (node) {
 				var aNodeArgs, sName, value;
 
@@ -553,7 +578,8 @@ CodeGeneratorJs.prototype = {
 						return "[" + val + "]";
 					}).join("");
 					break;
-				case "assign":
+				case "assign": // see also "let"
+					/*
 					if (node.left.type === "array") {
 						aNodeArgs = fnParseArgs(node.left.args);
 						sName = fnAdaptVariableName(node.left.name, aNodeArgs.length);
@@ -566,7 +592,8 @@ CodeGeneratorJs.prototype = {
 					} else {
 						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.name, node.pos); // should not occur
 					}
-					value = sName + value + " = " + parseNode(node.right);
+					*/
+					value = fnParseAssign(node);
 					break;
 				case "fcall":
 					aNodeArgs = fnParseArgs(node.args);
@@ -618,6 +645,11 @@ CodeGeneratorJs.prototype = {
 						}
 					}
 					break;
+
+				case "let": // see also "assign"
+					value = fnParseAssign(node);
+					break;
+
 				default:
 					if (mOperators[node.type]) {
 						if (node.left) {

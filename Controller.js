@@ -61,6 +61,9 @@ Controller.prototype = {
 			sound: this.oSound,
 			tron: oModel.getProperty("tron")
 		});
+
+		this.oCodeGeneratorJs = null;
+
 		this.fnScript = null;
 
 		this.iTimeoutHandle = null;
@@ -459,15 +462,33 @@ Controller.prototype = {
 
 	fnParse2: function () {
 		var sInput = this.view.getAreaValue("inputText"),
-			oCodeGeneratorJs = new CodeGeneratorJs({
+			iBench = this.model.getProperty("bench"),
+			i, iTime, oOutput, oError, iEndPos, sOutput;
+
+		if (!this.oCodeGeneratorJs) {
+			this.oCodeGeneratorJs = new CodeGeneratorJs({
 				lexer: new BasicLexer(),
 				parser: new BasicParser(),
 				tron: this.model.getProperty("tron")
-			}),
-			oOutput, oError, iEndPos, sOutput;
+			});
+		}
 
 		this.oVariables = {};
-		oOutput = oCodeGeneratorJs.generate(sInput, this.oVariables);
+		if (!iBench) {
+			oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
+		} else {
+			for (i = 0; i < iBench; i += 1) {
+				this.oCodeGeneratorJs.reset();
+				iTime = Date.now();
+				oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
+				iTime = Date.now() - iTime;
+				Utils.console.log("bench size", sInput.length, "labels", Object.keys(this.oCodeGeneratorJs.oLabels).length, "loop", i, ":", iTime, "ms");
+				if (oOutput.error) {
+					break;
+				}
+			}
+		}
+
 		if (oOutput.error) {
 			oError = oOutput.error;
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);

@@ -164,7 +164,7 @@ BasicLexer.prototype = {
 						if (sChar !== ",") {
 							break;
 						}
-						addToken(sChar, 0, iStartPos); // ","
+						addToken(sChar, sChar, iStartPos); // ","
 						sChar = advance();
 					}
 				}
@@ -179,14 +179,14 @@ BasicLexer.prototype = {
 				addToken("(eol)", 0, iStartPos);
 				sChar = advance();
 			} else if (isComment(sChar)) {
-				addToken(sChar, 0, iStartPos);
+				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 				if (isNotNewLine(sChar)) {
 					sToken = advanceWhile(isNotNewLine);
 					addToken("string", sToken, iStartPos);
 				}
 			} else if (isOperator(sChar)) {
-				addToken(sChar, 0, iStartPos);
+				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 			} else if (isDigit(sChar)) {
 				sToken = advanceWhile(isDigit);
@@ -261,7 +261,7 @@ BasicLexer.prototype = {
 				addToken("identifier", sToken, iStartPos);
 				fnParseCompleteLineForRemOrData();
 			} else if (isAddress(sChar)) {
-				addToken(sChar, 0, iStartPos);
+				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 			} else if (isRsx(sChar)) {
 				sChar = advance();
@@ -271,11 +271,11 @@ BasicLexer.prototype = {
 					addToken("rsx", sToken, iStartPos);
 				}
 			} else if (isStream(sChar)) { // stream can be an expression
-				addToken(sChar, 0, iStartPos);
+				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 			} else if (isComparison(sChar)) {
 				sToken = advanceWhile(isComparison2);
-				addToken(sToken, 0, iStartPos); // like operator
+				addToken(sToken, sToken, iStartPos); // like operator
 			} else {
 				throw new BasicLexer.ErrorObject("Unrecognized token", sChar, iStartPos);
 			}

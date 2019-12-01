@@ -612,6 +612,13 @@ CpcVm.prototype = {
 		return this.oInFile;
 	},
 
+	vmAdaptFilename: function (sName) {
+		if (sName.indexOf("!") === 0) {
+			sName = sName.substr(1); // remove preceiding "!"
+		}
+		return sName;
+	},
+
 	vmGetSoundData: function () {
 		return this.aSoundData;
 	},
@@ -621,7 +628,6 @@ CpcVm.prototype = {
 			this.print(0, "[" + iLine + "]");
 		}
 	},
-
 
 	abs: function (n) {
 		return Math.abs(n);
@@ -724,6 +730,7 @@ CpcVm.prototype = {
 	chain: function (sName, iLine) { // optional iLine
 		var oInFile = this.oInFile;
 
+		sName = this.vmAdaptFilename(sName);
 		this.closein();
 		oInFile.bOpen = true;
 		oInFile.sCommand = "chain";
@@ -735,6 +742,7 @@ CpcVm.prototype = {
 	chainMerge: function (sName, iLine) { // optional iLine; TODO more parameters: delete number range
 		var oInFile = this.oInFile;
 
+		sName = this.vmAdaptFilename(sName);
 		this.closein();
 		oInFile.bOpen = true;
 		oInFile.sCommand = "chainMerge";
@@ -1342,6 +1350,7 @@ CpcVm.prototype = {
 	load: function (sName, iAddress) { // optional iAddress
 		var oInFile = this.oInFile;
 
+		sName = this.vmAdaptFilename(sName);
 		this.closein();
 		oInFile.bOpen = true;
 		oInFile.sCommand = "load";
@@ -1388,6 +1397,7 @@ CpcVm.prototype = {
 	merge: function (sName) {
 		var oInFile = this.oInFile;
 
+		sName = this.vmAdaptFilename(sName);
 		this.closein();
 		oInFile.bOpen = true;
 		oInFile.sCommand = "merge";
@@ -1536,9 +1546,7 @@ CpcVm.prototype = {
 	vmOpeninCallback: function (sInput) {
 		var oInFile = this.oInFile;
 
-		//oInFile.loaded = true; //TTT
 		if (sInput !== null) {
-			//oInFile.bOpen = true; //TTT
 			oInFile.aInput = sInput.split("\n");
 			oInFile.sState = "loaded";
 		} else {
@@ -1551,12 +1559,12 @@ CpcVm.prototype = {
 	openin: function (sName) {
 		var oInFile = this.oInFile;
 
+		sName = this.vmAdaptFilename(sName);
 		if (!oInFile.bOpen) {
 			if (sName) {
 				oInFile.bOpen = true;
 				oInFile.sCommand = "openin";
 				oInFile.sName = sName;
-				//oInFile.sState = "";
 				oInFile.fnFileCallback = this.vmOpeninCallback.bind(this);
 				this.vmStop("loadFile", 90);
 			}
@@ -2190,13 +2198,15 @@ CpcVm.prototype = {
 	},
 
 	run: function (numOrString) {
-		var oInFile = this.oInFile;
+		var oInFile = this.oInFile,
+			sName;
 
 		if (typeof numOrString === "string") { // filename?
+			sName = this.vmAdaptFilename(numOrString);
 			this.closein();
 			oInFile.bOpen = true;
 			oInFile.sCommand = "run";
-			oInFile.sName = numOrString;
+			oInFile.sName = sName;
 			oInFile.fnFileCallback = this.vmRunCallback.bind(this);
 			this.vmStop("loadFile", 90);
 		} else {
