@@ -6,14 +6,18 @@
 
 "use strict";
 
-var Utils, BasicParser, Canvas, CpcVm, Sound;
+var Utils, BasicLexer, BasicParser, Canvas, CodeGeneratorJs, CpcVm, Sound;
 
 if (typeof require !== "undefined") {
-	Utils = require("./Utils.js"); // eslint-disable-line global-require
-	BasicParser = require("./BasicParser.js"); // eslint-disable-line global-require
-	Canvas = require("./Canvas.js"); // eslint-disable-line global-require
-	CpcVm = require("./CpcVm.js"); // eslint-disable-line global-require
-	Sound = require("./Sound.js"); // eslint-disable-line global-require
+	/* eslint-disable global-require */
+	Utils = require("./Utils.js");
+	BasicLexer = require("./BasicLexer.js");
+	BasicParser = require("./BasicParser.js");
+	Canvas = require("./Canvas.js");
+	CodeGeneratorJs = require("./CodeGeneratorJs.js");
+	CpcVm = require("./CpcVm.js");
+	Sound = require("./Sound.js");
+	/* eslint-enable global-require */
 }
 
 function Controller(oModel, oView) {
@@ -455,13 +459,15 @@ Controller.prototype = {
 
 	fnParse2: function () {
 		var sInput = this.view.getAreaValue("inputText"),
-			oParseOptions, oOutput, oError, iEndPos, sOutput;
+			oCodeGeneratorJs = new CodeGeneratorJs({
+				lexer: new BasicLexer(),
+				parser: new BasicParser(),
+				tron: this.model.getProperty("tron")
+			}),
+			oOutput, oError, iEndPos, sOutput;
 
-		oParseOptions = {
-			tron: this.model.getProperty("tron")
-		};
 		this.oVariables = {};
-		oOutput = new BasicParser(oParseOptions).calculate(sInput, this.oVariables);
+		oOutput = oCodeGeneratorJs.generate(sInput, this.oVariables);
 		if (oOutput.error) {
 			oError = oOutput.error;
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
