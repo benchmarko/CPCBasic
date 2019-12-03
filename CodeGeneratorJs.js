@@ -159,6 +159,176 @@ CodeGeneratorJs.prototype = {
 					return a; // stream
 				}
 			},
+
+			mParseFunctions0 = {
+				fnParseDefIntRealStr: function (node) {
+					var aNodeArgs, i;
+
+					oDevScopeArgs = {};
+					bDevScopeArgsCollect = true;
+					aNodeArgs = fnParseArgs(node.args);
+					bDevScopeArgsCollect = false;
+					oDevScopeArgs = null;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						aNodeArgs[i] = "o." + node.type + '("' + aNodeArgs[i] + '")';
+					}
+					//return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
+					return aNodeArgs.join("; ");
+				},
+
+				fnParseErase: function (node) {
+					var aNodeArgs, i;
+
+					oDevScopeArgs = {};
+					bDevScopeArgsCollect = true;
+					aNodeArgs = fnParseArgs(node.args);
+					bDevScopeArgsCollect = false;
+					oDevScopeArgs = null;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						aNodeArgs[i] = '"' + aNodeArgs[i] + '"'; // put in quotes
+					}
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
+				},
+
+				fnCommandWithGoto: function (aNodeArgs, node) {
+					var sCommand = node.type,
+						sLabel, sValue;
+
+					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
+					that.iStopCount += 1;
+					sValue = "o." + sCommand + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					return sValue;
+				},
+
+				comment: function (node) {
+					return "// " + node.left + "\n";
+				},
+				number: function (node) {
+					return node.value;
+				},
+				string: function (node) {
+					return '"' + node.value + '"';
+				},
+				binnumber: function (node) {
+					var value = node.value.slice(2);
+
+					if (Utils.bSupportsBinaryLiterals) {
+						value = "0b" + ((value.length) ? value : "0"); // &x->0b; 0b is ES6
+					} else {
+						value = "0x" + ((value.length) ? parseInt(value, 2).toString(16) : "0"); // we convert it to hex
+					}
+					return value;
+				},
+				hexnumber: function (node) {
+					var value = node.value.slice(1);
+
+					value = "0x" + ((value.length) ? value : "0"); // &->0x
+					return value;
+				},
+				identifier: function (node) {
+					var value = fnAdaptVariableName(node.value); // here we use node.value
+
+					return value;
+				},
+				"null": function (/* node */) { // means: no parameter specified?
+					return "null";
+				},
+				array: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sName = fnAdaptVariableName(node.value, aNodeArgs.length),
+						value = sName + aNodeArgs.map(function (val) {
+							return "[" + val + "]";
+						}).join("");
+
+					return value;
+				},
+				assign: function (node) { // see also "let"
+					var aNodeArgs, sName, value;
+
+					if (node.left.type === "array") {
+						aNodeArgs = fnParseArgs(node.left.args);
+						sName = fnAdaptVariableName(node.left.value, aNodeArgs.length);
+						value = aNodeArgs.map(function (val) {
+							return "[" + val + "]";
+						}).join("");
+					} else if (node.left.type === "identifier") {
+						sName = fnAdaptVariableName(node.left.value);
+						value = "";
+					} else {
+						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos); // should not occur
+					}
+					value = sName + value + " = " + parseNode(node.right);
+					return value;
+				},
+				def: function (node) { // somehow special because we need to get plain variables
+					var aNodeArgs, sName, value;
+
+					sName = fnAdaptVariableName(node.left);
+					oDevScopeArgs = {};
+					bDevScopeArgsCollect = true;
+					aNodeArgs = fnParseArgs(node.args);
+					bDevScopeArgsCollect = false;
+					value = parseNode(node.value);
+					oDevScopeArgs = null;
+					value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + value + "; };";
+					return value;
+				},
+
+				defint: function (node) { // somehow special because we need to get first character of variable only
+					var value = this.fnParseDefIntRealStr(node);
+
+					return value;
+				},
+
+				defreal: function (node) { // somehow special because we need to get first character of variable only
+					var value = this.fnParseDefIntRealStr(node);
+
+					return value;
+				},
+
+				defstr: function (node) { // somehow special because we need to get first character of variable only
+					var value = this.fnParseDefIntRealStr(node);
+
+					return value;
+				},
+
+				erase: function (node) { // somehow special because we need to get plain variables
+					var value = this.fnParseErase(node);
+
+					return value;
+				},
+
+				label: function (node) {
+					var value = "case " + node.value + ":",
+						aNodeArgs, value2, i;
+
+					that.iLine = node.value; // set line first
+					aNodeArgs = fnParseArgs(node.left);
+
+					if (that.options.tron) {
+						value += " o.vmTrace(" + that.iLine + ");";
+					}
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						value2 = aNodeArgs[i];
+						if (value2 !== "") {
+							if (!(/[}:;\n]$/).test(value2)) { // does not end with } : ; \n
+								value2 += ";";
+							} else if (value2.substr(-1) === "\n") {
+								value2 = value2.substr(0, value2.length - 1);
+							}
+							value += " " + value2;
+						}
+					}
+					return value;
+				},
+
+				let: function (node) {
+					return this.assign(node);
+				}
+			},
+
 			mParseFunctions = {
 				fnAddReferenceLabel: function (sLabel, node) {
 					if (sLabel in that.oLabels) {
@@ -172,7 +342,7 @@ CodeGeneratorJs.prototype = {
 				},
 
 				fnCommandWithGoto: function (aNodeArgs, node) {
-					var sCommand = node.name,
+					var sCommand = node.type,
 						sLabel, sValue;
 
 					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
@@ -187,9 +357,15 @@ CodeGeneratorJs.prototype = {
 					return "o." + sName + "(" + aNodeArgs.join(", ") + ")";
 				},
 
+				/*
+				"'": function (aNodeArgs) { // apostrophe comment, see also rem
+					return "// " + aNodeArgs.join(", ") + "\n";
+				},
+				*/
+
 				afterGosub: function (aNodeArgs, node) {
 					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
-					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 				call: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node);
@@ -232,10 +408,10 @@ CodeGeneratorJs.prototype = {
 				},
 				everyGosub: function (aNodeArgs, node) {
 					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
-					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 				fn: function (aNodeArgs, node) {
-					var sName = fnAdaptVariableName(node.left);
+					var sName = fnAdaptVariableName(node.left); //TTT
 
 					return sName + "(" + aNodeArgs.join(", ") + ")";
 				},
@@ -347,7 +523,7 @@ CodeGeneratorJs.prototype = {
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = that.oStack.f.pop();
 						if (sName === undefined) {
-							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", node.name, node.pos);
+							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", node.type, node.pos);
 						}
 						aNodeArgs[i] = "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 					}
@@ -357,7 +533,7 @@ CodeGeneratorJs.prototype = {
 					var iLine = aNodeArgs[0];
 
 					this.fnAddReferenceLabel(iLine, node.args[0]);
-					return "o." + node.name + "(" + iLine + ")";
+					return "o." + node.type + "(" + iLine + ")";
 				},
 				onErrorGoto: function (aNodeArgs, node) {
 					var iLine = aNodeArgs[0];
@@ -365,10 +541,10 @@ CodeGeneratorJs.prototype = {
 					if (iLine) { // only for lines > 0
 						this.fnAddReferenceLabel(iLine, node.args[0]);
 					}
-					return "o." + node.name + "(" + iLine + ")";
+					return "o." + node.type + "(" + iLine + ")";
 				},
 				onGosub: function (aNodeArgs, node) {
-					var sName = node.name,
+					var sName = node.type,
 						sLabel = that.iLine + "g" + that.iGosubCount,
 						i;
 
@@ -380,7 +556,7 @@ CodeGeneratorJs.prototype = {
 					return "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
 				},
 				onGoto: function (aNodeArgs, node) {
-					var sName = node.name,
+					var sName = node.type,
 						sLabel = that.iLine + "s" + that.iStopCount,
 						i;
 
@@ -393,7 +569,7 @@ CodeGeneratorJs.prototype = {
 				},
 				onSqGosub: function (aNodeArgs, node) {
 					this.fnAddReferenceLabel(aNodeArgs[1], node.args[1]); // argument 1: line number
-					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 				openin: function (aNodeArgs, node) {
 					return this.fnCommandWithGoto(aNodeArgs, node);
@@ -402,7 +578,7 @@ CodeGeneratorJs.prototype = {
 					var value;
 
 					if (aNodeArgs.length) {
-						value = "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+						value = "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 					} else {
 						value = this.fnCommandWithGoto(aNodeArgs, node) + " o.randomize(o.vmGetNextInput(\"$\"))";
 					}
@@ -417,17 +593,22 @@ CodeGeneratorJs.prototype = {
 					}
 					return aNodeArgs.join("; ");
 				},
+				/*
+				rem: function (aNodeArgs) { // see also apostrophe comment
+					return "// " + aNodeArgs.join(", ") + "\n";
+				},
+				*/
 				restore: function (aNodeArgs, node) {
 					if (aNodeArgs.length) {
 						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
 					}
-					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 				resume: function (aNodeArgs, node) {
 					if (aNodeArgs.length) {
 						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
 					}
-					return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 				"return": function () {
 					return "o.return(); break;";
@@ -460,7 +641,7 @@ CodeGeneratorJs.prototype = {
 					var sName = that.oStack.w.pop();
 
 					if (sName === undefined) {
-						throw new CodeGeneratorJs.ErrorObject("Unexpected WEND at", node.name, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Unexpected WEND at", node.type, node.pos);
 					}
 					return "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
 				},
@@ -473,203 +654,38 @@ CodeGeneratorJs.prototype = {
 				}
 			},
 
-			fnParseAssign = function (node) {
-				var aNodeArgs, sName, value;
-
-				if (node.left.type === "array") {
-					aNodeArgs = fnParseArgs(node.left.args);
-					sName = fnAdaptVariableName(node.left.name, aNodeArgs.length);
-					value = aNodeArgs.map(function (val) {
-						return "[" + val + "]";
-					}).join("");
-				} else if (node.left.type === "identifier") {
-					sName = fnAdaptVariableName(node.left.value);
-					value = "";
-				} else {
-					throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.name, node.pos); // should not occur
-				}
-				value = sName + value + " = " + parseNode(node.right);
-				return value;
-			},
-
-			fnParseDef = function (node) {
-				var aNodeArgs, sName, value;
-
-				sName = fnAdaptVariableName(node.left);
-				oDevScopeArgs = {};
-				bDevScopeArgsCollect = true;
-				aNodeArgs = fnParseArgs(node.args);
-				bDevScopeArgsCollect = false;
-				value = parseNode(node.value);
-				oDevScopeArgs = null;
-				value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + value + "; };";
-				return value;
-			},
-
-			fnParseDefIntRealStr = function (node) {
-				var aNodeArgs, i;
-
-				oDevScopeArgs = {};
-				bDevScopeArgsCollect = true;
-				aNodeArgs = fnParseArgs(node.args);
-				bDevScopeArgsCollect = false;
-				oDevScopeArgs = null;
-
-				for (i = 0; i < aNodeArgs.length; i += 1) {
-					aNodeArgs[i] = "o." + node.name + '("' + aNodeArgs[i] + '")';
-				}
-				//return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
-				return aNodeArgs.join("; ");
-			},
-
-			fnParseErase = function (node) {
-				var aNodeArgs, i;
-
-				oDevScopeArgs = {};
-				bDevScopeArgsCollect = true;
-				aNodeArgs = fnParseArgs(node.args);
-				bDevScopeArgsCollect = false;
-				oDevScopeArgs = null;
-
-				for (i = 0; i < aNodeArgs.length; i += 1) {
-					aNodeArgs[i] = '"' + aNodeArgs[i] + '"'; // put in quotes
-				}
-				return "o." + node.name + "(" + aNodeArgs.join(", ") + ")";
-			},
 
 			parseNode = function (node) { // eslint-disable-line complexity
-				var i, value, value2, sName, aNodeArgs;
+				var value, value2;
 
 				if (Utils.debug > 3) {
-					Utils.console.debug("evaluate: parseNode node=%o type=" + node.type + " name=" + node.name + " value=" + node.value + " left=%o right=%o args=%o", node, node.left, node.right, node.args);
+					Utils.console.debug("evaluate: parseNode node=%o type=" + node.type + " value=" + node.value + " left=%o right=%o args=%o", node, node.left, node.right, node.args);
 				}
-				switch (node.type) {
-				case "comment":
-					value = "// " + node.value + "\n";
-					break;
-				case "number":
-					value = node.value;
-					break;
-				case "string":
-					value = '"' + node.value + '"';
-					break;
-				case "binnumber":
-					value = node.value.slice(2);
-					if (Utils.bSupportsBinaryLiterals) {
-						value = "0b" + ((value.length) ? value : "0"); // &x->0b; 0b is ES6
-					} else {
-						value = "0x" + ((value.length) ? parseInt(value, 2).toString(16) : "0"); // we convert it to hex
-					}
-					break;
-				case "hexnumber":
-					value = node.value.slice(1);
-					value = "0x" + ((value.length) ? value : "0"); // &->0x
-					break;
-				case "identifier":
-					value = fnAdaptVariableName(node.value); // here we use node.value
-					break;
-				case "null": // means: no parameter specified?
-					value = "null";
-					break;
-				case "array":
-					aNodeArgs = fnParseArgs(node.args);
-					sName = fnAdaptVariableName(node.name, aNodeArgs.length);
-					value = sName + aNodeArgs.map(function (val) {
-						return "[" + val + "]";
-					}).join("");
-					break;
-				case "assign": // see also "let"
-					/*
-					if (node.left.type === "array") {
-						aNodeArgs = fnParseArgs(node.left.args);
-						sName = fnAdaptVariableName(node.left.name, aNodeArgs.length);
-						value = aNodeArgs.map(function (val) {
-							return "[" + val + "]";
-						}).join("");
-					} else if (node.left.type === "identifier") {
-						sName = fnAdaptVariableName(node.left.value);
-						value = "";
-					} else {
-						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.name, node.pos); // should not occur
-					}
-					*/
-					value = fnParseAssign(node);
-					break;
-				case "fcall":
-					aNodeArgs = fnParseArgs(node.args);
-					sName = node.name;
-					if (mParseFunctions[sName]) { // function for special handling?
-						value = mParseFunctions[sName](aNodeArgs, node);
-					} else {
-						sName = node.name;
-						value = "o." + sName + "(" + aNodeArgs.join(", ") + ")";
-					}
-					break;
 
-				case "def": // somehow special because we need to get plain variables
-					value = fnParseDef(node);
-					break;
-
-				case "defint": // somehow special because we need to get first character of variable only
-					value = fnParseDefIntRealStr(node);
-					break;
-
-				case "defreal": // somehow special because we need to get first character of variable only
-					value = fnParseDefIntRealStr(node);
-					break;
-
-				case "defstr": // somehow special because we need to get first character of variable only
-					value = fnParseDefIntRealStr(node);
-					break;
-
-				case "erase": // somehow special because we need to get plain variables
-					value = fnParseErase(node);
-					break;
-
-				case "label":
-					that.iLine = node.value;
-					aNodeArgs = fnParseArgs(node.left);
-					value = "case " + node.value + ":";
-					if (that.options.tron) {
-						value += " o.vmTrace(" + that.iLine + ");";
-					}
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value2 = aNodeArgs[i];
-						if (value2 !== "") {
-							if (!(/[}:;\n]$/).test(value2)) { // does not end with } : ; \n
-								value2 += ";";
-							} else if (value2.substr(-1) === "\n") {
-								value2 = value2.substr(0, value2.length - 1);
-							}
-							value += " " + value2;
+				if (mOperators[node.type]) {
+					if (node.left) {
+						value = parseNode(node.left);
+						if (mOperators[node.left.type]) { // binary operator?
+							value = "(" + value + ")";
 						}
-					}
-					break;
-
-				case "let": // see also "assign"
-					value = fnParseAssign(node);
-					break;
-
-				default:
-					if (mOperators[node.type]) {
-						if (node.left) {
-							value = parseNode(node.left);
-							if (mOperators[node.left.type]) { // binary operator?
-								value = "(" + value + ")";
-							}
-							value2 = parseNode(node.right);
-							if (mOperators[node.right.type]) { // binary operator?
-								value2 = "(" + value2 + ")";
-							}
-							value = mOperators[node.type](value, value2);
-						} else {
-							value = mOperators[node.type](parseNode(node.right));
+						value2 = parseNode(node.right);
+						if (mOperators[node.right.type]) { // binary operator?
+							value2 = "(" + value2 + ")";
 						}
+						value = mOperators[node.type](value, value2);
 					} else {
-						Utils.console.error("parseNode node=%o unknown type=" + node.type, node);
-						value = node;
+						value = mOperators[node.type](parseNode(node.right));
 					}
+				} else if (mParseFunctions0[node.type]) { // function for special handling 0?
+					value = mParseFunctions0[node.type](node);
+				} else if (mParseFunctions[node.type]) { // function for special handling?
+					node.args = fnParseArgs(node.args);
+					value = mParseFunctions[node.type](node.args, node);
+				} else { //TTT
+					node.args = fnParseArgs(node.args);
+					value = "o." + node.type + "(" + node.args.join(", ") + ")";
 				}
+
 				return value;
 			},
 

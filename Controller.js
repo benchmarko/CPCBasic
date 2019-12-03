@@ -475,6 +475,7 @@ Controller.prototype = {
 
 		this.oVariables = {};
 		if (!iBench) {
+			this.oCodeGeneratorJs.reset();
 			oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
 		} else {
 			for (i = 0; i < iBench; i += 1) {
