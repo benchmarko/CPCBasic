@@ -31,10 +31,12 @@ function BasicParser(options) {
 }
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, l=line number, a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
+	//"'": "c s?",
 	abs: "f n",
 	after: "c n n?",
+	afterGosub: "c n n?", // special, cannot check optional first n
 	and: "o",
 	asc: "f s",
 	atn: "f n",
@@ -45,6 +47,7 @@ BasicParser.mKeywords = {
 	call: "c n *",
 	cat: "c",
 	chain: "c s n?", // chain, chain merge
+	chainMerge: "c s *", // special
 	chr$: "f n",
 	cint: "f n",
 	clear: "c", // clear, clear input
@@ -57,7 +60,7 @@ BasicParser.mKeywords = {
 	cos: "f n",
 	creal: "f n",
 	cursor: "c n? n?",
-	data: "c",
+	data: "c *",
 	dec$: "f n s",
 	def: "c s *", // not checked
 	defint: "c v *",
@@ -82,6 +85,7 @@ BasicParser.mKeywords = {
 	err: "f",
 	error: "c n",
 	every: "c n n?",
+	everyGosub: "c n n?", // special, cannot check optional first n
 	exp: "f n",
 	fill: "c n",
 	fix: "f n",
@@ -89,8 +93,8 @@ BasicParser.mKeywords = {
 	"for": "c",
 	frame: "c",
 	fre: "f a",
-	gosub: "c n",
-	"goto": "c n",
+	gosub: "c l",
+	"goto": "c l",
 	graphics: "c", // graphics paper, graphics pen
 	graphicsPaper: "x n", // special
 	graphicsPen: "x n n?", // special
@@ -106,6 +110,7 @@ BasicParser.mKeywords = {
 	"int": "f n",
 	joy: "f n",
 	key: "c n s", // key, key def
+	keyDef: "c n n n? n? n?",
 	left$: "f s n",
 	len: "f s",
 	let: "c",
@@ -131,6 +136,11 @@ BasicParser.mKeywords = {
 	next: "c *", // v*
 	not: "o",
 	on: "c", // on break cont, on break gosub, on break stop, on error goto, on <ex> gosub, on <ex> goto, on sq(n) gosub
+	onBreakGosub: "c l", // special
+	onErrorGoto: "c l", // special
+	onGosub: "c n l *", // special
+	onGoto: "c n l *", // special
+	onSqGosub: "c l", // special
 	openin: "c s",
 	openout: "c s",
 	or: "o",
@@ -149,11 +159,12 @@ BasicParser.mKeywords = {
 	randomize: "c n?",
 	read: "c v *",
 	release: "c n",
-	rem: "c",
+	rem: "c s?",
 	remain: "f n",
 	renum: "c n? n? n?",
 	restore: "c n?",
 	resume: "c n?", // resume, resume next
+	resumeNext: "c",
 	"return": "c",
 	right$: "f s n",
 	rnd: "f n?",
@@ -164,17 +175,21 @@ BasicParser.mKeywords = {
 	sin: "f n",
 	sound: "c n n n? n0? n0? n0? n?",
 	space$: "f n",
-	spc: "x", // print spc
+	spc: "x n", // print spc
 	speed: "c", // speed ink, speed key, speed write
+	speedInk: "c n n", // special
+	speedKey: "c n n", // special
+	speedWrite: "c n", // special
 	sq: "f n",
 	sqr: "f n",
 	step: "x", // for ... to ... step
 	stop: "c",
 	str$: "f n",
 	string$: "f n s",
-	swap: "x", // window swap
+	swap: "x n n?", // window swap
 	symbol: "c n n *", // symbol, symbol after
-	tab: "x", // print tab
+	symbolAfter: "c n", // special
+	tab: "x n", // print tab
 	tag: "c n?",
 	tagoff: "c n?",
 	tan: "f n",
@@ -192,9 +207,10 @@ BasicParser.mKeywords = {
 	vpos: "f n",
 	wait: "c n n n?",
 	wend: "c",
-	"while": "c",
+	"while": "c n",
 	width: "c n",
 	window: "c #0? n n n n", // window, window swap
+	windowSwap: "c n n?", // special
 	write: "c #0? *", // not checked
 	xor: "o",
 	xpos: "f",
@@ -211,6 +227,7 @@ BasicParser.prototype = {
 	},
 
 	reset: function () {
+		this.iLine = 0; // for error messages
 	},
 
 	// http://crockford.com/javascript/tdop/tdop.html (old: http://javascript.crockford.com/tdop/tdop.html)
@@ -221,7 +238,8 @@ BasicParser.prototype = {
 	// Manipulates tokens to its left (e.g: +)? => left denotative function led(), otherwise null denotative function nud()), (e.g. unary -)
 	// identifiers, numbers: also nud.
 	parse: function (aTokens) {
-		var oSymbols = {},
+		var that = this,
+			oSymbols = {},
 			iIndex = 0,
 			aParseTree = [],
 			oPreviousToken, oToken,
@@ -357,7 +375,8 @@ BasicParser.prototype = {
 
 				advance("number");
 				oValue = oPreviousToken; // number token
-				oValue.left = statements();
+				that.iLine = oValue.value; // set line number for error messages
+				oValue.args = statements();
 				oValue.type = "label"; // number => label
 
 				if (oToken.type === "(eol)") {
@@ -371,12 +390,6 @@ BasicParser.prototype = {
 				symbol(id, null, lbp, led || function (left) {
 					var oValue = oPreviousToken;
 
-					/*
-					if (oValue.type !== id) { // should ne the same
-						throw new BasicParser.ErrorObject("Expected", id, oValue.pos);
-					}
-					*/
-
 					oValue.left = left;
 					oValue.right = expression(rbp);
 					return oValue;
@@ -387,12 +400,6 @@ BasicParser.prototype = {
 				symbol(id, null, lbp, led || function (left) {
 					var oValue = oPreviousToken;
 
-					/*
-					if (oValue.type !== id) { // should ne the same
-						throw new BasicParser.ErrorObject("Expected", id, oValue.pos);
-					}
-					*/
-
 					oValue.left = left;
 					oValue.right = expression(rbp - 1);
 					return oValue;
@@ -401,12 +408,6 @@ BasicParser.prototype = {
 			prefix = function (id, rbp) {
 				symbol(id, function () {
 					var oValue = oPreviousToken;
-
-					/*
-					if (oValue.type !== id) { // should ne the same
-						throw new BasicParser.ErrorObject("Expected", id, oValue.pos);
-					}
-					*/
 
 					oValue.right = expression(rbp);
 					return oValue;
@@ -451,14 +452,38 @@ BasicParser.prototype = {
 				}
 			},
 
-			fnGetArgs = function (aTypes) {
+			fnGetArgs = function (sKeyword, oCloseTokens) { // eslint-disable-line complexity
 				var aArgs = [],
 					sSeparator = ",",
 					bNeedMore = false,
 					sType = "ok",
-					oExpression;
+					aTypes, sKeyOpts, oExpression;
 
-				while (bNeedMore || (sType && oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && oToken.type !== "rem" && oToken.type !== "'")) {
+				if (sKeyword) {
+					sKeyOpts = BasicParser.mKeywords[sKeyword];
+					/*
+					if (sKeyOpts && sKeyOpts.length > 1) {
+						aTypes = sKeyOpts.substr(2).split(" ");
+					}
+					*/
+					if (sKeyOpts) {
+						aTypes = sKeyOpts.substr(2).split(" ");
+					} else {
+						Utils.console.warn("fnGetArgs: No options for keyword", sKeyword);
+					}
+				}
+
+				oCloseTokens = oCloseTokens || {
+					":": 1,
+					"(eol)": 1,
+					"(end)": 1,
+					"else": 1,
+					rem: 1,
+					"'": 1
+				};
+
+				//while (bNeedMore || (sType && oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && oToken.type !== "rem" && oToken.type !== "'")) {
+				while (bNeedMore || (sType && !oCloseTokens[oToken.type])) {
 					if (aTypes && sType !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
 						if (!sType) {
@@ -488,6 +513,9 @@ BasicParser.prototype = {
 								len: 0
 							};
 						} else {
+							if (sType.substr(0, 1) === "l" && oToken.type !== "number") { // line number expected
+								throw new BasicParser.ErrorObject("Line number expected at", oToken.type, oToken.pos);
+							}
 							oExpression = expression(0);
 						}
 						if (oToken.type === sSeparator) {
@@ -520,6 +548,7 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
+			/*
 			fnGetArgsInParenthesisOrBrackets = function (aTypes) {
 				var aArgs = [],
 					sType = "ok",
@@ -561,39 +590,75 @@ BasicParser.prototype = {
 				advance(sClose);
 				return aArgs;
 			},
+			*/
+
+			fnGetArgsInParenthesis = function () {
+				var aArgs;
+
+				advance("(");
+				aArgs = fnGetArgs(null, ")");
+				if (oToken.type !== ")") {
+					throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
+				}
+				advance(")");
+				return aArgs;
+			},
+
+			fnGetArgsInBrackets = function () {
+				var aArgs;
+
+				advance("[");
+				aArgs = fnGetArgs(null, "]");
+				if (oToken.type !== "]") {
+					throw new BasicParser.ErrorObject("Expected closing brackets for argument list after", oPreviousToken.value, oToken.pos);
+				}
+				advance("]");
+				return aArgs;
+			},
 
 			fnCreateCmdCall = function (sType) { // optional sType
-				var oValue = oPreviousToken,
-					aTypes = null,
-					sKeyOpts;
+				var oValue = oPreviousToken;
 
 				if (sType) {
 					oValue.type = sType;
 				}
 
+				/*
 				sKeyOpts = BasicParser.mKeywords[oValue.type];
 				if (sKeyOpts && sKeyOpts.length > 1) {
 					aTypes = sKeyOpts.substr(2).split(" ");
 				}
-				oValue.args = fnGetArgs(aTypes);
+				*/
+				oValue.args = fnGetArgs(oValue.type);
 				return oValue;
 			},
 
 			fnCreateFuncCall = function (sType) { // optional sType
-				var oValue = oPreviousToken,
-					aTypes = null,
-					sKeyOpts;
+				var oValue = oPreviousToken;
 
 				if (sType) {
 					oValue.type = sType;
 				}
 
+				/*
 				sKeyOpts = BasicParser.mKeywords[oValue.type];
 				if (sKeyOpts && sKeyOpts.length > 1) {
 					aTypes = sKeyOpts.substr(2).split(" ");
 				}
 
 				oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesisOrBrackets(aTypes) : [];
+				*/
+				if (oToken.type === "(") { // args in parenthesis?
+					advance("(");
+					oValue.args = fnGetArgs(oValue.type, ")");
+					if (oToken.type !== ")") {
+						throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
+					}
+					advance(")");
+				} else {
+					oValue.args = [];
+				}
+
 				return oValue;
 			},
 
@@ -673,7 +738,7 @@ BasicParser.prototype = {
 			if (oToken.type === "(" || oToken.type === "[") {
 				oValue = oPreviousToken;
 				oValue.type = "array"; // identifier => array
-				oValue.args = fnGetArgsInParenthesisOrBrackets();
+				oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : fnGetArgsInBrackets();
 
 				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 					oValue.type = "fn"; // FNxxx in e.g. print
@@ -751,13 +816,15 @@ BasicParser.prototype = {
 			if (oToken.type !== "(") { // FN xxx name without ()?
 				oValue.args = [];
 			} else {
-				oValue.args = fnGetArgsInParenthesisOrBrackets();
+				oValue.args = fnGetArgsInParenthesis();
 			}
 			return oValue;
 		});
 
 
 		// statements ...
+
+		/*
 		stmt("'", function () { // apostrophe comment
 			var oValue = oPreviousToken;
 
@@ -768,6 +835,11 @@ BasicParser.prototype = {
 				advance();
 			}
 			return oValue;
+		});
+		*/
+
+		stmt("'", function () { // apostrophe comment => rem
+			return fnCreateCmdCall("rem");
 		});
 
 		stmt("after", function () {
@@ -821,7 +893,7 @@ BasicParser.prototype = {
 			}
 			advance();
 
-			oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesisOrBrackets() : [];
+			oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : [];
 			advance("=");
 
 			oValue.value = expression(0);
@@ -958,8 +1030,8 @@ BasicParser.prototype = {
 					oValue2 = fnCreateCmdCall("goto");
 					oToken2 = oToken;
 					oValue.right = statements("else");
-					if (oValue.right.length) {
-						Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos);
+					if (oValue.right.length && oValue.right[0].type !== "rem") {
+						Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos, ", line", that.iLine);
 						// throw new BasicParser.ErrorObject("Unreachable code after THEN at", oToken2.type, oToken2.pos);
 					}
 					oValue.right.unshift(oValue2);
@@ -1037,7 +1109,10 @@ BasicParser.prototype = {
 				advance();
 				if (oToken.type === "(") {
 					oValue2.type = "array";
-					oValue2.args = fnGetArgsInParenthesisOrBrackets();
+					oValue2.args = fnGetArgsInParenthesis();
+				} else if (oToken.type === "[") {
+					oValue2.type = "array";
+					oValue2.args = fnGetArgsInBrackets();
 				}
 				oValue.args.push(oValue2);
 			} while ((oToken.type === ",") && advance());
@@ -1116,7 +1191,10 @@ BasicParser.prototype = {
 			advance();
 			if (oToken.type === "(") {
 				oValue2.type = "array";
-				oValue2.args = fnGetArgsInParenthesisOrBrackets();
+				oValue2.args = fnGetArgsInParenthesis();
+			} else if (oToken.type === "[") {
+				oValue2.type = "array";
+				oValue2.args = fnGetArgsInBrackets();
 			}
 			oValue.args.push(oValue2);
 
@@ -1179,7 +1257,7 @@ BasicParser.prototype = {
 				if (oToken.type === "gosub") {
 					advance("gosub");
 					oValue.type = "onBreakGosub";
-					oValue.args = fnGetArgs();
+					oValue.args = fnGetArgs(oValue.type);
 				} else if (oToken.type === "cont") {
 					advance("cont");
 					oValue.type = "onBreakCont";
@@ -1194,7 +1272,7 @@ BasicParser.prototype = {
 				if (oToken.type === "goto") {
 					advance("goto");
 					oValue.type = "onErrorGoto";
-					oValue.args = fnGetArgs();
+					oValue.args = fnGetArgs(oValue.type);
 				} else {
 					throw new BasicParser.ErrorObject("Expected GOTO", oToken.type, oToken.pos);
 				}
@@ -1204,7 +1282,7 @@ BasicParser.prototype = {
 				if (oToken.type === "gosub") {
 					advance("gosub");
 					oValue.type = "onSqGosub";
-					oValue.args = fnGetArgs();
+					oValue.args = fnGetArgs(oValue.type);
 					oValue.args.unshift(oLeft);
 				} else {
 					throw new BasicParser.ErrorObject("Expected GOSUB", oToken.type, oToken.pos);
@@ -1214,12 +1292,12 @@ BasicParser.prototype = {
 				if (oToken.type === "gosub") {
 					advance("gosub");
 					oValue.type = "onGosub";
-					oValue.args = fnGetArgs();
+					oValue.args = fnGetArgs(oValue.type);
 					oValue.args.unshift(oLeft);
 				} else if (oToken.type === "goto") {
 					advance("goto");
 					oValue.type = "onGoto";
-					oValue.args = fnGetArgs();
+					oValue.args = fnGetArgs(oValue.type);
 					oValue.args.unshift(oLeft);
 				} else {
 					throw new BasicParser.ErrorObject("Expected GOTO or GOSUB", oToken.type, oToken.pos);
@@ -1285,8 +1363,17 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		oSymbols["?"] = oSymbols.print; // "?" is same as print //TTT
+		//oSymbols["?"] = oSymbols.print; // "?" is same as print
 
+		stmt("?", function () {
+			var oValue = oSymbols.print.std(); // "?" is same as print
+
+			oValue.type = "print";
+			return oValue;
+		});
+
+		//oSymbols["'"] = oSymbols.rem; // apostrophe "'" is same as rem
+		/*
 		stmt("rem", function () {
 			var oValue = oPreviousToken;
 
@@ -1298,8 +1385,9 @@ BasicParser.prototype = {
 			}
 			return oValue;
 		});
+		*/
 
-		stmt("resume", function () { //TTT
+		stmt("resume", function () {
 			var sName = "resume",
 				oValue;
 
@@ -1311,14 +1399,13 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		stmt("rsx", function () {
-			var rsxToken = oPreviousToken,
-				oValue;
+		stmt("|", function () { // rsx
+			var oValue = oPreviousToken;
 
-			if (oToken.type === ",") {
+			if (oToken.type === ",") { // arguments starting with comma
 				advance(",");
 			}
-			oValue = fnCreateCmdCall(rsxToken.type + Utils.stringCapitalize(rsxToken.value.toLowerCase()));
+			oValue.args = fnGetArgs();
 			return oValue;
 		});
 

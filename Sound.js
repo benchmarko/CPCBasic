@@ -19,7 +19,7 @@ Sound.prototype = {
 		this.context = null;
 		this.oMergerNode = null;
 		this.aGainNodes = [];
-		this.aOscillators = []; // 3 oscillators left, right, middle
+		this.aOscillators = []; // 3 oscillators left, middle, right
 		this.aQueues = []; // node queues and info for the three channels
 		for (i = 0; i < 3; i += 1) {
 			this.aQueues[i] = {
@@ -93,6 +93,11 @@ Sound.prototype = {
 
 	createSoundContext: function () {
 		var context = new (window.AudioContext || window.webkitAudioContext)(),
+			aChannelMap2Cpc = [ // channel map for CPC: left, middle (center), right; so swap middle and right
+				0,
+				2,
+				1
+			],
 			oMergerNode, oGainNode, i;
 
 		this.context = context;
@@ -102,7 +107,7 @@ Sound.prototype = {
 
 		for (i = 0; i < 3; i += 1) {
 			oGainNode = context.createGain();
-			oGainNode.connect(this.oMergerNode, 0, i); // connect output #0 of gainNode i to input #i of the mergerNode
+			oGainNode.connect(this.oMergerNode, 0, aChannelMap2Cpc[i]); // connect output #0 of gainNode i to input #j of the mergerNode
 			this.aGainNodes[i] = oGainNode;
 		}
 	},
@@ -443,14 +448,6 @@ Sound.prototype = {
 			iSq |= 0x40;
 		}
 
-		/*
-		// some special handling: if a note could start playing, mark channel already as busy (to allow very fast check SQ busy after SOUND)
-		if (iSq < 4) { // not busy, not hold or rendevous, at lease one note in queue
-			if (aSoundData.length && !oQueue.bOnHold && !oQueue.iRendevousMask) {
-				iSq |= 0x80;
-			}
-		}
-		*/
 		/* eslint-enable no-bitwise */
 		return iSq;
 	},

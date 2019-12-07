@@ -153,12 +153,13 @@ View.prototype = {
 		return this;
 	},
 
-	attachEventHandler: function (fnEventHandler) {
+	attachEventHandler: function (sType, fnEventHandler) {
 		if (Utils.debug) {
-			Utils.console.debug("attachEventHandler: fnEventHandler=" + fnEventHandler);
+			Utils.console.debug("attachEventHandler: type=" + sType + ", fnEventHandler=" + fnEventHandler);
 		}
-		document.addEventListener("click", fnEventHandler, false);
-		document.addEventListener("change", fnEventHandler, false);
+		//document.addEventListener("click", fnEventHandler, false);
+		//document.addEventListener("change", fnEventHandler, false);
+		document.addEventListener(sType, fnEventHandler, false);
 		return this;
 	}
 };

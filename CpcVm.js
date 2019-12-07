@@ -84,6 +84,7 @@ CpcVm.prototype = {
 
 		this.options = options || {};
 		this.oCanvas = this.options.canvas;
+		this.oKeyboard = this.options.keyboard;
 		this.oSound = this.options.sound;
 
 		this.oRandom = new Random();
@@ -149,6 +150,9 @@ CpcVm.prototype = {
 		this.iLine = 0; // current line number (or label)
 		this.iStartLine = 0; // line to start
 
+		this.iErrorGotoLine = 0;
+		this.iBreakGosubLine = 0;
+
 		this.vmResetInputHandling();
 		this.vmResetInFileHandling();
 
@@ -183,6 +187,7 @@ CpcVm.prototype = {
 		this.mode(1); // including vmResetWindowData()
 
 		this.oCanvas.reset();
+		this.oKeyboard.reset();
 		this.oSound.reset();
 		this.aSoundData.length = 0;
 		this.iClgPen = 0;
@@ -287,6 +292,19 @@ CpcVm.prototype = {
 
 	vmSetStartLine: function (iLine) {
 		this.iStartLine = iLine;
+	},
+
+	vmEscape: function () {
+		var bStop = true;
+
+		if (this.iBreakGosubLine > 0) { // on break gosub n
+			this.gosub(this.iLine, this.iBreakGosubLine);
+			bStop = false;
+		} else if (this.iBreakGosubLine < 0) { // on break cont
+			bStop = false;
+		} // else: on break stop
+
+		return bStop;
 	},
 
 	vmRound: function (n) {
@@ -658,14 +676,19 @@ CpcVm.prototype = {
 
 	// and
 
-	asc: function (s) {
-		var iCode = String(s).charCodeAt(0);
-
+	vmGetCpcCharCode: function (iCode) {
 		if (iCode > 255) { // map some UTF-8 character codes
 			if (this.mUtf8ToCpc[iCode]) {
 				iCode = this.mUtf8ToCpc[iCode];
 			}
 		}
+		return iCode;
+	},
+
+	asc: function (s) {
+		var iCode = String(s).charCodeAt(0);
+
+		iCode = this.vmGetCpcCharCode(iCode);
 		return iCode;
 	},
 
@@ -764,6 +787,9 @@ CpcVm.prototype = {
 		this.vmResetTimers();
 		this.vmSetStartLine(0);
 		this.iErr = 0;
+		this.iBreakGosubLine = 0;
+		this.iErrorGotoLine = 0;
+		this.iErrorResumeLine = 0;
 		this.aGosubStack.length = 0;
 		this.vmResetVariables();
 		this.vmDefineVarTypes("R", "a-z");
@@ -776,7 +802,7 @@ CpcVm.prototype = {
 	},
 
 	clearInput: function () {
-		this.oCanvas.clearInput();
+		this.oKeyboard.clearInput();
 	},
 
 	clg: function (iClgPen) {
@@ -1089,7 +1115,14 @@ CpcVm.prototype = {
 		Utils.console.log("BASIC error(" + iErr + "): " + sError + " in " + this.iErl);
 		sError += " in " + this.iErl + "\r\n";
 		this.print(iStream, sError);
-		this.vmStop("error", 50);
+
+		if (this.iErrorGotoLine > 0) { //TTT only
+			this.iErrorResumeLine = this.iErl; //TTT
+			this.vmGotoLine(this.iErrorGotoLine, "onError");
+			this.vmStop("onError", 50);
+		} else {
+			this.vmStop("error", 50);
+		}
 	},
 
 	everyGosub: function (iInterval, iTimer, iLine) {
@@ -1190,12 +1223,12 @@ CpcVm.prototype = {
 		var iKeyState;
 
 		iKey = this.vmRound(iKey);
-		iKeyState = this.oCanvas.getKeyState(iKey);
+		iKeyState = this.oKeyboard.getKeyState(iKey);
 		return iKeyState;
 	},
 
 	inkey$: function () {
-		var sKey = this.oCanvas.getKeyFromBuffer(),
+		var sKey = this.oKeyboard.getKeyFromBuffer(),
 			iNow;
 
 		// do some slowdown, if checked too early again without key press
@@ -1292,7 +1325,7 @@ CpcVm.prototype = {
 
 	joy: function (iJoy) {
 		iJoy = this.vmRound(iJoy);
-		return this.oCanvas.getJoyState(iJoy);
+		return this.oKeyboard.getJoyState(iJoy);
 	},
 
 	key: function () {
@@ -1479,19 +1512,23 @@ CpcVm.prototype = {
 	// not
 
 	onBreakCont: function () {
-		this.vmNotImplemented("on break cont");
+		this.iBreakGosubLine = -1; //TTT
+		//this.vmNotImplemented("on break cont");
 	},
 
-	onBreakGosub: function () {
-		this.vmNotImplemented("on break gosub");
+	onBreakGosub: function (iLine) {
+		this.iBreakGosubLine = iLine;
+		//this.vmNotImplemented("on break gosub");
 	},
 
 	onBreakStop: function () {
-		this.vmNotImplemented("on break stop");
+		this.iBreakGosubLine = 0;
+		//this.vmNotImplemented("on break stop");
 	},
 
-	onErrorGoto: function () {
-		this.vmNotImplemented("on error goto");
+	onErrorGoto: function (iLine) {
+		this.iErrorGotoLine = iLine;
+		//this.vmNotImplemented("on error goto");
 	},
 
 	onGosub: function (retLabel, n) { // varargs
@@ -1728,7 +1765,7 @@ CpcVm.prototype = {
 			oWin.iVpos += 1; // "\r\n", newline if string does not fit in line
 		}
 		for (i = 0; i < sStr.length; i += 1) {
-			iChar = sStr.charCodeAt(i);
+			iChar = this.vmGetCpcCharCode(sStr.charCodeAt(i));
 			this.vmMoveCursor2AllowedPos(iStream);
 			this.oCanvas.printChar(iChar, oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper);
 			oWin.iPos += 1;
@@ -1953,7 +1990,7 @@ CpcVm.prototype = {
 		var iChar, i;
 
 		for (i = 0; i < sStr.length; i += 1) {
-			iChar = sStr.charCodeAt(i);
+			iChar = this.vmGetCpcCharCode(sStr.charCodeAt(i));
 			this.oCanvas.printGChar(iChar);
 		}
 	},
@@ -2104,8 +2141,15 @@ CpcVm.prototype = {
 		}
 	},
 
-	resume: function () { // resume, resume n, resume next
-		this.vmNotImplemented("resume");
+	resume: function (iLine) { // resume, resume n, resume next
+		if (iLine) {
+			this.vmGotoLine(iLine, "resume");
+		} else if (this.iErrorResumeLine) {
+			this.vmGotoLine(this.iErrorResumeLine, "resume");
+			this.iErrorResumeLine = 0;
+		} else {
+			this.error(20); // Unexpected RESUME
+		}
 	},
 
 	resumeNext: function () {

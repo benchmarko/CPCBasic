@@ -29,8 +29,9 @@ CodeGeneratorJs.prototype = {
 		this.iLine = 0; // current line (label)
 
 		this.oStack = {
-			f: [], // for
-			w: [] // while
+			forLabel: [],
+			forVarName: [],
+			whileLabel: []
 		};
 		this.iGosubCount = 0;
 		this.iIfCount = 0;
@@ -87,12 +88,18 @@ CodeGeneratorJs.prototype = {
 				return sName;
 			},
 
+			fnParseOneArg = function (oArg) {
+				var sValue = parseNode(oArg); // eslint-disable-line no-use-before-define
+
+				return sValue;
+			},
+
 			fnParseArgs = function (aArgs) {
 				var aNodeArgs = [], // do not modify node.args here (could be a parameter of defined function)
 					i;
 
 				for (i = 0; i < aArgs.length; i += 1) {
-					aNodeArgs[i] = parseNode(aArgs[i]); // eslint-disable-line no-use-before-define
+					aNodeArgs[i] = fnParseOneArg(aArgs[i]);
 				}
 				return aNodeArgs;
 			},
@@ -160,7 +167,7 @@ CodeGeneratorJs.prototype = {
 				}
 			},
 
-			mParseFunctions0 = {
+			mParseFunctions = {
 				fnParseDefIntRealStr: function (node) {
 					var aNodeArgs, i;
 
@@ -192,8 +199,22 @@ CodeGeneratorJs.prototype = {
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 
-				fnCommandWithGoto: function (aNodeArgs, node) {
-					var sCommand = node.type,
+				fnAddReferenceLabel: function (sLabel, node) {
+					if (sLabel in that.oLabels) {
+						that.oLabels[sLabel] += 1;
+					} else {
+						if (Utils.debug > 1) {
+							Utils.console.debug("fnAddReferenceLabel: line does not (yet) exist: " + sLabel);
+						}
+						if (!that.bMergeFound) {
+							throw new CodeGeneratorJs.ErrorObject("Line does not exist", sLabel, node.pos);
+						}
+					}
+				},
+
+				fnCommandWithGoto: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sCommand = node.type,
 						sLabel, sValue;
 
 					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
@@ -202,8 +223,17 @@ CodeGeneratorJs.prototype = {
 					return sValue;
 				},
 
+				/*
 				comment: function (node) {
 					return "// " + node.left + "\n";
+				},
+				*/
+
+				"|": function (node) { // rsx
+					var sRsxName = "rsx" + Utils.stringCapitalize(node.value.toLowerCase()),
+						aNodeArgs = fnParseArgs(node.args);
+
+					return "o." + sRsxName + "(" + aNodeArgs.join(", ") + ")";
 				},
 				number: function (node) {
 					return node.value;
@@ -259,53 +289,15 @@ CodeGeneratorJs.prototype = {
 					} else {
 						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos); // should not occur
 					}
-					value = sName + value + " = " + parseNode(node.right);
+					value = sName + value + " = " + fnParseOneArg(node.right);
 					return value;
 				},
-				def: function (node) { // somehow special because we need to get plain variables
-					var aNodeArgs, sName, value;
-
-					sName = fnAdaptVariableName(node.left);
-					oDevScopeArgs = {};
-					bDevScopeArgsCollect = true;
-					aNodeArgs = fnParseArgs(node.args);
-					bDevScopeArgsCollect = false;
-					value = parseNode(node.value);
-					oDevScopeArgs = null;
-					value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + value + "; };";
-					return value;
-				},
-
-				defint: function (node) { // somehow special because we need to get first character of variable only
-					var value = this.fnParseDefIntRealStr(node);
-
-					return value;
-				},
-
-				defreal: function (node) { // somehow special because we need to get first character of variable only
-					var value = this.fnParseDefIntRealStr(node);
-
-					return value;
-				},
-
-				defstr: function (node) { // somehow special because we need to get first character of variable only
-					var value = this.fnParseDefIntRealStr(node);
-
-					return value;
-				},
-
-				erase: function (node) { // somehow special because we need to get plain variables
-					var value = this.fnParseErase(node);
-
-					return value;
-				},
-
 				label: function (node) {
 					var value = "case " + node.value + ":",
 						aNodeArgs, value2, i;
 
 					that.iLine = node.value; // set line first
-					aNodeArgs = fnParseArgs(node.left);
+					aNodeArgs = fnParseArgs(node.args);
 
 					if (that.options.tron) {
 						value += " o.vmTrace(" + that.iLine + ");";
@@ -324,69 +316,76 @@ CodeGeneratorJs.prototype = {
 					return value;
 				},
 
-				let: function (node) {
-					return this.assign(node);
-				}
-			},
+				// special keyword functions
 
-			mParseFunctions = {
-				fnAddReferenceLabel: function (sLabel, node) {
-					if (sLabel in that.oLabels) {
-						that.oLabels[sLabel] += 1;
-					} else {
-						Utils.console.warn("fnAddReferenceLabel: line does not exist: " + sLabel);
-						if (!that.bMergeFound) {
-							throw new CodeGeneratorJs.ErrorObject("Line does not exist", sLabel, node.pos);
-						}
-					}
-				},
-
-				fnCommandWithGoto: function (aNodeArgs, node) {
-					var sCommand = node.type,
-						sLabel, sValue;
-
-					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
-					that.iStopCount += 1;
-					sValue = "o." + sCommand + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
-					return sValue;
-				},
-
-				"?": function (aNodeArgs) { // map to print
-					var sName = "print";
+				/*
+				"?": function (node) { // map "?" to "print"
+					var sName = "print",
+						aNodeArgs = fnParseArgs(node.args);
 
 					return "o." + sName + "(" + aNodeArgs.join(", ") + ")";
 				},
-
-				/*
-				"'": function (aNodeArgs) { // apostrophe comment, see also rem
-					return "// " + aNodeArgs.join(", ") + "\n";
-				},
 				*/
 
-				afterGosub: function (aNodeArgs, node) {
+				afterGosub: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
-				call: function (aNodeArgs, node) {
-					return this.fnCommandWithGoto(aNodeArgs, node);
+				call: function (node) {
+					return this.fnCommandWithGoto(node);
 				},
-				chain: function (aNodeArgs, node) {
-					return this.fnCommandWithGoto(aNodeArgs, node);
+				chain: function (node) {
+					return this.fnCommandWithGoto(node);
 				},
-				chainMerge: function (aNodeArgs, node) {
+				chainMerge: function (node) {
 					that.bMergeFound = true;
-					return this.fnCommandWithGoto(aNodeArgs, node);
+					return this.fnCommandWithGoto(node);
 				},
-				commaTab: function (aNodeArgs) {
+				commaTab: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					return "{type: \"commaTab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the commaTab() call until print() is called
 				},
-				data: function (aNodeArgs) {
+				data: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					aNodeArgs.unshift(that.iLine); // prepend line number
 					that.aData.push("o.data(" + aNodeArgs.join(", ") + ")"); // will be set at the beginning of the script
 					return "/* data */";
 				},
-				dim: function (aNodeArgs) {
-					var i, sName, aName;
+				def: function (node) { // somehow special because we need to get plain variables
+					var aNodeArgs, sName, value;
+
+					sName = fnAdaptVariableName(node.left);
+					oDevScopeArgs = {};
+					bDevScopeArgsCollect = true;
+					aNodeArgs = fnParseArgs(node.args);
+					bDevScopeArgsCollect = false;
+					value = fnParseOneArg(node.value);
+					oDevScopeArgs = null;
+					value = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + value + "; };";
+					return value;
+				},
+				defint: function (node) { // somehow special because we need to get first character of variable only
+					var value = this.fnParseDefIntRealStr(node);
+
+					return value;
+				},
+				defreal: function (node) { // somehow special because we need to get first character of variable only
+					var value = this.fnParseDefIntRealStr(node);
+
+					return value;
+				},
+				defstr: function (node) { // somehow special because we need to get first character of variable only
+					var value = this.fnParseDefIntRealStr(node);
+
+					return value;
+				},
+				dim: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						i, sName, aName;
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = aNodeArgs[i];
@@ -403,24 +402,36 @@ CodeGeneratorJs.prototype = {
 					that.iStopCount += 1;
 					return "o.end(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 				},
-				error: function (aNodeArgs) {
+				erase: function (node) { // somehow special because we need to get plain variables
+					var value = this.fnParseErase(node);
+
+					return value;
+				},
+				error: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					return "o.error(" + aNodeArgs[0] + "); break";
 				},
-				everyGosub: function (aNodeArgs, node) {
+				everyGosub: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					this.fnAddReferenceLabel(aNodeArgs[2], node.args[2]); // argument 2 = line number
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
-				fn: function (aNodeArgs, node) {
-					var sName = fnAdaptVariableName(node.left); //TTT
+				fn: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sName = fnAdaptVariableName(node.left); //TTT
 
 					return sName + "(" + aNodeArgs.join(", ") + ")";
 				},
-				"for": function (aNodeArgs, node) {
-					var sVarName, sLabel, value, sStepName, sEndName;
+				"for": function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sVarName, sLabel, value, sStepName, sEndName;
 
 					sVarName = aNodeArgs[0];
 					sLabel = that.iLine + "f" + that.iForCount;
-					that.oStack.f.push(sLabel);
+					that.oStack.forLabel.push(sLabel);
+					that.oStack.forVarName.push(sVarName);
 					that.iForCount += 1;
 
 					sStepName = sVarName + "Step";
@@ -430,7 +441,7 @@ CodeGeneratorJs.prototype = {
 					value = sEndName.substr(2); // remove preceiding "v."
 					variables[value] = 0; // declare also end variable
 
-					value = "/* for() */ " + sVarName + " = " + parseNode(node.left) + "; " + sEndName + " = " + parseNode(node.right) + "; " + sStepName + " = " + parseNode(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+					value = "/* for() */ " + sVarName + " = " + fnParseOneArg(node.left) + "; " + sEndName + " = " + fnParseOneArg(node.right) + "; " + sStepName + " = " + fnParseOneArg(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
 					value += "\ncase \"" + sLabel + "\": ";
 
 					value += sVarName + " += " + sStepName + ";";
@@ -438,30 +449,32 @@ CodeGeneratorJs.prototype = {
 					value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
 					return value;
 				},
-				frame: function (aNodeArgs, node) {
-					return this.fnCommandWithGoto(aNodeArgs, node);
+				frame: function (node) {
+					return this.fnCommandWithGoto(node);
 				},
-				gosub: function (aNodeArgs, node) {
-					var iLine = aNodeArgs[0],
+				gosub: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						iLine = aNodeArgs[0],
 						sName = that.iLine + "g" + that.iGosubCount;
 
 					that.iGosubCount += 1;
 					this.fnAddReferenceLabel(iLine, node.args[0]);
 					return 'o.gosub("' + sName + '", ' + iLine + '); break; \ncase "' + sName + '":';
 				},
-				"goto": function (aNodeArgs, node) {
-					var iLine = aNodeArgs[0];
+				"goto": function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						iLine = aNodeArgs[0];
 
 					this.fnAddReferenceLabel(iLine, node.args[0]);
 					return "o.goto(" + iLine + "); break";
 				},
-				"if": function (aNodeArgsUnused, node) {
+				"if": function (node) {
 					var aNodeArgs, sLabel, value, sPart;
 
 					sLabel = that.iLine + "i" + that.iIfCount;
 					that.iIfCount += 1;
 
-					value = "if (" + parseNode(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
+					value = "if (" + fnParseOneArg(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
 					if (node.third) {
 						aNodeArgs = fnParseArgs(node.third);
 						sPart = aNodeArgs.join("; ");
@@ -474,8 +487,9 @@ CodeGeneratorJs.prototype = {
 					value += '\ncase "' + sLabel + 'e": ';
 					return value;
 				},
-				input: function (aNodeArgs) {
-					var sLabel, value, i, sStream, sNoCRLF, sMsg;
+				input: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sLabel, value, i, sStream, sNoCRLF, sMsg;
 
 					sLabel = that.iLine + "s" + that.iStopCount;
 					that.iStopCount += 1;
@@ -491,8 +505,12 @@ CodeGeneratorJs.prototype = {
 
 					return value;
 				},
-				lineInput: function (aNodeArgs) {
-					var sLabel, value, i, sStream, sNoCRLF, sMsg;
+				let: function (node) {
+					return this.assign(node);
+				},
+				lineInput: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sLabel, value, i, sStream, sNoCRLF, sMsg;
 
 					sLabel = that.iLine + "s" + that.iStopCount;
 					that.iStopCount += 1;
@@ -507,44 +525,58 @@ CodeGeneratorJs.prototype = {
 					}
 					return value;
 				},
-				load: function (aNodeArgs, node) {
-					return this.fnCommandWithGoto(aNodeArgs, node);
+				load: function (node) {
+					return this.fnCommandWithGoto(node);
 				},
-				merge: function (aNodeArgs, node) {
+				merge: function (node) {
 					that.bMergeFound = true;
-					return this.fnCommandWithGoto(aNodeArgs, node);
+					return this.fnCommandWithGoto(node);
 				},
-				next: function (aNodeArgs, node) {
-					var i, sName;
+				next: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						i, sLabel, sVarName, oErrorNode;
 
 					if (!aNodeArgs.length) {
 						aNodeArgs.push(""); // we have no variable, so use empty argument
 					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						sName = that.oStack.f.pop();
-						if (sName === undefined) {
-							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", node.type, node.pos);
+						sLabel = that.oStack.forLabel.pop();
+						sVarName = that.oStack.forVarName.pop();
+						if (sLabel === undefined) {
+							if (aNodeArgs[i] === "") { // inserted node?
+								oErrorNode = node;
+							} else { // identifier arg
+								oErrorNode = node.args[i];
+							}
+							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", oErrorNode.type, oErrorNode.pos);
 						}
-						aNodeArgs[i] = "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
+						if (aNodeArgs[i] !== "" && aNodeArgs[i] !== sVarName) {
+							oErrorNode = node.args[i];
+							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT variable", oErrorNode.value, oErrorNode.pos);
+						}
+						aNodeArgs[i] = "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "e\":";
 					}
 					return aNodeArgs.join("; ");
 				},
-				onBreakGosub: function (aNodeArgs, node) {
-					var iLine = aNodeArgs[0];
+				onBreakGosub: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						iLine = aNodeArgs[0];
 
 					this.fnAddReferenceLabel(iLine, node.args[0]);
 					return "o." + node.type + "(" + iLine + ")";
 				},
-				onErrorGoto: function (aNodeArgs, node) {
-					var iLine = aNodeArgs[0];
+				onErrorGoto: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						iLine = aNodeArgs[0];
 
 					if (iLine) { // only for lines > 0
 						this.fnAddReferenceLabel(iLine, node.args[0]);
 					}
 					return "o." + node.type + "(" + iLine + ")";
 				},
-				onGosub: function (aNodeArgs, node) {
-					var sName = node.type,
+				onGosub: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sName = node.type,
 						sLabel = that.iLine + "g" + that.iGosubCount,
 						i;
 
@@ -555,8 +587,9 @@ CodeGeneratorJs.prototype = {
 					aNodeArgs.unshift('"' + sLabel + '"');
 					return "o." + sName + "(" + aNodeArgs.join(", ") + '); break; \ncase "' + sLabel + '":';
 				},
-				onGoto: function (aNodeArgs, node) {
-					var sName = node.type,
+				onGoto: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sName = node.type,
 						sLabel = that.iLine + "s" + that.iStopCount,
 						i;
 
@@ -567,25 +600,29 @@ CodeGeneratorJs.prototype = {
 					aNodeArgs.unshift('"' + sLabel + '"');
 					return "o." + sName + "(" + aNodeArgs.join(", ") + "); break\ncase \"" + sLabel + "\":";
 				},
-				onSqGosub: function (aNodeArgs, node) {
+				onSqGosub: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					this.fnAddReferenceLabel(aNodeArgs[1], node.args[1]); // argument 1: line number
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
-				openin: function (aNodeArgs, node) {
-					return this.fnCommandWithGoto(aNodeArgs, node);
+				openin: function (node) {
+					return this.fnCommandWithGoto(node);
 				},
-				randomize: function (aNodeArgs, node) {
-					var value;
+				randomize: function (node) {
+					var aNodeArgs, value;
 
-					if (aNodeArgs.length) {
+					if (node.args.length) {
+						aNodeArgs = fnParseArgs(node.args);
 						value = "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 					} else {
-						value = this.fnCommandWithGoto(aNodeArgs, node) + " o.randomize(o.vmGetNextInput(\"$\"))";
+						value = this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput(\"$\"))";
 					}
 					return value;
 				},
-				read: function (aNodeArgs) {
-					var i, sName;
+				read: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						i, sName;
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = aNodeArgs[i];
@@ -593,39 +630,54 @@ CodeGeneratorJs.prototype = {
 					}
 					return aNodeArgs.join("; ");
 				},
-				/*
-				rem: function (aNodeArgs) { // see also apostrophe comment
-					return "// " + aNodeArgs.join(", ") + "\n";
+				rem: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sValue = aNodeArgs[0];
+
+					if (sValue !== undefined) {
+						sValue = " " + sValue.substr(1, sValue.length - 2); // remove surrounding quotes
+					} else {
+						sValue = "";
+					}
+					return "//" + sValue + "\n";
 				},
-				*/
-				restore: function (aNodeArgs, node) {
+				restore: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					if (aNodeArgs.length) {
 						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
 					}
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
-				resume: function (aNodeArgs, node) {
+				resume: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					if (aNodeArgs.length) {
-						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
+						if (node.args[0].type === "number") { // optional line number
+							this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]);
+						}
 					}
-					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
+					//return this.fnCommandWithGoto(node);
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + "); break"; // append break
 				},
 				"return": function () {
 					return "o.return(); break;";
 				},
-				run: function (aNodeArgs, node) {
-					if (aNodeArgs.length) {
-						if (typeof aNodeArgs[0] === "number") { // with line number?
-							this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]);
+				run: function (node) { // optional arg can be number or string
+					if (node.args.length) {
+						if (node.args[0].type === "number") { // line number
+							this.fnAddReferenceLabel(fnParseOneArg(node.args[0]), node.args[0]); // parse only one arg, args are parsed later
 						}
 					}
 
-					return this.fnCommandWithGoto(aNodeArgs, node);
+					return this.fnCommandWithGoto(node);
 				},
-				sound: function (aNodeArgs, node) {
-					return this.fnCommandWithGoto(aNodeArgs, node); // maybe queue is full, so insert break
+				sound: function (node) {
+					return this.fnCommandWithGoto(node); // maybe queue is full, so insert break
 				},
-				spc: function (aNodeArgs) {
+				spc: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					return "{type: \"spc\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the spc() call until print() is called because we need stream
 				},
 				stop: function () {
@@ -634,28 +686,31 @@ CodeGeneratorJs.prototype = {
 					that.iStopCount += 1;
 					return "o.stop(\"" + sName + "\"); break;\ncase \"" + sName + "\":";
 				},
-				tab: function (aNodeArgs) {
+				tab: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
 					return "{type: \"tab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the tab() call until print() is called
 				},
-				wend: function (aNodeArgs, node) {
-					var sName = that.oStack.w.pop();
+				wend: function (node) {
+					var sLabel = that.oStack.whileLabel.pop();
 
-					if (sName === undefined) {
+					if (sLabel === undefined) {
 						throw new CodeGeneratorJs.ErrorObject("Unexpected WEND at", node.type, node.pos);
 					}
-					return "/* o.wend() */ o.goto(\"" + sName + "\"); break;\ncase \"" + sName + "e\":";
+					return "/* o.wend() */ o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "e\":";
 				},
-				"while": function (aNodeArgs) {
-					var sName = that.iLine + "w" + that.iWhileCount;
+				"while": function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						sLabel = that.iLine + "w" + that.iWhileCount;
 
-					that.oStack.w.push(sName);
+					that.oStack.whileLabel.push(sLabel);
 					that.iWhileCount += 1;
-					return "\ncase \"" + sName + "\": if (!(" + aNodeArgs + ")) { o.goto(\"" + sName + "e\"); break; }";
+					return "\ncase \"" + sLabel + "\": if (!(" + aNodeArgs + ")) { o.goto(\"" + sLabel + "e\"); break; }";
 				}
 			},
 
 
-			parseNode = function (node) { // eslint-disable-line complexity
+			parseNode = function (node) {
 				var value, value2;
 
 				if (Utils.debug > 3) {
@@ -676,12 +731,9 @@ CodeGeneratorJs.prototype = {
 					} else {
 						value = mOperators[node.type](parseNode(node.right));
 					}
-				} else if (mParseFunctions0[node.type]) { // function for special handling 0?
-					value = mParseFunctions0[node.type](node);
-				} else if (mParseFunctions[node.type]) { // function for special handling?
-					node.args = fnParseArgs(node.args);
-					value = mParseFunctions[node.type](node.args, node);
-				} else { //TTT
+				} else if (mParseFunctions[node.type]) { // function with special handling?
+					value = mParseFunctions[node.type](node);
+				} else { // for other functions, generate code directly
 					node.args = fnParseArgs(node.args);
 					value = "o." + node.type + "(" + node.args.join(", ") + ")";
 				}

@@ -6,7 +6,7 @@
 
 "use strict";
 
-var Utils, BasicLexer, BasicParser, Canvas, CodeGeneratorJs, CpcVm, Sound;
+var Utils, BasicLexer, BasicParser, Canvas, CodeGeneratorJs, CpcVm, Keyboard, Sound;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -16,6 +16,7 @@ if (typeof require !== "undefined") {
 	Canvas = require("./Canvas.js");
 	CodeGeneratorJs = require("./CodeGeneratorJs.js");
 	CpcVm = require("./CpcVm.js");
+	Keyboard = require("./Keyboard.js");
 	Sound = require("./Sound.js");
 	/* eslint-enable global-require */
 }
@@ -27,6 +28,20 @@ function Controller(oModel, oView) {
 Controller.prototype = {
 	init: function (oModel, oView) {
 		var sExample;
+
+		this.fnRunLoopHandler = this.fnRunLoop.bind(this);
+		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
+		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
+		this.fnEscapeHandler = this.fnEscape.bind(this);
+
+		this.oCodeGeneratorJs = null;
+
+		this.fnScript = null;
+
+		this.iTimeoutHandle = null;
+
+		this.sLabelBeforeStop = "";
+		this.iPrioBeforeStop = 0;
 
 		this.model = oModel;
 		this.view = oView;
@@ -41,8 +56,12 @@ Controller.prototype = {
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
 			aCharset: cpcBasicCharset,
-			cpcDivId: "cpcArea",
-			view: this.view
+			cpcDivId: "cpcArea"
+			//view: this.view
+		});
+
+		this.oKeyboard = new Keyboard({
+			fnEscapeHandler: this.fnEscapeHandler
 		});
 
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
@@ -58,22 +77,10 @@ Controller.prototype = {
 
 		this.oVm = new CpcVm({
 			canvas: this.oCanvas,
+			keyboard: this.oKeyboard,
 			sound: this.oSound,
 			tron: oModel.getProperty("tron")
 		});
-
-		this.oCodeGeneratorJs = null;
-
-		this.fnScript = null;
-
-		this.iTimeoutHandle = null;
-
-		this.sLabelBeforeStop = "";
-		this.iPrioBeforeStop = 0;
-
-		this.fnRunLoopHandler = this.fnRunLoop.bind(this);
-		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
-		this.fnOnWaitForInput = this.fnWaitForInput.bind(this);
 
 		this.fnInitDatabases();
 	},
@@ -233,11 +240,35 @@ Controller.prototype = {
 		this.fnScript = null;
 	},
 
+	fnWaitForContinue: function () {
+		var sKey;
+
+		sKey = this.oKeyboard.getKeyFromBuffer();
+
+		if (sKey !== "") {
+			this.oKeyboard.setKeyDownHandler(null);
+			this.fnContinue();
+		}
+	},
+
+	fnEscape: function (/* sKey */) {
+		var oStop = this.oVm.vmGetStopObject();
+
+		this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
+		//this.oKeyboard.setKeyDownHandler(null);
+		this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this)); //TTT
+
+		this.oVm.vmStop("escape", 85);
+		if (this.iTimeoutHandle === null) { //TTT
+			this.fnRunLoop();
+		}
+	},
+
 	fnWaitForKey: function () {
 		var sKey;
 
-		this.oCanvas.options.fnOnKeyDown = null;
-		sKey = this.oCanvas.getKeyFromBuffer();
+		this.oKeyboard.setKeyDownHandler(null);
+		sKey = this.oKeyboard.getKeyFromBuffer();
 		this.oVm.vmStop("", 0, true);
 		Utils.console.log("Wait for key: " + sKey);
 		if (this.iTimeoutHandle === null) {
@@ -252,7 +283,7 @@ Controller.prototype = {
 			sKey;
 
 		do {
-			sKey = this.oCanvas.getKeyFromBuffer(); // (inkey$ could insert frame if checked too often)
+			sKey = this.oKeyboard.getKeyFromBuffer(); // (inkey$ could insert frame if checked too often)
 			// chr13 shows as empty string!
 			if (sKey !== "") {
 				if (sKey === "\x7f") { // del?
@@ -276,7 +307,7 @@ Controller.prototype = {
 
 		oInput.sInput = sInput;
 		if (sKey === "\r") {
-			this.oCanvas.options.fnOnKeyDown = null;
+			this.oKeyboard.setKeyDownHandler(null);
 			this.oVm.vmStop("", 0, true);
 			Utils.console.log("Wait for input: " + sInput);
 			if (!oInput.sNoCRLF) {
@@ -589,7 +620,7 @@ Controller.prototype = {
 		this.iTimeoutHandle = null; // not running any more
 	},
 
-	fnRunLoop: function () {
+	fnRunLoop: function () { // eslint-disable-line complexity
 		var oVm = this.oVm,
 			oStop = oVm.vmGetStopObject(),
 			iTimeOut = 0;
@@ -612,24 +643,36 @@ Controller.prototype = {
 		case "error":
 			break;
 
+		case "escape":
+			if (!oVm.vmEscape()) {
+				oVm.vmStop("", 0, true); // continue
+			} else {
+				//oVm.vmStop("break", 0, true);
+			}
+			break;
+
 		case "frame":
 			oVm.vmStop("", 0, true);
 			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
 			break;
 
 		case "input":
-			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForInput;
+			this.oKeyboard.setKeyDownHandler(this.fnOnWaitForInput);
 			this.fnWaitForInput();
 			break;
 
 		case "key":
-			this.oCanvas.options.fnOnKeyDown = this.fnOnWaitForKey; // wait until keypress handler
+			this.oKeyboard.setKeyDownHandler(this.fnOnWaitForKey); // wait until keypress handler
 			break;
 
 		case "loadFile":
 			//this.fnLoadFile(oVm.vmGetNextInput("$"));
 			this.fnWaitForFile();
 			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
+			break;
+
+		case "onError":
+			oVm.vmStop("", 0, true); // continue
 			break;
 
 		case "parse":
@@ -687,7 +730,7 @@ Controller.prototype = {
 
 	fnRun: function () {
 		this.fnSetStopLabelPrio("", 0);
-		this.oCanvas.options.fnOnKeyDown = null;
+		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("run", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
@@ -696,7 +739,7 @@ Controller.prototype = {
 
 	fnParseRun: function () {
 		this.fnSetStopLabelPrio("", 0);
-		this.oCanvas.options.fnOnKeyDown = null;
+		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("parseRun", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
@@ -708,7 +751,7 @@ Controller.prototype = {
 			oStop = oVm.vmGetStopObject();
 
 		this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
-		this.oCanvas.options.fnOnKeyDown = null;
+		this.oKeyboard.setKeyDownHandler(null);
 		oVm.vmStop("break", 80);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
@@ -722,7 +765,7 @@ Controller.prototype = {
 		this.view.setDisabled("runButton", true);
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
-		if (oStop.sReason === "break" || oStop.sReason === "stop") {
+		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop") {
 			oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
 			this.fnSetStopLabelPrio("", 0);
 		}
@@ -735,7 +778,7 @@ Controller.prototype = {
 		var oVm = this.oVm;
 
 		this.fnSetStopLabelPrio("", 0);
-		this.oCanvas.options.fnOnKeyDown = null;
+		this.oKeyboard.setKeyDownHandler(null);
 		oVm.vmStop("reset", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
@@ -755,9 +798,9 @@ Controller.prototype = {
 			i;
 
 		for (i = 0; i < sInput.length; i += 1) {
-			this.oCanvas.putKeyInBuffer(sInput.charAt(i));
+			this.oKeyboard.putKeyInBuffer(sInput.charAt(i));
 		}
-		this.oCanvas.putKeyInBuffer("\r");
+		this.oKeyboard.putKeyInBuffer("\r");
 		if (oStop.sReason === "input") {
 			this.fnWaitForInput();
 		} else if (oStop.sReason === "key") {

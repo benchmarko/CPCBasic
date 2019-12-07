@@ -79,7 +79,7 @@ Canvas.prototype = {
 		}
 	],
 
-
+	/*
 	mCpcKey2Key: {
 		0: "38ArrowUp", // cursor up
 		1: "39ArrowRight", // cursor right
@@ -178,6 +178,7 @@ Canvas.prototype = {
 		[72, 73, 74, 75, 76, 77], // eslint-disable-line array-element-newline
 		[48, 49, 50, 51, 52, 53] // eslint-disable-line array-element-newline
 	],
+	*/
 
 	init: function (options) {
 		var iBorderWidth = 4,
@@ -189,8 +190,10 @@ Canvas.prototype = {
 
 		this.aCharset = this.options.aCharset;
 
+		/*
 		this.oPressedKeys = {};
 		this.aKeyBuffer = [];
+		*/
 
 		this.iGColMode = 0; // 0=normal, 1=xor, 2=and, 3=or
 		this.bClipped = false;
@@ -223,13 +226,17 @@ Canvas.prototype = {
 
 		this.reset();
 
+		/*
 		if (this.options.onload) {
 			this.options.onload(this);
 		}
+		*/
+		/*
 		//canvas.addEventListener("click", this.onCpcCanvasClick.bind(this), false); // called by CommonEventHandler
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
 		window.addEventListener("click", this.onWindowClick.bind(this), false);
+		*/
 
 		this.updateCanvas();
 	},
@@ -247,8 +254,10 @@ Canvas.prototype = {
 		this.setBorder(this.aDefaultInks[iPaper]);
 		this.setMode(1);
 		this.clearGraphics(iPaper);
+		/*
 		this.clearInput();
 		this.oPressedKeys = {};
+		*/
 	},
 
 	extractColorValues: function (sColor) { // from "#rrggbb"
@@ -365,6 +374,7 @@ Canvas.prototype = {
 		}
 	},
 
+	/*
 	removeCodeFromKeymap: function (sPressedKey) {
 		var oCpcKey2Key = this.mCpcKey2Key,
 			iCpcKey, sMappedKeys, aMappedKeys, i, sKey, iKey;
@@ -529,6 +539,7 @@ Canvas.prototype = {
 		}
 		return undefined;
 	},
+	*/
 
 	getXpos: function () {
 		return this.xPos;
@@ -798,6 +809,11 @@ Canvas.prototype = {
 	},
 
 	printGChar: function (iChar) {
+		if (iChar >= this.aCharset.length) {
+			Utils.console.warn("printGChar: Ignoring char with code " + iChar);
+			return;
+		}
+
 		this.setChar(iChar, this.xPos, this.yPos, this.iGPen, this.iGPaper, this.iGColMode, true);
 		this.xPos += this.aModeData[this.iMode].iCharWidth;
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);

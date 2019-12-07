@@ -37,6 +37,7 @@ cpcBasic.addItem("", function () { /*
 1200 openin "testdat1"
 1210 for i=33 to 255:input #9,t$
 1220 t=asc(t$):?t$;: if t<>i then ?"Warning: ";i;"<>";t
+1225 tag:move ((i-33) mod 80)*8, 90-((i-33)\80)*16:?t$;:tagoff
 1230 next
 1240 ?
 1250 closein

@@ -29,14 +29,20 @@ CommonEventHandler.prototype = {
 	fnCommonEventHandler: function (event) {
 		var oTarget = event.target,
 			sId = (oTarget) ? oTarget.getAttribute("id") : oTarget,
-			sType, sHandler;
+			sType = event.type, // click or change
+			sHandler;
 
 		if (this.fnUserAction) {
 			this.fnUserAction(event, sId);
 		}
+		/*
+		if (!sId) {
+			sId = "window"; // maybe complete window
+		}
+		*/
+
 		if (sId) {
 			if (!oTarget.disabled) { // check needed for IE which also fires for disabled buttons
-				sType = event.type; // click or change
 				sHandler = "on" + Utils.stringCapitalize(sId) + Utils.stringCapitalize(sType);
 				if (Utils.debug) {
 					Utils.console.debug("fnCommonEventHandler: sHandler=" + sHandler);
@@ -48,7 +54,13 @@ CommonEventHandler.prototype = {
 				}
 			}
 		} else if (Utils.debug) {
-			Utils.console.debug("Event handler for " + event.type + " unknown target " + oTarget);
+			Utils.console.debug("Event handler for " + sType + " unknown target " + oTarget);
+		}
+
+		if (sType === "click") { // special
+			if (sId !== "cpcCanvas") {
+				this.onWindowClick(event);
+			}
 		}
 	},
 
@@ -56,7 +68,8 @@ CommonEventHandler.prototype = {
 		if (!CommonEventHandler.fnEventHandler) {
 			CommonEventHandler.fnEventHandler = this.fnCommonEventHandler.bind(this);
 		}
-		this.view.attachEventHandler(CommonEventHandler.fnEventHandler);
+		this.view.attachEventHandler("click", CommonEventHandler.fnEventHandler);
+		this.view.attachEventHandler("change", CommonEventHandler.fnEventHandler);
 		return this;
 	},
 
@@ -316,6 +329,12 @@ CommonEventHandler.prototype = {
 
 	onCpcCanvasClick: function (event) {
 		this.controller.oCanvas.onCpcCanvasClick(event);
+		this.controller.oKeyboard.setActive(true);
+	},
+
+	onWindowClick: function (event) {
+		this.controller.oCanvas.onWindowClick(event);
+		this.controller.oKeyboard.setActive(false);
 	}
 };
 
