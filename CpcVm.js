@@ -179,7 +179,6 @@ CpcVm.prototype = {
 
 		this.iZone = 13; // print tab zone value
 
-		//this.vmResetVariables(); //TTT
 		this.oVarTypes = {}; // variable types
 		this.vmDefineVarTypes("R", "a-z");
 
@@ -552,16 +551,6 @@ CpcVm.prototype = {
 		}
 	},
 
-	/*
-	vmGetStopReason: function () {
-		return this.oStop.sReason;
-	},
-
-	vmGetStopPriority: function () {
-		return this.oStop.iPriority;
-	},
-	*/
-
 	vmStop: function (sReason, iPriority, bForce, oPara) { // optional bForce, oPara
 		iPriority = iPriority || 0;
 		if (bForce || iPriority >= this.oStop.iPriority) {
@@ -573,11 +562,6 @@ CpcVm.prototype = {
 
 	vmNotImplemented: function (sName) {
 		Utils.console.warn("Not implemented: " + sName);
-		/*
-		if (Utils.debug) {
-			Utils.console.debug("WARN: Not implemented: " + sName);
-		}
-		*/
 	},
 
 	// not complete
@@ -604,7 +588,7 @@ CpcVm.prototype = {
 				aFormat = sFormat.split(".", 2);
 				arg = Number(arg).toFixed(aFormat[1].length);
 			}
-			iPadLen = sFormat.length - arg.length; //ph.width - (sign + arg).length;
+			iPadLen = sFormat.length - arg.length;
 			sPad = (iPadLen > 0) ? sPadChar.repeat(iPadLen) : "";
 			sStr = sPad + arg;
 			if (sStr.length > sFormat.length) {
@@ -819,18 +803,12 @@ CpcVm.prototype = {
 		var oInFile = this.oInFile;
 
 		if (oInFile.bOpen) {
-			//oInFile.bOpen = false;
 			this.vmResetInFileHandling();
 		}
-		/*
-		} else {
-			this.error(31); // File not open
-		}
-		*/
 	},
 
 	closeout: function () {
-		//this.vmNotImplemented("closeout");
+		// this.vmNotImplemented("closeout");
 	},
 
 	cls: function (iStream) {
@@ -1116,8 +1094,8 @@ CpcVm.prototype = {
 		sError += " in " + this.iErl + "\r\n";
 		this.print(iStream, sError);
 
-		if (this.iErrorGotoLine > 0) { //TTT only
-			this.iErrorResumeLine = this.iErl; //TTT
+		if (this.iErrorGotoLine > 0) {
+			this.iErrorResumeLine = this.iErl;
 			this.vmGotoLine(this.iErrorGotoLine, "onError");
 			this.vmStop("onError", 50);
 		} else {
@@ -1146,7 +1124,6 @@ CpcVm.prototype = {
 
 	fill: function (iGPen) {
 		iGPen = this.vmRound(iGPen);
-		//TODO
 		this.vmNotImplemented("fill");
 	},
 
@@ -1328,12 +1305,36 @@ CpcVm.prototype = {
 		return this.oKeyboard.getJoyState(iJoy);
 	},
 
-	key: function () {
-		this.vmNotImplemented("key");
+	key: function (iToken, sString) {
+		iToken = this.vmRound(iToken);
+
+		if (iToken >= 128 && iToken <= 159) {
+			iToken -= 128;
+		}
+		if (iToken >= 0 && iToken < 32) {
+			this.oKeyboard.setExpansionToken(iToken, sString);
+		} else {
+			this.error(5); // Improper argument
+		}
 	},
 
-	keyDef: function () {
-		this.vmNotImplemented("keyDef");
+	keyDef: function (iCpcKey, iRepeat, iNormal, iShift, iCtrl) { // optional args iNormal,...
+		var oOptions = {
+			iCpcKey: this.vmRound(iCpcKey),
+			iRepeat: this.vmRound(iRepeat)
+		};
+
+		if (iNormal !== undefined && iNormal !== null) {
+			oOptions.iNormal = this.vmRound(iNormal);
+		}
+		if (iShift !== undefined && iShift !== null) {
+			oOptions.iShift = this.vmRound(iShift);
+		}
+		if (iCtrl !== undefined && iCtrl !== null) {
+			oOptions.iCtrl = this.vmRound(iCtrl);
+		}
+
+		this.oKeyboard.setCpcKeyExpansion(oOptions);
 	},
 
 	left$: function (s, iLen) {
@@ -1512,23 +1513,19 @@ CpcVm.prototype = {
 	// not
 
 	onBreakCont: function () {
-		this.iBreakGosubLine = -1; //TTT
-		//this.vmNotImplemented("on break cont");
+		this.iBreakGosubLine = -1;
 	},
 
 	onBreakGosub: function (iLine) {
 		this.iBreakGosubLine = iLine;
-		//this.vmNotImplemented("on break gosub");
 	},
 
 	onBreakStop: function () {
 		this.iBreakGosubLine = 0;
-		//this.vmNotImplemented("on break stop");
 	},
 
 	onErrorGoto: function (iLine) {
 		this.iErrorGotoLine = iLine;
-		//this.vmNotImplemented("on error goto");
 	},
 
 	onGosub: function (retLabel, n) { // varargs
@@ -2005,7 +2002,7 @@ CpcVm.prototype = {
 			for (i = 1; i < arguments.length; i += 1) {
 				arg = arguments[i];
 				if (typeof arg === "object") { // delayed call for spc(), tab(), commaTab()
-					aSpecialArgs = arg.args; // TODO: copy?
+					aSpecialArgs = arg.args; // just a reference
 					aSpecialArgs.unshift(iStream);
 					sStr = this[arg.type].apply(this, aSpecialArgs);
 				} else if (typeof arg === "number") {
@@ -2178,7 +2175,7 @@ CpcVm.prototype = {
 	rnd: function (n) {
 		var x;
 
-		if (n < 0) { // TODO
+		if (n < 0) {
 			x = this.lastRnd || this.oRandom.random();
 		} else if (n === 0) {
 			x = this.lastRnd || this.oRandom.random();
@@ -2230,8 +2227,6 @@ CpcVm.prototype = {
 		var oInFile = this.oInFile;
 
 		if (sInput !== null) {
-			//oInFile.sState = "loaded";
-			//TODO
 			this.oInput.aInputValues = [oInFile.iLine]; // we misuse aInputValues
 			this.vmStop("run", 90);
 		} else {
@@ -2586,7 +2581,7 @@ CpcVm.prototype = {
 		oWin.iTop = Math.min(iTop, iBottom) - 1;
 		oWin.iBottom = Math.max(iTop, iBottom) - 1;
 
-		oWin.iPos = 0; //TTT
+		oWin.iPos = 0;
 		oWin.iVpos = 0;
 	},
 

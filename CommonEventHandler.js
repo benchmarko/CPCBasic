@@ -35,11 +35,6 @@ CommonEventHandler.prototype = {
 		if (this.fnUserAction) {
 			this.fnUserAction(event, sId);
 		}
-		/*
-		if (!sId) {
-			sId = "window"; // maybe complete window
-		}
-		*/
 
 		if (sId) {
 			if (!oTarget.disabled) { // check needed for IE which also fires for disabled buttons
@@ -195,7 +190,8 @@ CommonEventHandler.prototype = {
 				that.onExampleSelectChange();
 				that.view.setAreaValue("inputText", "");
 				that.view.setAreaValue("resultText", "Cannot load database: " + sDatabase);
-			},
+			};
+			/*
 			fnLoadDatabaseLocalStorage = function () {
 				var	oStorage = Utils.localStorage,
 					i, sKey, sItem;
@@ -207,6 +203,7 @@ CommonEventHandler.prototype = {
 				}
 				fnDatabaseLoaded("", sDatabase);
 			};
+			*/
 
 		this.model.setProperty("database", sDatabase);
 		this.view.setSelectTitleFromSelectedOption("databaseSelect");
@@ -223,7 +220,7 @@ CommonEventHandler.prototype = {
 			this.view.setAreaValue("inputText", "#loading database " + sDatabase + "...");
 			if (sDatabase === "saved") { //TODO (currently not used)
 				sUrl = "localStorage";
-				fnLoadDatabaseLocalStorage(sDatabase);
+				//fnLoadDatabaseLocalStorage(sDatabase);
 			} else {
 				sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
 				Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);
@@ -294,11 +291,16 @@ CommonEventHandler.prototype = {
 			oVariables = this.controller.oVariables,
 			sType, value;
 
-		sType = this.controller.oVm.vmDetermineVarType(sPar);
-		if (sType !== "$") { // not string? => convert to number
-			value = parseFloat(sValue);
-		} else {
+		if (typeof oVariables[sPar] === "function") { // TODO
 			value = sValue;
+			value = new Function("o", value); // eslint-disable-line no-new-func
+		} else {
+			sType = this.controller.oVm.vmDetermineVarType(sPar);
+			if (sType !== "$") { // not string? => convert to number
+				value = parseFloat(sValue);
+			} else {
+				value = sValue;
+			}
 		}
 		Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
 		oVariables[sPar] = value;

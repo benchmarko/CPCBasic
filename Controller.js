@@ -57,7 +57,6 @@ Controller.prototype = {
 		this.oCanvas = new Canvas({
 			aCharset: cpcBasicCharset,
 			cpcDivId: "cpcArea"
-			//view: this.view
 		});
 
 		this.oKeyboard = new Keyboard({
@@ -176,7 +175,7 @@ Controller.prototype = {
 
 	fnSetExampleSelectOptions: function () {
 		var iMaxTitleLength = 160,
-			iMaxTextLength = 60, //32 visible?
+			iMaxTextLength = 60, // (32 visible?)
 			sSelect = "exampleSelect",
 			aItems = [],
 			sExample = this.model.getProperty("example"),
@@ -251,15 +250,14 @@ Controller.prototype = {
 		}
 	},
 
-	fnEscape: function (/* sKey */) {
+	fnEscape: function () {
 		var oStop = this.oVm.vmGetStopObject();
 
 		this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
-		//this.oKeyboard.setKeyDownHandler(null);
-		this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this)); //TTT
+		this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
 
 		this.oVm.vmStop("escape", 85);
-		if (this.iTimeoutHandle === null) { //TTT
+		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
 		}
 	},
@@ -389,7 +387,6 @@ Controller.prototype = {
 						sInput = that.fnMergeScripts(that.view.getAreaValue("inputText"), sInput);
 						that.view.setAreaValue("inputText", sInput);
 						that.view.setAreaValue("resultText", "");
-						//that.fnReset2();
 						iStartLine = oInFile.iLine || 0;
 						that.fnParseRun2();
 						break;
@@ -436,7 +433,6 @@ Controller.prototype = {
 			},
 			fnExampleError = function () {
 				Utils.console.log("Example " + sUrl + " error");
-				//that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
 				fnContinue(null);
 			};
 
@@ -464,7 +460,7 @@ Controller.prototype = {
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
 		} else {
 			Utils.console.warn("fnLoadFile: Unknown file:", sExample);
-			oVm.error(32); //TODO: set also derr=146 (xx not found)
+			oVm.error(32); // TODO: set also derr=146 (xx not found)
 		}
 	},
 
@@ -475,7 +471,6 @@ Controller.prototype = {
 		if (!oInFile.sState) {
 			oInFile.sState = "loading";
 			this.fnLoadFile(sName);
-		} else if (oInFile.sState === "loaded") { //TTT
 		}
 	},
 
@@ -627,7 +622,6 @@ Controller.prototype = {
 
 		if (!oStop.sReason && this.fnScript) {
 			this.fnRunPart1(); // could change sReason
-			//sReason = oVm.vmGetStopReason();
 		}
 
 		switch (oStop.sReason) {
@@ -646,8 +640,6 @@ Controller.prototype = {
 		case "escape":
 			if (!oVm.vmEscape()) {
 				oVm.vmStop("", 0, true); // continue
-			} else {
-				//oVm.vmStop("break", 0, true);
 			}
 			break;
 
@@ -666,7 +658,6 @@ Controller.prototype = {
 			break;
 
 		case "loadFile":
-			//this.fnLoadFile(oVm.vmGetNextInput("$"));
 			this.fnWaitForFile();
 			iTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
 			break;

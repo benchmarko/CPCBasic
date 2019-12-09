@@ -33,7 +33,6 @@ function BasicParser(options) {
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
 // following are arguments: n=number, s=string, l=line number, a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
-	//"'": "c s?",
 	abs: "f n",
 	after: "c n n?",
 	afterGosub: "c n n?", // special, cannot check optional first n
@@ -222,7 +221,6 @@ BasicParser.prototype = {
 	init: function (options) {
 		this.options = options || {}; // e.g. tron
 
-		//this.lexer = this.options.lexer; //TTT TODO
 		this.reset();
 	},
 
@@ -452,20 +450,23 @@ BasicParser.prototype = {
 				}
 			},
 
-			fnGetArgs = function (sKeyword, oCloseTokens) { // eslint-disable-line complexity
+			fnGetArgs = function (sKeyword) { // eslint-disable-line complexity
 				var aArgs = [],
 					sSeparator = ",",
+					oCloseTokens = {
+						":": 1,
+						"(eol)": 1,
+						"(end)": 1,
+						"else": 1,
+						rem: 1,
+						"'": 1
+					},
 					bNeedMore = false,
 					sType = "ok",
 					aTypes, sKeyOpts, oExpression;
 
 				if (sKeyword) {
 					sKeyOpts = BasicParser.mKeywords[sKeyword];
-					/*
-					if (sKeyOpts && sKeyOpts.length > 1) {
-						aTypes = sKeyOpts.substr(2).split(" ");
-					}
-					*/
 					if (sKeyOpts) {
 						aTypes = sKeyOpts.substr(2).split(" ");
 					} else {
@@ -473,16 +474,6 @@ BasicParser.prototype = {
 					}
 				}
 
-				oCloseTokens = oCloseTokens || {
-					":": 1,
-					"(eol)": 1,
-					"(end)": 1,
-					"else": 1,
-					rem: 1,
-					"'": 1
-				};
-
-				//while (bNeedMore || (sType && oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && oToken.type !== "rem" && oToken.type !== "'")) {
 				while (bNeedMore || (sType && !oCloseTokens[oToken.type])) {
 					if (aTypes && sType !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
@@ -548,50 +539,6 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
-			/*
-			fnGetArgsInParenthesisOrBrackets = function (aTypes) {
-				var aArgs = [],
-					sType = "ok",
-					sOpen, sClose, oExpression;
-
-				sOpen = oToken.type;
-				if (sOpen === "(") {
-					sClose = ")";
-				} else if (sOpen === "[") {
-					sClose = "]";
-				} else {
-					throw new BasicParser.ErrorObject("Expected parenthesis or brackets", oPreviousToken.value, oToken.pos);
-				}
-
-				if (oToken.type === sClose) {
-					advance();
-				} else {
-					do {
-						if (aTypes && sType !== "*") { // "*"= any number of parameters
-							sType = aTypes.shift();
-							if (!sType) {
-								throw new BasicParser.ErrorObject("Expected end of argument list after", oPreviousToken.value, oPreviousToken.pos);
-							}
-						}
-						advance();
-						oExpression = expression(0);
-						aArgs.push(oExpression);
-					} while (oToken.type === "," && sType);
-
-					if (oToken.type !== sClose) {
-						throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
-					}
-				}
-				if (aTypes && aTypes.length) { // some more parameters expected?
-					if (aTypes && aTypes.length) { // some more parameters expected?
-						fnCheckRemainingTypes(aTypes);
-					}
-				}
-				advance(sClose);
-				return aArgs;
-			},
-			*/
-
 			fnGetArgsInParenthesis = function () {
 				var aArgs;
 
@@ -623,12 +570,6 @@ BasicParser.prototype = {
 					oValue.type = sType;
 				}
 
-				/*
-				sKeyOpts = BasicParser.mKeywords[oValue.type];
-				if (sKeyOpts && sKeyOpts.length > 1) {
-					aTypes = sKeyOpts.substr(2).split(" ");
-				}
-				*/
 				oValue.args = fnGetArgs(oValue.type);
 				return oValue;
 			},
@@ -640,14 +581,6 @@ BasicParser.prototype = {
 					oValue.type = sType;
 				}
 
-				/*
-				sKeyOpts = BasicParser.mKeywords[oValue.type];
-				if (sKeyOpts && sKeyOpts.length > 1) {
-					aTypes = sKeyOpts.substr(2).split(" ");
-				}
-
-				oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesisOrBrackets(aTypes) : [];
-				*/
 				if (oToken.type === "(") { // args in parenthesis?
 					advance("(");
 					oValue.args = fnGetArgs(oValue.type, ")");
@@ -742,7 +675,7 @@ BasicParser.prototype = {
 
 				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 					oValue.type = "fn"; // FNxxx in e.g. print
-					oValue.left = oValue.value; //TTT
+					oValue.left = oValue.value;
 				}
 			} else {
 				oValue = oName;
@@ -753,9 +686,6 @@ BasicParser.prototype = {
 		symbol("(", function () {
 			var oValue = expression(0);
 
-			if (oToken.type !== ")") {
-				throw new BasicParser.ErrorObject("Expected closing parenthesis", ")", oPreviousToken.pos);
-			}
 			advance(")");
 			return oValue;
 		});
@@ -763,11 +693,6 @@ BasicParser.prototype = {
 		symbol("[", function () {
 			var oValue = expression(0);
 
-			/*
-			if (oToken.type !== "]") {
-				throw new BasicParser.ErrorObject("Expected closing brackets", "]", oPreviousToken.pos);
-			}
-			*/
 			advance("]");
 			return oValue;
 		});
@@ -824,22 +749,18 @@ BasicParser.prototype = {
 
 		// statements ...
 
-		/*
-		stmt("'", function () { // apostrophe comment
-			var oValue = oPreviousToken;
-
-			oValue.type = "comment";
-			oValue.left = "";
-			if (oToken.type === "string") {
-				oValue.left = oToken.value;
-				advance();
-			}
-			return oValue;
-		});
-		*/
-
 		stmt("'", function () { // apostrophe comment => rem
 			return fnCreateCmdCall("rem");
+		});
+
+		stmt("|", function () { // rsx
+			var oValue = oPreviousToken;
+
+			if (oToken.type === ",") { // arguments starting with comma
+				advance(",");
+			}
+			oValue.args = fnGetArgs();
+			return oValue;
 		});
 
 		stmt("after", function () {
@@ -1344,7 +1265,7 @@ BasicParser.prototype = {
 				} else if (oToken.type === ",") { // comma tabulator
 					oValue2 = oToken;
 					advance(",");
-					oValue2.type = "commaTab"; //oValue2.type; //TTT
+					oValue2.type = "commaTab";
 					oValue2.args = [];
 					oValue.args.push(oValue2);
 				} else {
@@ -1363,29 +1284,12 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		//oSymbols["?"] = oSymbols.print; // "?" is same as print
-
 		stmt("?", function () {
 			var oValue = oSymbols.print.std(); // "?" is same as print
 
 			oValue.type = "print";
 			return oValue;
 		});
-
-		//oSymbols["'"] = oSymbols.rem; // apostrophe "'" is same as rem
-		/*
-		stmt("rem", function () {
-			var oValue = oPreviousToken;
-
-			oValue.type = "comment";
-			oValue.left = "";
-			if (oToken.type === "string") {
-				oValue.left = oToken.value;
-				advance();
-			}
-			return oValue;
-		});
-		*/
 
 		stmt("resume", function () {
 			var sName = "resume",
@@ -1396,16 +1300,6 @@ BasicParser.prototype = {
 				sName = "resumeNext";
 			}
 			oValue = fnCreateCmdCall(sName);
-			return oValue;
-		});
-
-		stmt("|", function () { // rsx
-			var oValue = oPreviousToken;
-
-			if (oToken.type === ",") { // arguments starting with comma
-				advance(",");
-			}
-			oValue.args = fnGetArgs();
 			return oValue;
 		});
 

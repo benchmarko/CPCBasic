@@ -58,14 +58,14 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands: *AUTO*, *CAT*, *CONT*, *COPYCHR$*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *KEY*,
-  *KEY DEF*, *LIST*, *MASK*, *MID$()=*, *NEW*, *ON BREAK*, *ON ERROR*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME*, *SAVE*, *SPEED INK/KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Unimplemented commands: *AUTO*, *CAT*, *CONT*, *COPYCHR$*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME*, *SAVE*, *SPEED INK/KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
 - Almost no type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
   `defint a: a=1: a%=2: ?a,a%`
+- *ON ERROR GOTO* and *RESUME* without line number do not fully work because this would require to single step every instruction
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?

@@ -166,8 +166,8 @@ Sound.prototype = {
 						fVolume = iVolume / iMaxVolume;
 						oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
 						iTime += iVolTime;
-						if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
-							iLoop = iVolEnvRepeat;
+						if (iDuration && iTime >= iDuration) { // eslint-disable-line max-depth
+							iLoop = iVolEnvRepeat; // stop early if longer than specified duration
 							iPart = aVolData.length;
 							break;
 						}
@@ -175,15 +175,16 @@ Sound.prototype = {
 				} else { // register
 					iRegister = oGroup.register;
 					iPeriod = oGroup.period;
-					//TTT TODO
 					if (iRegister === 0) {
 						iVolume = 15;
 						fVolume = iVolume / iMaxVolume;
 						oGain.setValueAtTime(fVolume * fVolume, fTime + iTime / i100ms2sec);
-						iVolTime = iPeriod; //TTT ??
+						iVolTime = iPeriod;
 						iTime += iVolTime;
 						fVolume = 0;
 						oGain.linearRampToValueAtTime(fVolume, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
+					} else {
+						// TODO: other registers
 					}
 				}
 			}
@@ -194,7 +195,7 @@ Sound.prototype = {
 		return iDuration;
 	},
 
-	applyToneEnv: function (aToneData, oFrequency, fTime, iPeriod, iDuration) { //TTT TODO
+	applyToneEnv: function (aToneData, oFrequency, fTime, iPeriod, iDuration) {
 		var iToneEnvRepeat = 1,
 			i100ms2sec = 100, // time duration unit: 1/100 sec=10 ms, convert to sec
 			bRepeat, iLoop, iPart, iTime, oGroup, iToneSteps, iToneDiff, iToneTime, i, fFrequency;
@@ -220,8 +221,8 @@ Sound.prototype = {
 						oFrequency.setValueAtTime(fFrequency, fTime + iTime / i100ms2sec);
 						iPeriod += iToneDiff;
 						iTime += iToneTime;
-						if (iDuration && iTime >= iDuration) { // stop early if longer than specified duration
-							iLoop = iToneEnvRepeat;
+						if (iDuration && iTime >= iDuration) { // eslint-disable-line max-depth
+							iLoop = iToneEnvRepeat; // stop early if longer than specified duration
 							iPart = aToneData.length;
 							break;
 						}
@@ -231,7 +232,7 @@ Sound.prototype = {
 					iToneTime = oGroup.time;
 					fFrequency = (iPeriod >= 3) ? 62500 / iPeriod : 0;
 					oFrequency.setValueAtTime(fFrequency, fTime + iTime / i100ms2sec);
-					//TTT TODO
+					// TODO
 					iTime += iToneTime;
 					//oFrequency.linearRampToValueAtTime(fXXX, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
 				}
@@ -288,7 +289,7 @@ Sound.prototype = {
 		this.aOscillators[iOscillator] = oOscillator;
 
 		if (oSoundData.iNoise) {
-			this.playNoise(iOscillator, fTime, fDuration, oSoundData.iNoise); //TTT
+			this.playNoise(iOscillator, fTime, fDuration, oSoundData.iNoise);
 		}
 		return fDuration;
 	},

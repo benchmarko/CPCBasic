@@ -104,12 +104,25 @@ Keyboard.prototype = {
 		// "226IntlBackslash", "122F11", "123F12", "44PrintScreen", "145ScrollLock", "19Pause", "45Insert", "36Home", "33PageUp", "35End", "34PageDown", "111NumpadDivide", "106NumpadMultiply", "109NumpadSubtract", "107NumpadAdd"
 	},
 
-	bCpcKey2KeyModified: false,
+	mSpecialKeys: {
+		Alt: String.fromCharCode(224), // Copy
+		ArrowUp: String.fromCharCode(240),
+		ArrowDown: String.fromCharCode(241),
+		ArrowLeft: String.fromCharCode(242),
+		ArrowRight: String.fromCharCode(243),
+		Backspace: String.fromCharCode(127),
+		Delete: String.fromCharCode(16),
+		Enter: "\r",
+		Spacebar: " ", // for IE
+		Tab: String.fromCharCode(9)
+	},
 
+	/* eslint-disable array-element-newline */
 	aJoyKeyCodes: [
-		[72, 73, 74, 75, 76, 77], // eslint-disable-line array-element-newline
-		[48, 49, 50, 51, 52, 53] // eslint-disable-line array-element-newline
+		[72, 73, 74, 75, 76, 77],
+		[48, 49, 50, 51, 52, 53]
 	],
+	/* eslint-enable array-element-newline */
 
 	init: function (options) {
 		this.options = Object.assign({}, options);
@@ -118,22 +131,90 @@ Keyboard.prototype = {
 
 		this.aKeyBuffer = []; // buffered pressed keys
 
+		this.aExpansionTokens = []; // expansion tokens 0..31 (in reality: 128..159)
+		this.oCpcKeyExpansions = {}; // cpc keys to expansion tokens for normal, shift, ctrl; also repeat
+
 		this.reset();
 		this.bActive = false; // flag if keyboard is active/focused, set from outside
 
+		this.oKey2CpcKey = this.initKey2CpcKeyMap();
+		this.bCodeStringsRemoved = false;
+
 		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
 		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
+	},
+
+	initKey2CpcKeyMap: function () {
+		var mCpcKey2Key = this.mCpcKey2Key,
+			oKey2CpcKey = {},
+			iCpcKey, sMappedKeys, aMappedKeys, i, sKey;
+
+		for (iCpcKey in mCpcKey2Key) {
+			if (mCpcKey2Key.hasOwnProperty(iCpcKey)) {
+				sMappedKeys = mCpcKey2Key[iCpcKey];
+				aMappedKeys = sMappedKeys.split(","); // maybe more
+				for (i = 0; i < aMappedKeys.length; i += 1) {
+					sKey = aMappedKeys[i];
+					oKey2CpcKey[sKey] = iCpcKey; // actually iCpcKey is a string
+				}
+			}
+		}
+		return oKey2CpcKey;
 	},
 
 	reset: function () {
 		this.fnOnKeyDown = null;
 		this.clearInput();
 		this.oPressedKeys = {}; // currently pressed browser keys
-		this.oKeyStates = null; // invalidate pressed cpc keys 
+		//this.oKeyStates = null; // invalidate pressed cpc keys
+		this.resetExpansionTokens();
+		this.resetCpcKeysExpansions();
 	},
 
 	clearInput: function () {
 		this.aKeyBuffer.length = 0;
+	},
+
+	resetExpansionTokens: function () {
+		var aExpansionTokens = this.aExpansionTokens,
+			i;
+
+		for (i = 0; i <= 9; i += 1) {
+			aExpansionTokens[i] = String(i);
+		}
+		aExpansionTokens[10] = ".";
+		aExpansionTokens[11] = "\r";
+		aExpansionTokens[12] = 'RUN"\r';
+		for (i = 13; i <= 31; i += 1) {
+			aExpansionTokens[i] = 0;
+		}
+	},
+
+	resetCpcKeysExpansions: function () {
+		var oCpcKeyExpansions = this.oCpcKeyExpansions;
+
+		oCpcKeyExpansions.normal = { // cpcKey => ExpansionToken (128-159)
+			15: 0 + 128, // F0
+			13: 1 + 128, // F1
+			14: 2 + 128, // F2
+			5: 3 + 128, // F3
+			20: 4 + 128, // F4
+			12: 5 + 128, // F5
+			4: 6 + 128, // F6
+			10: 7 + 128, // F7
+			11: 8 + 128, // F8
+			3: 9 + 128, // F9
+			7: 10 + 128, // F.
+			6: 11 + 128 // Enter
+		};
+
+		oCpcKeyExpansions.shift = {};
+
+		oCpcKeyExpansions.ctrl = {
+			6: 12 + 128 // ctrl+Enter
+		};
+
+		oCpcKeyExpansions.repeat = {};
 	},
 
 	setKeyDownHandler: function (fnOnKeyDown) {
@@ -144,7 +225,8 @@ Keyboard.prototype = {
 		this.bActive = bActive;
 	},
 
-	removeCodeFromKeymap: function (sPressedKey) { // for certain browsers
+	/*
+	removeCodeFromKeymap: function (sPressedKey) { // for certain browsers (IE, Edge) we get only codes but no code strings from the keyboard, so remove the code strings
 		var oCpcKey2Key = this.mCpcKey2Key,
 			iCpcKey, sMappedKeys, aMappedKeys, i, sKey, iKey;
 
@@ -165,34 +247,92 @@ Keyboard.prototype = {
 			}
 		}
 	},
+	*/
 
-	fnKeyboardKeydown: function (event) {
-		var mSpecialKeys = {
-				Alt: String.fromCharCode(224), // Copy
-				ArrowUp: String.fromCharCode(240),
-				ArrowDown: String.fromCharCode(241),
-				ArrowLeft: String.fromCharCode(242),
-				ArrowRight: String.fromCharCode(243),
-				Backspace: String.fromCharCode(127),
-				Delete: String.fromCharCode(16),
-				Enter: "\r",
-				Spacebar: " ", // for IE
-				Tab: String.fromCharCode(9)
-			},
+	removeCodeStringsFromKeymap: function () { // for certain browsers (IE, Edge) we get only codes but no code strings from the keyboard, so remove the code strings
+		var oKey2CpcKey = this.oKey2CpcKey,
+			oNewMap = {},
+			sKey, iKey;
+
+		if (Utils.debug > 1) {
+			Utils.console.log("removeCodeStringsFromKeymap: Unfortunately not all keys can be used.");
+		}
+		for (sKey in oKey2CpcKey) {
+			if (oKey2CpcKey.hasOwnProperty(sKey)) {
+				iKey = parseInt(sKey, 10); // get just the number
+				oNewMap[iKey] = oKey2CpcKey[sKey];
+			}
+		}
+		this.oKey2CpcKey = oNewMap;
+	},
+
+	fnKeyboardKeydown: function (event) { // eslint-disable-line complexity
+		var oPressedKeys = this.oPressedKeys,
+			mSpecialKeys = this.mSpecialKeys,
+			oCpcKeyExpansions = this.oCpcKeyExpansions,
 			iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
-			sKey = event.key;
+			sKey = event.key,
+			bKeyAlreadyPressed,	iCpcKey, oCpcKey, oExpansions, iExpKey, i;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
 			sPressedKey += event.code;
-		} else if (!this.bCpcKey2KeyModified) { // event.code not available on e.g. Edge
-			this.removeCodeFromKeymap(sPressedKey); // Remove code information from the mapping. Not all keys can be detected then.
-			this.bCpcKey2KeyModified = true;
+		} else if (!this.bCodeStringsRemoved) { // event.code not available on e.g. IE, Edge
+			this.removeCodeStringsFromKeymap(); // Remove code information from the mapping. Not all keys can be detected any more
+			this.bCodeStringsRemoved = true;
 		}
-		this.oPressedKeys[sPressedKey] = 0 + (event.shiftKey ? 32 : 0) + (event.ctrlKey ? 128 : 0);
-		this.oKeyStates = null; // invalidate
+
 		if (Utils.debug > 1) {
 			Utils.console.log("fnKeyboardKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " ", event);
+		}
+
+		//oPressedKeys[sPressedKey] = 0 + (event.shiftKey ? 32 : 0) + (event.ctrlKey ? 128 : 0);
+		//this.oKeyStates = null; // invalidate
+		if (sPressedKey in this.oKey2CpcKey) {
+			iCpcKey = this.oKey2CpcKey[sPressedKey];
+			oCpcKey = oPressedKeys[iCpcKey];
+			if (!oCpcKey) {
+				oPressedKeys[iCpcKey] = {
+					oKeys: {}
+				};
+				oCpcKey = oPressedKeys[iCpcKey];
+			}
+			bKeyAlreadyPressed = oCpcKey.oKeys[sPressedKey];
+			oCpcKey.oKeys[sPressedKey] = true;
+			oCpcKey.shift = event.shiftKey;
+			oCpcKey.ctrl = event.ctrlKey;
+			if (Utils.debug > 1) {
+				Utils.console.log("fnKeyboardKeydown: sPressedKey=" + sPressedKey + ", affected cpc key=" + iCpcKey);
+			}
+
+			oExpansions = oCpcKeyExpansions.repeat;
+			if (bKeyAlreadyPressed && ((iCpcKey in oExpansions) && !oExpansions[iCpcKey])) {
+				sKey = ""; // repeat off => ignore key
+			} else {
+				if (event.ctrlKey) {
+					oExpansions = oCpcKeyExpansions.ctrl;
+				} else if (event.shiftKey) {
+					oExpansions = oCpcKeyExpansions.shift;
+				} else {
+					oExpansions = oCpcKeyExpansions.normal;
+				}
+
+				if (iCpcKey in oExpansions) {
+					iExpKey = oExpansions[iCpcKey];
+					if (iExpKey >= 128 && iExpKey <= 159) {
+						sKey = this.aExpansionTokens[iExpKey - 128];
+						for (i = 0; i < sKey.length; i += 1) {
+							this.putKeyInBuffer(sKey.charAt(i));
+						}
+					} else { // ascii code
+						sKey = String.fromCharCode(iExpKey);
+						this.putKeyInBuffer(sKey.charAt(i));
+					}
+					sKey = ""; // already done, ignore sKey form keyboard
+				}
+			}
+		} else {
+			Utils.console.log("fnKeyboardKeydown: Unhandled key " + sPressedKey);
 		}
 
 		if (sKey in mSpecialKeys) {
@@ -202,7 +342,7 @@ Keyboard.prototype = {
 				sKey = String.fromCharCode(sKey.charCodeAt(0) - 96); // ctrl+a => \x01
 			}
 		}
-		if (sKey.length === 1) { // ignore special keys with more than 1 character
+		if (sKey.length === 1) { // put normal keys in buffer, ignore special keys with more than 1 character
 			this.putKeyInBuffer(sKey);
 		}
 
@@ -216,8 +356,10 @@ Keyboard.prototype = {
 	},
 
 	fnKeyboardKeyup: function (event) {
-		var iKeyCode = event.which || event.keyCode,
-			sPressedKey = iKeyCode;
+		var oPressedKeys = this.oPressedKeys,
+			iKeyCode = event.which || event.keyCode,
+			sPressedKey = iKeyCode,
+			iCpcKey, oCpcKey;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
 			sPressedKey += event.code;
@@ -226,8 +368,28 @@ Keyboard.prototype = {
 		if (Utils.debug > 1) {
 			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + event.key + "' " + event.key.charCodeAt(0) + " ", event);
 		}
-		delete this.oPressedKeys[sPressedKey];
-		this.oKeyStates = null; // invalidate
+		//delete oPressedKeys[sPressedKey];
+		if (sPressedKey in this.oKey2CpcKey) {
+			iCpcKey = this.oKey2CpcKey[sPressedKey];
+			oCpcKey = oPressedKeys[iCpcKey];
+			if (!oCpcKey) {
+				Utils.console.warn("fnKeyboardKeydown: Key was not pressed: " + sPressedKey);
+			} else {
+				delete oCpcKey.oKeys[sPressedKey];
+				if (!Object.keys(oCpcKey.oKeys).length) {
+					delete oPressedKeys[iCpcKey];
+				} else {
+					oCpcKey.shift = event.shiftKey;
+					oCpcKey.ctrl = event.ctrlKey;
+				}
+			}
+			if (Utils.debug > 1) {
+				Utils.console.log("fnKeyboardKeyup: sPressedKey=" + sPressedKey + ", affected cpc key=" + iCpcKey + ", oKeys:", oCpcKey.oKeys);
+			}
+		} else {
+			Utils.console.log("fnKeyboardKeyup: Unhandled key " + sPressedKey);
+		}
+		//this.oKeyStates = null; // invalidate
 	},
 
 	getKeyFromBuffer: function () {
@@ -245,6 +407,7 @@ Keyboard.prototype = {
 		this.aKeyBuffer.push(sKey);
 	},
 
+	/*
 	updateKeyStates: function () {
 		var oCpcKey2Key = this.mCpcKey2Key,
 			oKeyStates = {},
@@ -270,7 +433,9 @@ Keyboard.prototype = {
 		}
 		return oKeyStates;
 	},
+	*/
 
+	/*
 	getKeyState: function (iCpcKey) {
 		var iState;
 
@@ -281,57 +446,72 @@ Keyboard.prototype = {
 		iState = (iCpcKey in this.oKeyStates) ? this.oKeyStates[iCpcKey] : -1;
 		return iState;
 	},
+	*/
 
-	/*
 	getKeyState: function (iCpcKey) {
-		var iState = -1,
-			sMappedKeys, aMappedKeys, i, sKey;
+		var oPressedKeys = this.oPressedKeys,
+			iState = -1,
+			oCpcKey;
 
-		if (Object.keys(this.oPressedKeys).length) {
-			if (iCpcKey in this.mCpcKey2Key) {
-				sMappedKeys = this.mCpcKey2Key[iCpcKey];
-				aMappedKeys = sMappedKeys.split(","); // maybe more
-				for (i = 0; i < aMappedKeys.length; i += 1) {
-					sKey = aMappedKeys[i];
-					if (sKey in this.oPressedKeys) {
-						iState = this.oPressedKeys[sKey];
-						break; // one pressed key found
-					}
-				}
-			}
+		if (iCpcKey in oPressedKeys) {
+			oCpcKey = oPressedKeys[iCpcKey];
+			iState = 0 + (oCpcKey.shift ? 32 : 0) + (oCpcKey.ctrl ? 128 : 0);
 		}
 		return iState;
 	},
-	*/
 
 	getJoyState: function (iJoy) {
 		var iValue = 0,
 			aJoy, i;
 
 		aJoy = this.aJoyKeyCodes[iJoy];
+
+		/* eslint-disable no-bitwise */
 		for (i = 0; i < aJoy.length; i += 1) {
 			if (this.getKeyState(aJoy[i]) !== -1) {
-				iValue |= (1 << i); // eslint-disable-line no-bitwise
+				iValue |= (1 << i);
 			}
 		}
 
 		// check additional special codes for joy 0 (not available on CPC)
 		if (iJoy === 0) {
 			if (this.getKeyState(90) !== -1) { // up left
-				iValue |= 1 + 4; // eslint-disable-line no-bitwise
+				iValue |= 1 + 4;
 			}
 			if (this.getKeyState(91) !== -1) { // up right
-				iValue |= 1 + 8; // eslint-disable-line no-bitwise
+				iValue |= 1 + 8;
 			}
 			if (this.getKeyState(92) !== -1) { // down left
-				iValue |= 2 + 4; // eslint-disable-line no-bitwise
+				iValue |= 2 + 4;
 			}
 			if (this.getKeyState(93) !== -1) { // down right
-				iValue |= 2 + 8; // eslint-disable-line no-bitwise
+				iValue |= 2 + 8;
 			}
 		}
+		/* eslint-enable no-bitwise */
 
 		return iValue;
+	},
+
+	setExpansionToken: function (iToken, sString) {
+		this.aExpansionTokens[iToken] = sString;
+	},
+
+	setCpcKeyExpansion: function (oOptions) {
+		var oCpcKeyExpansions = this.oCpcKeyExpansions,
+			iCpcKey = oOptions.iCpcKey;
+
+		oCpcKeyExpansions.repeat[iCpcKey] = oOptions.iRepeat;
+
+		if ("iNormal" in oOptions) {
+			oCpcKeyExpansions.normal[iCpcKey] = oOptions.iNormal;
+		}
+		if ("iShift" in oOptions) {
+			oCpcKeyExpansions.shift[iCpcKey] = oOptions.iShift;
+		}
+		if ("iCtrl" in oOptions) {
+			oCpcKeyExpansions.ctrl[iCpcKey] = oOptions.iCtrl;
+		}
 	},
 
 	onWindowKeydown: function (event) {

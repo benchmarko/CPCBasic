@@ -48,7 +48,7 @@ CodeGeneratorJs.prototype = {
 	//
 	// evaluate
 	//
-	evaluate: function (parseTree, variables /* , functions */) {
+	evaluate: function (parseTree, variables) {
 		var that = this,
 			sOutput = "",
 
@@ -180,7 +180,6 @@ CodeGeneratorJs.prototype = {
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						aNodeArgs[i] = "o." + node.type + '("' + aNodeArgs[i] + '")';
 					}
-					//return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 					return aNodeArgs.join("; ");
 				},
 
@@ -223,12 +222,6 @@ CodeGeneratorJs.prototype = {
 					return sValue;
 				},
 
-				/*
-				comment: function (node) {
-					return "// " + node.left + "\n";
-				},
-				*/
-
 				"|": function (node) { // rsx
 					var sRsxName = "rsx" + Utils.stringCapitalize(node.value.toLowerCase()),
 						aNodeArgs = fnParseArgs(node.args);
@@ -262,7 +255,7 @@ CodeGeneratorJs.prototype = {
 
 					return value;
 				},
-				"null": function (/* node */) { // means: no parameter specified?
+				"null": function () { // means: no parameter specified
 					return "null";
 				},
 				array: function (node) {
@@ -317,15 +310,6 @@ CodeGeneratorJs.prototype = {
 				},
 
 				// special keyword functions
-
-				/*
-				"?": function (node) { // map "?" to "print"
-					var sName = "print",
-						aNodeArgs = fnParseArgs(node.args);
-
-					return "o." + sName + "(" + aNodeArgs.join(", ") + ")";
-				},
-				*/
 
 				afterGosub: function (node) {
 					var aNodeArgs = fnParseArgs(node.args);
@@ -420,7 +404,7 @@ CodeGeneratorJs.prototype = {
 				},
 				fn: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						sName = fnAdaptVariableName(node.left); //TTT
+						sName = fnAdaptVariableName(node.left);
 
 					return sName + "(" + aNodeArgs.join(", ") + ")";
 				},
@@ -657,7 +641,6 @@ CodeGeneratorJs.prototype = {
 							this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]);
 						}
 					}
-					//return this.fnCommandWithGoto(node);
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + "); break"; // append break
 				},
 				"return": function () {
@@ -794,13 +777,6 @@ CodeGeneratorJs.prototype = {
 		// optional: comment lines which are not referenced
 		if (!this.bMergeFound) {
 			sOutput = fnCommentUnusedCases(sOutput, oLabels);
-			/*
-			for (sNode in oLabels) {
-				if (!oLabels[sNode]) { // not referenced? => comment "case"
-					sOutput = sOutput.replace(/^case /, "xxx");
-				}
-			}
-			*/
 		}
 		return sOutput;
 	},
