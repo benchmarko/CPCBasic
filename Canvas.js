@@ -41,7 +41,12 @@ Canvas.prototype = {
 		"#80FFFF", // 23 Pastel Cyan
 		"#FFFF00", // 24 Bright Yellow
 		"#FFFF80", // 25 Pastel Yellow
-		"#FFFFFF" //  26 Bright White
+		"#FFFFFF", // 26 Bright White
+		"#808080", // 27 White (same as 13)
+		"#FF00FF", // 28 Bright Magenta (same as 8)
+		"#FFFF80", // 29 Pastel Yellow (same as 25)
+		"#000080", // 30 Blue (same as 1)
+		"#00FF80" //  31 Sea Green (same as 19)
 	],
 
 	// mode 0: pen 0-15
@@ -636,8 +641,8 @@ Canvas.prototype = {
 		this.setOrigin(0, 0);
 		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0);
 		this.setGColMode(0);
-		this.setGPen(this.iGPen); // maybe different for other mode
-		this.setGPaper(this.iGPaper); // maybe different for other mode
+		this.setGPen(this.iGPen); // keep, but maybe different for other mode
+		this.setGPaper(this.iGPaper); // keep, maybe different for other mode
 		this.iTransparent = 0;
 	}
 };

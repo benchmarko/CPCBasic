@@ -62,7 +62,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
-- Almost no type checking
+- Incomplete type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
   `defint a: a=1: a%=2: ?a,a%`
 - *ON ERROR GOTO* and *RESUME* without line number do not fully work because this would require to single step every instruction
@@ -81,6 +81,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [fixed: *ENT* (tone envelopes); hardware volume envelopes with sepcial *ENV* syntax "="]
 - [fixed: RESTORE for lines without *DATA*: search next *DATA* line]
 - [done: Separate sample library; sample category]
+- [fixed: Almost no type checking]
 
 ## Extensions and Features
 

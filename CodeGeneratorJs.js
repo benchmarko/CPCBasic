@@ -104,6 +104,26 @@ CodeGeneratorJs.prototype = {
 				return aNodeArgs;
 			},
 
+			fnDetermineVarType = function (sName) {
+				var sNameType;
+
+				if (sName.indexOf("v.") === 0) {
+					sName = sName.substr(2); // remove preceiding "v."
+				}
+
+				sNameType = sName.charAt(0); // take first character to determine var type later
+
+				// explicit type specified?
+				if (sName.indexOf("I") >= 0) {
+					sNameType += "I";
+				} else if (sName.indexOf("R") >= 0) {
+					sNameType += "R";
+				} else if (sName.indexOf("$") >= 0) {
+					sNameType += "$";
+				}
+				return sNameType;
+			},
+
 			mOperators = {
 				"+": function (a, b) {
 					return a + " + " + b;
@@ -235,14 +255,14 @@ CodeGeneratorJs.prototype = {
 					return '"' + node.value + '"';
 				},
 				binnumber: function (node) {
-					var value = node.value.slice(2);
+					var sValue = node.value.slice(2);
 
 					if (Utils.bSupportsBinaryLiterals) {
-						value = "0b" + ((value.length) ? value : "0"); // &x->0b; 0b is ES6
+						sValue = "0b" + ((sValue.length) ? sValue : "0"); // &x->0b; 0b is ES6
 					} else {
-						value = "0x" + ((value.length) ? parseInt(value, 2).toString(16) : "0"); // we convert it to hex
+						sValue = "0x" + ((sValue.length) ? parseInt(sValue, 2).toString(16) : "0"); // we convert it to hex
 					}
-					return value;
+					return sValue;
 				},
 				hexnumber: function (node) {
 					var value = node.value.slice(1);
@@ -251,9 +271,9 @@ CodeGeneratorJs.prototype = {
 					return value;
 				},
 				identifier: function (node) {
-					var value = fnAdaptVariableName(node.value); // here we use node.value
+					var sName = fnAdaptVariableName(node.value); // here we use node.value
 
-					return value;
+					return sName;
 				},
 				"null": function () { // means: no parameter specified
 					return "null";
@@ -261,29 +281,34 @@ CodeGeneratorJs.prototype = {
 				array: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
 						sName = fnAdaptVariableName(node.value, aNodeArgs.length),
-						value = sName + aNodeArgs.map(function (val) {
+						sValue = sName + aNodeArgs.map(function (val) {
 							return "[" + val + "]";
 						}).join("");
 
-					return value;
+					return sValue;
 				},
 				assign: function (node) { // see also "let"
-					var aNodeArgs, sName, value;
+					var aNodeArgs, sName, sVarType, sArray, sValue;
 
 					if (node.left.type === "array") {
 						aNodeArgs = fnParseArgs(node.left.args);
 						sName = fnAdaptVariableName(node.left.value, aNodeArgs.length);
-						value = aNodeArgs.map(function (val) {
+						sArray = aNodeArgs.map(function (val) {
 							return "[" + val + "]";
 						}).join("");
 					} else if (node.left.type === "identifier") {
 						sName = fnAdaptVariableName(node.left.value);
-						value = "";
+						sArray = "";
 					} else {
 						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos); // should not occur
 					}
-					value = sName + value + " = " + fnParseOneArg(node.right);
-					return value;
+
+					// value = sName + value + " = " + fnParseOneArg(node.right); // assign without type checking and rounding
+
+					// type checking and rounding is more accurate but will cost much performance...
+					sVarType = fnDetermineVarType(sName);
+					sValue = sName + sArray + " = o.vmAssign(\"" + sVarType + "\", " + fnParseOneArg(node.right) + ")";
+					return sValue;
 				},
 				label: function (node) {
 					var value = "case " + node.value + ":",
@@ -369,14 +394,15 @@ CodeGeneratorJs.prototype = {
 				},
 				dim: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						i, sName, aName;
+						i, sName, aName, sStringType;
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = aNodeArgs[i];
 						aName = sName.split(/\[|\]\[|\]/);
 						aName.pop(); // remove empty last element
 						sName = aName.shift();
-						aNodeArgs[i] = sName + " = o.dim(\"" + sName + "\", " + aName.join(", ") + ")";
+						sStringType = (sName.indexOf("$") > -1) ? "$" : "";
+						aNodeArgs[i] = sName + " = o.dim(\"" + sStringType + "\", " + aName.join(", ") + ")";
 					}
 					return aNodeArgs.join("; ");
 				},
@@ -473,7 +499,7 @@ CodeGeneratorJs.prototype = {
 				},
 				input: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						sLabel, value, i, sStream, sNoCRLF, sMsg;
+						sLabel, sVarType, value, i, sStream, sNoCRLF, sMsg;
 
 					sLabel = that.iLine + "s" + that.iStopCount;
 					that.iStopCount += 1;
@@ -484,7 +510,8 @@ CodeGeneratorJs.prototype = {
 
 					value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
+						sVarType = fnDetermineVarType(aNodeArgs[i]);
+						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + sVarType + "\")";
 					}
 
 					return value;
@@ -494,6 +521,7 @@ CodeGeneratorJs.prototype = {
 				},
 				lineInput: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
+						aVarTypes = [],
 						sLabel, value, i, sStream, sNoCRLF, sMsg;
 
 					sLabel = that.iLine + "s" + that.iStopCount;
@@ -503,9 +531,15 @@ CodeGeneratorJs.prototype = {
 					sNoCRLF = aNodeArgs.shift();
 					sMsg = aNodeArgs.shift();
 
-					value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					// we should have just one variable name
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aNodeArgs[i] + "\")";
+						aVarTypes[i] = fnDetermineVarType(aNodeArgs[i]);
+					}
+
+					value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						//sVarType = fnDetermineVarType(aNodeArgs[i]);
+						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aVarTypes[i] + "\")";
 					}
 					return value;
 				},
@@ -600,17 +634,18 @@ CodeGeneratorJs.prototype = {
 						aNodeArgs = fnParseArgs(node.args);
 						value = "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 					} else {
-						value = this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput(\"$\"))";
+						value = this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput(\"$$\"))";
 					}
 					return value;
 				},
 				read: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						i, sName;
+						i, sName, sVarType;
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = aNodeArgs[i];
-						aNodeArgs[i] = sName + " = o.read(\"" + sName + "\")";
+						sVarType = fnDetermineVarType(sName);
+						aNodeArgs[i] = sName + " = o.read(\"" + sVarType + "\")";
 					}
 					return aNodeArgs.join("; ");
 				},

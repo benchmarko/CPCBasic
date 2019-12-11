@@ -183,7 +183,8 @@ CpcVm.prototype = {
 		this.vmDefineVarTypes("R", "a-z");
 
 		this.iMode = null;
-		this.mode(1); // including vmResetWindowData()
+		this.vmResetWindowData(true); // reset all, including pen and paper
+		this.mode(1); // including vmResetWindowData() without pen and paper
 
 		this.oCanvas.reset();
 		this.oKeyboard.reset();
@@ -218,17 +219,20 @@ CpcVm.prototype = {
 		}
 	},
 
-	vmResetWindowData: function () {
+	vmResetWindowData: function (bResetPenPaper) {
 		var oWinData = this.mWinData[this.iMode],
 			oData = {
 				iPos: 0, // current text position in line
 				iVpos: 0,
-				iPaper: 0,
-				iPen: 1,
 				bTextEnabled: true, // text enabled
 				bTag: false // tag=text at graphics
 			},
 			i, oWin;
+
+		if (bResetPenPaper) {
+			oData.iPen = 1;
+			oData.iPaper = 0;
+		}
 
 		for (i = 0; i < this.iStreamCount - 2; i += 1) { // for window streams
 			oWin = this.aWindow[i];
@@ -631,6 +635,40 @@ CpcVm.prototype = {
 		}
 	},
 
+	vmAssign: function (sVarType, value) {
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+
+		if (sType === "I") { // integer
+			value = this.vmRound(value); // round number to integer
+		} else if (sType === "$") { // string
+			if (typeof value !== "string") {
+				Utils.console.warn("vmAssign: expected string but got:", value);
+				this.error(13); // "Type mismatch"
+			}
+		}
+		//this.v[sName] = value; // cannot assign here because possible array access
+		return value;
+	},
+
+	/*
+	vmAssign: function (sName, value) {
+		var sType = this.vmDetermineVarType(sName);
+
+		if (sType === "I") { // integer
+			value = this.vmRound(value); // round number to integer
+		} else if (sType === "$") { // string
+			if (typeof value !== "string") {
+				Utils.console.warn("vmAssign: expected string but got:", value);
+				this.error(13); // "Type mismatch"
+			}
+		}
+		//this.v[sName] = value; // cannot assign here because possible array access
+		return value;
+	},
+	*/
+
+	// --
+
 	abs: function (n) {
 		return Math.abs(n);
 	},
@@ -718,7 +756,7 @@ CpcVm.prototype = {
 			this.graphicsPen(arguments.length - 1);
 			break;
 		case 0xbbff: // SCR Initialize
-			this.mode(1);
+			this.mode(1); //TTT really?
 			this.vmResetInks();
 			break;
 		case 0xbd19: // MC Wait Flyback
@@ -915,9 +953,9 @@ CpcVm.prototype = {
 		this.bTimersDisabled = true;
 	},
 
-	dim: function (sVar) { // varargs
+	dim: function (sStringType) { // varargs
 		var aArgs = [],
-			bIsString = sVar.includes("$"),
+			bIsString = (sStringType === "$"), // includes("$"),
 			varDefault = (bIsString) ? "" : 0,
 			i;
 
@@ -1225,6 +1263,7 @@ CpcVm.prototype = {
 		//this.vmNotImplemented("inp");
 	},
 
+	/*
 	vmDetermineVarType: function (sName) {
 		var sType, aMatch, sChar;
 
@@ -1240,15 +1279,17 @@ CpcVm.prototype = {
 		}
 		return sType;
 	},
+	*/
 
-	vmGetNextInput: function (sVar) {
-		var aInputValues = this.oInput.aInputValues,
+	vmGetNextInput: function (sVarType) {
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
+			aInputValues = this.oInput.aInputValues,
 			sValue;
 
 		// Utils.console.debug("vmGetInput: " + sVar);
 		sValue = aInputValues.shift();
 
-		if (this.vmDetermineVarType(sVar) !== "$") { // no string?
+		if (sType !== "$") { // no string?
 			sValue = Number(sValue);
 			if (isNaN(sValue)) {
 				this.print(this.oInput.iStream, "?Redo from start\r\n");
@@ -1353,7 +1394,9 @@ CpcVm.prototype = {
 		this.oInput.aInputValues = [sInput];
 	},
 
-	lineInput: function (iStream, sNoCRLF, sMsg, sVar) { // sVar must be string variable
+	lineInput: function (iStream, sNoCRLF, sMsg, sVarType) { // sVarType must be string variable
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+
 		iStream = this.vmRound(iStream);
 		if (iStream < 8) {
 			this.print(iStream, sMsg);
@@ -1361,7 +1404,7 @@ CpcVm.prototype = {
 			this.oInput.sNoCRLF = sNoCRLF;
 			this.oInput.sInput = "";
 
-			if (this.vmDetermineVarType(sVar) !== "$") { // not string?
+			if (sType !== "$") { // not string?
 				this.print(iStream, "\r\n");
 				this.error(13); // Type mismatch
 			} else {
@@ -1467,17 +1510,13 @@ CpcVm.prototype = {
 	// mod
 
 	mode: function (iMode) {
-		var iStream = 0,
-			oWin;
-
 		iMode = this.vmRound(iMode);
 		this.iMode = iMode;
-		this.vmResetWindowData();
-		oWin = this.aWindow[iStream];
+		this.vmResetWindowData(false); // do not reset pen and paper
 		this.sOut = "";
 		this.iClgPen = 0;
 		this.oCanvas.setMode(iMode); // does not clear canvas
-		this.oCanvas.clearGraphics(oWin.iPaper);
+		this.oCanvas.clearGraphics(0); // always clear with paper 0! (SCR MODE CLEAR)
 	},
 
 	move: function (x, y, iGPen, iGColMode) {
@@ -2073,13 +2112,14 @@ CpcVm.prototype = {
 		}
 	},
 
-	read: function (sVar) {
-		var item = 0;
+	read: function (sVarType) {
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
+			item = 0;
 
 		if (this.iData < this.aData.length) {
 			item = this.aData[this.iData];
 			this.iData += 1;
-			if (this.vmDetermineVarType(sVar) !== "$") { // not string? => convert to number (also binary, hex)
+			if (sType !== "$") { // not string? => convert to number (also binary, hex)
 				item = this.val(item);
 			}
 		} else {
