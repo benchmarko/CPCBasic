@@ -5,7 +5,7 @@ BASIC programs are compiled to JavaScript which can be run in the browser. A lib
 
 CPCBasic Links:
 [CPCBasic Demo](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=cpcbasic),
-[Colors CPC Demo](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=colors),
+[Colors CPC Demo](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=demo/colors),
 [Source code](https://github.com/benchmarko/CPCBasic/),
 [HTML Readme](https://github.com/benchmarko/CPCBasic/#readme),
 
@@ -22,7 +22,7 @@ CPCBasic Links:
 [![A sample with cpcbasic](./img/cpcbasic.gif)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=cpcbasic)]
 
 [![Art](./img/art.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=art)]
-[![Graphics](./img/graphics.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=graphics)]
+[![Graphics](./img/graphics.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=demo/graphics)]
 [![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=labyrinth)]
 [![Landscape](./img/landscape.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=landscape)]
 
@@ -82,6 +82,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [fixed: RESTORE for lines without *DATA*: search next *DATA* line]
 - [done: Separate sample library; sample category]
 - [fixed: Almost no type checking]
+- [fixed: Access screen memory in the range &c000-&ffff with *PEEK&POKE*]
+- [done: Pause key: Use ESC, and then any key to continue]
 
 ## Extensions and Features
 
@@ -103,11 +105,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
 - DSK images support
-- Pause key
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
 - RSX extension libraries / plugins programmed in JavaScript
-- Can we detect Busy Loops and insert *FRAME* automatically?
-- Access screen memory with *PEEK&POKE*
+- Can we detect busy loops and insert *FRAME* automatically?
 - Shall we support hardware scrolling with *OUT* or is it already a hardware emulation feature?
 - Extension: More colors, e.g. 256
 - Optimizations of the resulting JavaScript code
@@ -145,4 +145,4 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - [Locomotive Software](https://www.cpcwiki.eu/index.php/Locomotive_Software) - The developer of CPCs BASIC and operating system
 
-### **mv, 11/2019**
+### **mv, 12/2019**

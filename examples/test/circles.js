@@ -29,6 +29,6 @@ cpcBasic.addItem("", function () { /*
 450 NEXT
 460 return
 9000 'cpclib will be merged...
-9010 chain merge "cpclib"
+9010 chain merge "../cpclib"
 9020 return
 */ });

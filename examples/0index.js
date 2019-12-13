@@ -10,37 +10,13 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "First Program (empty)"
 	},
 	{
-    	"key": "anageo",
-		"title": "Analytical Geometry"
-	},
-	{
     	"key": "art",
 		"title": "Computer Art"
 	},
 	{
-		"key": "blockeditor",
+		"key": "blkedit",
 		"title": "Block Editor"
     },
-	{
-		"key": "bmbench3",
-		"title": "BM Benchmark 3"
-    },
-    {
-    	"key": "charset",
-		"title": "Character set"
-    },
-    {
-    	"key": "circles",
-		"title": "Drawing circles"
-    },
-    {
-    	"key": "colors",
-		"title": "Colors CPC Demo"
-	},
-	{
-    	"key": "complex",
-		"title": "Complex numbers"
-	},
     {
     	"key": "cpc464ch",
 		"title": "CPC 464 Character Art"
@@ -52,38 +28,6 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
     	"key": "cpclib",
 		"title": "CPC Lib"
-	},
-	{
-    	"key": "cpcmhz",
-		"title": "CPC Mhz"
-	},
-	{
-    	"key": "division",
-		"title": "Division of long numberss"
-	},
-    {
-    	"key": "euler",
-		"title": "Compute e with 1000 digits"
-	},
-	{
-    	"key": "factorials",
-		"title": "Big Factorials"
-    },
-    {
-    	"key": "fractions",
-		"title": "fractions: Bruchrechnen"
-	},
-    {
-    	"key": "funcspec",
-		"title": "Functional Spectrum"
-    },
-    {
-    	"key": "graphics",
-		"title": "Graphics CPC Demo"
-    },
-	{
-		"key": "keyboard",
-		"title": "Keyboard Test"
 	},
 	{
 		"key": "labyrinth",
@@ -101,14 +45,6 @@ cpcBasic.addIndex("./examples", function () { /*
     	"key": "rastercircle",
 		"title": "Raster Circle"
     },
-	{
-		"key": "rectangles",
-		"title": "Rectangles"
-	},
-    {
-		"key": "seconds",
-		"title": "Seconds Test"
-    },
     {
 		"key": "simple",
 		"title": "Simple Labyrinth"
@@ -122,24 +58,92 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Sphere"
 	},
     {
-		"key": "shot",
+    	"key": "demo/colors",
+		"title": "Colors CPC Demo"
+	},
+    {
+    	"key": "demo/graphics",
+		"title": "Graphics CPC Demo"
+	},
+	{
+		"key": "games/shot",
 		"title": "Shot Game (Textual)"
 	},
 	{
-		"key": "stars",
-		"title": "Stars"
-	},
-	{
-		"key": "states",
+		"key": "games/states",
 		"title": "States of the Earth"
 	},
 	{
-    	"key": "testdat1",
+    	"key": "math/anageo",
+		"title": "Analytical Geometry"
+	},
+	{
+    	"key": "math/complex",
+		"title": "Complex numbers (Komplexe Zahlen)"
+	},
+	{
+    	"key": "math/division",
+		"title": "Division of long numbers (Division langer Zahlen)"
+	},
+	{
+    	"key": "math/euler",
+		"title": "Compute e with 1000 digits"
+	},
+	{
+    	"key": "math/factorials",
+		"title": "Big Factorials (Berechnung grosser Fakultaeten)"
+    },
+	{
+    	"key": "math/fractions",
+		"title": "Fractions (Bruchrechnen)"
+	},
+	{
+    	"key": "math/funcspec",
+		"title": "Functional Spectrum"
+    },
+	{
+		"key": "test/bmbench3",
+		"title": "BM Benchmark 3"
+	},
+	{
+    	"key": "test/charset",
+		"title": "Character set"
+	},
+	{
+    	"key": "test/circles",
+		"title": "Drawing circles"
+    },
+	{
+    	"key": "test/cpcmhz",
+		"title": "CPC Mhz"
+	},
+	{
+		"key": "test/keyboard",
+		"title": "Keyboard Test"
+	},
+	{
+		"key": "test/rectangles",
+		"title": "Rectangles Test"
+	},
+	{
+		"key": "test/scrtest",
+		"title": "Screen Memory Test"
+	},
+	{
+		"key": "test/seconds",
+		"title": "Seconds Test"
+	},
+	{
+		"key": "test/stars",
+		"title": "Stars Test 1 and 2"
+	},
+	{
+    	"key": "test/testdat1",
 		"title": "testdat1 - Test data for Test Page",
 		"type": "data"
 	},
     {
-		"key": "testpage",
+		"key": "test/testpage",
 		"title": "Test Page"
 	}
 ]

@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 REM Rectangles
+100 REM Rectangles Test
 110 REM Marco Vieth, 2019
 113 clear:defint a-z
 115 c.c=1:gosub 9010:'initCpcLib
@@ -35,6 +35,6 @@ cpcBasic.addItem("", function () { /*
 420 c.c=3:c.iv%=200:gosub 9020:'waitOrKey
 440 return
 9000 'cpclib will be merged...
-9010 chain merge "cpclib"
+9010 chain merge "../cpclib"
 9020 return
 */ });

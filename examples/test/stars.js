@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-10 REM Stars1 and Stars2
+10 REM stars - Stars Test 1 and 2
 15 defint a-z
 20 DIM x(24),y(24),s(24)
 22 DEF FNr1(n)=n*RND

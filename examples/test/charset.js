@@ -22,6 +22,6 @@ cpcBasic.addItem("", function () { /*
 240 c.c=3:c.iv%=150:gosub 9020:'waitOrKey
 250 return
 9000 'cpclib will be merged...
-9010 chain merge "cpclib"
+9010 chain merge "../cpclib"
 9020 return
 */ });

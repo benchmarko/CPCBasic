@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 REM e with 1000 digits
+100 REM euler - Compute e with 1000 digits
 110 MODE 2
 120 PRINT"Compute e with 1000 digits"
 130 CLEAR

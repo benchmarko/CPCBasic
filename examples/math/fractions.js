@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-5  REM Fractions: Bruchrechnen
+5  REM fractions - Fractions (Bruchrechnen)
 10 INK 1,24:INK 2,7:INK 3,13:GOTO 1000
 100 REM Erweitern
 105 p=2:l1=13:l2=2:t$="E R W E I T E R N :":GOSUB 1150

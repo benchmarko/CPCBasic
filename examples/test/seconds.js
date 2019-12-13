@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 REM seconds test
+100 REM seconds - Seconds Test
 110 REM Marco Vieth, 2019
 115 cls:defint a-z
 120 ?"Timing 1 (call &bd19):"

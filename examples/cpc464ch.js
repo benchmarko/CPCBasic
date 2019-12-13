@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-10 REM CPC 464 Character Art
+10 REM cpc464ch - CPC 464 Character Art
 20 ON BREAK GOSUB 310
 30 MODE 1
 40 X=18 :T=1 :L=26:K=6:M=26

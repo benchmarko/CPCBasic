@@ -54,29 +54,29 @@ Canvas.prototype = {
 	aDefaultInks: [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16], // eslint-disable-line array-element-newline
 
 	aModeData: [
-		{
-			iPens: 16,
-			iLineWidth: 4,
-			iLineHeight: 2,
-			iCharWidth: 8 * 4,
-			iCharHeight: 16
+		{ // node 0
+			iPens: 16, // number of pens
+			iLineWidth: 4, // pixel width
+			iLineHeight: 2, // pixel height
+			iCharWidth: 8 * 4, // width of a char (pixel width * 8)
+			iCharHeight: 16 // height of a char (pixel height * 8)
 		},
-		{
+		{ // mode 1
 			iPens: 4,
 			iLineWidth: 2,
 			iLineHeight: 2,
 			iCharWidth: 8 * 2, //  * 2, //TTT TEST
 			iCharHeight: 16
 		},
-		{
+		{ // mode 2
 			iPens: 2,
 			iLineWidth: 1,
 			iLineHeight: 2,
 			iCharWidth: 8,
 			iCharHeight: 16
 		},
-		{
-			iPens: 16, // mode 3 not available on CPC
+		{ // mode 3
+			iPens: 16, // mode 3 not available on real CPC
 			iLineWidth: 1,
 			iLineHeight: 1,
 			iCharWidth: 8,
@@ -394,6 +394,90 @@ Canvas.prototype = {
 		i = x + this.iWidth * y;
 		iPen = this.dataset8[i];
 		return iPen;
+	},
+
+	getByte: function (iAddr) {
+		var iMode = this.iMode,
+			iLineWidth = this.aModeData[this.iMode].iLineWidth,
+			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iByte = null, // null=cannot read
+			x, y, iGPen, i;
+
+		/* eslint-disable no-bitwise */
+
+		x = ((iAddr & 0x7ff) % 80) * 8;
+		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iLineHeight;
+
+		if (y < this.iHeight) { // only if in visible range
+			if (iMode === 0) {
+				iGPen = this.dataset8[x + this.iWidth * y];
+				iByte = ((iGPen >> 2) & 0x02) | ((iGPen << 3) & 0x20) | ((iGPen << 2) & 0x08) | ((iGPen << 7) & 0x80); // b1,b5,b3,b7 (left pixel)
+
+				iGPen = this.dataset8[x + iLineWidth + this.iWidth * y];
+				iByte |= ((iGPen >> 3) & 0x01) | ((iGPen << 2) & 0x10) | ((iGPen << 1) & 0x04) | ((iGPen << 6) & 0x40); // b0,b4,b2,b6 (right pixel)
+			} else if (iMode === 1) {
+				iByte = 0;
+				iGPen = this.dataset8[x + this.iWidth * y];
+				iByte |= ((iGPen & 0x02) << 2) | ((iGPen & 0x01) << 7); // b3,b7 (left pixel 1)
+				iGPen = this.dataset8[x + iLineWidth + this.iWidth * y];
+				iByte |= ((iGPen & 0x02) << 1) | ((iGPen & 0x01) << 6); // b2,b6 (pixel 2)
+				iGPen = this.dataset8[x + iLineWidth * 2 + this.iWidth * y];
+				iByte |= ((iGPen & 0x02) << 0) | ((iGPen & 0x01) << 5); // b1,b5 (pixel 3)
+				iGPen = this.dataset8[x + iLineWidth * 3 + this.iWidth * y];
+				iByte |= ((iGPen & 0x02) >> 1) | ((iGPen & 0x01) << 4); // b0,b4 (right pixel 4)
+			} else if (iMode === 2) {
+				iByte = 0;
+				for (i = 0; i <= 7; i += 1) {
+					iGPen = this.dataset8[x + i + this.iWidth * y];
+					iByte |= (iGPen & 0x01) << (7 - i);
+				}
+			} else { // iMode === 3
+			}
+		}
+		/* eslint-enable no-bitwise */
+
+		return iByte;
+	},
+
+	setByte: function (iAddr, iByte) {
+		var iMode = this.iMode,
+			iLineWidth = this.aModeData[this.iMode].iLineWidth,
+			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iGColMode = 0, // always 0
+			x, y, iGPen, i;
+
+		/* eslint-disable no-bitwise */
+		x = ((iAddr & 0x7ff) % 80) * 8;
+		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iLineHeight;
+
+		if (y < this.iHeight) { // only if in visible range
+			if (iMode === 0) {
+				iGPen = ((iByte << 2) & 0x08) | ((iByte >> 3) & 0x04) | ((iByte >> 2) & 0x02) | ((iByte >> 7) & 0x01); // b1,b5,b3,b7 (left pixel)
+				this.setSubPixels(x, y, iGPen, iGColMode);
+				iGPen = ((iByte << 3) & 0x08) | ((iByte >> 2) & 0x04) | ((iByte >> 1) & 0x02) | ((iByte >> 6) & 0x01); // b0,b4,b2,b6 (right pixel)
+				// (TTT: or shift byte left and do as for left pixel?)
+				this.setSubPixels(x + iLineWidth, y, iGPen, iGColMode);
+				this.setNeedUpdate(x, y, x + iLineWidth, y);
+			} else if (iMode === 1) {
+				iGPen = ((iByte >> 2) & 0x02) | ((iByte >> 7) & 0x01); // b3,b7 (left pixel 1)
+				this.setSubPixels(x, y, iGPen, iGColMode);
+				iGPen = ((iByte >> 1) & 0x02) | ((iByte >> 6) & 0x01); // b2,b6 (pixel 2)
+				this.setSubPixels(x + iLineWidth, y, iGPen, iGColMode);
+				iGPen = ((iByte >> 0) & 0x02) | ((iByte >> 5) & 0x01); // b1,b5 (pixel 3)
+				this.setSubPixels(x + iLineWidth * 2, y, iGPen, iGColMode);
+				iGPen = ((iByte << 1) & 0x02) | ((iByte >> 4) & 0x01); // b0,b4 (right pixel 4)
+				this.setSubPixels(x + iLineWidth * 3, y, iGPen, iGColMode);
+				this.setNeedUpdate(x, y, x + iLineWidth * 3, y);
+			} else if (iMode === 2) {
+				for (i = 0; i <= 7; i += 1) {
+					iGPen = (iByte >> (7 - i)) & 0x01;
+					this.setSubPixels(x + i * iLineWidth, y, iGPen, iGColMode);
+				}
+				this.setNeedUpdate(x, y, x + iLineWidth * 7, y);
+			} else { // iMode === 3
+			}
+		}
+		/* eslint-enable no-bitwise */
 	},
 
 	// https://de.wikipedia.org/wiki/Bresenham-Algorithmus

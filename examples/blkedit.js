@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-10 rem Block Editor
+10 rem blkedit - Block Editor
 20 rem written by AMSDOS
 25 rem taken from http://www.cpcwiki.eu/forum/programming/silly-programming-ideas-turning-text-into-graphics/msg100582/#msg100582
 26 rem and sample from http://www.cpcwiki.eu/forum/programming/silly-programming-ideas-turning-text-into-graphics/msg33246/#msg33246

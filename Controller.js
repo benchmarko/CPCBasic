@@ -443,6 +443,7 @@ Controller.prototype = {
 		if (iLastSlash >= 0) {
 			sPath = sKey.substr(0, iLastSlash); // take path from selected example
 			sName = sPath + "/" + sName;
+			sName = sName.replace(/\w+\/\.\.\//, ""); // simplify 2 dots (go back) in path: "dir/.."" => ""
 		}
 		sExample = sName;
 

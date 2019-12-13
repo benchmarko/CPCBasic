@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-10 REM Complex numbers (KOMPLEX)
+10 REM complex - Complex numbers (Komplexe Zahlen)
 20 REM Rechnen mit komplexen Zahlen
 30 REM 8.4.1989
 40 '

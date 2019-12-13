@@ -3,7 +3,7 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 'Division langer Zahlen
+100 rem division - Division of long numbers (Division langer Zahlen)
 110 '
 120 CLEAR:MODE 1
 130 PRINT"  Division langer Zahlen

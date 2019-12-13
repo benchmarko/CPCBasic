@@ -1690,8 +1690,16 @@ CpcVm.prototype = {
 	},
 
 	peek: function (iAddr) {
-		var iByte = this.aMem[iAddr] || 0;
+		var iByte;
 
+		if (iAddr >= 0xc000 && iAddr <= 0xffff) { // get byte from screen memory
+			iByte = this.oCanvas.getByte(iAddr, iByte);
+			if (iByte !== null) { // byte read?
+				this.aMem[iAddr] = iByte;
+			}
+		}
+
+		iByte = this.aMem[iAddr] || 0;
 		return iByte;
 	},
 
@@ -1742,7 +1750,12 @@ CpcVm.prototype = {
 	poke: function (iAddr, iByte) {
 		iAddr = this.vmRound(iAddr);
 		iByte = this.vmRound(iByte);
+
 		this.aMem[iAddr] = iByte;
+
+		if (iAddr >= 0xc000 && iAddr <= 0xffff) { // write byte to screen memory
+			this.oCanvas.setByte(iAddr, iByte);
+		}
 	},
 
 	pos: function (iStream) {
