@@ -3,14 +3,21 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 rem derivat - Derivatives of Polynomials (Ableitungen eines Polynoms)
+1 rem derivat - Derivatives of Polynomials (Ableitungen eines Polynoms)
+2 rem
+3 rem Modifications:
+4 rem
+5 rem Example: d/dx 5*x^6+3*x^4-8*x^2+1 = 30*x^5+12*x^3-16*x
+6 rem (http://web.mit.edu/wwmath/calculus/differentiation/polynomials.html)
+7 rem
+100 rem Ableitungen eines Polynoms
 110 rem Computation of 3 derivatives (Berechnung dreier Ableitungen)
 120 rem 18.7.1988
 130 '
 140 CLEAR
 150 MODE 2:PRINT"Untersucht wird eine ganze rationale Funktion der Form"
 160 PRINT:PRINT"y=a1*x^n1 + a2*x^n2 +...+ am*x^nm"
-170 PRINT:INPUT"Wieviele Glieder hat die Funktion ";m
+170 PRINT:INPUT"Wieviele Glieder m hat die Funktion ";m
 180 DIM a(m,3),n(m,3)
 190 PRINT:PRINT"Geben Sie die einzelnen Faktoren ein."
 200 FOR i=1 TO m:LOCATE 1,10:PRINT"a";i;" : ";:INPUT ;a(i,0):PRINT TAB(30);"n";i;" : ";:INPUT n(i,0)
@@ -36,6 +43,6 @@ cpcBasic.addItem("", function () { /*
 400 IF n(i,h)=1 THEN PRINT"*x"; ELSE PRINT"*x^"n(i,h);
 410 NEXT i,h
 420 PRINT:PRINT:PRINT:PRINT"Soll noch eine Gleichung untersucht werden (j/n) ";:INPUT a$
-430 IF LOWER$(a$)="n" THEN END
+430 IF LOWER$(a$)="n" THEN ?"end":END
 440 GOTO 140
 */ });

@@ -180,6 +180,7 @@ Controller.prototype = {
 			aItems = [],
 			sExample = this.model.getProperty("example"),
 			oAllExamples = this.model.getAllExamples(),
+			bExampleSelected = false,
 			sKey, oExample, oItem;
 
 		for (sKey in oAllExamples) {
@@ -192,9 +193,13 @@ Controller.prototype = {
 				oItem.text = oItem.title.substr(0, iMaxTextLength);
 				if (oExample.key === sExample) {
 					oItem.selected = true;
+					bExampleSelected = true;
 				}
 				aItems.push(oItem);
 			}
+		}
+		if (!bExampleSelected && aItems.length) {
+			aItems[0].selected = true; // if example is not found, select first element
 		}
 		this.view.setSelectOptions(sSelect, aItems);
 	},
@@ -461,7 +466,7 @@ Controller.prototype = {
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
 		} else {
 			Utils.console.warn("fnLoadFile: Unknown file:", sExample);
-			oVm.error(32); // TODO: set also derr=146 (xx not found)
+			oVm.vmSetError(32); // TODO: set also derr=146 (xx not found)
 		}
 	},
 
@@ -594,7 +599,9 @@ Controller.prototype = {
 			this.fnScript(oVm);
 		} catch (e) {
 			oVm.sOut += "\n" + String(e) + "\n";
-			oVm.error(2); // Syntax Error
+			if (!(e instanceof CpcVm.ErrorObject)) {
+				oVm.vmSetError(2); // Syntax Error
+			}
 		}
 	},
 

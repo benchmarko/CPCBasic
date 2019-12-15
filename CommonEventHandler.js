@@ -161,9 +161,11 @@ CommonEventHandler.prototype = {
 	},
 
 	onReloadButtonClick: function () {
-		var oChanged = Utils.getChangedParameters(this.model.getAllProperties(), this.model.getAllInitialProperties());
+		var oChanged = Utils.getChangedParameters(this.model.getAllProperties(), this.model.getAllInitialProperties()),
+			sParas = this.fnEncodeUriParam(oChanged);
 
-		window.location.search = "?" + this.fnEncodeUriParam(oChanged); // jQuery.param(oChanged, true)
+		sParas = sParas.replace(/%2[Ff]/g, "/"); // unescape %2F -> /
+		window.location.search = "?" + sParas;
 	},
 
 	onDatabaseSelectChange: function () {
