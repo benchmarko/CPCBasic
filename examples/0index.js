@@ -38,6 +38,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Landscape"
 	},
 	{
+		"key": "mouse",
+		"title": "Mouse escaping from a maze"
+	},
+	{
 		"key": "piechart",
 		"title": "Pie Chart"
 	},
@@ -80,6 +84,10 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
     	"key": "math/complex",
 		"title": "Complex numbers (Komplexe Zahlen)"
+	},
+	{
+    	"key": "math/derivat",
+		"title": "Derivatives of Polynomials (Ableitungen eines Polynoms)"
 	},
 	{
     	"key": "math/division",

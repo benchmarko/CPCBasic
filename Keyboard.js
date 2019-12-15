@@ -166,7 +166,6 @@ Keyboard.prototype = {
 		this.fnOnKeyDown = null;
 		this.clearInput();
 		this.oPressedKeys = {}; // currently pressed browser keys
-		//this.oKeyStates = null; // invalidate pressed cpc keys
 		this.resetExpansionTokens();
 		this.resetCpcKeysExpansions();
 	},
@@ -225,30 +224,6 @@ Keyboard.prototype = {
 		this.bActive = bActive;
 	},
 
-	/*
-	removeCodeFromKeymap: function (sPressedKey) { // for certain browsers (IE, Edge) we get only codes but no code strings from the keyboard, so remove the code strings
-		var oCpcKey2Key = this.mCpcKey2Key,
-			iCpcKey, sMappedKeys, aMappedKeys, i, sKey, iKey;
-
-		if (Utils.debug > 1) {
-			Utils.console.log("removeCodeFromKeymap: Unfortunately not all keys can be used. Pressed:" + sPressedKey);
-		}
-		for (iCpcKey in oCpcKey2Key) {
-			if (oCpcKey2Key.hasOwnProperty(iCpcKey)) {
-				sMappedKeys = this.mCpcKey2Key[iCpcKey];
-				aMappedKeys = sMappedKeys.split(","); // maybe more
-				for (i = 0; i < aMappedKeys.length; i += 1) {
-					sKey = aMappedKeys[i];
-					iKey = parseInt(sKey, 10); // get just the number
-					aMappedKeys[i] = iKey;
-				}
-				sMappedKeys = aMappedKeys.join(",");
-				this.mCpcKey2Key[iCpcKey] = sMappedKeys;
-			}
-		}
-	},
-	*/
-
 	removeCodeStringsFromKeymap: function () { // for certain browsers (IE, Edge) we get only codes but no code strings from the keyboard, so remove the code strings
 		var oKey2CpcKey = this.oKey2CpcKey,
 			oNewMap = {},
@@ -286,8 +261,6 @@ Keyboard.prototype = {
 			Utils.console.log("fnKeyboardKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " ", event);
 		}
 
-		//oPressedKeys[sPressedKey] = 0 + (event.shiftKey ? 32 : 0) + (event.ctrlKey ? 128 : 0);
-		//this.oKeyStates = null; // invalidate
 		if (sPressedKey in this.oKey2CpcKey) {
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
 			oCpcKey = oPressedKeys[iCpcKey];
@@ -368,7 +341,7 @@ Keyboard.prototype = {
 		if (Utils.debug > 1) {
 			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + event.key + "' " + event.key.charCodeAt(0) + " ", event);
 		}
-		//delete oPressedKeys[sPressedKey];
+
 		if (sPressedKey in this.oKey2CpcKey) {
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
 			oCpcKey = oPressedKeys[iCpcKey];
@@ -389,7 +362,6 @@ Keyboard.prototype = {
 		} else {
 			Utils.console.log("fnKeyboardKeyup: Unhandled key " + sPressedKey);
 		}
-		//this.oKeyStates = null; // invalidate
 	},
 
 	getKeyFromBuffer: function () {
@@ -406,47 +378,6 @@ Keyboard.prototype = {
 	putKeyInBuffer: function (sKey) {
 		this.aKeyBuffer.push(sKey);
 	},
-
-	/*
-	updateKeyStates: function () {
-		var oCpcKey2Key = this.mCpcKey2Key,
-			oKeyStates = {},
-			iState = -1,
-			iCpcKey, sMappedKeys, aMappedKeys, i, sKey;
-
-		for (iCpcKey in oCpcKey2Key) {
-			if (oCpcKey2Key.hasOwnProperty(iCpcKey)) {
-				sMappedKeys = this.mCpcKey2Key[iCpcKey];
-				aMappedKeys = sMappedKeys.split(","); // maybe more
-				for (i = 0; i < aMappedKeys.length; i += 1) {
-					sKey = aMappedKeys[i];
-					if (sKey in this.oPressedKeys) {
-						iState = this.oPressedKeys[sKey];
-						oKeyStates[iCpcKey] = iState;
-					}
-				}
-			}
-		}
-
-		if (Utils.debug > 2) {
-			Utils.console.log("updateKeyStates: %o", oKeyStates);
-		}
-		return oKeyStates;
-	},
-	*/
-
-	/*
-	getKeyState: function (iCpcKey) {
-		var iState;
-
-		if (!this.oKeyStates) {
-			this.oKeyStates = this.updateKeyStates();
-		}
-
-		iState = (iCpcKey in this.oKeyStates) ? this.oKeyStates[iCpcKey] : -1;
-		return iState;
-	},
-	*/
 
 	getKeyState: function (iCpcKey) {
 		var oPressedKeys = this.oPressedKeys,

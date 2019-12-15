@@ -171,8 +171,9 @@ CpcVm.prototype = {
 		this.bTron = this.options.tron || false; // trace flag
 
 		this.aMem.length = 0; // for peek, poke
+
 		this.iHimem = 42747; // high memory limit (42747 after symbol after 256)
-		this.symbolAfter(240);
+		this.symbolAfter(240); // set also iMinCustomChar
 
 		this.vmResetTimers();
 		this.bTimersDisabled = false; // flag if timers are disabled
@@ -646,26 +647,8 @@ CpcVm.prototype = {
 				this.error(13); // "Type mismatch"
 			}
 		}
-		//this.v[sName] = value; // cannot assign here because possible array access
 		return value;
 	},
-
-	/*
-	vmAssign: function (sName, value) {
-		var sType = this.vmDetermineVarType(sName);
-
-		if (sType === "I") { // integer
-			value = this.vmRound(value); // round number to integer
-		} else if (sType === "$") { // string
-			if (typeof value !== "string") {
-				Utils.console.warn("vmAssign: expected string but got:", value);
-				this.error(13); // "Type mismatch"
-			}
-		}
-		//this.v[sName] = value; // cannot assign here because possible array access
-		return value;
-	},
-	*/
 
 	// --
 
@@ -677,7 +660,15 @@ CpcVm.prototype = {
 		var aVarNames = Object.keys(this.v),
 			iPos;
 
+		// not really implemented
 		sVar = sVar.replace("v.", "");
+
+		sVar = sVar.replace("[", "(");
+		iPos = sVar.indexOf("("); // array variable with indices?
+		if (iPos >= 0) {
+			sVar = sVar.substr(0, iPos); // remove indices
+		}
+
 		iPos = aVarNames.indexOf(sVar);
 		if (iPos === -1) {
 			this.error(5); // Improper argument
@@ -733,33 +724,65 @@ CpcVm.prototype = {
 
 	// break
 
+	vmTxtInverse: function (iStream) {
+		var oWin = this.aWindow[iStream],
+			iTmp;
+
+		iTmp = oWin.iPen;
+		this.pen(iStream, oWin.iPaper);
+		this.paper(iStream, iTmp);
+	},
+
 	call: function (n) { // varargs (adr + parameters)
 		n = this.vmRound(n);
 		switch (n) {
-		case 0xbb03: // KM Initialize
+		case 0xbb00: // KM Initialize (ROM &19E0)
+			this.oKeyboard.resetCpcKeysExpansions();
+			this.call(0xbb03); // KM Reset
+			break;
+		case 0xbb03: // KM Reset (ROM &1AE1)
 			this.clearInput();
+			this.oKeyboard.resetExpansionTokens();
 			// TODO: reset also speed key
 			break;
-		case 0xbb18: // KM Wait Key
+		case 0xbb18: // KM Wait Key (ROM &1B56)
 			if (this.inkey$() === "") { // no key?
 				this.vmStop("key", 30); // wait for key
 			}
 			break;
-		case 0xbb81: // TXT Cursor On
-			// TODO
+		case 0xbb81: // TXT Cursor On (ROM &1279)
+			Utils.console.log("TODO: call ", n);
 			break;
-		case 0xbb84: // TXT Cursor Off
-			// TODO
+		case 0xbb84: // TXT Cursor Off (ROM &1281)
+			Utils.console.log("TODO: call ", n);
 			break;
-		case 0xbbde: // GRA Set Pen
-			// we can only set graphics pen depending on number of additional args (0=no arg, 1=one arg)
+		case 0xbb4e: // TXT Initialize (ROM &1078)
+			this.vmResetWindowData(true); // reset windows, including pen and paper
+			this.oCanvas.resetCustomChars();
+			break;
+		case 0xbb9c: // TXT Inverse (ROM &12C9), same as print chr$(24);
+			this.vmTxtInverse(0);
+			break;
+		case 0xbbde: // GRA Set Pen (ROM &17F6)
+			// we can only set graphics pen depending on number of args (pen 0=no arg, pen 1=one arg)
 			this.graphicsPen(arguments.length - 1);
 			break;
-		case 0xbbff: // SCR Initialize
-			this.mode(1); //TTT really?
+		case 0xbbff: // SCR Initialize (ROM &0AA0)
+			this.iMode = 1;
 			this.vmResetInks();
+			this.oCanvas.setMode(this.iMode); // does not clear canvas
+			this.oCanvas.clearGraphics(0); // (SCR Mode Clear)
 			break;
-		case 0xbd19: // MC Wait Flyback
+		case 0xbca7: // SOUND Reset (ROM &1E68)
+			this.oSound.reset();
+			break;
+		case 0xbcb6: // SOUND Hold (ROM &1ECB)
+			Utils.console.log("TODO: call ", n);
+			break;
+		case 0xbcb9: // SOUND Continue (ROM &1EE6)
+			Utils.console.log("TODO: call ", n);
+			break;
+		case 0xbd19: // MC Wait Flyback (ROM &07BA)
 			this.frame();
 			break;
 		default:
@@ -1037,6 +1060,7 @@ CpcVm.prototype = {
 			}
 			this.oSound.setToneEnv(iToneEnv, aArgs);
 		} else {
+			Utils.console.warn("ent: envelope out of range: " + iToneEnv);
 			this.error(5); // Improper argument
 		}
 	},
@@ -1069,6 +1093,7 @@ CpcVm.prototype = {
 			}
 			this.oSound.setVolEnv(iVolEnv, aArgs);
 		} else {
+			Utils.console.warn("env: envelope out of range: " + iVolEnv);
 			this.error(5); // Improper argument
 		}
 	},
@@ -1195,6 +1220,7 @@ CpcVm.prototype = {
 		if (iGPaper >= 0 && iGPaper < 16) {
 			this.oCanvas.setGPaper(iGPaper);
 		} else {
+			Utils.console.warn("graphicsPaper: paper out of range: " + iGPaper);
 			this.error(5); // Improper argument
 		}
 	},
@@ -1204,6 +1230,7 @@ CpcVm.prototype = {
 		if (iGPen >= 0 && iGPen < 16) {
 			this.oCanvas.setGPen(iGPen);
 		} else {
+			Utils.console.warn("graphicsPen: number out of range: " + iGPen);
 			this.error(5); // Improper argument
 		}
 		if (iTransparentMode !== undefined) {
@@ -1262,24 +1289,6 @@ CpcVm.prototype = {
 	inp: function () {
 		//this.vmNotImplemented("inp");
 	},
-
-	/*
-	vmDetermineVarType: function (sName) {
-		var sType, aMatch, sChar;
-
-		if (sName.indexOf("v.") === 0) {
-			sName = sName.substr(2); // remove preceiding "v."
-		}
-		aMatch = sName.match(/[IR$]/); // explicit type?
-		if (aMatch) {
-			sType = aMatch[0];
-		} else {
-			sChar = sName.charAt(0); // take first character of variable name
-			sType = this.oVarTypes[sChar];
-		}
-		return sType;
-	},
-	*/
 
 	vmGetNextInput: function (sVarType) {
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
@@ -1355,6 +1364,7 @@ CpcVm.prototype = {
 		if (iToken >= 0 && iToken < 32) {
 			this.oKeyboard.setExpansionToken(iToken, sString);
 		} else {
+			Utils.console.warn("key: number out of range: " + iToken);
 			this.error(5); // Improper argument
 		}
 	},
@@ -1844,8 +1854,7 @@ CpcVm.prototype = {
 
 	vmHandleControlCode: function (iCode, sPara, iStream) { // eslint-disable-line complexity
 		var oWin = this.aWindow[iStream],
-			sOut = "",
-			i;
+			sOut = "";
 
 		switch (iCode) {
 		case 0x00: // NUL, ignore
@@ -1931,9 +1940,7 @@ CpcVm.prototype = {
 			this.oCanvas.setGColMode(sPara.charCodeAt(0));
 			break;
 		case 0x18: // CAN
-			i = oWin.iPen;
-			this.pen(iStream, oWin.iPaper);
-			this.paper(iStream, i);
+			this.vmTxtInverse(iStream);
 			break;
 		case 0x19: // EM
 			this.vmControlSymbol(sPara);
@@ -2443,16 +2450,32 @@ CpcVm.prototype = {
 			i;
 
 		iChar = this.vmRound(iChar);
-		for (i = 1; i < arguments.length; i += 1) { // start with 1
-			aArgs.push(this.vmRound(arguments[i]));
+		if (arguments.length === 9 && iChar >= this.iMinCustomChar && iChar <= 255) {
+			for (i = 1; i < arguments.length; i += 1) { // start with 1
+				aArgs.push(this.vmRound(arguments[i]));
+			}
+			// Note: If there are less than 8 rows, the othere are assumed as 0 (actually empty)
+			this.oCanvas.setCustomChar(iChar, aArgs);
+		} else {
+			if (arguments.length === 9) {
+				Utils.console.warn("symbol: char out of range: " + iChar);
+			} else {
+				Utils.console.warn("symbol: unexpected number of parameters: " + arguments.length);
+			}
+			this.error(5); // Improper argument
 		}
-		// Note: If there are less than 8 rows, the othere are assumes as 0 (actually empty)
-		this.oCanvas.setCustomChar(iChar, aArgs);
 	},
 
-	symbolAfter: function (n) {
-		this.iHimem = 42747 - (256 - n) * 8;
-		// symbolAfter not needed
+	symbolAfter: function (iChar) {
+		iChar = this.vmRound(iChar);
+		if (iChar >= 0 && iChar <= 256) {
+			this.oCanvas.resetCustomChars();
+			this.iMinCustomChar = iChar;
+			this.iHimem = 42747 - (256 - iChar) * 8;
+		} else {
+			Utils.console.warn("symbolAfter: char out of range: " + iChar);
+			this.error(5); // Improper argument
+		}
 	},
 
 	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print (ROM &F280)

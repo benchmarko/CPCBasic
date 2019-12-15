@@ -147,19 +147,24 @@ CodeGeneratorJs.prototype = {
 					return "Math.pow(" + a + " , " + b + ")";
 				},
 				and: function (a, b) {
-					return a + " & " + b;
+					//return a + " & " + b;
+					return "o.vmRound(" + a + ") & o.vmRound(" + b + ")"; // more accurate
 				},
 				or: function (a, b) {
-					return a + " | " + b;
+					//return a + " | " + b;
+					return "o.vmRound(" + a + ") | o.vmRound(" + b + ")"; // more accurate
 				},
 				xor: function (a, b) {
-					return a + " ^ " + b;
+					//return a + " ^ " + b;
+					return "o.vmRound(" + a + ") ^ o.vmRound(" + b + ")"; // more accurate
 				},
 				not: function (a) {
-					return "~(" + a + ")"; // a can be an expression
+					//return "~(" + a + ")"; // a can be an expression
+					return "~(o.vmRound(" + a + "))"; // more accurate, a can be an expression
 				},
 				mod: function (a, b) {
-					return "(" + a + "+ 0.5) % " + b + " | 0"; // rounded remainder
+					//return "(" + a + "+ 0.5) % " + b + " | 0"; // rounded remainder
+					return "o.vmRound(" + a + ") % o.vmRound(" + b + ")"; // more accurate
 				},
 				">": function (a, b) {
 					return a + " > " + b + " ? -1 : 0";

@@ -50,7 +50,7 @@ Canvas.prototype = {
 	],
 
 	// mode 0: pen 0-15
-	// TODO: inks for pen 15,15 are alternating: "1,24", "16,11"
+	// TODO: inks for pen 14,15 are alternating: "1,24", "16,11"
 	aDefaultInks: [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16], // eslint-disable-line array-element-newline
 
 	aModeData: [
@@ -135,12 +135,16 @@ Canvas.prototype = {
 		this.aCurrentInks = this.aDefaultInks.slice();
 		this.iGPen = null; // force update
 		this.iGPaper = null;
-		this.oCustomCharset = {}; // symbol
+		this.resetCustomChars();
 		this.setGPen(1);
 		this.setGPaper(0);
 		this.setBorder(this.aDefaultInks[iPaper]);
 		this.setMode(1);
 		this.clearGraphics(iPaper);
+	},
+
+	resetCustomChars: function () {
+		this.oCustomCharset = {}; // symbol
 	},
 
 	extractColorValues: function (sColor) { // from "#rrggbb"
