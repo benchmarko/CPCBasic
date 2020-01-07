@@ -26,6 +26,12 @@ cpcBasic.addItem("", function () { /*
 340 print "a" "b" "c": 'abc
 350 print "a";"b";"c": 'abc
 360 print "a","b","c": 'a        b           c   [zone 13]
+400 a=round(PI):if a<>3 then error 33
+410 a=round(PI,0):if a<>3 then error 33
+420 a=round(PI,0.4):if a<>3 then error 33
+430 a=round(PI,2):if a<>3.14 then error 33
+440 a=round(PI,2.4):if a<>3.14 then error 33
+450 a=round(1234.5678,-2):if a<>1200 then error 33
 990 rem
 1000 'cls
 1010 print "stairs"

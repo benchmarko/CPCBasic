@@ -2233,7 +2233,7 @@ CpcVm.prototype = {
 	round: function (n, iDecimals) {
 		var iFact;
 
-		this.vmInRangeRound(iDecimals || 0, -39, 39, "round");
+		iDecimals = this.vmInRangeRound(iDecimals || 0, -39, 39, "round");
 		if (iDecimals >= 0) {
 			iFact = Math.pow(10, iDecimals);
 		} else {
