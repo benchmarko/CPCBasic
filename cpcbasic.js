@@ -20,6 +20,7 @@ cpcBasic = {
 		showInput: true,
 		showInp2: false,
 		showCpc: true,
+		showKeyboard: false,
 		showOutput: false,
 		showResult: false,
 		showVariable: false,

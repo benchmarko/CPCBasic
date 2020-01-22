@@ -65,3 +65,78 @@ body {
 	max-width: calc(22em - 6px);
 	text-overflow: ellipsis;
 }
+
+.kbdArea {
+	/* width: max-content; */
+	width: auto;
+    white-space: nowrap;
+	user-select: none;
+}
+
+.kbdFloatRight {
+	float: right;
+	/* width: 1em; */
+}
+
+.kbdButton, .kbdButton1, .kbdButton2, .kbdButton3, .kbdButton4 , .kbdButtonSpace {
+	min-width: 2.4em;
+	min-height: 2em;
+	cursor: pointer;	
+}
+
+.kbdButton1 {
+	width: 2.4em;
+	overflow: hidden;
+}
+
+.kbdButton2 {
+	width: calc(2.4em*1.5);
+}
+
+.kbdButton3 {
+	width: calc(2.4em*2);
+}
+
+.kbdButton4 {
+	width: calc(2.4em*2.5);
+}
+
+.kbdButtonSpace {
+	width: calc(2.4em*9.5);
+}
+
+/*
+button {
+	border: 1px solid #aaa;
+	padding: 0 0.5em;
+	margin: 1px;
+	min-width: 3em;
+	height: 3em;
+	line-height: 3em;
+	vertical-align: top;
+	font-family: Helvetica, Arial, sans-serif;
+	color: #333;
+	text-align: center;
+	border-radius: 5px;
+	-webkit-box-shadow: 1px 1px 3px 0 rgba(0, 0, 0, 0.5);
+	box-shadow: 1px 1px 3px 0 rgba(0, 0, 0, 0.5);
+	background: white;
+	background-image: -webkit-linear-gradient(-90deg, white 0%, #e3e3e3 100%);
+	background-image:         linear-gradient(-90deg, white 0%, #e3e3e3 100%);
+	cursor: pointer;
+	overflow: hidden;
+	-moz-user-focus: ignore;
+}
+
+.xxxbutton:not([disabled]):hover {
+	background: #eee;
+	background-image: -webkit-linear-gradient(-90deg, #f2f2f2 0%, #d3d3d3 100%);
+	background-image:         linear-gradient(-90deg, #f2f2f2 0%, #d3d3d3 100%);
+}
+
+.xxxbutton:not([disabled]):active {
+	background: #ddd;
+	background-image: -webkit-linear-gradient(-90deg, #e5e5e5 0%, #d3d3d3 100%);
+	background-image:         linear-gradient(-90deg, #e5e5e5 0%, #d3d3d3 100%);
+}
+*/
