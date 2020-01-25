@@ -344,6 +344,27 @@ Canvas.prototype = {
 		}
 	},
 
+	getCharData: function (x, y, iExpectedPen) {
+		var aCharData = [],
+			iCharWidth = this.aModeData[this.iMode].iCharWidth,
+			iCharHeight = this.aModeData[this.iMode].iCharHeight,
+			iScaleWidth = iCharWidth / 8,
+			iScaleHeight = iCharHeight / 8,
+			iPen, iCharData, row, col;
+
+		for (row = 0; row < 8; row += 1) {
+			iCharData = 0;
+			for (col = 0; col < 8; col += 1) {
+				iPen = this.testSubPixel(x + col * iScaleWidth, y + row * iScaleHeight);
+				if (iPen === iExpectedPen) {
+					iCharData |= (0x80 >> col); // eslint-disable-line no-bitwise
+				}
+			}
+			aCharData[row] = iCharData;
+		}
+		return aCharData;
+	},
+
 	setSubPixels: function (x, y, iGPen, iGColMode) {
 		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
 			iLineHeight = this.aModeData[this.iMode].iLineHeight,
@@ -387,6 +408,14 @@ Canvas.prototype = {
 			return; // not in graphics window
 		}
 		this.setSubPixels(x, y, iGPen, iGColMode);
+	},
+
+	testSubPixel: function (x, y) {
+		var i, iPen;
+
+		i = x + this.iWidth * y;
+		iPen = this.dataset8[i];
+		return iPen;
 	},
 
 	testPixel: function (x, y) {
@@ -641,6 +670,56 @@ Canvas.prototype = {
 
 		this.setChar(iChar, x, y, iPen, iPaper, 0, false);
 		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
+	},
+
+	findMatchingChar: function (aCharData) {
+		var aCharset = this.aCharset,
+			iChar = -1, // not detected
+			i, j, bMatch, aCharData2;
+
+		for (i = 0; i < aCharset.length; i += 1) {
+			aCharData2 = this.oCustomCharset[i] || aCharset[i];
+			bMatch = true;
+			for (j = 0; j < 8; j += 1) {
+				if (aCharData[j] !== aCharData2[j]) {
+					bMatch = false;
+					break;
+				}
+			}
+			if (bMatch) {
+				iChar = i;
+				break;
+			}
+		}
+		return iChar;
+	},
+
+	readChar: function (x, y, iPen, iPaper) {
+		var oModeData = this.aModeData[this.iMode],
+			iChar, iChar2, aCharData, i;
+
+		iPen %= oModeData.iPens;
+		iPaper %= oModeData.iPens; // also pens
+
+		x *= oModeData.iCharWidth;
+		y *= oModeData.iCharHeight;
+
+		aCharData = this.getCharData(x, y, iPen);
+		iChar = this.findMatchingChar(aCharData);
+		if (iChar < 0 || iChar === 32) { // no match? => check inverse with paper TTT =32?
+			aCharData = this.getCharData(x, y, iPaper);
+			for (i = 0; i < aCharData.length; i += 1) {
+				aCharData[i] ^= 0xff; // eslint-disable-line no-bitwise
+			}
+			iChar2 = this.findMatchingChar(aCharData);
+			if (iChar2 >= 0) {
+				if (iChar2 === 143) { // invers of space?
+					iChar2 = 32; // use space
+				}
+				iChar = iChar2;
+			}
+		}
+		return iChar;
 	},
 
 	fnPutInRange: function (n, min, max) {

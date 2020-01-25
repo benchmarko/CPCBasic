@@ -944,8 +944,14 @@ CpcVm.prototype = {
 	},
 
 	copychr$: function (iStream) {
+		var oWin, iChar, sChar;
+
 		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "copychr$");
-		this.vmNotImplemented("copychr$ " + iStream);
+		this.vmMoveCursor2AllowedPos(iStream);
+		oWin = this.aWindow[iStream];
+		iChar = this.oCanvas.readChar(oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper);
+		sChar = (iChar >= 0) ? String.fromCharCode(iChar) : "";
+		return sChar;
 	},
 
 	cos: function (n) {

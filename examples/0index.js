@@ -126,6 +126,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "CPC Mhz"
 	},
 	{
+    	"key": "test/fancy",
+		"title": "Test copychr$"
+	},
+	{
 		"key": "test/keyboard",
 		"title": "Keyboard Test"
 	},

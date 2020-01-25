@@ -460,95 +460,6 @@ Keyboard.prototype = {
 		}
 	},
 
-	/*
-	fnKeyboardKeydown: function (event) { // eslint-disable-line complexity
-		var oPressedKeys = this.oPressedKeys,
-			mSpecialKeys = this.mSpecialKeys,
-			oCpcKeyExpansions = this.oCpcKeyExpansions,
-			iKeyCode = event.which || event.keyCode,
-			sPressedKey = iKeyCode,
-			sKey = event.key,
-			bKeyAlreadyPressed,	iCpcKey, oCpcKey, oExpansions, iExpKey, i;
-
-		if (event.code) { // available for e.g. Chrome, Firefox
-			sPressedKey += event.code;
-		} else if (!this.bCodeStringsRemoved) { // event.code not available on e.g. IE, Edge
-			this.removeCodeStringsFromKeymap(); // Remove code information from the mapping. Not all keys can be detected any more
-			this.bCodeStringsRemoved = true;
-		}
-
-		if (Utils.debug > 1) {
-			Utils.console.log("fnKeyboardKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " ", event);
-		}
-
-		if (sPressedKey in this.oKey2CpcKey) {
-			iCpcKey = this.oKey2CpcKey[sPressedKey];
-			oCpcKey = oPressedKeys[iCpcKey];
-			if (!oCpcKey) {
-				oPressedKeys[iCpcKey] = {
-					oKeys: {}
-				};
-				oCpcKey = oPressedKeys[iCpcKey];
-			}
-			bKeyAlreadyPressed = oCpcKey.oKeys[sPressedKey];
-			oCpcKey.oKeys[sPressedKey] = true;
-			oCpcKey.shift = event.shiftKey;
-			oCpcKey.ctrl = event.ctrlKey;
-			if (Utils.debug > 1) {
-				Utils.console.log("fnKeyboardKeydown: sPressedKey=" + sPressedKey + ", affected cpc key=" + iCpcKey);
-			}
-
-			oExpansions = oCpcKeyExpansions.repeat;
-			if (bKeyAlreadyPressed && ((iCpcKey in oExpansions) && !oExpansions[iCpcKey])) {
-				sKey = ""; // repeat off => ignore key
-			} else {
-				if (event.ctrlKey) {
-					oExpansions = oCpcKeyExpansions.ctrl;
-				} else if (event.shiftKey) {
-					oExpansions = oCpcKeyExpansions.shift;
-				} else {
-					oExpansions = oCpcKeyExpansions.normal;
-				}
-
-				if (iCpcKey in oExpansions) {
-					iExpKey = oExpansions[iCpcKey];
-					if (iExpKey >= 128 && iExpKey <= 159) {
-						sKey = this.aExpansionTokens[iExpKey - 128];
-						for (i = 0; i < sKey.length; i += 1) {
-							this.putKeyInBuffer(sKey.charAt(i));
-						}
-					} else { // ascii code
-						sKey = String.fromCharCode(iExpKey);
-						this.putKeyInBuffer(sKey.charAt(i));
-					}
-					sKey = ""; // already done, ignore sKey form keyboard
-				}
-			}
-		} else {
-			Utils.console.log("fnKeyboardKeydown: Unhandled key " + sPressedKey);
-		}
-
-		if (sKey in mSpecialKeys) {
-			sKey = mSpecialKeys[sKey];
-		} else if (event.ctrlKey) {
-			if (sKey >= "a" && sKey <= "z") { // map keys with ctrl to control codes (problem: some control codes are browser functions, e.g. w: close window)
-				sKey = String.fromCharCode(sKey.charCodeAt(0) - 96); // ctrl+a => \x01
-			}
-		}
-		if (sKey.length === 1) { // put normal keys in buffer, ignore special keys with more than 1 character
-			this.putKeyInBuffer(sKey);
-		}
-
-		if (sKey === "Escape" && this.options.fnEscapeHandler) {
-			this.options.fnEscapeHandler(sKey, sPressedKey);
-		}
-
-		if (this.fnOnKeyDown) { // special handler?
-			this.fnOnKeyDown(this.aKeyBuffer);
-		}
-	},
-	*/
-
 	fnKeyboardKeyup: function (event) {
 		var oPressedKeys = this.oPressedKeys,
 			iKeyCode = event.which || event.keyCode,
@@ -706,8 +617,8 @@ Keyboard.prototype = {
 
 	onVirtualKeyboardKeydown: function (event) {
 		var sId = event.target.id,
-			sPressedKey = "", //TTT
-			sKey = "", //TTT
+			sPressedKey = "",
+			sKey = "",
 			iCpcKey;
 
 		if (Utils.debug > 1) {
@@ -719,11 +630,6 @@ Keyboard.prototype = {
 			if (iCpcKey === 99) { // map pseudo key right shift to left shift
 				iCpcKey = 21;
 			}
-			/*
-			if (sPressedKey in this.oKey2CpcKey) {
-				iCpcKey = this.oKey2CpcKey[sPressedKey];
-			}
-			*/
 			if (iCpcKey in this.mCpcKey2Key) {
 				sPressedKey = this.mCpcKey2Key[iCpcKey];
 				if (sPressedKey.indexOf(",") >= 0) { // TTT maybe more
@@ -739,15 +645,6 @@ Keyboard.prototype = {
 			}
 
 			this.fnPressCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
-			/*
-			oCpcKey = oPressedKeys[iCpcKey];
-			if (!oCpcKey) {
-				oPressedKeys[iCpcKey] = {
-					oKeys: {}
-				};
-				oCpcKey = oPressedKeys[iCpcKey];
-			}
-			*/
 		}
 		event.preventDefault();
 		return false;
@@ -771,7 +668,6 @@ Keyboard.prototype = {
 			if (!oCpcKey) {
 				Utils.console.warn("fnKeyboardKeydown: cpcKey was not pressed: " + iCpcKey);
 			} else {
-				//delete oCpcKey.oKeys[sPressedKey];
 				delete oPressedKeys[iCpcKey];
 			}
 

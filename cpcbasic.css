@@ -104,39 +104,3 @@ body {
 .kbdButtonSpace {
 	width: calc(2.4em*9.5);
 }
-
-/*
-button {
-	border: 1px solid #aaa;
-	padding: 0 0.5em;
-	margin: 1px;
-	min-width: 3em;
-	height: 3em;
-	line-height: 3em;
-	vertical-align: top;
-	font-family: Helvetica, Arial, sans-serif;
-	color: #333;
-	text-align: center;
-	border-radius: 5px;
-	-webkit-box-shadow: 1px 1px 3px 0 rgba(0, 0, 0, 0.5);
-	box-shadow: 1px 1px 3px 0 rgba(0, 0, 0, 0.5);
-	background: white;
-	background-image: -webkit-linear-gradient(-90deg, white 0%, #e3e3e3 100%);
-	background-image:         linear-gradient(-90deg, white 0%, #e3e3e3 100%);
-	cursor: pointer;
-	overflow: hidden;
-	-moz-user-focus: ignore;
-}
-
-.xxxbutton:not([disabled]):hover {
-	background: #eee;
-	background-image: -webkit-linear-gradient(-90deg, #f2f2f2 0%, #d3d3d3 100%);
-	background-image:         linear-gradient(-90deg, #f2f2f2 0%, #d3d3d3 100%);
-}
-
-.xxxbutton:not([disabled]):active {
-	background: #ddd;
-	background-image: -webkit-linear-gradient(-90deg, #e5e5e5 0%, #d3d3d3 100%);
-	background-image:         linear-gradient(-90deg, #e5e5e5 0%, #d3d3d3 100%);
-}
-*/

@@ -697,6 +697,8 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		prefix("@", 95); // address of
+
 		infix("^", 90, 80);
 
 		prefix("-", 80);
@@ -723,8 +725,6 @@ BasicParser.prototype = {
 		infixr("xor", 20);
 
 		prefix("#", 10); // stream
-
-		prefix("@", 10); // address of
 
 		infixr("=", 30); // equal for comparison
 
