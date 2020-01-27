@@ -112,6 +112,9 @@ CommonEventHandler.prototype = {
 
 	onKeyboardLegendClick: function () {
 		this.toogleHidden("keyboardArea", "showKeyboard");
+		if (this.model.getProperty("showKeyboard")) { // maybe we need to draw it
+			this.controller.oKeyboard.virtualKeyboardCreate();
+		}
 	},
 
 	onParseButtonClick: function () {

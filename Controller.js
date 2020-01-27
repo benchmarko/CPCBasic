@@ -47,12 +47,15 @@ Controller.prototype = {
 		this.view = oView;
 		this.commonEventHandler = new CommonEventHandler(oModel, oView, this);
 
+		oView.setHidden("consoleBox", !oModel.getProperty("showConsole"));
+
 		oView.setHidden("inputArea", !oModel.getProperty("showInput"));
 		oView.setHidden("inp2Area", !oModel.getProperty("showInp2"));
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
 		oView.setHidden("keyboardArea", !oModel.getProperty("showKeyboard"));
+		//oView.setHidden("consoleArea", !oModel.getProperty("showConsole"));
 
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
@@ -63,6 +66,9 @@ Controller.prototype = {
 		this.oKeyboard = new Keyboard({
 			fnEscapeHandler: this.fnEscapeHandler
 		});
+		if (this.model.getProperty("showKeyboard")) { // maybe we need to draw virtual keyboard
+			this.oKeyboard.virtualKeyboardCreate();
+		}
 
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
@@ -579,7 +585,7 @@ Controller.prototype = {
 			this.view.setDisabled("continueButton", true);
 		}
 		if (Utils.debug > 1) {
-			Utils.console.debug("DEBUG: End of fnRun2");
+			Utils.console.debug("End of fnRun2");
 		}
 	},
 

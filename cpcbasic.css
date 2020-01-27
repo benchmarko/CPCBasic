@@ -67,40 +67,39 @@ body {
 }
 
 .kbdArea {
-	/* width: max-content; */
 	width: auto;
     white-space: nowrap;
 	user-select: none;
 }
 
-.kbdFloatRight {
-	float: right;
-	/* width: 1em; */
-}
-
-.kbdButton, .kbdButton1, .kbdButton2, .kbdButton3, .kbdButton4 , .kbdButtonSpace {
-	min-width: 2.4em;
+.kbdButton, .kbdButton1, .kbdButton2, .kbdButton3, .kbdButton4 , .kbdButton5 {
+	width: 2.5em;
 	min-height: 2em;
-	cursor: pointer;	
+	cursor: pointer;
+	margin-right: 3px;
 }
 
 .kbdButton1 {
-	width: 2.4em;
 	overflow: hidden;
+	padding-left: 4px;
 }
 
 .kbdButton2 {
-	width: calc(2.4em*1.5);
+	width: calc(2.5em*1.545);
 }
 
 .kbdButton3 {
-	width: calc(2.4em*2);
+	width: calc(2.5em*2.085);
 }
 
 .kbdButton4 {
-	width: calc(2.4em*2.5);
+	width: calc(2.5em*2.635);
 }
 
-.kbdButtonSpace {
-	width: calc(2.4em*9.5);
+.kbdButton5 {
+	width: calc(2.5em*9.168);
+}
+
+.kbdNoRightMargin {
+	margin-right: 0px;
 }

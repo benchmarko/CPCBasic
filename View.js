@@ -155,7 +155,7 @@ View.prototype = {
 
 	attachEventHandler: function (sType, fnEventHandler) {
 		if (Utils.debug) {
-			Utils.console.debug("attachEventHandler: type=" + sType + ", fnEventHandler=" + fnEventHandler);
+			Utils.console.debug("attachEventHandler: type=" + sType + ", fnEventHandler=" + (fnEventHandler ? "[function]" : null));
 		}
 		document.addEventListener(sType, fnEventHandler, false);
 		return this;

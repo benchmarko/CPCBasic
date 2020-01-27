@@ -472,7 +472,7 @@ Sound.prototype = {
 			}
 			this.oMergerNode.connect(this.context.destination);
 			this.bIsSoundOn = true;
-			Utils.console.log("Test sound: on");
+			Utils.console.log("soundOn: Sound: on");
 		}
 	},
 
@@ -480,7 +480,7 @@ Sound.prototype = {
 		if (this.bIsSoundOn) {
 			this.oMergerNode.disconnect(this.context.destination);
 			this.bIsSoundOn = false;
-			Utils.console.log("Test sound: off");
+			Utils.console.log("soundOff: Sound: off");
 		}
 	}
 };

@@ -24,6 +24,7 @@ cpcBasic = {
 		showOutput: false,
 		showResult: false,
 		showVariable: false,
+		showConsole: false,
 		sound: false,
 		tron: false // trace on
 	},
@@ -84,6 +85,70 @@ cpcBasic = {
 		}
 	},
 
+	setDebugUtilsConsole: function () {
+		var oCurrentConsole = Utils.console,
+			oConsole = {
+				consoleLog: {
+					value: ""
+				},
+				console: oCurrentConsole,
+				fnMapObjectProperties: function (arg) {
+					var aRes, sKey, value;
+
+					if (typeof arg === "object") {
+						aRes = [];
+						for (sKey in arg) { // eslint-disable-line guard-for-in
+							// if (arg.hasOwnProperty(sKey)) {
+							value = arg[sKey];
+							if (typeof value !== "object" && typeof value !== "function") {
+								aRes.push(sKey + ": " + value);
+							}
+						}
+						arg = String(arg) + "{" + aRes.join(", ") + "}";
+					}
+					return arg;
+				},
+				rawLog: function (fnMethod, sLevel, aArgs) {
+					if (sLevel) {
+						aArgs.unshift(sLevel);
+					}
+					if (fnMethod) {
+						if (fnMethod.apply) {
+							fnMethod.apply(console, aArgs);
+						}
+					}
+					if (this.consoleLog) {
+						this.consoleLog.value += aArgs.map(this.fnMapObjectProperties).join(" ") + ((sLevel !== null) ? "\n" : "");
+					}
+				},
+				log: function () {
+					this.rawLog(this.console && this.console.log, "", Array.prototype.slice.call(arguments));
+				},
+				debug: function () {
+					this.rawLog(this.console && this.console.debug, "DEBUG:", Array.prototype.slice.call(arguments));
+				},
+				info: function () {
+					this.rawLog(this.console && this.console.info, "INFO:", Array.prototype.slice.call(arguments));
+				},
+				warn: function () {
+					this.rawLog(this.console && this.console.warn, "WARN:", Array.prototype.slice.call(arguments));
+				},
+				error: function () {
+					this.rawLog(this.console && this.console.error, "ERROR:", Array.prototype.slice.call(arguments));
+				},
+				changeLog: function (oLog) {
+					var oldLog = this.consoleLog;
+
+					this.consoleLog = oLog;
+					if (oldLog && oldLog.value && oLog) { // some log entires collected?
+						oLog.value += oldLog.value; // take collected log entries
+					}
+				}
+			};
+
+		Utils.console = oConsole;
+	},
+
 	fnDoStart: function () {
 		var that = this,
 			oStartConfig = this.config,
@@ -98,11 +163,19 @@ cpcBasic = {
 		iDebug = Number(this.model.getProperty("debug"));
 		Utils.debug = iDebug;
 
+		if (Utils.debug > 1) {
+			if (this.model.getProperty("showConsole")) { // console log window?
+				this.setDebugUtilsConsole("consoleText");
+				Utils.console.log("CPCBasic log started at " + Utils.dateFormat(new Date()));
+				Utils.console.changeLog(document.getElementById("consoleText"));
+			}
+		}
+
 		that.controller = new Controller(this.model, this.view);
 	},
 
 	fnOnLoad: function () {
-		Utils.console.log("cpcBasic started at " + Utils.dateFormat(new Date()));
+		Utils.console.log("CPCBasic started at " + Utils.dateFormat(new Date()));
 		this.fnDoStart();
 	}
 };
