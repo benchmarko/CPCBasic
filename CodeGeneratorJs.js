@@ -134,6 +134,12 @@ CodeGeneratorJs.prototype = {
 
 			mOperators = {
 				"+": function (a, b) {
+					if (b === undefined) { // unary plus?
+						if (typeof a === "string" && a.charAt(0) === "(" && a.charAt(a.length - 1) === ")") {
+							return a;
+						}
+						return "(" + a + ")"; // a can be an expression
+					}
 					return a + " + " + b;
 				},
 				"-": function (a, b) {
@@ -197,7 +203,8 @@ CodeGeneratorJs.prototype = {
 
 			mParseFunctions = {
 				fnParseDefIntRealStr: function (node) {
-					var aNodeArgs, i;
+					var reVarLetters = /^[A-Za-z]( - [A-Za-z])?$/,
+						aNodeArgs, i, sArg;
 
 					oDevScopeArgs = {};
 					bDevScopeArgsCollect = true;
@@ -206,7 +213,15 @@ CodeGeneratorJs.prototype = {
 					oDevScopeArgs = null;
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						aNodeArgs[i] = "o." + node.type + '("' + aNodeArgs[i] + '")';
+						sArg = aNodeArgs[i];
+						if (sArg.indexOf("oNo") >= 0) { // need to replace modified "o" variable!
+							sArg = sArg.replace(/oNo/g, "o");
+						}
+						if (!reVarLetters.test(sArg)) {
+							throw new CodeGeneratorJs.ErrorObject("Wrong format for " + node.type, sArg, node.args.length ? node.args[0].pos : node.pos);
+							// how to get correct position and length of expression?
+						}
+						aNodeArgs[i] = "o." + node.type + '("' + sArg + '")';
 					}
 					return aNodeArgs.join("; ");
 				},
@@ -231,7 +246,7 @@ CodeGeneratorJs.prototype = {
 						that.oLabels[sLabel] += 1;
 					} else {
 						if (Utils.debug > 1) {
-							Utils.console.debug("fnAddReferenceLabel: line does not (yet) exist: " + sLabel);
+							Utils.console.debug("fnAddReferenceLabel: line does not (yet) exist:", sLabel);
 						}
 						if (!that.bMergeFound) {
 							throw new CodeGeneratorJs.ErrorObject("Line does not exist", sLabel, node.pos);

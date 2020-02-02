@@ -15,7 +15,7 @@ var Utils = {
 				var node = event.currentTarget || event.srcElement;
 
 				if (Utils.debug > 1) {
-					Utils.console.debug("onScriptLoad: " + node.src || node.href);
+					Utils.console.debug("onScriptLoad:", node.src || node.href);
 				}
 				node.removeEventListener("load", onScriptLoad, false);
 				node.removeEventListener("error", onScriptError, false); // eslint-disable-line no-use-before-define
@@ -28,7 +28,7 @@ var Utils = {
 				var node = event.currentTarget || event.srcElement;
 
 				if (Utils.debug > 1) {
-					Utils.console.debug("onScriptError: " + node.src || node.href);
+					Utils.console.debug("onScriptError:", node.src || node.href);
 				}
 				node.removeEventListener("load", onScriptLoad, false);
 				node.removeEventListener("error", onScriptError, false);

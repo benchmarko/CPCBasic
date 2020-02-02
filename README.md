@@ -26,7 +26,7 @@ CPCBasic Links:
 [![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=labyrinth)]
 [![Landscape](./img/landscape.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=landscape)]
 
-More examples are in the sample library [CPCBasicApps](https://github.com/benchmarko/CPCBasicApps/#readme). They are included in CPCBasic as [apps](https://benchmarko.github.io/CPCBasic/cpcbasic.html?database=apps).
+More examples are in the sample library [CPCBasicApps](https://github.com/benchmarko/CPCBasicApps/#readme). They are included in CPCBasic as *apps*, example: [10print](https://benchmarko.github.io/CPCBasic/cpcbasic.html?database=apps&example=demo/10print).
 
 ## Why CPCBasic
 
@@ -37,28 +37,32 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 ## Usage
 
 - Just open cpcbasic.html in a browser.
-  The user interface shows several boxes, which can be reduced and expanded by pressing the **green** buttons.
-- Use the first selection field select the example library: CPCBasic *examples* or CPCBasicApps *apps*.
-- Use the second selection field to select a sample program. It will reset the CPC, and run the program.
-- If you change the BASIC program, press the **Run** button to compile and run the BASIC program in JavaScript. The **Compile only** button compiles the program without running it.
-- If the focus is on the CPC screen, keystrokes will be detected by a running program.
-  The *Input* window is an alternative way to send input to the CPC. This works also on mobile devices.
-- The **Break** button stops the simulation. You can continue with the "Continue" button.
-- The **Reset** button resets the CPC.
-- The **Screenshot** button creates a screenshot of the current CPC screen.
-- The **Sound** button activates sound.
-- Textual output is also written to the *Console* Window. This is useful for copying and pasting the output.
+  The user interface shows several windows, which can be reduced and expanded by pressing the **green** buttons.
+- The *Input* window is used to input and modify the BASIC code.
+  - Use the *first selection field* to select the example library: CPCBasic *examples* or CPCBasicApps *apps*.
+  - Use the *second selection field* to select a sample program. It will reset the CPC, and run the program.
+  - The **Help** button opens the readme file in a browser.
+  - The **Reload** button reloads the page with the current settings. (Please note that changes to the BASIC program are not saved.)
+  - The **Compile only** button compiles the program without running it. (Usually you use the *Run* button below.)
+- The *CPC* window shows the output on a CPC screen.
+  - If you change the BASIC program, press the **Run** button to compile the BASIC program to JavaScript and run it.
+  - If the focus is on the CPC screen, keystrokes will be detected by a running program. (An alternative way of input is the *virtual keyboard* below.)
+  - The **Break** button stops the simulation. You can continue with the **Continue** button.
+  - The **Reset** button resets the CPC.
+  - The **Screenshot** button creates a screenshot of the current CPC screen.
+  - The **Sound** button activates or deactivates sound.
+    - If you use the *Reload* button with sound activated, the sound needs to be activated again. Just do a user action, e.g. click somewhere. This is a browser limitation.
+- The *Keyboard* window shows a virtual keyboard which can be also used with touch devices. You can test the functionality with the test program [keyboard](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/keyboard&showKeyboard=true).
+- The *Input* window is an alternative way to send input to the CPC.
+- The *Console* window shows the textual output. This is useful for copying and pasting the output. It is cleared when the CPC screen is cleared (*MODE* or *CLS*).
 - The *Variables* window allows you to see the variables used by the program.
-- In the *JavaScript* window you will see the compiled JavaScript code. It can be changed and then executed with the *Run* button in this window. So it is possible to use the simulated CPC directly with JavaScript.
-- The **Reload** button reloads the page with the current settings. (Please note that changes to the script are lost!)
-  - If you use *Reload* with sound activated, sound need to be activated again. Just do a user action, e.g. click somewhere. This is a browser limitation.
-- The **Help** button opens the readme file on the server.
+- In the *JavaScript* window you will see the compiled JavaScript code. It can be changed and then executed with the **Run** button in this window. So it is possible to program the simulated CPC directly with JavaScript.
 
 ## Restrictions
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands: *AUTO*, *CAT*, *CONT*, *COPYCHR$*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME*, *SAVE*, *SPEED INK/KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME* (partly), *SAVE*, *SPEED INK/KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
@@ -84,22 +88,39 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [fixed: Almost no type checking]
 - [fixed: Access screen memory in the range &c000-&ffff with *PEEK&POKE*]
 - [done: Pause key: Use ESC, and then any key to continue]
+- [done: COPYCHR$]
 
 ## Extensions and Features
 
-- *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=rectangles)
+- *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
 - *|MODE,n*: Change mode without *CLS* (experimental)
 - Computations are not limited to 16 bits
-- *PEEK&POKE* can access "large" memory, not only 64 KB or 512 KB.
+- *PEEK&POKE* can access "large" memory, not only 64 KB or 512 KB. Screen memory can be accessed in the range &c000-&ffff.
 
 ## Programming hints
 
 - CPCBasic is BASIC with "wrap factor". However, do not use busy waiting. Put in *FRAME* or *CALL &BD19* commands.
-  - There is a special feature for the *INKEY$* function: If it returns no key more than once during a frame, a *FRAME* is implicitely called.
+  - An example on how to insert a delay of one second:
+  `t!=TIME+300:WHILE TIME<t!:CALL &BD19:WEND`
+  - There is a special feature when using the *INKEY$* function: If it returns no key more than once during a frame, a *FRAME* or *CALL &BD19* is implicitely called.
+    - An example on how to wait for 5 seconds or a keypress:
+    `t!=TIME+300*5:WHILE TIME<t! AND INKEY$="":WEND :?"Done."`
+    You may check that the CPU load stays low.
+    - This is not true for the *INKEY* function. Use *CALL &BD19* again. An example on how to wait 5 seconds or the SPACE key: `t!=TIME+300*5:WHILE TIME<t! AND INKEY(47)<0:CALL &BD19:WEND :?"Done."`
 - Use URL parameter "tron=true" to activate line tracing mode with *TRON* and *TROFF*
 - Use *OPENIN* and *INPUT#9* to load data from a file in the current "directory"
 - If the program is complete (that means, no *MERGE* or *CHAIN MERGE* inside), line number destinations are checked for existence. For example, if the *line number* in *GOTO line* does not exist, the compilation fails.
 - Most commands and functions are checked for number of arguments but not for argument types.
+
+## Debugging
+
+- For debugging in a desktop browser, you will usually use the Browser Development Tools (F12).
+- You can also use a *Console log* window which is usually hidden. You can activate it with the URL parameters *showConsole=true* and *debug=2*:
+ [CPCBasic Debug](https://benchmarko.github.io/CPCBasic/cpcbasic.html?showConsole=true&debug=2).
+ This is especially useful on mobile devices. Clear its content manually, if needed.
+- There is also an experimental parameter *bench=n* to time the *parsing step* n times.
+  An example with a large BASIC program:
+[sultans2 parsing](https://benchmarko.github.io/CPCBasic/cpcbasic.html?bench=5&database=apps&example=games/sultan2) (Check the console in the browser developer tools).
 
 ## Possible Future Enhancements
 
@@ -112,7 +133,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Extension: More colors, e.g. 256
 - Optimizations of the resulting JavaScript code
 - Further checks during compile time
-- Smooth characters from 8x8 to 8x16
+- Smooth character map from 8x8 to 8x16
 
 ## Links
 
@@ -145,4 +166,4 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - [Locomotive Software](https://www.cpcwiki.eu/index.php/Locomotive_Software) - The developer of CPCs BASIC and operating system
 
-### **mv, 12/2019**
+### **mv, 02/2020**

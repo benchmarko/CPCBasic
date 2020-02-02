@@ -392,7 +392,7 @@ Canvas.prototype = {
 					this.dataset8[i] |= iGPen;
 					break;
 				default:
-					Utils.console.warn("setSubPixels: Unknown colMode: " + iGColMode);
+					Utils.console.warn("setSubPixels: Unknown colMode:", iGColMode);
 					break;
 				}
 				i += 1;
@@ -645,7 +645,7 @@ Canvas.prototype = {
 
 	printGChar: function (iChar) {
 		if (iChar >= this.aCharset.length) {
-			Utils.console.warn("printGChar: Ignoring char with code " + iChar);
+			Utils.console.warn("printGChar: Ignoring char with code", iChar);
 			return;
 		}
 
@@ -658,7 +658,7 @@ Canvas.prototype = {
 		var oModeData = this.aModeData[this.iMode];
 
 		if (iChar >= this.aCharset.length) {
-			Utils.console.warn("printChar: Ignoring char with code " + iChar);
+			Utils.console.warn("printChar: Ignoring char with code", iChar);
 			return;
 		}
 

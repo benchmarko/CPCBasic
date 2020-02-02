@@ -90,7 +90,7 @@ cpcBasic.addItem("", function () { /*
 4040 '
 4120 'Statusausgaben:
 4152 z=z+1:'Durchgang
-4160 LOCATE 14,24:PRINT USING"####";ri;" ";
+4160 LOCATE 14,24:PRINT USING"####";ri;:?" ";
 4170 if ri<>-4 then PRINT b(ri+3); else ?"??    ";
 4220 '
 4230 LOCATE 15,25:PRINT z;

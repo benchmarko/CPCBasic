@@ -32,6 +32,9 @@ cpcBasic.addItem("", function () { /*
 430 a=round(PI,2):if a<>3.14 then error 33
 440 a=round(PI,2.4):if a<>3.14 then error 33
 450 a=round(1234.5678,-2):if a<>1200 then error 33
+490 '
+500 restore 510: read s$,t$: if s$+t$<>"1" then error 33
+510 data 1,
 990 rem
 1000 'cls
 1010 print "stairs"

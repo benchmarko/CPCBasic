@@ -50,6 +50,7 @@ BasicParser.mKeywords = {
 	chr$: "f n",
 	cint: "f n",
 	clear: "c", // clear, clear input
+	clearInput: "c",
 	clg: "c n?",
 	closein: "c",
 	closeout: "c",
@@ -701,6 +702,7 @@ BasicParser.prototype = {
 
 		infix("^", 90, 80);
 
+		prefix("+", 80);
 		prefix("-", 80);
 
 		infix("*", 70);

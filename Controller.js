@@ -147,12 +147,12 @@ Controller.prototype = {
 			});
 			sKey = oExample.key;
 			this.model.setExample(oExample);
-			Utils.console.log("fnAddItem: Creating new example: " + sKey);
+			Utils.console.log("fnAddItem: Creating new example:", sKey);
 		}
 		oExample.key = sKey; // maybe changed
 		oExample.script = sInput;
 		oExample.loaded = true;
-		Utils.console.log("fnAddItem: " + sKey);
+		Utils.console.log("fnAddItem:", sKey);
 		return sKey;
 	},
 
@@ -280,7 +280,7 @@ Controller.prototype = {
 		this.oKeyboard.setKeyDownHandler(null);
 		sKey = this.oKeyboard.getKeyFromBuffer();
 		this.oVm.vmStop("", 0, true);
-		Utils.console.log("Wait for key: " + sKey);
+		Utils.console.log("Wait for key:", sKey);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
 		}
@@ -319,7 +319,7 @@ Controller.prototype = {
 		if (sKey === "\r") {
 			this.oKeyboard.setKeyDownHandler(null);
 			this.oVm.vmStop("", 0, true);
-			Utils.console.log("Wait for input: " + sInput);
+			Utils.console.log("Wait for input:", sInput);
 			if (!oInput.sNoCRLF) {
 				this.oVm.print(iStream, "\r\n");
 			}
@@ -380,7 +380,7 @@ Controller.prototype = {
 			oVm = this.oVm,
 			oInFile = this.oVm.vmGetFileObject(),
 			sPath = "",
-			sDatabaseDir, sName, sExample, oExample, sKey, iLastSlash, sUrl,
+			sDatabaseDir, sName, sExample, oExample, sKey, iLastSlash, sUrl, oError,
 
 			fnContinue = function (sInput) {
 				var sCommand = oInFile.sCommand,
@@ -389,7 +389,11 @@ Controller.prototype = {
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				that.oVm.vmStop("", 0, true);
 				if (oInFile.fnFileCallback) {
-					oInFile.fnFileCallback(sInput);
+					try {
+						oInFile.fnFileCallback(sInput);
+					} catch (e) {
+						Utils.console.error(String(e) + "\n");
+					}
 				}
 				if (sInput) {
 					switch (sCommand) {
@@ -436,7 +440,7 @@ Controller.prototype = {
 				var sInput;
 
 				if (!bSuppressLog) {
-					Utils.console.log("Example " + sUrl + " loaded");
+					Utils.console.log("Example", sUrl, "loaded");
 				}
 
 				oExample = that.model.getExample(sExample);
@@ -444,7 +448,7 @@ Controller.prototype = {
 				fnContinue(sInput);
 			},
 			fnExampleError = function () {
-				Utils.console.log("Example " + sUrl + " error");
+				Utils.console.log("Example", sUrl, "error");
 				fnContinue(null);
 			};
 
@@ -463,17 +467,21 @@ Controller.prototype = {
 			Utils.console.debug("DEBUG: fnLoadFile: sName=" + sName + " (current=" + sKey + ")");
 		}
 
-		this.model.setProperty("example", sExample);
 		oExample = this.model.getExample(sExample); // already loaded
 		if (oExample && oExample.loaded) {
+			this.model.setProperty("example", sExample);
 			fnExampleLoaded("", true);
 		} else if (sExample && oExample) { // need to load
+			this.model.setProperty("example", sExample);
 			sDatabaseDir = this.model.getDatabase().src;
 			sUrl = sDatabaseDir + "/" + sExample + ".js";
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
-		} else {
+		} else { // keep original sExample in this error case
 			Utils.console.warn("fnLoadFile: Unknown file:", sExample);
-			oVm.vmSetError(32); // TODO: set also derr=146 (xx not found)
+			//oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
+			//TODO
+			oError = oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
+			oVm.print(0, String(oError) + "\r\n");
 		}
 	},
 
@@ -522,7 +530,7 @@ Controller.prototype = {
 				iTime = Date.now();
 				oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
 				iTime = Date.now() - iTime;
-				Utils.console.log("bench size", sInput.length, "labels", Object.keys(this.oCodeGeneratorJs.oLabels).length, "loop", i, ":", iTime, "ms");
+				Utils.console.debug("bench size", sInput.length, "labels", Object.keys(this.oCodeGeneratorJs.oLabels).length, "loop", i, ":", iTime, "ms");
 				if (oOutput.error) {
 					break;
 				}
@@ -534,6 +542,7 @@ Controller.prototype = {
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
+			Utils.console.warn(sOutput);
 			this.oVm.print(0, sOutput + "\r\n"); // Error
 		} else {
 			sOutput = oOutput.text;
@@ -567,6 +576,7 @@ Controller.prototype = {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
 			} catch (e) {
 				Utils.console.error(e);
+				oVm.print(0, String(e) + "\r\n");
 				this.fnScript = null;
 			}
 		} else {
@@ -600,14 +610,27 @@ Controller.prototype = {
 	},
 
 	fnRunPart1: function () {
-		var oVm = this.oVm;
+		var oVm = this.oVm,
+			oError;
 
 		try {
 			this.fnScript(oVm);
 		} catch (e) {
-			oVm.sOut += "\n" + String(e) + "\n";
+			/*
+			if (!Utils.stringEndsWith(oVm.sOut, "\n")) {
+				oVm.sOut += "\n";
+			}
+			oVm.sOut += String(e) + "\n";
 			if (!(e instanceof CpcVm.ErrorObject)) {
 				oVm.vmSetError(2); // Syntax Error
+			}
+			*/
+
+			if (e instanceof CpcVm.ErrorObject) {
+				oVm.print(0, String(e) + "\r\n");
+			} else {
+				oError = oVm.vmSetError(2, String(e)); // Syntax Error
+				oVm.print(0, String(oError) + "\r\n");
 			}
 		}
 	},
@@ -711,7 +734,7 @@ Controller.prototype = {
 			break;
 
 		default:
-			Utils.console.warn("fnRunLoop: Unknown run mode: " + oStop.sReason);
+			Utils.console.warn("fnRunLoop: Unknown run mode:", oStop.sReason);
 			break;
 		}
 
@@ -826,7 +849,7 @@ Controller.prototype = {
 				oSound.soundOn();
 				sText = (oSound.isActivatedByUser()) ? "Sound is on" : "Sound on (waiting)";
 			} catch (e) {
-				Utils.console.error("soundOn: ", e);
+				Utils.console.error("soundOn:", e);
 				sText = "Sound unavailable";
 			}
 		} else {

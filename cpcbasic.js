@@ -166,7 +166,7 @@ cpcBasic = {
 		if (Utils.debug > 1) {
 			if (this.model.getProperty("showConsole")) { // console log window?
 				this.setDebugUtilsConsole("consoleText");
-				Utils.console.log("CPCBasic log started at " + Utils.dateFormat(new Date()));
+				Utils.console.log("CPCBasic log started at", Utils.dateFormat(new Date()));
 				Utils.console.changeLog(document.getElementById("consoleText"));
 			}
 		}
@@ -175,7 +175,7 @@ cpcBasic = {
 	},
 
 	fnOnLoad: function () {
-		Utils.console.log("CPCBasic started at " + Utils.dateFormat(new Date()));
+		Utils.console.log("CPCBasic started at", Utils.dateFormat(new Date()));
 		this.fnDoStart();
 	}
 };

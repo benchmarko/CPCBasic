@@ -259,7 +259,7 @@ Sound.prototype = {
 
 		oOscillator.connect(this.aGainNodes[iOscillator]);
 		if (fTime < ctx.currentTime) {
-			Utils.console.log("TTT: scheduleNote: " + fTime + " < " + ctx.currentTime);
+			Utils.console.log("TTT: scheduleNote:", fTime, "<", ctx.currentTime);
 		}
 
 		iDuration = oSoundData.iDuration;
@@ -472,7 +472,7 @@ Sound.prototype = {
 			}
 			this.oMergerNode.connect(this.context.destination);
 			this.bIsSoundOn = true;
-			Utils.console.log("soundOn: Sound: on");
+			Utils.console.log("soundOn: Sound switched on");
 		}
 	},
 
@@ -480,7 +480,7 @@ Sound.prototype = {
 		if (this.bIsSoundOn) {
 			this.oMergerNode.disconnect(this.context.destination);
 			this.bIsSoundOn = false;
-			Utils.console.log("soundOff: Sound: off");
+			Utils.console.log("soundOff: Sound switched off");
 		}
 	}
 };

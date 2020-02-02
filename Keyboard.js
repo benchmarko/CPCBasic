@@ -728,7 +728,7 @@ Keyboard.prototype = {
 			}
 			this.fnPressCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
 		} else {
-			Utils.console.log("fnKeyboardKeydown: Unhandled key " + sPressedKey);
+			Utils.console.log("fnKeyboardKeydown: Unhandled key", sPressedKey);
 		}
 	},
 
@@ -750,7 +750,7 @@ Keyboard.prototype = {
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
 			oCpcKey = oPressedKeys[iCpcKey];
 			if (!oCpcKey) {
-				Utils.console.warn("fnKeyboardKeydown: Key was not pressed: " + sPressedKey);
+				Utils.console.warn("fnKeyboardKeydown: Key was not pressed:", sPressedKey);
 			} else {
 				delete oCpcKey.oKeys[sPressedKey];
 				if (!Object.keys(oCpcKey.oKeys).length) {
@@ -764,7 +764,7 @@ Keyboard.prototype = {
 				Utils.console.log("fnKeyboardKeyup: sPressedKey=" + sPressedKey + ", affected cpc key=" + iCpcKey + ", oKeys:", (oCpcKey ? oCpcKey.oKeys : "undef."));
 			}
 		} else {
-			Utils.console.log("fnKeyboardKeyup: Unhandled key " + sPressedKey);
+			Utils.console.log("fnKeyboardKeyup: Unhandled key", sPressedKey);
 		}
 	},
 
@@ -999,7 +999,7 @@ Keyboard.prototype = {
 			}
 			oCpcKey = oPressedKeys[iCpcKey];
 			if (!oCpcKey) {
-				Utils.console.warn("fnKeyboardKeydown: cpcKey was not pressed: " + iCpcKey);
+				Utils.console.warn("fnKeyboardKeydown: cpcKey was not pressed:", iCpcKey);
 			} else {
 				delete oPressedKeys[iCpcKey];
 			}

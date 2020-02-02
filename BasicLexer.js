@@ -140,12 +140,12 @@ BasicLexer.prototype = {
 					if (isWhiteSpace(sChar)) {
 						advanceWhile(isWhiteSpace);
 					}
-					while (true) { // eslint-disable-line no-constant-condition
+					while (isNotNewLine(sChar)) {
 						if (isQuotes(sChar)) {
 							sChar = "";
 							sToken = advanceWhile(isNotQuotes);
 							if (!isQuotes(sChar)) {
-								Utils.console.warn("Unterminated string ", sToken, " at position ", iStartPos + 1);
+								Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
 							}
 							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 							sToken = hexEscape(sToken);
@@ -166,6 +166,10 @@ BasicLexer.prototype = {
 						}
 						addToken(sChar, sChar, iStartPos); // ","
 						sChar = advance();
+						if (isNewLine(sChar)) { // data ending with "," (empty argument) => append dummy token
+							sToken = "";
+							addToken("string", sToken, iStartPos);
+						}
 					}
 				}
 			};
@@ -240,7 +244,7 @@ BasicLexer.prototype = {
 				sChar = "";
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					Utils.console.warn("Unterminated string ", sToken, " at position ", iStartPos + 1);
+					Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 				sToken = hexEscape(sToken);

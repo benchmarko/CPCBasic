@@ -45,11 +45,11 @@ CommonEventHandler.prototype = {
 				if (sHandler in this) {
 					this[sHandler](event);
 				} else if (!Utils.stringEndsWith(sHandler, "SelectClick") && !Utils.stringEndsWith(sHandler, "InputClick") && !Utils.stringEndsWith(sHandler, "KeyClick")) { // do not print all messages
-					Utils.console.log("Event handler not found: " + sHandler);
+					Utils.console.log("Event handler not found:", sHandler);
 				}
 			}
 		} else if (Utils.debug) {
-			Utils.console.debug("Event handler for " + sType + " unknown target " + oTarget);
+			Utils.console.debug("Event handler for", sType, "unknown target", oTarget);
 		}
 
 		if (sType === "click") { // special
@@ -218,7 +218,7 @@ CommonEventHandler.prototype = {
 		this.view.setSelectTitleFromSelectedOption("databaseSelect");
 		oDatabase = this.model.getDatabase();
 		if (!oDatabase) {
-			Utils.console.error("onDatabaseSelectChange: database not available: " + sDatabase);
+			Utils.console.error("onDatabaseSelectChange: database not available:", sDatabase);
 			return;
 		}
 
@@ -247,7 +247,7 @@ CommonEventHandler.prototype = {
 				var sInput;
 
 				if (!bSuppressLog) {
-					Utils.console.log("Example " + sUrl + " loaded");
+					Utils.console.log("Example", sUrl, "loaded");
 				}
 
 				oExample = that.model.getExample(sExample);
@@ -260,7 +260,7 @@ CommonEventHandler.prototype = {
 				}
 			},
 			fnExampleError = function () {
-				Utils.console.log("Example " + sUrl + " error");
+				Utils.console.log("Example", sUrl, " error");
 				that.view.setAreaValue("inputText", "");
 				that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
 			};
