@@ -5,7 +5,11 @@
 cpcBasic.addItem("", function () { /*
 10 REM fancy - test copychr$
 20 MODE 1:CLEAR:DEFINT a-z:RANDOMIZE TIME:PEN 1:PAPER 0
-30 useCopychr=0: 'set this to use copychr$
+30 useCopychr=0
+32 on error goto 38
+34 t$=copychr$(#0)
+35 useCopychr=1
+38 on error goto 0
 40 c$=CHR$(&CD)+CHR$(&60)+CHR$(&BB)+CHR$(&32)+CHR$(0)+CHR$(0)+CHR$(&C9): 'call &BB60 (TXT RD CHAR)
 50 fancy$="F"+CHR$(15)+CHR$(2)+"a"+CHR$(15)+CHR$(3)+"n"+CHR$(15)+CHR$(1)+CHR$(24)+"cy"+CHR$(24)+" s"+CHR$(14)+CHR$(2)+"t"+CHR$(14)+CHR$(3)+"u"+CHR$(14)+CHR$(0)+"ff"+"!"
 60 LOCATE 1,1:PRINT fancy$;" ";fancy$
@@ -23,7 +27,7 @@ cpcBasic.addItem("", function () { /*
 180 CALL &BD19:NEXT i
 190 ' recognize characters in first line
 200 a$="":FOR i=1 TO 12*2+1:LOCATE i,1:
-210 GOSUB 290
+210 IF useCopychr then t$=COPYCHR$(#0) else GOSUB 290
 220 a$=a$+t$
 230 NEXT
 240 LOCATE 1,5:PRINT a$;
@@ -31,9 +35,9 @@ cpcBasic.addItem("", function () { /*
 260 GOTO 80
 270 '
 280 'call &BB60 (TXT RD CHAR) as COPYCHR$ on any CPC
-290 IF useCopychr OR PEEK(&BB60)<>&CF THEN t$=COPYCHR$(#0):GOTO 330: 'flag set or CPCBasic
-300 a%=UNT(PEEK(@c$+1)+PEEK(@c$+2)*&100)
+290 a%=UNT(PEEK(@c$+1)+PEEK(@c$+2)*&100)
 310 CALL a%:b%=PEEK(0)
 320 t$=CHR$(b%)
 330 RETURN
+340 '
 */ });

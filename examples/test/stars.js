@@ -15,7 +15,8 @@ cpcBasic.addItem("", function () { /*
 50 x(i)=FNr1(640):y(i)=FNr1(400):s(i)=FNr1(8)+1
 60 PLOT x(i),y(i)
 70 NEXT
-77 while inkey$=""
+74 t!=time+300*5
+77 while inkey$="" and time<t!
 78 call &bd19
 80 FOR i=0 TO 24
 90 PLOT x(i),y(i)
@@ -28,10 +29,11 @@ cpcBasic.addItem("", function () { /*
 505 rem all stars have the same speed
 510 'MODE 0:INK 0,0:INK 1,26:INK 2,13
 520 'SPEED KEY 1,1
-530 WHILE INKEY$=""
+525 t!=time+300*5
+530 WHILE INKEY$="" and time<t!
 540 PLOT (RND*638),398,(RND*2)
 550  LOCATE 1,1:PRINT CHR$(11)
-560 t!=time+18:while time<t!:CALL &BD19:wend
+560 t2!=time+18:while time<t2!:CALL &BD19:wend
 570 WEND
 580 'MODE 2:CALL &BC02
 590 'SPEED KEY 30,2

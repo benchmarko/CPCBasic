@@ -104,7 +104,7 @@ CodeGeneratorJs.prototype = {
 				return aNodeArgs;
 			},
 
-			fnDetermineVarType = function (sName) {
+			fnDetermineStaticVarType = function (sName) {
 				var sNameType;
 
 				if (sName.indexOf("v.") === 0) {
@@ -124,9 +124,14 @@ CodeGeneratorJs.prototype = {
 				return sNameType;
 			},
 
+			fnIsIntConst = function (a) {
+				var reIntConst = /^[+-]?([0-9]+|0x[0-9a-f]+|0b[0-1]+)$/; // regex for integer, hex, binary constant
+
+				return reIntConst.test(String(a));
+			},
+
 			fnGetRoundString = function (a) {
-				// no rounding needed for integer, hex, binary constants (optimization)
-				if (!(/^([0-9]+|0x[0-9a-f]+|0b[0-1]+)$/).test(String(a))) {
+				if (!fnIsIntConst(a)) { // no rounding needed for integer, hex, binary constants (optimization)
 					a = "o.vmRound(" + a + ")";
 				}
 				return a;
@@ -135,15 +140,23 @@ CodeGeneratorJs.prototype = {
 			mOperators = {
 				"+": function (a, b) {
 					if (b === undefined) { // unary plus?
-						if (typeof a === "string" && a.charAt(0) === "(" && a.charAt(a.length - 1) === ")") {
+						if (typeof a === "string" && a.charAt(0) === "(" && a.charAt(a.length - 1) === ")") { // already in parenthesis?
 							return a;
 						}
-						return "(" + a + ")"; // a can be an expression
+						return fnIsIntConst(a) ? a : "(" + a + ")"; // a can be an expression
 					}
 					return a + " + " + b;
 				},
 				"-": function (a, b) {
 					if (b === undefined) { // unary minus?
+						// when optimizing, beware of "--"!
+						if (fnIsIntConst(a)) {
+							a = String(a);
+							if (a.charAt(0) === "-") { // starting already with "-"?
+								return a.substr(1); // remove "-"
+							}
+							return "-" + a;
+						}
 						return "-(" + a + ")"; // a can be an expression
 					}
 					return a + " - " + b;
@@ -329,7 +342,7 @@ CodeGeneratorJs.prototype = {
 					// value = sName + value + " = " + fnParseOneArg(node.right); // assign without type checking and rounding
 
 					// type checking and rounding is more accurate but will cost much performance...
-					sVarType = fnDetermineVarType(sName);
+					sVarType = fnDetermineStaticVarType(sName);
 					sValue = sName + sArray + " = o.vmAssign(\"" + sVarType + "\", " + fnParseOneArg(node.right) + ")";
 					return sValue;
 				},
@@ -401,19 +414,13 @@ CodeGeneratorJs.prototype = {
 					return value;
 				},
 				defint: function (node) { // somehow special because we need to get first character of variable only
-					var value = this.fnParseDefIntRealStr(node);
-
-					return value;
+					return this.fnParseDefIntRealStr(node);
 				},
 				defreal: function (node) { // somehow special because we need to get first character of variable only
-					var value = this.fnParseDefIntRealStr(node);
-
-					return value;
+					return this.fnParseDefIntRealStr(node);
 				},
 				defstr: function (node) { // somehow special because we need to get first character of variable only
-					var value = this.fnParseDefIntRealStr(node);
-
-					return value;
+					return this.fnParseDefIntRealStr(node);
 				},
 				dim: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
@@ -457,9 +464,10 @@ CodeGeneratorJs.prototype = {
 
 					return sName + "(" + aNodeArgs.join(", ") + ")";
 				},
+
 				"for": function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						sVarName, sLabel, value, sStepName, sEndName;
+						sVarName, sLabel, value, startValue, endValue, stepValue, bStartIsIntConst, bEndIsIntConst, bStepIsIntConst, sStepName, sEndName, sVarType, sType, sEndNameOrValue;
 
 					sVarName = aNodeArgs[0];
 					sLabel = that.iLine + "f" + that.iForCount;
@@ -467,21 +475,132 @@ CodeGeneratorJs.prototype = {
 					that.oStack.forVarName.push(sVarName);
 					that.iForCount += 1;
 
-					sStepName = sVarName + "Step";
-					value = sStepName.substr(2); // remove preceiding "v."
-					variables[value] = 0; // declare also step variable
-					sEndName = sVarName + "End";
-					value = sEndName.substr(2); // remove preceiding "v."
-					variables[value] = 0; // declare also end variable
+					startValue = fnParseOneArg(node.left);
+					endValue = fnParseOneArg(node.right);
+					stepValue = fnParseOneArg(node.third);
 
-					value = "/* for() */ " + sVarName + " = " + fnParseOneArg(node.left) + "; " + sEndName + " = " + fnParseOneArg(node.right) + "; " + sStepName + " = " + fnParseOneArg(node.third) + "; o.goto(\"" + sLabel + "b\"); break;";
+					// optimization for integer constants
+					bStartIsIntConst = fnIsIntConst(startValue);
+					bEndIsIntConst = fnIsIntConst(endValue);
+					bStepIsIntConst = fnIsIntConst(stepValue);
+
+					sVarType = fnDetermineStaticVarType(sVarName);
+					sType = (sVarType.length > 1) ? sVarType.charAt(1) : "";
+					if (sType === "$") {
+						throw new CodeGeneratorJs.ErrorObject("String type in FOR at", node.type, node.pos);
+					}
+
+					if (!bStartIsIntConst) {
+						startValue = "o.vmAssign(\"" + sVarType + "\", " + startValue + ")";
+					}
+					if (!bEndIsIntConst) {
+						endValue = "o.vmAssign(\"" + sVarType + "\", " + endValue + ")";
+						sEndName = sVarName + "End";
+						value = sEndName.substr(2); // remove preceiding "v."
+						variables[value] = 0; // declare also end variable
+					}
+					if (!bStepIsIntConst) {
+						stepValue = "o.vmAssign(\"" + sVarType + "\", " + stepValue + ")";
+						sStepName = sVarName + "Step";
+						value = sStepName.substr(2); // remove preceiding "v."
+						variables[value] = 0; // declare also step variable
+					}
+
+					value = "/* for() */ o.vmAssertNumberType(\"" + sVarType + "\");"; // do a type check: assert number type
+					value += " " + sVarName + " = " + startValue + ";";
+
+					if (!bEndIsIntConst) {
+						value += " " + sEndName + " = " + endValue + ";";
+					}
+					if (!bStepIsIntConst) {
+						value += " " + sStepName + " = " + stepValue + ";";
+					}
+					value += " o.goto(\"" + sLabel + "b\"); break;";
 					value += "\ncase \"" + sLabel + "\": ";
 
-					value += sVarName + " += " + sStepName + ";";
+					value += sVarName + " += " + (bStepIsIntConst ? stepValue : sStepName) + ";";
+
 					value += "\ncase \"" + sLabel + "b\": ";
-					value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
+
+					sEndNameOrValue = bEndIsIntConst ? endValue : sEndName;
+					if (bStepIsIntConst) {
+						if (stepValue > 0) {
+							value += "if (" + sVarName + " > " + sEndNameOrValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+						} else if (stepValue < 0) {
+							value += "if (" + sVarName + " < " + sEndNameOrValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+						} else { // stepValue === 0 => endless loop, if starting with var < end
+							value += "if (" + sVarName + " < " + sEndNameOrValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+						}
+					} else {
+						value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndNameOrValue + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndNameOrValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+					}
 					return value;
 				},
+
+				/* TODO: remove
+				"for": function (node) { // unused
+					var aNodeArgs = fnParseArgs(node.args),
+						sVarName, sLabel, value, startValue, endValue, stepValue, bStartIsIntConst, bEndIsIntConst, bStepIsIntConst, sStepName, sEndName, sVarType;
+
+					sVarName = aNodeArgs[0];
+					sLabel = that.iLine + "f" + that.iForCount;
+					that.oStack.forLabel.push(sLabel);
+					that.oStack.forVarName.push(sVarName);
+					that.iForCount += 1;
+
+					startValue = fnParseOneArg(node.left);
+					endValue = fnParseOneArg(node.right);
+					stepValue = fnParseOneArg(node.third);
+
+					bStartIsIntConst = fnIsIntConst(startValue);
+					bEndIsIntConst = fnIsIntConst(endValue);
+					bStepIsIntConst = fnIsIntConst(stepValue);
+
+					sVarType = fnDetermineStaticVarType(sVarName);
+					if (!bStartIsIntConst) {
+						startValue = "o.vmAssign(\"" + sVarType + "\", " + startValue + ")";
+					}
+					if (!bEndIsIntConst) {
+						endValue = "o.vmAssign(\"" + sVarType + "\", " + endValue + ")";
+					}
+					if (!bStepIsIntConst) {
+						stepValue = "o.vmAssign(\"" + sVarType + "\", " + stepValue + ")";
+					}
+
+					// optimization: all values are integer constants
+					if (bStartIsIntConst && bEndIsIntConst && bStepIsIntConst) {
+						// still TODO: need to check dynamically that sVarType is not string
+						value = "/ xx * for() * xx / " + sVarName + " = " + startValue + "; o.goto(\"" + sLabel + "b\"); break;";
+						value += "\ncase \"" + sLabel + "\": ";
+
+						value += sVarName + " += " + stepValue + ";";
+						value += "\ncase \"" + sLabel + "b\": ";
+						if (stepValue > 0) {
+							value += "if (" + sVarName + " > " + endValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+						} else if (stepValue < 0) {
+							value += "if (" + sVarName + " < " + endValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+						} else { // stepValue === 0 => endless loop, if starting with var < end
+							value += "if (" + sVarName + " < " + endValue + ") { o.goto(\"" + sLabel + "e\"); break; }";
+						}
+					} else { // dynamic variable type...
+						sStepName = sVarName + "Step";
+						value = sStepName.substr(2); // remove preceiding "v."
+						variables[value] = 0; // declare also step variable
+						sEndName = sVarName + "End";
+						value = sEndName.substr(2); // remove preceiding "v."
+						variables[value] = 0; // declare also end variable
+
+						value = "/ xx * for() * xx / " + sVarName + " = " + startValue + "; " + sEndName + " = " + endValue + "; " + sStepName + " = " + stepValue + "; o.goto(\"" + sLabel + "b\"); break;";
+						value += "\ncase \"" + sLabel + "\": ";
+
+						value += sVarName + " += " + sStepName + ";";
+						value += "\ncase \"" + sLabel + "b\": ";
+						value += "if (" + sStepName + " > 0 && " + sVarName + " > " + sEndName + " || " + sStepName + " < 0 && " + sVarName + " < " + sEndName + ") { o.goto(\"" + sLabel + "e\"); break; }";
+					}
+					return value;
+				},
+				*/
+
 				frame: function (node) {
 					return this.fnCommandWithGoto(node);
 				},
@@ -533,7 +652,7 @@ CodeGeneratorJs.prototype = {
 
 					value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						sVarType = fnDetermineVarType(aNodeArgs[i]);
+						sVarType = fnDetermineStaticVarType(aNodeArgs[i]);
 						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + sVarType + "\")";
 					}
 
@@ -556,12 +675,11 @@ CodeGeneratorJs.prototype = {
 
 					// we should have just one variable name
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						aVarTypes[i] = fnDetermineVarType(aNodeArgs[i]);
+						aVarTypes[i] = fnDetermineStaticVarType(aNodeArgs[i]);
 					}
 
 					value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						//sVarType = fnDetermineVarType(aNodeArgs[i]);
 						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aVarTypes[i] + "\")";
 					}
 					return value;
@@ -667,7 +785,7 @@ CodeGeneratorJs.prototype = {
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = aNodeArgs[i];
-						sVarType = fnDetermineVarType(sName);
+						sVarType = fnDetermineStaticVarType(sName);
 						aNodeArgs[i] = sName + " = o.read(\"" + sVarType + "\")";
 					}
 					return aNodeArgs.join("; ");

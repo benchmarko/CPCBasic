@@ -112,9 +112,9 @@ Sound.prototype = {
 		}
 	},
 
-	playNoise: function (iOscillator, fTime, fDuration, iNoise) { //TTT
+	playNoise: function (iOscillator, fTime, fDuration, iNoise) { // could be improved
 		var ctx = this.context,
-			bandHz, //q,
+			bandHz,
 			bufferSize = ctx.sampleRate * fDuration, // set the time of the note
 			buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate), // create an empty buffer
 			data = buffer.getChannelData(0), // get data
@@ -130,12 +130,11 @@ Sound.prototype = {
 		noise.buffer = buffer;
 
 		if (iNoise > 1) {
-			bandHz = 20000 / iNoise; //TTT
-			//q = 20000 / iNoise;
+			bandHz = 20000 / iNoise;
 			bandpass = ctx.createBiquadFilter();
 			bandpass.type = "bandpass";
 			bandpass.frequency.value = bandHz;
-			//bandpass.Q.value = q;
+			// bandpass.Q.value = q; // ?
 			noise.connect(bandpass).connect(this.aGainNodes[iOscillator]);
 		} else {
 			noise.connect(this.aGainNodes[iOscillator]);
@@ -234,7 +233,7 @@ Sound.prototype = {
 					oFrequency.setValueAtTime(fFrequency, fTime + iTime / i100ms2sec);
 					// TODO
 					iTime += iToneTime;
-					//oFrequency.linearRampToValueAtTime(fXXX, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
+					// oFrequency.linearRampToValueAtTime(fXXX, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
 				}
 			}
 		}

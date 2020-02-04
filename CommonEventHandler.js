@@ -200,19 +200,6 @@ CommonEventHandler.prototype = {
 				that.view.setAreaValue("inputText", "");
 				that.view.setAreaValue("resultText", "Cannot load database: " + sDatabase);
 			};
-			/*
-			fnLoadDatabaseLocalStorage = function () {
-				var	oStorage = Utils.localStorage,
-					i, sKey, sItem;
-
-				for (i = 0; i < oStorage.length; i += 1) {
-					sKey = oStorage.key(i);
-					sItem = oStorage.getItem(sKey);
-					that.controller.fnAddItem(sKey, sItem);
-				}
-				fnDatabaseLoaded("", sDatabase);
-			};
-			*/
 
 		this.model.setProperty("database", sDatabase);
 		this.view.setSelectTitleFromSelectedOption("databaseSelect");
@@ -227,13 +214,8 @@ CommonEventHandler.prototype = {
 			this.onExampleSelectChange();
 		} else {
 			this.view.setAreaValue("inputText", "#loading database " + sDatabase + "...");
-			if (sDatabase === "saved") { //TODO (currently not used)
-				sUrl = "localStorage";
-				//fnLoadDatabaseLocalStorage(sDatabase);
-			} else {
-				sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
-				Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);
-			}
+			sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
+			Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);
 		}
 	},
 

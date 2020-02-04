@@ -62,7 +62,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME* (partly), *SAVE*, *SPEED INK/KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME* (partly), *SAVE*, *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
@@ -73,13 +73,13 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
-- A lot more
+- Some more things...
 
 ## Fixed Restrictions
 
 - [fixed: *TEST*, *TESTR* can not distinguish between pens of the same color]
 - [fixed: Changing the color with *INK*, existing drawings will not be changed and the colors will
-  not flash. Currently you have to redraw the screen with another color to get a flashing effect.]
+  not blink. Currently you have to redraw the screen with another color to get a blinking effect.]
 - [fixed: Comparison with equal in assignment is possible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
 - [fixed: No sound]
 - [fixed: *ENT* (tone envelopes); hardware volume envelopes with sepcial *ENV* syntax "="]
@@ -89,13 +89,14 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [fixed: Access screen memory in the range &c000-&ffff with *PEEK&POKE*]
 - [done: Pause key: Use ESC, and then any key to continue]
 - [done: COPYCHR$]
+- [done: SPEED INK]
 
 ## Extensions and Features
 
 - *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
 - *|MODE,n*: Change mode without *CLS* (experimental)
 - Computations are not limited to 16 bits
-- *PEEK&POKE* can access "large" memory, not only 64 KB or 512 KB. Screen memory can be accessed in the range &c000-&ffff.
+- *PEEK&POKE*: Screen memory can be accessed in the range &c000-&ffff.
 
 ## Programming hints
 
@@ -114,6 +115,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Debugging
 
+- Use the URL parameter *tron=true* to compile with BASIC line number trace. The trace can be switched on and off in BASIC with *TRON* and *TROFF*. With trace on the correct line number is reported in case of an error.
 - For debugging in a desktop browser, you will usually use the Browser Development Tools (F12).
 - You can also use a *Console log* window which is usually hidden. You can activate it with the URL parameters *showConsole=true* and *debug=2*:
  [CPCBasic Debug](https://benchmarko.github.io/CPCBasic/cpcbasic.html?showConsole=true&debug=2).

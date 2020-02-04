@@ -55,7 +55,6 @@ Controller.prototype = {
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
 		oView.setHidden("keyboardArea", !oModel.getProperty("showKeyboard"));
-		//oView.setHidden("consoleArea", !oModel.getProperty("showConsole"));
 
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
@@ -478,8 +477,6 @@ Controller.prototype = {
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
 		} else { // keep original sExample in this error case
 			Utils.console.warn("fnLoadFile: Unknown file:", sExample);
-			//oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
-			//TODO
 			oError = oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
 			oVm.print(0, String(oError) + "\r\n");
 		}
@@ -616,16 +613,6 @@ Controller.prototype = {
 		try {
 			this.fnScript(oVm);
 		} catch (e) {
-			/*
-			if (!Utils.stringEndsWith(oVm.sOut, "\n")) {
-				oVm.sOut += "\n";
-			}
-			oVm.sOut += String(e) + "\n";
-			if (!(e instanceof CpcVm.ErrorObject)) {
-				oVm.vmSetError(2); // Syntax Error
-			}
-			*/
-
 			if (e instanceof CpcVm.ErrorObject) {
 				oVm.print(0, String(e) + "\r\n");
 			} else {

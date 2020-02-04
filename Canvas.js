@@ -49,9 +49,11 @@ Canvas.prototype = {
 		"#00FF80" //  31 Sea Green (same as 19)
 	],
 
-	// mode 0: pen 0-15
-	// TODO: inks for pen 14,15 are alternating: "1,24", "16,11"
-	aDefaultInks: [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16], // eslint-disable-line array-element-newline
+	// mode 0: pen 0-15,16=border; inks for pen 14,15 are alternating: "1,24", "16,11"
+	aDefaultInks: [
+		[1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16, 1], // eslint-disable-line array-element-newline
+		[1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 24, 11, 1] // eslint-disable-line array-element-newline
+	],
 
 	aModeData: [
 		{ // node 0
@@ -123,6 +125,8 @@ Canvas.prototype = {
 
 		this.aColorValues = this.extractAllColorValues(this.aColors);
 
+		this.aCurrentInks = [];
+		this.aSpeedInk = [];
 		this.reset();
 
 		this.updateCanvas();
@@ -132,13 +136,20 @@ Canvas.prototype = {
 		var iPaper = 0;
 
 		this.iMode = 1;
-		this.aCurrentInks = this.aDefaultInks.slice();
 		this.iGPen = null; // force update
 		this.iGPaper = null;
-		this.resetCustomChars();
+		this.iInkSet = 0;
+		this.setDefaultInks();
+
+		this.aSpeedInk[0] = 10;
+		this.aSpeedInk[1] = 10;
+		this.iSpeedInkCount = this.aSpeedInk[this.iInkSet];
+		this.canvas.style.borderColor = this.aColors[this.aCurrentInks[this.iInkSet][16]];
+
 		this.setGPen(1);
 		this.setGPaper(0);
-		this.setBorder(this.aDefaultInks[iPaper]);
+		this.resetCustomChars();
+		//TTT this.setBorder(this.aCurrentInks[0][16], this.aCurrentInks[1][16]);
 		this.setMode(1);
 		this.clearGraphics(iPaper);
 	},
@@ -214,7 +225,7 @@ Canvas.prototype = {
 			iWidth = this.iWidth,
 			iHeight = this.iHeight,
 			buf8 = this.buf8,
-			aCurrentInks = this.aCurrentInks,
+			aCurrentInksInSet = this.aCurrentInks[this.iInkSet],
 			aColorValues = this.aColorValues,
 			dataset8 = this.dataset8,
 			x, y, i, aColor;
@@ -222,7 +233,7 @@ Canvas.prototype = {
 		for (y = 0; y < iHeight; y += 1) {
 			for (x = 0; x < iWidth; x += 1) {
 				i = y * iWidth + x;
-				aColor = aColorValues[aCurrentInks[dataset8[i]]];
+				aColor = aColorValues[aCurrentInksInSet[dataset8[i]]];
 				i *= 4;
 				buf8[i] = aColor[0]; // r
 				buf8[i + 1] = aColor[1]; // g
@@ -234,12 +245,40 @@ Canvas.prototype = {
 		ctx.putImageData(this.imageData, 0, 0);
 	},
 
+	updateSpeedInk: function () {
+		var iPens = this.aModeData[this.iMode].iPens,
+			iCurrentInkSet, iNewInkSet, i;
+
+		this.iSpeedInkCount -= 1;
+		if (this.iSpeedInkCount <= 0) {
+			iCurrentInkSet = this.iInkSet;
+			iNewInkSet = iCurrentInkSet ^ 1; // eslint-disable-line no-bitwise
+			this.iInkSet = iNewInkSet;
+			this.iSpeedInkCount = this.aSpeedInk[iNewInkSet];
+
+			if (!this.bNeedUpdate) { // update not needed, yet => check for blinking inks which pens are visible in the current mode
+				for (i = 0; i < iPens; i += 1) {
+					if (this.aCurrentInks[iNewInkSet][i] !== this.aCurrentInks[iCurrentInkSet][i]) {
+						this.bNeedUpdate = true;
+						break;
+					}
+				}
+			}
+
+			// check border ink
+			if (this.aCurrentInks[iNewInkSet][16] !== this.aCurrentInks[iCurrentInkSet][16]) {
+				this.canvas.style.borderColor = this.aColors[this.aCurrentInks[iNewInkSet][16]];
+			}
+		}
+	},
+
 	setCustomChar: function (iChar, aCharData) {
 		this.oCustomCharset[iChar] = aCharData;
 	},
 
 	setDefaultInks: function () {
-		this.aCurrentInks = this.aDefaultInks.slice();
+		this.aCurrentInks[0] = this.aDefaultInks[0].slice(); // copy ink set 0 array
+		this.aCurrentInks[1] = this.aDefaultInks[1].slice(); // copy ink set 1 array
 		this.setGPen(this.iGPen);
 	},
 
@@ -617,16 +656,26 @@ Canvas.prototype = {
 		return this.test(x, y);
 	},
 
-	setInk: function (iPen, iInk1 /* , iInk2 */) {
-		if (this.aCurrentInks[iPen] !== iInk1) {
-			this.aCurrentInks[iPen] = iInk1;
-			this.setNeedUpdate(0, 0, this.iHeight, this.iWidth);
+	setInk: function (iPen, iInk1, iInk2) {
+		var bNeedInkUpdate = false;
+
+		if (this.aCurrentInks[0][iPen] !== iInk1) {
+			this.aCurrentInks[0][iPen] = iInk1;
+			bNeedInkUpdate = true;
+		}
+		if (this.aCurrentInks[1][iPen] !== iInk2) {
+			this.aCurrentInks[1][iPen] = iInk2;
+			bNeedInkUpdate = true;
+		}
+		if (bNeedInkUpdate) {
+			this.setNeedUpdate(0, 0, this.iHeight, this.iWidth); // we need to notify that an update is needed
 		}
 	},
 
-	setBorder: function (iInk1 /* , iInk2 */) {
-		this.iBorderColor = iInk1;
-		this.canvas.style.borderColor = this.aColors[iInk1];
+	setBorder: function (iInk1, iInk2) {
+		this.setInk(16, iInk1, iInk2);
+		//this.iBorderColor = iInk1;
+		//this.canvas.style.borderColor = this.aColors[iInk1]; //TTT
 	},
 
 	setGPen: function (iGPen) {
@@ -797,6 +846,11 @@ Canvas.prototype = {
 		}
 		this.fillTextBox(iLeft, iTop, iWidth, 1, iPen);
 		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
+	},
+
+	setSpeedInk: function (iTime1, iTime2) { // default: 10,10
+		this.aSpeedInk[0] = iTime1;
+		this.aSpeedInk[1] = iTime2;
 	},
 
 	changeMode: function (iMode) {

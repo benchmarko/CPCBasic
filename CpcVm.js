@@ -169,6 +169,7 @@ CpcVm.prototype = {
 		this.bDeg = false; // degree or radians
 
 		this.bTron = this.options.tron || false; // trace flag
+		this.iTronLine = 0; // last trace line
 
 		this.aMem.length = 0; // for peek, poke
 
@@ -181,7 +182,6 @@ CpcVm.prototype = {
 		this.iZone = 13; // print tab zone value
 
 		this.oVarTypes = {}; // variable types
-		//this.vmDefineVarTypes("R", "a-z", "reset");
 		this.defreal("a-z");
 
 		this.iMode = null;
@@ -334,9 +334,32 @@ CpcVm.prototype = {
 		if (n < iMin || n > iMax) {
 			Utils.console.warn("vmInRange: number not in range:", iMin + "<=" + n + "<=" + iMax);
 			this.error(5, sErr + " " + n); // Improper argument
-			//throw new CpcVm.ErrorObject("Improper argument", n, this.iLine); //TTT
 		}
 		return n;
+	},
+
+	vmAssertNumberType: function (sVarType) {
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+
+		if (sType !== "I" && sType !== "R") { // not integer or real?
+			this.error(13, "type " + sType); // "Type mismatch"
+		}
+	},
+
+	vmAssign: function (sVarType, value) {
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+
+		if (sType === "R") { // real
+			this.vmAssertNumber(value, "=");
+		} else if (sType === "I") { // integer
+			value = this.vmRound(value, "="); // round number to integer
+		} else if (sType === "$") { // string
+			if (typeof value !== "string") {
+				Utils.console.warn("vmAssign: expected string but got:", value);
+				this.error(13, "type " + sType + "=" + value); // "Type mismatch"
+			}
+		}
+		return value;
 	},
 
 	vmGetError: function (iErr) { // BASIC error numbers
@@ -487,8 +510,9 @@ CpcVm.prototype = {
 			} else {
 				this.iNextFrameTime += this.iFrameTimeMs;
 			}
+			this.oCanvas.updateSpeedInk();
 			this.vmCheckTimer(iTime); // check BASIC timers and sound queue
-			this.oSound.scheduler();
+			this.oSound.scheduler(); // on a real CPC it is 100 Hz, we use 50 Hz
 		}
 	},
 
@@ -657,23 +681,10 @@ CpcVm.prototype = {
 	},
 
 	vmTrace: function (iLine) {
+		this.iTronLine = iLine;
 		if (this.bTron) {
 			this.print(0, "[" + iLine + "]");
 		}
-	},
-
-	vmAssign: function (sVarType, value) {
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
-
-		if (sType === "I") { // integer
-			value = this.vmRound(value, "="); // round number to integer
-		} else if (sType === "$") { // string
-			if (typeof value !== "string") {
-				Utils.console.warn("vmAssign: expected string but got:", value);
-				this.error(13, "=" + value); // "Type mismatch"
-			}
-		}
-		return value;
 	},
 
 	vmDrawMovePlot: function (sType, x, y, iGPen, iGColMode) {
@@ -776,8 +787,7 @@ CpcVm.prototype = {
 		} else {
 			iInk2 = this.vmInRangeRound(iInk2, 0, 31, "BORDER");
 		}
-		//TODO ink2
-		this.oCanvas.setBorder(iInk1);
+		this.oCanvas.setBorder(iInk1, iInk2);
 	},
 
 	// break
@@ -791,9 +801,12 @@ CpcVm.prototype = {
 		this.paper(iStream, iTmp);
 	},
 
-	call: function (n) { // varargs (adr + parameters)
-		n = this.vmRound(n, "CALL");
-		switch (n) {
+	call: function (iAddr) { // varargs (adr + parameters)
+		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "CALL");
+		if (iAddr < 0) { // 2nd complement of 16 bit address?
+			iAddr += 65536;
+		}
+		switch (iAddr) {
 		case 0xbb00: // KM Initialize (ROM &19E0)
 			this.oKeyboard.resetCpcKeysExpansions();
 			this.call(0xbb03); // KM Reset
@@ -809,10 +822,10 @@ CpcVm.prototype = {
 			}
 			break;
 		case 0xbb81: // TXT Cursor On (ROM &1279)
-			Utils.console.log("TODO: CALL", n);
+			Utils.console.log("TODO: CALL", iAddr);
 			break;
 		case 0xbb84: // TXT Cursor Off (ROM &1281)
-			Utils.console.log("TODO: CALL", n);
+			Utils.console.log("TODO: CALL", iAddr);
 			break;
 		case 0xbb4e: // TXT Initialize (ROM &1078)
 			this.vmResetWindowData(true); // reset windows, including pen and paper
@@ -835,16 +848,16 @@ CpcVm.prototype = {
 			this.oSound.reset();
 			break;
 		case 0xbcb6: // SOUND Hold (ROM &1ECB)
-			Utils.console.log("TODO: CALL", n);
+			Utils.console.log("TODO: CALL", iAddr);
 			break;
 		case 0xbcb9: // SOUND Continue (ROM &1EE6)
-			Utils.console.log("TODO: CALL", n);
+			Utils.console.log("TODO: CALL", iAddr);
 			break;
 		case 0xbd19: // MC Wait Flyback (ROM &07BA)
 			this.frame();
 			break;
 		default:
-			Utils.console.log("Ignored: CALL", n);
+			Utils.console.log("Ignored: CALL", iAddr);
 			break;
 		}
 	},
@@ -896,7 +909,6 @@ CpcVm.prototype = {
 		this.iErrorResumeLine = 0;
 		this.aGosubStack.length = 0;
 		this.vmResetVariables();
-		//this.vmDefineVarTypes("R", "a-z", "CLEAR");
 		this.defreal("a-z");
 		this.restore(); // restore data line index
 		this.rad();
@@ -1110,8 +1122,7 @@ CpcVm.prototype = {
 			this.oSound.setToneEnv(iToneEnv, aArgs);
 		} else { // 0
 			Utils.console.warn("ENT: iToneEnv", iToneEnv);
-			//throw new CpcVm.ErrorObject("Improper argument", iToneEnv, this.iLine);
-			this.error(5, "ENT" + " " + iToneEnv); // Improper argument
+			this.error(5, "ENT " + iToneEnv); // Improper argument
 		}
 	},
 
@@ -1191,20 +1202,18 @@ CpcVm.prototype = {
 	},
 
 	vmSetError: function (iErr, sErrInfo) {
-		var sError, sErrorWithInfo;
+		var sError, sErrorWithInfo, sLine;
 
 		this.iErr = iErr;
 		this.iErl = this.iLine;
 
 		sError = this.vmGetError(iErr);
 
-		//sErrorWithInfo = sError + (Utils.stringEndsWith(sError, " in") ? " " : " in ") + this.iErl;
 		sErrorWithInfo = sError + " in " + this.iErl;
 		if (sErrInfo) {
 			sErrorWithInfo += ": " + sErrInfo;
 		}
 		Utils.console.log("BASIC error(" + iErr + "):", sErrorWithInfo);
-		//this.print(iStream, sErrorWithInfo + "\r\n");
 
 		if (this.iErrorGotoLine > 0) {
 			this.iErrorResumeLine = this.iErl;
@@ -1213,16 +1222,17 @@ CpcVm.prototype = {
 		} else {
 			this.vmStop("error", 50);
 		}
-		//return sError;
-		return new CpcVm.ErrorObject(sError, sErrInfo, this.iErl);
+		sLine = this.iErl;
+		if (this.iTronLine) {
+			sLine += " (trace: " + this.iTronLine + ")";
+		}
+		return new CpcVm.ErrorObject(sError, sErrInfo, sLine);
 	},
 
 	error: function (iErr, sErrInfo) {
 		var oError;
 
 		iErr = this.vmRound(iErr, "ERROR"); // no range check (could trigger another error)
-		//sError = this.vmSetError(iErr, sErrInfo);
-		//throw new CpcVm.ErrorObject(sError, sErrInfo, this.iErl);
 		oError = this.vmSetError(iErr, sErrInfo);
 		throw oError;
 	},
@@ -1330,8 +1340,12 @@ CpcVm.prototype = {
 		return sKey;
 	},
 
-	inp: function () {
-		//this.vmNotImplemented("INP");
+	inp: function (iPort) {
+		iPort = this.vmInRangeRound(iPort, -32768, 65535, "INP");
+		if (iPort < 0) { // 2nd complement of 16 bit address?
+			iPort += 65536;
+		}
+		// this.vmNotImplemented("INP");
 	},
 
 	vmGetNextInput: function (sVarType) {
@@ -1339,7 +1353,6 @@ CpcVm.prototype = {
 			aInputValues = this.oInput.aInputValues,
 			sValue;
 
-		// Utils.console.debug("vmGetInput:", sVar);
 		sValue = aInputValues.shift();
 
 		if (sType !== "$") { // no string?
@@ -1480,15 +1493,21 @@ CpcVm.prototype = {
 		this.vmNotImplemented("LIST");
 	},
 
-	load: function (sName, iAddress) { // optional iAddress
+	load: function (sName, iAddr) { // optional iAddress
 		var oInFile = this.oInFile;
 
 		sName = this.vmAdaptFilename(sName, "LOAD");
+		if (iAddr !== undefined) {
+			iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "LOAD");
+			if (iAddr < 0) { // 2nd complement of 16 bit address?
+				iAddr += 65536;
+			}
+		}
 		this.closein();
 		oInFile.bOpen = true;
 		oInFile.sCommand = "load";
 		oInFile.sName = sName;
-		oInFile.iAddress = iAddress;
+		oInFile.iAddress = iAddr;
 		this.vmStop("loadFile", 90);
 	},
 
@@ -1679,7 +1698,10 @@ CpcVm.prototype = {
 	onSqGosub: function (iChannel, iLine) {
 		var oSqTimer;
 
-		iChannel = this.vmInRangeRound(iChannel, 1, 4, "ON SQ GOSUB"); // TODO: 3 is also not allowed
+		iChannel = this.vmInRangeRound(iChannel, 1, 4, "ON SQ GOSUB");
+		if (iChannel === 3) {
+			this.error(5, "ON SQ GOSUB " + iChannel); // Improper argument
+		}
 		iChannel = this.fnChannel2ChannelIndex(iChannel);
 		oSqTimer = this.aSqTimer[iChannel];
 		oSqTimer.iLine = iLine;
@@ -1746,7 +1768,10 @@ CpcVm.prototype = {
 	},
 
 	out: function (iPort, iByte) {
-		iPort = this.vmInRangeRound(iPort, 0, 65535, "OUT");
+		iPort = this.vmInRangeRound(iPort, -32768, 65535, "OUT");
+		if (iPort < 0) { // 2nd complement of 16 bit address?
+			iPort += 65536;
+		}
 		iByte = this.vmInRangeRound(iByte, 0, 255, "OUT");
 		this.vmNotImplemented("OUT " + iPort + ": " + iByte);
 		/*
@@ -1768,7 +1793,10 @@ CpcVm.prototype = {
 	peek: function (iAddr) {
 		var iByte;
 
-		iAddr = this.vmRound(iAddr, "PEEK"); // or range check?
+		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "PEEK");
+		if (iAddr < 0) { // 2nd complement of 16 bit address?
+			iAddr += 65536;
+		}
 		if (iAddr >= 0xc000 && iAddr <= 0xffff) { // get byte from screen memory
 			iByte = this.oCanvas.getByte(iAddr, iByte);
 			if (iByte !== null) { // byte read?
@@ -1810,7 +1838,10 @@ CpcVm.prototype = {
 	},
 
 	poke: function (iAddr, iByte) {
-		iAddr = this.vmRound(iAddr, "POKE"); // or range check?
+		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "POKE");
+		if (iAddr < 0) { // 2nd complement of 16 bit address?
+			iAddr += 65536;
+		}
 		iByte = this.vmInRangeRound(iByte, 0, 255, "POKE");
 
 		this.aMem[iAddr] = iByte;
@@ -2470,7 +2501,8 @@ CpcVm.prototype = {
 	speedInk: function (iTime1, iTime2) { // default: 10,10
 		iTime1 = this.vmInRangeRound(iTime1, 1, 255, "SPEED INK");
 		iTime2 = this.vmInRangeRound(iTime2, 1, 255, "SPEED INK");
-		this.vmNotImplemented("SPEED INK " + iTime1 + " " + iTime2);
+		//this.vmNotImplemented("SPEED INK " + iTime1 + " " + iTime2);
+		this.oCanvas.setSpeedInk(iTime1, iTime2);
 	},
 
 	speedKey: function (iDelay, iRepeat) {
@@ -2487,7 +2519,10 @@ CpcVm.prototype = {
 	sq: function (iChannel) {
 		var oSqTimer, iSq;
 
-		iChannel = this.vmInRangeRound(iChannel, 1, 4, "SQ"); // TODO: 3 is also not allowes
+		iChannel = this.vmInRangeRound(iChannel, 1, 4, "SQ");
+		if (iChannel === 3) {
+			this.error(5, "ON SQ GOSUB " + iChannel); // Improper argument
+		}
 		iChannel = this.fnChannel2ChannelIndex(iChannel);
 		iSq = this.oSound.sq(iChannel);
 
@@ -2710,7 +2745,10 @@ CpcVm.prototype = {
 	},
 
 	wait: function (iPort /* , iMask, iInv */) {
-		iPort = this.vmRound(iPort, "WAIT");
+		iPort = this.vmInRangeRound(iPort, -32768, 65535, "WAIT");
+		if (iPort < 0) { // 2nd complement of 16 bit address?
+			iPort += 65536;
+		}
 		if (iPort === 0) {
 			debugger; // Testing
 		}
@@ -2806,7 +2844,6 @@ CpcVm.ErrorObject = function (message, value, pos) {
 
 CpcVm.ErrorObject.prototype = {
 	toString: function () {
-		//return this.message + ((this.value !== undefined) ? " " + this.value : "") + " " + this.pos;
 		return this.message + " in " + this.pos + ((this.value !== undefined) ? ": " + this.value : "");
 	}
 };
