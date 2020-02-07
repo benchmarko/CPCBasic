@@ -16,7 +16,7 @@ Keyboard.prototype = {
 		0: "38ArrowUp", // cursor up
 		1: "39ArrowRight", // cursor right
 		2: "40ArrowDown", // cursor down
-		3: "105Numpad9", // numpad f9
+		3: "105Numpad9,120F9", // numpad f9
 		4: "102Numpad6,117F6", // numpad f6
 		5: "99Numpad3,114F3", // numpad f3
 		6: "13NumpadEnter", // numpad enter
@@ -480,7 +480,7 @@ Keyboard.prototype = {
 	/* eslint-enable array-element-newline */
 
 	init: function (options) {
-		var oKeyArea;
+		var cpcArea, keyboardArea;
 
 		this.options = Object.assign({}, options);
 
@@ -497,34 +497,39 @@ Keyboard.prototype = {
 		this.oKey2CpcKey = this.initKey2CpcKeyMap();
 		this.bCodeStringsRemoved = false;
 
-		window.addEventListener("keydown", this.onWindowKeydown.bind(this), false);
-		window.addEventListener("keyup", this.onWindowKeyup.bind(this), false);
+		cpcArea = document.getElementById("cpcArea"); //TTT
+		cpcArea.addEventListener("keydown", this.onCpcAreaKeydown.bind(this), false);
+		cpcArea.addEventListener("keyup", this.oncpcAreaKeyup.bind(this), false);
 
-		oKeyArea = document.getElementById("keyboardArea"); //TTT TODO
+		keyboardArea = document.getElementById("keyboardArea"); //TTT
 		this.fnVirtualKeydown = this.onVirtualKeyboardKeydown.bind(this);
 		this.fnVirtualKeyUp = this.onVirtualKeyboardKeyup.bind(this);
 		if (window.PointerEvent) {
-			oKeyArea.addEventListener("pointerdown", this.fnVirtualKeydown, false); // +clicked?
-			oKeyArea.addEventListener("pointerup", this.fnVirtualKeyUp, false);
-			oKeyArea.addEventListener("pointercancel", this.fnVirtualKeyUp, false);
+			keyboardArea.addEventListener("pointerdown", this.fnVirtualKeydown, false); // +clicked?
+			keyboardArea.addEventListener("pointerup", this.fnVirtualKeyUp, false);
+			keyboardArea.addEventListener("pointercancel", this.fnVirtualKeyUp, false);
 			//oKeyArea.addEventListener("pointerout", this.fnVirtualKeyUp, false); //TTT use it? caps?
 			if (Utils.debug > 0) {
 				Utils.console.log("Keyboard:init: Using pointerEvents");
 			}
 		} else if ("ontouchstart" in window || navigator.maxTouchPoints) {
-			oKeyArea.addEventListener("touchstart", this.fnVirtualKeydown, false); // +clicked?
-			oKeyArea.addEventListener("touchend", this.fnVirtualKeyUp, false);
-			oKeyArea.addEventListener("touchcancel", this.fnVirtualKeyUp, false);
+			keyboardArea.addEventListener("touchstart", this.fnVirtualKeydown, false); // +clicked?
+			keyboardArea.addEventListener("touchend", this.fnVirtualKeyUp, false);
+			keyboardArea.addEventListener("touchcancel", this.fnVirtualKeyUp, false);
 			if (Utils.debug > 0) {
 				Utils.console.log("Keyboard:init: Using touch events");
 			}
 		} else {
-			oKeyArea.addEventListener("mousedown", this.fnVirtualKeydown, false);
-			oKeyArea.addEventListener("mouseup", this.fnVirtualKeyUp, false);
+			keyboardArea.addEventListener("mousedown", this.fnVirtualKeydown, false);
+			keyboardArea.addEventListener("mouseup", this.fnVirtualKeyUp, false);
 			if (Utils.debug > 0) {
 				Utils.console.log("Keyboard:init: Using mouse events");
 			}
 		}
+
+		// TTT also for key navigation on virtual keyboard
+		//keyboardArea.addEventListener("keydown", this.fnVirtualKeydown, false);
+		//keyboardArea.addEventListener("keyup", this.fnVirtualKeyUp, false);
 	},
 
 	initKey2CpcKeyMap: function () {
@@ -849,7 +854,7 @@ Keyboard.prototype = {
 		}
 	},
 
-	onWindowKeydown: function (event) {
+	onCpcAreaKeydown: function (event) {
 		if (this.bActive) {
 			this.fnKeyboardKeydown(event);
 			event.preventDefault();
@@ -858,7 +863,7 @@ Keyboard.prototype = {
 		return undefined;
 	},
 
-	onWindowKeyup: function (event) {
+	oncpcAreaKeyup: function (event) {
 		if (this.bActive) {
 			this.fnKeyboardKeyup(event);
 			event.preventDefault();

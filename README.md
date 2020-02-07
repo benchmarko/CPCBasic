@@ -70,7 +70,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
   `defint a: a=1: a%=2: ?a,a%`
 - *ON ERROR GOTO* and *RESUME* without line number do not fully work because this would require to single step every instruction
-- Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out a block
+- Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
 - Some more things...
@@ -97,6 +97,29 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - *|MODE,n*: Change mode without *CLS* (experimental)
 - Computations are not limited to 16 bits
 - *PEEK&POKE*: Screen memory can be accessed in the range &c000-&ffff.
+
+## Supported CALLs and OUTs
+
+### CALLs
+
+- *CALL &BB00*: KM Initialize (KM Reset and reset also CPC key extensions)
+- *CALL &BB03*: KM Reset (clear input and reset expansion tokens)
+- *CALL &BB18*: KM Wait Key
+- *CALL &BB81*: TXT Cursor On (TODO)
+- *CALL &BB84*: TXT Cursor Off (TODO)
+- *CALL &BB4E*: TXT Initialize (initialize window parameter, delete custom chars)
+- *CALL &BB9C*: TXT Inverse (same as print chr$(24); )
+- *CALL &BBDE,n1,n2,...*: GRA Set Pen (set *GRAPHICS PEN* depending on number of arguments)
+- *CALL &BBFF*: SCR Initialize (set mode 1, reset inks, clear screen)
+- *CALL &BC06,nn*: SCR SET BASE (really &BC08; set screen start high byte: &00, &40, &80 or &C0)
+- *CALL &BCA7*: SOUND Reset
+- *CALL &BCB6*: SOUND Hold (TODO)
+- *CALL &BCB9*: SOUND Continue (TODO)
+- *CALL &BD19*: MC Wait Flyback (wait for screen beam flyback; same as *FRAME*)
+
+### OUTs
+
+- *OUT &7Fxx,nn*: Select RAM bank in range &4000-&7FFF; &C0=default; &C4-&FF=additional banks
 
 ## Programming hints
 

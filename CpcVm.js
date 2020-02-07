@@ -172,6 +172,8 @@ CpcVm.prototype = {
 		this.iTronLine = 0; // last trace line
 
 		this.aMem.length = 0; // for peek, poke
+		this.iRamSelect = 0; // for banking with 16K banks in the range 0x4000-0x7fff (0=default; 1...=additional)
+		this.iScreenPage = 3; // 16K screen page, 3=0xc000..0xffff
 
 		this.iHimem = 42747; // high memory limit (42747 after symbol after 256)
 		this.symbolAfter(240); // set also iMinCustomChar
@@ -718,6 +720,44 @@ CpcVm.prototype = {
 		oTimer.iNextTimeMs = Date.now() + iIntervalMs;
 	},
 
+	vmCopyFromScreen: function (iSource, iDest) {
+		var i, iByte;
+
+		for (i = 0; i < 0x4000; i += 1) {
+			iByte = this.oCanvas.getByte(iSource + i); // get byte from screen memory
+			if (iByte === null) { // byte not visible on screen?
+				iByte = this.aMem[iSource + i] || 0; // get it from our memory
+			}
+			this.aMem[iDest + i] = iByte;
+		}
+	},
+
+	vmCopyToScreen: function (iSource, iDest) {
+		var i, iByte;
+
+		for (i = 0; i < 0x4000; i += 1) {
+			iByte = this.aMem[iSource + i] || 0; // get it from our memory
+			this.oCanvas.setByte(iDest + i, iByte);
+		}
+	},
+
+	vmSetScreenBase: function (iByte) {
+		var iPage, iOldPage, iAddr;
+
+		iByte = this.vmInRangeRound(iByte, 0, 255, "screenBase");
+		iPage = iByte >> 6; // eslint-disable-line no-bitwise
+		iOldPage = this.iScreenPage;
+
+		if (iPage !== iOldPage) {
+			iAddr = iOldPage << 14; // eslint-disable-line no-bitwise
+			this.vmCopyFromScreen(iAddr, iAddr);
+
+			this.iScreenPage = iPage;
+			iAddr = iPage << 14; // eslint-disable-line no-bitwise
+			this.vmCopyToScreen(iAddr, iAddr);
+		}
+	},
+
 	// --
 
 	abs: function (n) {
@@ -843,6 +883,10 @@ CpcVm.prototype = {
 			this.vmResetInks();
 			this.oCanvas.setMode(this.iMode); // does not clear canvas
 			this.oCanvas.clearGraphics(0); // (SCR Mode Clear)
+			break;
+		case 0xbc06: // SCR SET BASIC (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E
+			//this.vmSetScreenBase(arguments.length ? arguments[1] : undefined);
+			this.vmSetScreenBase(arguments[1]);
 			break;
 		case 0xbca7: // SOUND Reset (ROM &1E68)
 			this.oSound.reset();
@@ -1341,11 +1385,14 @@ CpcVm.prototype = {
 	},
 
 	inp: function (iPort) {
+		var iByte = 255;
+
 		iPort = this.vmInRangeRound(iPort, -32768, 65535, "INP");
 		if (iPort < 0) { // 2nd complement of 16 bit address?
 			iPort += 65536;
 		}
 		// this.vmNotImplemented("INP");
+		return iByte;
 	},
 
 	vmGetNextInput: function (sVarType) {
@@ -1773,7 +1820,16 @@ CpcVm.prototype = {
 			iPort += 65536;
 		}
 		iByte = this.vmInRangeRound(iByte, 0, 255, "OUT");
-		this.vmNotImplemented("OUT " + iPort + ": " + iByte);
+		// 7Fxx = RAM select
+		if (iPort >> 8 === 0x7f) { // eslint-disable-line no-bitwise
+			if (iByte === 0xc0) {
+				this.iRamSelect = 0;
+			} else if (iByte >= 0xc4) {
+				this.iRamSelect = iByte - 0xc4 + 1;
+			}
+		} else {
+			this.vmNotImplemented("OUT " + iPort + ": " + iByte);
+		}
 		/*
 		if (Utils.debug > 0) {
 			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte);
@@ -1791,20 +1847,25 @@ CpcVm.prototype = {
 	},
 
 	peek: function (iAddr) {
-		var iByte;
+		var iByte, iPage;
 
 		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "PEEK");
 		if (iAddr < 0) { // 2nd complement of 16 bit address?
 			iAddr += 65536;
 		}
-		if (iAddr >= 0xc000 && iAddr <= 0xffff) { // get byte from screen memory
-			iByte = this.oCanvas.getByte(iAddr, iByte);
-			if (iByte !== null) { // byte read?
-				this.aMem[iAddr] = iByte;
+		// check two higher bits of 16 bit address to get 16K page
+		iPage = iAddr >> 14; // eslint-disable-line no-bitwise
+		if (iPage === this.iScreenPage) { // screen memory page?
+			iByte = this.oCanvas.getByte(iAddr); // get byte from screen memory
+			if (iByte === null) { // byte not visible on screen?
+				iByte = this.aMem[iAddr] || 0; // get it from our memory
 			}
+		} else {
+			if (iPage === 1 && this.iRamSelect) { // memory mapped RAM with page 1=0x4000..0x7fff?
+				iAddr = (this.iRamSelect - 1) * 0x4000 + 0x10000 + iAddr;
+			}
+			iByte = this.aMem[iAddr] || 0;
 		}
-
-		iByte = this.aMem[iAddr] || 0;
 		return iByte;
 	},
 
@@ -1838,17 +1899,23 @@ CpcVm.prototype = {
 	},
 
 	poke: function (iAddr, iByte) {
-		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "POKE");
+		var iPage;
+
+		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "POKE address");
 		if (iAddr < 0) { // 2nd complement of 16 bit address?
 			iAddr += 65536;
 		}
-		iByte = this.vmInRangeRound(iByte, 0, 255, "POKE");
+		iByte = this.vmInRangeRound(iByte, 0, 255, "POKE byte");
 
-		this.aMem[iAddr] = iByte;
+		// check two higher bits of 16 bit address to get 16K page
+		iPage = iAddr >> 14; // eslint-disable-line no-bitwise
 
-		if (iAddr >= 0xc000 && iAddr <= 0xffff) { // write byte to screen memory
-			this.oCanvas.setByte(iAddr, iByte);
+		if (iPage === 1 && this.iRamSelect) { // memory mapped RAM with page 1=0x4000..0x7fff?
+			iAddr = (this.iRamSelect - 1) * 0x4000 + 0x10000 + iAddr;
+		} else if (iPage === this.iScreenPage) { // screen memory page?
+			this.oCanvas.setByte(iAddr, iByte); // write byte also to screen memory
 		}
+		this.aMem[iAddr] = iByte;
 	},
 
 	pos: function (iStream) {

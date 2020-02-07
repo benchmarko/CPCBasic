@@ -134,6 +134,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Keyboard Test"
 	},
 	{
+		"key": "test/ramtest",
+		"title": "RAM Test"
+	},
+	{
 		"key": "test/rectangles",
 		"title": "Rectangles Test"
 	},

@@ -149,7 +149,6 @@ Canvas.prototype = {
 		this.setGPen(1);
 		this.setGPaper(0);
 		this.resetCustomChars();
-		//TTT this.setBorder(this.aCurrentInks[0][16], this.aCurrentInks[1][16]);
 		this.setMode(1);
 		this.clearGraphics(iPaper);
 	},
@@ -670,12 +669,15 @@ Canvas.prototype = {
 		if (bNeedInkUpdate) {
 			this.setNeedUpdate(0, 0, this.iHeight, this.iWidth); // we need to notify that an update is needed
 		}
+		return bNeedInkUpdate;
 	},
 
 	setBorder: function (iInk1, iInk2) {
-		this.setInk(16, iInk1, iInk2);
-		//this.iBorderColor = iInk1;
-		//this.canvas.style.borderColor = this.aColors[iInk1]; //TTT
+		var bNeedInkUpdate = this.setInk(16, iInk1, iInk2);
+
+		if (bNeedInkUpdate) {
+			this.canvas.style.borderColor = this.aColors[this.aCurrentInks[this.iInkSet][16]];
+		}
 	},
 
 	setGPen: function (iGPen) {

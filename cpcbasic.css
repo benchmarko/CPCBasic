@@ -15,15 +15,7 @@ body {
 }
 
 .legendButton {
-	border: 1px solid #7A7A7A;
 	background-color: LightGreen;
-	padding: 1px;
-	-webkit-touch-callout: none; /* iOS Safari */
-	-webkit-user-select: none; /* Safari */
-	-khtml-user-select: none; /* Konqueror HTML */
-	-moz-user-select: none; /* Firefox */
-	-ms-user-select: none; /* Internet Explorer/Edge */
-	user-select: none; /* currently Chrome and Opera */
 }
 
 .legendButton:hover {

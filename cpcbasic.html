@@ -4,13 +4,13 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="cpcbasic.css" />
-<title id="title">CPC Basic v0.6</title>
+<title id="title">CPC Basic v0.7</title>
 </head>
 
 <body>
 	<fieldset class="flexBox">
 		<legend>
-			<span id="inputLegend" class="legendButton" title="Show/Hide BASIC">CPC BASIC</span>
+			<button id="inputButton" class="legendButton" title="Show/Hide BASIC">CPC BASIC</button>
 			<button id="reloadButton" title="Reload page with URL parameter settings">Reload</button>
 			<button id="helpButton" title="Help">Help</button>
 		</legend>
@@ -25,19 +25,13 @@
 		<div id="inputArea" class="area  clearLeft">
 			<textarea id="inputText" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 			<div>
-				<!--
-				<button id="saveButton" title="Save input to local storage" disabled>Save</button>
-				<button id="deleteButton" title="Delete input from local storage" disabled>Del</button>
-				<button id="undoButton" title="Undo changes" disabled>Undo</button>
-				<button id="redoButton" title="Redo changes" disabled>Redo</button>
-				-->
 				<button id="parseButton" title="Compile BASIC script">Compile only</button>
 			</div>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft" id="cpcAreaBox">
 		<legend>
-			<span id="cpcLegend" class="legendButton" title="Show/Hide CPC">CPC</span>
+			<button id="cpcButton" class="legendButton" title="Show/Hide CPC">CPC</button>
 			<button id="parseRunButton" title="Compile and run script">Run</button>
 			<button id="stopButton" title="Stop/escape/break running script" disabled>Break</button>
 			<button id="continueButton" title="Continue script" disabled>Continue</button>
@@ -45,20 +39,20 @@
 			<button id="screenshotButton" title="Take Screenshot and download">Screenshot</button>
 			<button id="soundButton" title="Sound on/off">Sound</button>
 		</legend>
-		<div id="cpcArea" class="area">
+		<div id="cpcArea" class="area" tabindex="0">
 			<canvas id="cpcCanvas" width="640" height="400"></canvas>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
 		<legend>
-			<span id="keyboardLegend" class="legendButton" title="CPC Keyboard">Keyboard</span>
+			<button id="keyboardButton" class="legendButton" title="CPC Keyboard">Keyboard</button>
 		</legend>
-		<div id="keyboardArea" class="area kbdArea">
+		<div id="keyboardArea" class="area kbdArea" tabindex="0">
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
 		<legend>
-			<span id="inp2Legend" class="legendButton" title="Alternative way of input">Input</span>
+			<button id="inp2Button" class="legendButton" title="Alternative way of input">Input</button>
 		</legend>
 		<div id="inp2Area" class="area clearLeft">
 			<textarea id="inp2Text" placeholder="experimental" rows="1" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
@@ -67,7 +61,7 @@
 	</fieldset>
 	<fieldset class="flexBox">
 		<legend>
-			<span id="resultLegend" class="legendButton" title="Show/Hide BASIC Console">Console</span>
+			<button id="resultButton" class="legendButton" title="Show/Hide BASIC Console">Console</button>
 		</legend>
 		<div id="resultArea" class="area" hidden>
 			<textarea id="resultText" placeholder="" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
@@ -75,7 +69,7 @@
 	</fieldset>
 	<fieldset class="flexBox">
 		<legend>
-			<span id="variableLegend" class="legendButton" title="Show/Hide Variables">Variables</span>
+			<button id="variableButton" class="legendButton" title="Show/Hide Variables">Variables</button>
 		</legend>
 			<div id="variableArea" class="area" hidden>
 			<div class="field">
@@ -89,7 +83,7 @@
 	</fieldset>
 	<fieldset class="flexBox">
 		<legend>
-			<span id="outputLegend" class="legendButton" title="Show/Hide JavaScript">JavaScript</span>
+			<button id="outputButton" class="legendButton" title="Show/Hide JavaScript">JavaScript</button>
 		</legend>
 		<div id="outputArea" class="area" hidden>
 			<button id="runButton" title="Run JavaScript">Run</button>
@@ -98,7 +92,7 @@
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft" id="consoleBox" hidden>
-		<legend id="consoleLegend" class="legendButton" title="Show/Hide Console log">Console log</legend>
+		<button id="consoleButton" class="legendButton" title="Show/Hide Console log">Console log</button>
 		<div id="consoleArea" class="area">
 			<textarea id="consoleText" rows="15" cols="80"></textarea>
 		</div>

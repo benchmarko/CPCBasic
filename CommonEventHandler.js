@@ -82,35 +82,35 @@ CommonEventHandler.prototype = {
 		this.fnUserAction = null;
 	},
 
-	onSpecialLegendClick: function () {
+	onSpecialButtonClick: function () {
 		this.toogleHidden("specialArea", "showSpecial");
 	},
 
-	onInputLegendClick: function () {
+	onInputButtonClick: function () {
 		this.toogleHidden("inputArea", "showInput");
 	},
 
-	onInp2LegendClick: function () {
+	onInp2ButtonClick: function () {
 		this.toogleHidden("inp2Area", "showInp2");
 	},
 
-	onOutputLegendClick: function () {
+	onOutputButtonClick: function () {
 		this.toogleHidden("outputArea", "showOutput");
 	},
 
-	onResultLegendClick: function () {
+	onResultButtonClick: function () {
 		this.toogleHidden("resultArea", "showResult");
 	},
 
-	onVariableLegendClick: function () {
+	onVariableButtonClick: function () {
 		this.toogleHidden("variableArea", "showVariable");
 	},
 
-	onCpcLegendClick: function () {
+	onCpcButtonClick: function () {
 		this.toogleHidden("cpcArea", "showCpc");
 	},
 
-	onKeyboardLegendClick: function () {
+	onKeyboardButtonClick: function () {
 		this.toogleHidden("keyboardArea", "showKeyboard");
 		if (this.model.getProperty("showKeyboard")) { // maybe we need to draw it
 			this.controller.oKeyboard.virtualKeyboardCreate();
