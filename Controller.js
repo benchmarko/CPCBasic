@@ -27,7 +27,7 @@ function Controller(oModel, oView) {
 
 Controller.prototype = {
 	init: function (oModel, oView) {
-		var sExample;
+		var sExample, sKeyboardLayout;
 
 		this.fnRunLoopHandler = this.fnRunLoop.bind(this);
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
@@ -54,13 +54,18 @@ Controller.prototype = {
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
-		oView.setHidden("keyboardArea", !oModel.getProperty("showKeyboard"));
+		oView.setHidden("keyboardArea", !oModel.getProperty("showKeyboard"), "flex");
+		oView.setHidden("keyboardLayoutArea", !oModel.getProperty("showKeyboardLayout"));
 
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
 			aCharset: cpcBasicCharset,
 			cpcDivId: "cpcArea"
 		});
+
+		sKeyboardLayout = oModel.getProperty("keyboardLayout");
+		oView.setSelectValue("keyboardLayoutSelect", sKeyboardLayout);
+		this.commonEventHandler.onKeyboardLayoutSelectChange();
 
 		this.oKeyboard = new Keyboard({
 			fnEscapeHandler: this.fnEscapeHandler

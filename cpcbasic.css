@@ -60,8 +60,21 @@ body {
 
 .kbdArea {
 	width: auto;
-    white-space: nowrap;
+	/* white-space: nowrap; */
 	user-select: none;
+	/* display: flex; */
+}
+
+.kbdFlex {
+	display: flex;
+}
+
+.kbdAlpha {
+	display: flex;
+}
+
+.kbdNumpad {
+	display: flex;
 }
 
 .kbdButton, .kbdButton1, .kbdButton2, .kbdButton3, .kbdButton4 , .kbdButton5 {

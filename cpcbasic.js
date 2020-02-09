@@ -17,10 +17,12 @@ cpcBasic = {
 		database: "examples", // examples, apps, saved
 		example: "cpcbasic",
 		exampleIndex: "0index.js", // example index for every exampleDir
+		keyboardLayout: "alphanum", // alphanum, alpha, num
 		showInput: true,
 		showInp2: false,
 		showCpc: true,
 		showKeyboard: false,
+		showKeyboardLayout: false,
 		showOutput: false,
 		showResult: false,
 		showVariable: false,

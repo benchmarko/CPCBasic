@@ -12,102 +12,106 @@ function Keyboard(options) {
 
 Keyboard.prototype = {
 
-	mCpcKey2Key: {
-		0: "38ArrowUp", // cursor up
-		1: "39ArrowRight", // cursor right
-		2: "40ArrowDown", // cursor down
-		3: "105Numpad9,120F9", // numpad f9
-		4: "102Numpad6,117F6", // numpad f6
-		5: "99Numpad3,114F3", // numpad f3
-		6: "13NumpadEnter", // numpad enter
-		7: "110NumpadDecimal", // numpad .
-		8: "37ArrowLeft", // cursor left
-		9: "18AltLeft", // copy
-		10: "103Numpad7,118F7", // numpad f7
-		11: "104Numpad8,119F8", // numpad f8
-		12: "101Numpad5,116F5", // numpad f5
-		13: "97Numpad1,112F1", // numpad f1
-		14: "98Numpad2,113F2", // numpad f2
-		15: "96Numpad0,121F10", // numpad f0
-		16: "46Delete", // clr
-		17: "187BracketRight,171BracketRight", // [ { (Chrome: 187; FF: 171)
-		18: "13Enter", // return
-		19: "191Backslash,163Backslash", // ] } => # ' (Chrome: 191; FF: 163)
-		20: "100Numpad4,115F4", // numpad f4
-		21: "16ShiftLeft,16ShiftRight", // shift left, shift right (2 keys!)
-		22: "220Backquote,160Backquote", // \ ` (different location, key!; Chrome: 220; FF: 160)
-		23: "17ControlLeft,17ControlRight", // Note: alt-gr also triggers ctrl-left and alt-gr!
-		24: "221Equal,192Equal", // ^ pound (Chrome: 221; FF: 192)
-		25: "219Minus,63Minus", // - = (Chrome: 219; FF: 63)
-		26: "186BracketLeft,59BracketLeft", // @ | (Chrome: 168; FF: 59)
-		27: "80KeyP", // P
-		28: "222Quote", // ; + (same on Chrome, FF)
-		29: "192Semicolon", // : * (same on Chrome, FF)
-		30: "189Slash,173Slash", // / ? (Chrome: 189; FF: 173)
-		31: "190Period", // . <
-		32: "48Digit0", // 0 _
-		33: "57Digit9", // 9 )
-		34: "79KeyO",
-		35: "73KeyI",
-		36: "76KeyL",
-		37: "75KeyK",
-		38: "77KeyM",
-		39: "188Comma", // , >
-		40: "56Digit8",
-		41: "55Digit7",
-		42: "85KeyU",
-		43: "90KeyY",
-		44: "72KeyH",
-		45: "74KeyJ",
-		46: "78KeyN",
-		47: "32Space", // space
-		48: "54Digit6",
-		49: "53Digit5",
-		50: "82KeyR",
-		51: "84KeyT",
-		52: "71KeyG",
-		53: "70KeyF",
-		54: "66KeyB",
-		55: "86KeyV",
-		56: "52Digit4",
-		57: "51Digit3",
-		58: "69KeyE",
-		59: "87KeyW",
-		60: "83KeyS",
-		61: "68KeyD",
-		62: "67KeyC",
-		63: "88KeyX",
-		64: "49Digit1",
-		65: "50Digit2",
-		66: "27Escape", // esc
-		67: "81KeyQ",
-		68: "9Tab",
-		69: "65KeyA",
-		70: "20CapsLock", // caps lock
-		71: "89KeyZ",
-		72: "38Numpad8", // joy 0 up (arrow up)
-		73: "40Numpad2", // joy 0 down
-		74: "37Numpad4", // joy 0 left
-		75: "39Numpad6", // joy 0 right
-		76: "12Numpad5,45Numpad0", // joy 0 fire 2 (clear,...)
-		77: "46NumpadDecimal", // joy 0 fire 1
-		// 78: ""? (joy 0 fire 3?)
-		79: "8Backspace", // del
-
+	aCpcKey2Key: [
+		"38ArrowUp", // 0: cursor up
+		"39ArrowRight", // 1: cursor right
+		"40ArrowDown", // 2: cursor down
+		"105Numpad9,120F9", // 3: numpad f9
+		"102Numpad6,117F6", // 4: numpad f6
+		"99Numpad3,114F3", // 5: numpad f3
+		"13NumpadEnter", // 6: numpad enter
+		"110NumpadDecimal", // 7: numpad .
+		"37ArrowLeft", // 8: cursor left
+		"18AltLeft", // 9: copy
+		"103Numpad7,118F7", // 10: numpad f7
+		"104Numpad8,119F8", // 11: numpad f8
+		"101Numpad5,116F5", // 12: numpad f5
+		"97Numpad1,112F1", // 13: numpad f1
+		"98Numpad2,113F2", // 14: numpad f2
+		"96Numpad0,121F10", // 15: numpad f0
+		"46Delete", // 16: clr
+		"187BracketRight,171BracketRight,221BracketRight", // 17: [ { (Chrome: 187; FF: 171); EN: 221BracketRight
+		"13Enter", // 18: return
+		"191Backslash,163Backslash,220Backslash", // 19: ] } => # ' (Chrome: 191; FF: 163); EN: 220Backslash
+		"100Numpad4,115F4", // 20: numpad f4
+		"16ShiftLeft,16ShiftRight", // 21: shift left, shift right (2 keys!)
+		"220Backquote,160Backquote,192Backquote", // 22: \ ` (different location, key!; Chrome: 220; FF: 160); EN: 192Backquote, 226IntlBackslash?
+		"17ControlLeft,17ControlRight", // 23: Note: alt-gr also triggers ctrl-left and alt-gr!
+		"221Equal,192Equal,187Equal", // 24: ^ pound (Chrome: 221; FF: 192); EN: 187Equal
+		"219Minus,63Minus,189Minus", // 25: - = (Chrome: 219; FF: 63); EN: 189Minus
+		"186BracketLeft,59BracketLeft,219BracketLeft", // 26: @ | (Chrome: 168; FF: 59); EN: 219BracketLeft
+		"80KeyP", // 27: P
+		"222Quote,192Quote", // ; + (same on Chrome, FF); Android Bluetooth EN: 192Quote
+		"192Semicolon,186Semicolon", // 29: : * (same on Chrome, FF); EN: 186Semicolon
+		"189Slash,173Slash,191Slash", // 30: / ? (Chrome: 189; FF: 173); EN: 191Slash
+		"190Period", // 31: . <
+		"48Digit0", // 32: 0 _
+		"57Digit9", // 33: 9 )
+		"79KeyO", // 34:
+		"73KeyI", // 35:
+		"76KeyL", // 36:
+		"75KeyK", // 37:
+		"77KeyM", // 38:
+		"188Comma", // 39: , >
+		"56Digit8", // 40:
+		"55Digit7", // 41:
+		"85KeyU", // 42:
+		"90KeyY,89KeyY", // 43:
+		"72KeyH", // 44:
+		"74KeyJ", // 45:
+		"78KeyN", // 46:
+		"32Space", // 47: space
+		"54Digit6", // 48:
+		"53Digit5", // 49:
+		"82KeyR", // 50:
+		"84KeyT", // 51:
+		"71KeyG", // 52:
+		"70KeyF", // 53:
+		"66KeyB", // 54:
+		"86KeyV", // 55:
+		"52Digit4", // 56:
+		"51Digit3", // 57:
+		"69KeyE", // 58:
+		"87KeyW", // 59:
+		"83KeyS", // 60:
+		"68KeyD", // 61:
+		"67KeyC", // 62:
+		"88KeyX", // 63:
+		"49Digit1", // 64:
+		"50Digit2", // 65:
+		"27Escape", // 66: esc
+		"81KeyQ", // 67:
+		"9Tab", // 68:
+		"65KeyA", // 69:
+		"20CapsLock", // 70: caps lock
+		"89KeyZ,90KeyZ", // 71: DE,EN
+		"38Numpad8", // 72: joy 0 up (arrow up)
+		"40Numpad2", // 73: joy 0 down
+		"37Numpad4", // 74: joy 0 left
+		"39Numpad6", // 75: joy 0 right
+		"12Numpad5,45Numpad0", // 76: joy 0 fire 2 (clear,...)
+		"46NumpadDecimal", // 77: joy 0 fire 1
+		null, // 78: ""? (joy 0 fire 3?)
+		"8Backspace", // 79: del
+		null, // 80:
+		null, // 81:
+		null, // 82:
+		null, // 83:
+		null, // 84:
 		// not on CPC:
-		85: "226IntlBackslash,60IntlBackslash", // < > | // key not on CPC! (Chrome: 226, FF: 60)
-		86: "111NumpadDivide",
-		87: "106NumpadMultiply",
-		88: "109NumpadSubtract",
-		89: "107NumpadAdd",
-		90: "36Numpad7", // joy 0 up+left
-		91: "33Numpad9", // joy 0 up+right
-		92: "35Numpad1", // joy 0 down+left
-		93: "34Numpad3" // joy 0 down+right
+		"226IntlBackslash,60IntlBackslash,220IntlBackslash", // 85: < > | // key not on CPC! (Chrome: 226, FF: 60);  Android Bluetooth EN: 220IntlBackslash
+		"111NumpadDivide", // 86:
+		"106NumpadMultiply", // 87:
+		"109NumpadSubtract", // 88:
+		"107NumpadAdd", // 89:
+		"36Numpad7", // 90: joy 0 up+left
+		"33Numpad9", // 91: joy 0 up+right
+		"35Numpad1", // 92: joy 0 down+left
+		"34Numpad3" // 93: joy 0 down+right
 
 		// only on PC:
 		// "226IntlBackslash", "122F11", "123F12", "44PrintScreen", "145ScrollLock", "19Pause", "45Insert", "36Home", "33PageUp", "35End", "34PageDown", "111NumpadDivide", "106NumpadMultiply", "109NumpadSubtract", "107NumpadAdd"
-	},
+	],
 
 	mSpecialKeys: {
 		Alt: String.fromCharCode(224), // Copy
@@ -144,338 +148,362 @@ Keyboard.prototype = {
 	/* eslint-enable array-element-newline */
 
 	// key map for virtual keyboard
-	mCpcKey2Ascii: {
-		0: {
-			key: "ArrowUp",
+	aCpcKey2Ascii: [
+		{
+			key: "ArrowUp", // 0:
 			text: "\u2191",
 			title: "Cursor up"
 		},
-		1: {
-			key: "ArrowRight",
+		{
+			key: "ArrowRight", // 1:
 			text: "\u2192",
 			title: "Cursor right",
 			style: 1
 		},
-		2: {
-			key: "ArrowDown",
+		{
+			key: "ArrowDown", // 2:
 			text: "\u2193",
 			title: "Cursor down"
 		},
-		3: {
-			key: "9", // numpad f9
+		{
+			key: "9", // 3: numpad f9
 			text: "f9",
 			style: 1
 		},
-		4: {
-			key: "6", // numpad f6
+		{
+			key: "6", // 4: numpad f6
 			text: "f6",
 			style: 1
 		},
-		5: {
-			key: "3", // numpad f3
+		{
+			key: "3", // 5: numpad f3
 			text: "f3",
 			style: 1
 		},
-		6: {
-			key: "Enter", // numpad enter
+		{
+			key: "Enter", // 6: numpad enter
 			style: 4
 		},
-		7: {
-			key: "." // numpad .
+		{
+			key: "." // 7: numpad .
 		},
-		8: {
-			key: "ArrowLeft",
+		{
+			key: "ArrowLeft", // 8:
 			text: "\u2190",
 			title: "Cursor left",
 			style: 1
 		},
-		9: {
-			key: "Alt", // copy
+		{
+			key: "Alt", // 9: copy
 			text: "Copy",
 			style: 2
 		},
-		10: {
-			key: "7", // numpad f7
+		{
+			key: "7", // 10: numpad f7
 			text: "f7",
 			style: 1
 		},
-		11: {
-			key: "8", // numpad f8
+		{
+			key: "8", // 11: numpad f8
 			text: "f8",
 			style: 1
 		},
-		12: {
-			key: "5", // numpad f5
+		{
+			key: "5", // 12: numpad f5
 			text: "f5",
 			style: 1
 		},
-		13: {
-			key: "1", // numpad f1
+		{
+			key: "1", // 13: numpad f1
 			text: "f1",
 			style: 1
 		},
-		14: {
-			key: "2", // numpad f2
+		{
+			key: "2", // 14: numpad f2
 			text: "f2",
 			style: 1
 		},
-		15: {
-			key: "0", // numpad f0
+		{
+			key: "0", // 15: numpad f0
 			text: "f0",
 			style: 1
 		},
-		16: {
-			key: "Delete", // clr
+		{
+			key: "Delete", // 16: clr
 			text: "Clr",
 			title: "Clear",
 			style: 1
 		},
-		17: {
-			key: "[~{" // [ {
+		{
+			key: "[~{" // 17: [ {
 		},
-		18: {
-			key: "Enter", // return
+		{
+			key: "Enter", // 18: return
 			text: "Ret",
 			title: "Return",
 			style: 2
 		},
-		19: {
-			key: "]~}" // ] }
+		{
+			key: "]~}" // 19: ] }
 		},
-		20: {
-			key: "4", // numpad f4
+		{
+			key: "4", // 20: numpad f4
 			text: "f4",
 			style: 1
 		},
-		21: {
-			key: "Shift", // shift left, shift right will be mapped (2 keys!)
+		{
+			key: "Shift", // 21: shift left, shift right will be mapped (2 keys!)
 			style: 4
 		},
-		22: {
-			key: "\\~`" // \ ` (different location, key!)
+		{
+			key: "\\~`" // 22: \ ` (different location, key!)
 		},
-		23: {
-			key: "Control", // Note: alt-gr also triggers ctrl-left and alt-gr!
+		{
+			key: "Control", // 23: Note: alt-gr also triggers ctrl-left and alt-gr!
 			text: "Ctrl",
 			title: "Control",
 			style: 4
 		},
-		24: {
-			key: "^~£" // ^ £ (pound: \u00A3)
+		{
+			key: "^~£" // 24: ^ £ (pound: \u00A3)
 		},
-		25: {
-			key: "-~=" // - =
+		{
+			key: "-~=" // 25: - =
 		},
-		26: {
-			key: "@~|", // @ |
+		{
+			key: "@~|", // 26: @ |
 			style: 1
 		},
-		27: {
-			key: "p~P" // P
+		{
+			key: "p~P" // 27: P
 		},
-		28: {
-			key: ";~+" // ; +
+		{
+			key: ";~+" // 28: ; +
 		},
-		29: {
-			key: ":~*" // : *
+		{
+			key: ":~*" // 29: : *
 		},
-		30: {
-			key: "/~?" // / ?
+		{
+			key: "/~?" // 30: / ?
 		},
-		31: {
-			key: ".~<" // . <
+		{
+			key: ".~<" // 31: . <
 		},
-		32: {
-			key: "0~_" // 0 _
+		{
+			key: "0~_" // 32: 0 _
 		},
-		33: {
-			key: "9~)" // 9 )
+		{
+			key: "9~)" // 33: 9 )
 		},
-		34: {
-			key: "o~O"
+		{
+			key: "o~O" // 34:
 		},
-		35: {
-			key: "i~I"
+		{
+			key: "i~I" // 35:
 		},
-		36: {
-			key: "l~L"
+		{
+			key: "l~L" // 36:
 		},
-		37: {
-			key: "k~K"
+		{
+			key: "k~K" // 37:
 		},
-		38: {
-			key: "m~M"
+		{
+			key: "m~M" // 38:
 		},
-		39: {
-			key: ",~>" // , >
+		{
+			key: ",~>" // 39: , >
 		},
-		40: {
-			key: "8~("
+		{
+			key: "8~(" // 40:
 		},
-		41: {
-			key: "7~'"
+		{
+			key: "7~'" // 41:
 		},
-		42: {
-			key: "u~U"
+		{
+			key: "u~U" // 42:
 		},
-		43: {
-			key: "y~Y"
+		{
+			key: "y~Y" // 43:
 		},
-		44: {
-			key: "h~H"
+		{
+			key: "h~H" // 44:
 		},
-		45: {
-			key: "j~J"
+		{
+			key: "j~J" // 45:
 		},
-		46: {
-			key: "n~N"
+		{
+			key: "n~N" // 46:
 		},
-		47: {
-			key: " ", // space
+		{
+			key: " ", // 47: space
 			text: "Space",
 			style: 5
 		},
-		48: {
-			key: "6~&"
+		{
+			key: "6~&" // 48:
 		},
-		49: {
-			key: "5~%"
+		{
+			key: "5~%" // 49:
 		},
-		50: {
-			key: "r~R"
+		{
+			key: "r~R" // 50:
 		},
-		51: {
-			key: "t~T"
+		{
+			key: "t~T" // 51:
 		},
-		52: {
-			key: "g~G"
+		{
+			key: "g~G" // 52:
 		},
-		53: {
-			key: "f~F"
+		{
+			key: "f~F" // 53:
 		},
-		54: {
-			key: "b~B"
+		{
+			key: "b~B" // 54:
 		},
-		55: {
-			key: "v~V"
+		{
+			key: "v~V" // 55:
 		},
-		56: {
-			key: "4~$"
+		{
+			key: "4~$" // 56:
 		},
-		57: {
-			key: "3~#"
+		{
+			key: "3~#" // 57:
 		},
-		58: {
-			key: "e~E"
+		{
+			key: "e~E" // 58:
 		},
-		59: {
-			key: "w~W"
+		{
+			key: "w~W" // 59:
 		},
-		60: {
-			key: "s~S"
+		{
+			key: "s~S" // 60:
 		},
-		61: {
-			key: "d~D"
+		{
+			key: "d~D" // 61:
 		},
-		62: {
-			key: "c~C"
+		{
+			key: "c~C" // 62:
 		},
-		63: {
-			key: "x~X"
+		{
+			key: "x~X" // 63:
 		},
-		64: {
-			key: "1~!"
+		{
+			key: "1~!" // 64:
 		},
-		65: {
-			key: "2~\""
+		{
+			key: "2~\"" // 65:
 		},
-		66: {
-			key: "Escape", // esc
+		{
+			key: "Escape", // 66: esc
 			text: "Esc",
 			title: "Escape",
 			style: 1
 		},
-		67: {
-			key: "q~Q"
+		{
+			key: "q~Q" // 67:
 		},
-		68: {
-			key: "Tab",
+		{
+			key: "Tab", // 68:
 			style: 2
 		},
-		69: {
-			key: "a~A"
+		{
+			key: "a~A" // 69:
 		},
-		70: {
-			key: "CapsLock", // caps lock
+		{
+			key: "CapsLock", // 70: caps lock
 			text: "Caps",
 			title: "Caps Lock",
 			style: 3
 		},
-		71: {
-			key: "z~Z"
+		{
+			key: "z~Z" // 71:
 		},
 		// joystick currently not used on virtual keyboard:
-		72: {
-			key: "8" // joy 0 up (arrow up)
+		{
+			key: "8" // 72: joy 0 up (arrow up)
 		},
-		73: {
-			key: "2" // joy 0 down
+		{
+			key: "2" // 73: joy 0 down
 		},
-		74: {
-			key: "4" // joy 0 left
+		{
+			key: "4" // 74: joy 0 left
 		},
-		75: {
-			key: "6" // joy 0 right
+		{
+			key: "6" // 75: joy 0 right
 		},
-		76: {
-			key: "5" // joy 0 fire 2 (clear,...)
+		{
+			key: "5" // 76: joy 0 fire 2 (clear,...)
 		},
-		77: {
-			key: "." // joy 0 fire 1
+		{
+			key: "." // 77: joy 0 fire 1
 		},
-		// 78: ""? (joy 0 fire 3?)
-		79: {
-			key: "Backspace", // del
+		null, // 78: ""? (joy 0 fire 3?)
+		{
+			key: "Backspace", // 79: del
 			text: "Del",
 			title: "Delete",
 			style: 1
 		},
-
-		// not on CPC:`
-		/*
-		90: {
-			key: "7" // joy 0 up+left
+		null, // 80: unused...
+		null, // 81:
+		null, // 82:
+		null, // 83:
+		null, // 84:
+		null, // 85:
+		null, // 86:
+		null, // 87:
+		null, // 88:
+		null, // 89:
+		// not on CPC:
+		{
+			key: "7" // 90: joy 0 up+left
 		},
-		91: {
-			key: "9" // joy 0 up+right
+		{
+			key: "9" // 91: joy 0 up+right
 		},
-		92: {
-			key: "1" // joy 0 down+left
+		{
+			key: "1" // 92: joy 0 down+left
 		},
-		93: {
-			key: "3" // joy 0 down+right
+		{
+			key: "3" // 93: joy 0 down+right
 		},
-		*/
-
-		95: {
-			key: "Shift", // shift right (special value to avoid duplicate key)
+		null, // 94: unused
+		{
+			key: "Shift", // 95: shift right (special value to avoid duplicate key)
 			style: 2
 		},
-		96: {
-			key: "", // dummy key
+		{
+			key: "", // 96: dummy key
 			text: "Num",
 			title: "Num lock (no function)",
 			style: 1
 		}
-	},
+	],
+
 
 	/* eslint-disable array-element-newline */
+	/*
 	aVirtualKeyboard: [
 		[66, 64, 65, 57, 56, 49, 48, 41, 40, 33, 32, 25, 24, 16, 79, 10, 11, 3],
 		[68, 67, 59, 58, 50, 51, 43, 42, 35, 34, 27, 26, 17, 18, 20, 12, 4],
 		[70, 69, 60, 61, 53, 52, 44, 45, 37, 36, 29, 28, 19, 96, 13, 14, 5],
 		[21, 71, 63, 62, 55, 54, 46, 38, 39, 31, 30, 22, 95, 15, 0, 7],
 		[23, 9, 47, 6, 8, 2, 1]
+	],
+	*/
+	aVirtualKeyboardAlpha: [
+		[66, 64, 65, 57, 56, 49, 48, 41, 40, 33, 32, 25, 24, 16, 79],
+		[68, 67, 59, 58, 50, 51, 43, 42, 35, 34, 27, 26, 17, 18],
+		[70, 69, 60, 61, 53, 52, 44, 45, 37, 36, 29, 28, 19, 96],
+		[21, 71, 63, 62, 55, 54, 46, 38, 39, 31, 30, 22, 95],
+		[23, 9, 47, 6]
+	],
+	aVirtualKeyboardNum: [ // numpad
+		[10, 11, 3],
+		[20, 12, 4],
+		[13, 14, 5],
+		[15, 0, 7],
+		[8, 2, 1]
 	],
 	/* eslint-enable array-element-newline */
 
@@ -504,11 +532,12 @@ Keyboard.prototype = {
 		keyboardArea = document.getElementById("keyboardArea"); //TTT
 		this.fnVirtualKeydown = this.onVirtualKeyboardKeydown.bind(this);
 		this.fnVirtualKeyUp = this.onVirtualKeyboardKeyup.bind(this);
+		this.fnVirtualKeyout = this.onVirtualKeyboardKeyout.bind(this);
 		if (window.PointerEvent) {
 			keyboardArea.addEventListener("pointerdown", this.fnVirtualKeydown, false); // +clicked?
 			keyboardArea.addEventListener("pointerup", this.fnVirtualKeyUp, false);
 			keyboardArea.addEventListener("pointercancel", this.fnVirtualKeyUp, false);
-			//oKeyArea.addEventListener("pointerout", this.fnVirtualKeyUp, false); //TTT use it? caps?
+			//keyboardArea.addEventListener("pointerout", this.onVirtualKeyboardKeyout.bind(this), false); //TTT use it? caps?
 			if (Utils.debug > 0) {
 				Utils.console.log("Keyboard:init: Using pointerEvents");
 			}
@@ -533,17 +562,17 @@ Keyboard.prototype = {
 	},
 
 	initKey2CpcKeyMap: function () {
-		var mCpcKey2Key = this.mCpcKey2Key,
+		var aCpcKey2Key = this.aCpcKey2Key,
 			oKey2CpcKey = {},
 			iCpcKey, sMappedKeys, aMappedKeys, i, sKey;
 
-		for (iCpcKey in mCpcKey2Key) {
-			if (mCpcKey2Key.hasOwnProperty(iCpcKey)) {
-				sMappedKeys = mCpcKey2Key[iCpcKey];
+		for (iCpcKey = 0; iCpcKey < aCpcKey2Key.length; iCpcKey += 1) {
+			sMappedKeys = aCpcKey2Key[iCpcKey];
+			if (sMappedKeys) {
 				aMappedKeys = sMappedKeys.split(","); // maybe more
 				for (i = 0; i < aMappedKeys.length; i += 1) {
 					sKey = aMappedKeys[i];
-					oKey2CpcKey[sKey] = iCpcKey; // actually iCpcKey is a string
+					oKey2CpcKey[sKey] = iCpcKey; //TTT String(iCpcKey);
 				}
 			}
 		}
@@ -635,25 +664,26 @@ Keyboard.prototype = {
 		var oPressedKeys = this.oPressedKeys,
 			oCpcKeyExpansions = this.oCpcKeyExpansions,
 			mSpecialKeys = this.mSpecialKeys,
+			sCpcKey = String(iCpcKey),
 			bKeyAlreadyPressed, oCpcKey, oExpansions, iExpKey, i;
 
-		oCpcKey = oPressedKeys[iCpcKey];
+		oCpcKey = oPressedKeys[sCpcKey];
 		if (!oCpcKey) {
-			oPressedKeys[iCpcKey] = {
+			oPressedKeys[sCpcKey] = {
 				oKeys: {}
 			};
-			oCpcKey = oPressedKeys[iCpcKey];
+			oCpcKey = oPressedKeys[sCpcKey];
 		}
 		bKeyAlreadyPressed = oCpcKey.oKeys[sPressedKey];
 		oCpcKey.oKeys[sPressedKey] = true;
 		oCpcKey.shift = bShiftKey;
 		oCpcKey.ctrl = bCtrlKey;
 		if (Utils.debug > 1) {
-			Utils.console.log("fnPressCpcKey: sPressedKey=" + sPressedKey + ", affected cpc key=" + iCpcKey);
+			Utils.console.log("fnPressCpcKey: sPressedKey=" + sPressedKey + ", sKey=" + sKey + ", affected cpc key=" + sCpcKey);
 		}
 
 		oExpansions = oCpcKeyExpansions.repeat;
-		if (bKeyAlreadyPressed && ((iCpcKey in oExpansions) && !oExpansions[iCpcKey])) {
+		if (bKeyAlreadyPressed && ((sCpcKey in oExpansions) && !oExpansions[sCpcKey])) {
 			sKey = ""; // repeat off => ignore key
 		} else {
 			if (bCtrlKey) {
@@ -664,8 +694,8 @@ Keyboard.prototype = {
 				oExpansions = oCpcKeyExpansions.normal;
 			}
 
-			if (iCpcKey in oExpansions) {
-				iExpKey = oExpansions[iCpcKey];
+			if (sCpcKey in oExpansions) {
+				iExpKey = oExpansions[sCpcKey];
 				if (iExpKey >= 128 && iExpKey <= 159) {
 					sKey = this.aExpansionTokens[iExpKey - 128];
 					for (i = 0; i < sKey.length; i += 1) {
@@ -699,6 +729,27 @@ Keyboard.prototype = {
 		}
 	},
 
+	fnReleaseCpcKey: function (iCpcKey, sPressedKey, sKey, bShiftKey, bCtrlKey) {
+		var oPressedKeys = this.oPressedKeys,
+			oCpcKey;
+
+		oCpcKey = oPressedKeys[iCpcKey];
+		if (Utils.debug > 1) {
+			Utils.console.log("fnReleaseCpcKey: sPressedKey=" + sPressedKey + ", sKey=" + sKey + ", affected cpc key=" + iCpcKey + ", oKeys:", (oCpcKey ? oCpcKey.oKeys : "undef."));
+		}
+		if (!oCpcKey) {
+			Utils.console.warn("fnReleaseCpcKey: cpcKey was not pressed:", iCpcKey);
+		} else {
+			delete oCpcKey.oKeys[sPressedKey];
+			if (!Object.keys(oCpcKey.oKeys).length) {
+				delete oPressedKeys[iCpcKey];
+			} else {
+				oCpcKey.shift = bShiftKey;
+				oCpcKey.ctrl = bCtrlKey;
+			}
+		}
+	},
+
 	fnKeyboardKeydown: function (event) {
 		var iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
@@ -718,6 +769,9 @@ Keyboard.prototype = {
 
 		if (sPressedKey in this.oKey2CpcKey) {
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
+			if (iCpcKey === 85) { // map virtual cpc key 85 to 22 (english keyboard)
+				iCpcKey = 22;
+			}
 			if (sKey === "Dead") { // Chrome, FF
 				sKey += event.code + (event.shiftKey ? "Shift" : ""); // special handling => "DeadBackquote" or "DeadEqual"; and "Shift"
 			} else if (sKey === "Unidentified") { // IE, Edge
@@ -732,16 +786,19 @@ Keyboard.prototype = {
 				}
 			}
 			this.fnPressCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
+		} else if (sKey.length === 1) { // put normal keys in buffer, ignore special keys with more than 1 character
+			this.putKeyInBuffer(sKey);
+			Utils.console.log("fnKeyboardKeydown: Partly unhandled key", sPressedKey + ":", sKey);
 		} else {
-			Utils.console.log("fnKeyboardKeydown: Unhandled key", sPressedKey);
+			Utils.console.log("fnKeyboardKeydown: Unhandled key", sPressedKey + ":", sKey);
 		}
 	},
 
 	fnKeyboardKeyup: function (event) {
-		var oPressedKeys = this.oPressedKeys,
-			iKeyCode = event.which || event.keyCode,
+		var iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
-			iCpcKey, oCpcKey;
+			sKey = event.key,
+			iCpcKey;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
 			sPressedKey += event.code;
@@ -753,6 +810,10 @@ Keyboard.prototype = {
 
 		if (sPressedKey in this.oKey2CpcKey) {
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
+			if (iCpcKey === 85) { // map virtual cpc key 85 to 22 (english keyboard)
+				iCpcKey = 22;
+			}
+			/*
 			oCpcKey = oPressedKeys[iCpcKey];
 			if (!oCpcKey) {
 				Utils.console.warn("fnKeyboardKeydown: Key was not pressed:", sPressedKey);
@@ -765,11 +826,16 @@ Keyboard.prototype = {
 					oCpcKey.ctrl = event.ctrlKey;
 				}
 			}
+			*/
+			this.fnReleaseCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
+
+			/*
 			if (Utils.debug > 1) {
 				Utils.console.log("fnKeyboardKeyup: sPressedKey=" + sPressedKey + ", affected cpc key=" + iCpcKey + ", oKeys:", (oCpcKey ? oCpcKey.oKeys : "undef."));
 			}
+			*/
 		} else {
-			Utils.console.log("fnKeyboardKeyup: Unhandled key", sPressedKey);
+			Utils.console.log("fnKeyboardKeyup: Unhandled key", sPressedKey + ":", sKey);
 		}
 	},
 
@@ -873,12 +939,15 @@ Keyboard.prototype = {
 	},
 
 
+	/*
 	setButtons: function (sId, aOptions) {
-		var place = document.getElementById(sId),
+		var place, //= document.getElementById(sId),
 			buttonList, i, oItem, option;
 
+		//buttonList = document.getElementById("keyboardAlpha");
 		buttonList = document.createElement("div");
-		for (i = 0; i < aOptions.length; i += 1) {
+		buttonList.className = "kbdAlpha";
+		for (i = 0; i < aOptions.length - 3; i += 1) {
 			oItem = aOptions[i];
 			option = document.createElement("button");
 			option.id = oItem.id;
@@ -887,13 +956,31 @@ Keyboard.prototype = {
 			option.className = oItem.className;
 			buttonList.insertAdjacentElement("beforeEnd", option);
 		}
+
+		place = document.getElementById("keyboardAlpha");
+		place.insertAdjacentElement("beforeEnd", buttonList);
+
+		buttonList = document.createElement("div");
+		buttonList.className = "kbdNumpad";
+		for (i = aOptions.length - 3; i < aOptions.length; i += 1) {
+			oItem = aOptions[i];
+			option = document.createElement("button");
+			option.id = oItem.id;
+			option.innerText = oItem.text;
+			option.setAttribute("title", oItem.title);
+			option.className = oItem.className;
+			buttonList.insertAdjacentElement("beforeEnd", option);
+		}
+		place = document.getElementById("keyboardNum");
 		place.insertAdjacentElement("beforeEnd", buttonList);
 		return this;
 	},
+	*/
 
+	/*
 	virtualKeyboardCreate: function () {
 		var bShiftLock = this.bShiftLock,
-			mCpcKey2Ascii = this.mCpcKey2Ascii,
+			aCpcKey2Ascii = this.aCpcKey2Ascii,
 			oKeyArea = document.getElementById("keyboardArea"),
 			aButtons = oKeyArea.getElementsByTagName("button"),
 			aOptions, iRow, iCol, aRow, iCpcKey, oKey, sKey, aKey, sClassName, oOptions;
@@ -904,7 +991,83 @@ Keyboard.prototype = {
 				aOptions = [];
 				for (iCol = 0; iCol < aRow.length; iCol += 1) {
 					iCpcKey = aRow[iCol];
-					oKey = mCpcKey2Ascii[iCpcKey];
+					oKey = aCpcKey2Ascii[iCpcKey];
+					sKey = (oKey.text !== undefined) ? oKey.text : oKey.key;
+					if (sKey.indexOf("~") >= 0) {
+						aKey = sKey.split("~");
+						sKey = bShiftLock ? aKey[1] : aKey[0];
+					}
+
+					sClassName = "kbdButton" + (oKey.style || "");
+					if (iCol === aRow.length - 1 || iCol === aRow.length - 3) { // last column //TTT
+						sClassName += " kbdNoRightMargin";
+					}
+					oOptions = {
+						id: ("0" + String(iCpcKey)).slice(-2) + "Key",
+						text: sKey,
+						title: oKey.title || sKey,
+						className: sClassName
+					};
+					aOptions.push(oOptions);
+				}
+				this.setButtons("keyboardArea", aOptions);
+			}
+		}
+	},
+	*/
+
+	setButtons: function (sId, aOptions) {
+		var place = document.getElementById(sId),
+			buttonList, i, oItem, option;
+
+		//buttonList = document.getElementById("keyboardAlpha");
+		buttonList = document.createElement("div");
+		buttonList.className = "kbdFlex";
+		for (i = 0; i < aOptions.length; i += 1) {
+			oItem = aOptions[i];
+			option = document.createElement("button");
+			option.id = oItem.id;
+			option.innerText = oItem.text;
+			option.setAttribute("title", oItem.title);
+			option.className = oItem.className;
+			buttonList.insertAdjacentElement("beforeEnd", option);
+		}
+
+		//place = document.getElementById("keyboardAlpha");
+		place.insertAdjacentElement("beforeEnd", buttonList);
+
+		/*
+		buttonList = document.createElement("div");
+		buttonList.className = "kbdNumpad";
+		for (i = aOptions.length - 3; i < aOptions.length; i += 1) {
+			oItem = aOptions[i];
+			option = document.createElement("button");
+			option.id = oItem.id;
+			option.innerText = oItem.text;
+			option.setAttribute("title", oItem.title);
+			option.className = oItem.className;
+			buttonList.insertAdjacentElement("beforeEnd", option);
+		}
+		place = document.getElementById("keyboardNum");
+		place.insertAdjacentElement("beforeEnd", buttonList);
+		*/
+		return this;
+	},
+
+	virtualKeyboardCreatePart: function (id, aVirtualKeyboard) {
+		var bShiftLock = this.bShiftLock,
+			aCpcKey2Ascii = this.aCpcKey2Ascii,
+			oKeyArea = document.getElementById(id),
+			aButtons = oKeyArea.getElementsByTagName("button"),
+			aOptions, iRow, iCol, aRow, iCpcKey, oKey, sKey, aKey, sClassName, oOptions;
+
+		if (!aButtons.length) { // not yet created?
+			for (iRow = 0; iRow < aVirtualKeyboard.length; iRow += 1) {
+				aRow = aVirtualKeyboard[iRow];
+				aOptions = [];
+				for (iCol = 0; iCol < aRow.length; iCol += 1) {
+					iCpcKey = aRow[iCol];
+					oKey = aCpcKey2Ascii[iCpcKey];
 					sKey = (oKey.text !== undefined) ? oKey.text : oKey.key;
 					if (sKey.indexOf("~") >= 0) {
 						aKey = sKey.split("~");
@@ -923,13 +1086,18 @@ Keyboard.prototype = {
 					};
 					aOptions.push(oOptions);
 				}
-				this.setButtons("keyboardArea", aOptions);
+				this.setButtons(id, aOptions);
 			}
 		}
 	},
 
+	virtualKeyboardCreate: function () {
+		this.virtualKeyboardCreatePart("keyboardAlpha", this.aVirtualKeyboardAlpha);
+		this.virtualKeyboardCreatePart("keyboardNum", this.aVirtualKeyboardNum);
+	},
+
 	virtualKeyboardAdaptKeys: function (bShiftLock) {
-		var oKeyArea = document.getElementById("keyboardArea"), //TTT TODO
+		var oKeyArea = document.getElementById("keyboardArea"),
 			aButtons = oKeyArea.getElementsByTagName("button"), // or: oKeyArea.childNodes and filter
 			i, oButton, sId, iCpcKey, oKey, sKey, aKey;
 
@@ -938,8 +1106,8 @@ Keyboard.prototype = {
 			sId = oButton.id;
 			iCpcKey = parseInt(sId, 10);
 
-			if (iCpcKey in this.mCpcKey2Ascii) {
-				oKey = this.mCpcKey2Ascii[iCpcKey];
+			oKey = this.aCpcKey2Ascii[iCpcKey];
+			if (oKey) {
 				sKey = oKey.key;
 				if (sKey.indexOf("~") >= 0) {
 					aKey = sKey.split("~");
@@ -951,11 +1119,36 @@ Keyboard.prototype = {
 		}
 	},
 
+	fnVirtualGetPressedKey: function (iCpcKey) {
+		var sPressedKey = "";
+
+		if (this.aCpcKey2Key[iCpcKey]) {
+			sPressedKey = this.aCpcKey2Key[iCpcKey];
+			if (sPressedKey.indexOf(",") >= 0) { // TTT maybe more
+				sPressedKey = sPressedKey.substring(0, sPressedKey.indexOf(",")); // take the first
+			}
+		}
+		return sPressedKey;
+	},
+
+	fnVirtualGetPressedAscii: function (iCpcKey, bShiftKey) {
+		var oKey = this.aCpcKey2Ascii[iCpcKey],
+			sKey = "",
+			aKey;
+
+		if (oKey) {
+			sKey = oKey.key;
+			if (sKey.indexOf("~") >= 0) {
+				aKey = sKey.split("~");
+				sKey = (this.bShiftLock || bShiftKey) ? aKey[1] : aKey[0];
+			}
+		}
+		return sKey;
+	},
+
 	onVirtualKeyboardKeydown: function (event) {
 		var sId = event.target.id,
-			sPressedKey = "",
-			sKey = "",
-			iCpcKey, oKey, aKey;
+			iCpcKey, sPressedKey, sKey;
 
 		if (Utils.debug > 1) {
 			Utils.console.log("DEBUG: onVirtualKeyboardKeydown: event=", event);
@@ -966,55 +1159,71 @@ Keyboard.prototype = {
 			if (iCpcKey === 95) { // map pseudo key right shift to left shift
 				iCpcKey = 21;
 			}
-			if (iCpcKey in this.mCpcKey2Key) {
-				sPressedKey = this.mCpcKey2Key[iCpcKey];
-				if (sPressedKey.indexOf(",") >= 0) { // TTT maybe more
-					sPressedKey = sPressedKey.substring(0, sPressedKey.indexOf(",")); // take the first
-				}
-			}
-
-			if (iCpcKey in this.mCpcKey2Ascii) {
-				oKey = this.mCpcKey2Ascii[iCpcKey];
-				sKey = oKey.key;
-				if (sKey.indexOf("~") >= 0) {
-					aKey = sKey.split("~");
-					sKey = (this.bShiftLock || event.shiftKey) ? aKey[1] : aKey[0];
-				}
-			}
+			sPressedKey = this.fnVirtualGetPressedKey(iCpcKey);
+			sKey = this.fnVirtualGetPressedAscii(iCpcKey, event.shiftKey);
 
 			this.fnPressCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
+		}
+
+		if (event.type === "pointerdown") {
+			event.target.addEventListener("pointerout", this.fnVirtualKeyout, false);
 		}
 		event.preventDefault();
 		return false;
 	},
 
-	onVirtualKeyboardKeyup: function (event) {
+	fnVirtualKeyboardKeyupOrKeyout: function (event) {
 		var sId = event.target.id,
-			oPressedKeys = this.oPressedKeys,
-			iCpcKey, oCpcKey;
-
-		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event=", event);
-		}
+			iCpcKey, sPressedKey, sKey;
 
 		if (Utils.stringEndsWith(sId, "Key")) {
 			iCpcKey = parseInt(sId, 10);
 			if (iCpcKey === 95) { // map pseudo key right shift to left shift
 				iCpcKey = 21;
 			}
+			/*
 			oCpcKey = oPressedKeys[iCpcKey];
 			if (!oCpcKey) {
-				Utils.console.warn("fnKeyboardKeydown: cpcKey was not pressed:", iCpcKey);
+				Utils.console.warn("fnKeyboardKeyup: cpcKey was not pressed:", iCpcKey);
 			} else {
 				delete oPressedKeys[iCpcKey];
 			}
+			*/
+
+			sPressedKey = this.fnVirtualGetPressedKey(iCpcKey);
+			sKey = this.fnVirtualGetPressedAscii(iCpcKey, event.shiftKey);
+
+			this.fnReleaseCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
 
 			if (iCpcKey === 70) { // Caps Lock?
 				this.bShiftLock = !this.bShiftLock;
 				this.virtualKeyboardAdaptKeys(this.bShiftLock);
 			}
 		}
+	},
 
+	onVirtualKeyboardKeyup: function (event) {
+		if (Utils.debug > 1) {
+			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event=", event);
+		}
+
+		this.fnVirtualKeyboardKeyupOrKeyout(event);
+
+		if (event.type === "pointerup") {
+			event.target.removeEventListener("pointerout", this.fnVirtualKeyout); //TTT
+		}
+		event.preventDefault();
+		return false;
+	},
+
+	onVirtualKeyboardKeyout: function (event) {
+		if (Utils.debug > 1) {
+			Utils.console.log("DEBUG: onVirtualKeyboardKeyout: event=", event);
+		}
+		this.fnVirtualKeyboardKeyupOrKeyout(event);
+		if (event.type === "pointerout") {
+			event.target.removeEventListener("pointerout", this.fnVirtualKeyout);
+		}
 		event.preventDefault();
 		return false;
 	}

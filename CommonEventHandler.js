@@ -68,8 +68,8 @@ CommonEventHandler.prototype = {
 		return this;
 	},
 
-	toogleHidden: function (sId, sProp) {
-		var bShow = !this.view.toogleHidden(sId).getHidden(sId);
+	toogleHidden: function (sId, sProp, sDisplay) {
+		var bShow = !this.view.toogleHidden(sId, sDisplay).getHidden(sId);
 
 		this.model.setProperty(sProp, bShow);
 	},
@@ -111,10 +111,14 @@ CommonEventHandler.prototype = {
 	},
 
 	onKeyboardButtonClick: function () {
-		this.toogleHidden("keyboardArea", "showKeyboard");
+		this.toogleHidden("keyboardArea", "showKeyboard", "flex");
 		if (this.model.getProperty("showKeyboard")) { // maybe we need to draw it
 			this.controller.oKeyboard.virtualKeyboardCreate();
 		}
+	},
+
+	onKeyboardLayoutButtonClick: function () {
+		this.toogleHidden("keyboardLayoutArea", "showKeyboardLayout");
 	},
 
 	onParseButtonClick: function () {
@@ -274,6 +278,16 @@ CommonEventHandler.prototype = {
 			sValue = "";
 		}
 		this.view.setAreaValue("varText", sValue);
+	},
+
+	onKeyboardLayoutSelectChange: function () {
+		var sValue = this.view.getSelectValue("keyboardLayoutSelect");
+
+		this.model.setProperty("keyboardLayout", sValue);
+		this.view.setSelectTitleFromSelectedOption("keyboardLayoutSelect");
+
+		this.view.setHidden("keyboardAlpha", sValue === "num");
+		this.view.setHidden("keyboardNum", sValue === "alpha");
 	},
 
 	onVarTextChange: function () {

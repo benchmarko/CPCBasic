@@ -47,10 +47,27 @@
 		<legend>
 			<button id="keyboardButton" class="legendButton" title="CPC Keyboard">Keyboard</button>
 		</legend>
-		<div id="keyboardArea" class="area kbdArea" tabindex="0">
+		<div id="keyboardArea" class="area kbdArea kbdFlex" tabindex="0">
+			<div id="keyboardAlpha" class="area">
+			</div>
+			<div id="keyboardNum" class="area">
+			</div>
+		</div>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
+		<legend>
+			<button id="keyboardLayoutButton" class="legendButton" title="Keyboard Layout">Keyboard Layout</button>
+		</legend>
+		<div id="keyboardLayoutArea" class="area">
+			<select id="keyboardLayoutSelect" title="Select Keyboard Lyout">
+				<option value="alphanum" title="AlphaNum">AlphaNum</option>
+				<option value="alpha" title="Alpha">Alpha</option>
+				<option value="num" title="Numpad">Num</option>
+			</select>
+		</div>
+	</fieldset>
+	<fieldset class="flexBox">
 		<legend>
 			<button id="inp2Button" class="legendButton" title="Alternative way of input">Input</button>
 		</legend>
@@ -63,7 +80,7 @@
 		<legend>
 			<button id="resultButton" class="legendButton" title="Show/Hide BASIC Console">Console</button>
 		</legend>
-		<div id="resultArea" class="area" hidden>
+		<div id="resultArea" class="area" style="display:none">
 			<textarea id="resultText" placeholder="" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 		</div>
 	</fieldset>

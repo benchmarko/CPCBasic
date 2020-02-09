@@ -18,17 +18,18 @@ View.prototype = {
 	},
 
 	getHidden: function (sId) {
-		return document.getElementById(sId).hidden;
+		//return document.getElementById(sId).hidden;
+		return document.getElementById(sId).style.display === "none";
 	},
-	setHidden: function (sId, bHidden) {
+	setHidden: function (sId, bHidden, sDisplay) { // optional sDisplay: block or flex
 		var element = document.getElementById(sId);
 
-		element.hidden = bHidden;
-		element.style.display = (bHidden) ? "none" : "block"; // for old browsers
+		//element.hidden = bHidden;
+		element.style.display = (bHidden) ? "none" : (sDisplay || "block");
 		return this;
 	},
-	toogleHidden: function (sId) {
-		return this.setHidden(sId, !this.getHidden(sId));
+	toogleHidden: function (sId, sDisplay) {
+		return this.setHidden(sId, !this.getHidden(sId), sDisplay);
 	},
 
 	setDisabled: function (sId, bDisabled) {
