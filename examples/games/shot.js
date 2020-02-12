@@ -86,6 +86,7 @@ cpcBasic.addItem("", function () { /*
 900 'SYMBOL AFTER 254
 910 SYMBOL 255,0,0,0,24,52,106,87,0
 920 LOCATE 1,2:PRINT"Dein Gebiet"SPC(16)"Feindesgebiet"
+925 locate 1,3
 930 FOR i=1 TO 10
 940 PRINT STRING$(10,255)SPC(18);STRING$(10,255)
 950 NEXT i:RETURN

@@ -27,7 +27,7 @@ function Controller(oModel, oView) {
 
 Controller.prototype = {
 	init: function (oModel, oView) {
-		var sExample, sKeyboardLayout;
+		var sExample, sKbdLayout;
 
 		this.fnRunLoopHandler = this.fnRunLoop.bind(this);
 		this.fnOnWaitForKey = this.fnWaitForKey.bind(this);
@@ -54,8 +54,8 @@ Controller.prototype = {
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
-		oView.setHidden("keyboardArea", !oModel.getProperty("showKeyboard"), "flex");
-		oView.setHidden("keyboardLayoutArea", !oModel.getProperty("showKeyboardLayout"));
+		oView.setHidden("kbdArea", !oModel.getProperty("showKbd"), "flex");
+		oView.setHidden("kbdLayoutArea", !oModel.getProperty("showKbdLayout"));
 
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
@@ -63,14 +63,14 @@ Controller.prototype = {
 			cpcDivId: "cpcArea"
 		});
 
-		sKeyboardLayout = oModel.getProperty("keyboardLayout");
-		oView.setSelectValue("keyboardLayoutSelect", sKeyboardLayout);
-		this.commonEventHandler.onKeyboardLayoutSelectChange();
+		sKbdLayout = oModel.getProperty("kbdLayout");
+		oView.setSelectValue("kbdLayoutSelect", sKbdLayout);
+		this.commonEventHandler.onKbdLayoutSelectChange();
 
 		this.oKeyboard = new Keyboard({
 			fnEscapeHandler: this.fnEscapeHandler
 		});
-		if (this.model.getProperty("showKeyboard")) { // maybe we need to draw virtual keyboard
+		if (this.model.getProperty("showKbd")) { // maybe we need to draw virtual keyboard
 			this.oKeyboard.virtualKeyboardCreate();
 		}
 

@@ -44,12 +44,14 @@ CommonEventHandler.prototype = {
 				}
 				if (sHandler in this) {
 					this[sHandler](event);
-				} else if (!Utils.stringEndsWith(sHandler, "SelectClick") && !Utils.stringEndsWith(sHandler, "InputClick") && !Utils.stringEndsWith(sHandler, "KeyClick")) { // do not print all messages
+				} else if (!Utils.stringEndsWith(sHandler, "SelectClick") && !Utils.stringEndsWith(sHandler, "InputClick")) { // do not print all messages
 					Utils.console.log("Event handler not found:", sHandler);
 				}
 			}
-		} else if (Utils.debug) {
-			Utils.console.debug("Event handler for", sType, "unknown target", oTarget);
+		} else if (oTarget.getAttribute("data-key") === null) { // not for keyboard buttons
+			if (Utils.debug) {
+				Utils.console.debug("Event handler for", sType, "unknown target:", oTarget.tagName, oTarget.id);
+			}
 		}
 
 		if (sType === "click") { // special
@@ -110,15 +112,15 @@ CommonEventHandler.prototype = {
 		this.toogleHidden("cpcArea", "showCpc");
 	},
 
-	onKeyboardButtonClick: function () {
-		this.toogleHidden("keyboardArea", "showKeyboard", "flex");
-		if (this.model.getProperty("showKeyboard")) { // maybe we need to draw it
+	onKbdButtonClick: function () {
+		this.toogleHidden("kbdArea", "showKbd", "flex");
+		if (this.model.getProperty("showKbd")) { // maybe we need to draw it
 			this.controller.oKeyboard.virtualKeyboardCreate();
 		}
 	},
 
-	onKeyboardLayoutButtonClick: function () {
-		this.toogleHidden("keyboardLayoutArea", "showKeyboardLayout");
+	onKbdLayoutButtonClick: function () {
+		this.toogleHidden("kbdLayoutArea", "showKbdLayout");
 	},
 
 	onParseButtonClick: function () {
@@ -280,14 +282,14 @@ CommonEventHandler.prototype = {
 		this.view.setAreaValue("varText", sValue);
 	},
 
-	onKeyboardLayoutSelectChange: function () {
-		var sValue = this.view.getSelectValue("keyboardLayoutSelect");
+	onKbdLayoutSelectChange: function () {
+		var sValue = this.view.getSelectValue("kbdLayoutSelect");
 
-		this.model.setProperty("keyboardLayout", sValue);
-		this.view.setSelectTitleFromSelectedOption("keyboardLayoutSelect");
+		this.model.setProperty("kbdLayout", sValue);
+		this.view.setSelectTitleFromSelectedOption("kbdLayoutSelect");
 
-		this.view.setHidden("keyboardAlpha", sValue === "num");
-		this.view.setHidden("keyboardNum", sValue === "alpha");
+		this.view.setHidden("kbdAlpha", sValue === "num");
+		this.view.setHidden("kbdNum", sValue === "alpha");
 	},
 
 	onVarTextChange: function () {

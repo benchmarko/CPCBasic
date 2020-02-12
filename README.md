@@ -52,7 +52,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   - The **Screenshot** button creates a screenshot of the current CPC screen.
   - The **Sound** button activates or deactivates sound.
     - If you use the *Reload* button with sound activated, the sound needs to be activated again. Just do a user action, e.g. click somewhere. This is a browser limitation.
-- The *Keyboard* window shows a virtual keyboard which can be also used with touch devices. You can test the functionality with the test program [keyboard](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/keyboard&showKeyboard=true).
+- The *Keyboard* window shows a virtual keyboard which can be also used with touch devices. You can test the functionality with the test program [keyboard](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/keyboard&showKbd=true).
 - The *Input* window is an alternative way to send input to the CPC.
 - The *Console* window shows the textual output. This is useful for copying and pasting the output. It is cleared when the CPC screen is cleared (*MODE* or *CLS*).
 - The *Variables* window allows you to see the variables used by the program.

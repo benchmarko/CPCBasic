@@ -18,13 +18,11 @@ View.prototype = {
 	},
 
 	getHidden: function (sId) {
-		//return document.getElementById(sId).hidden;
 		return document.getElementById(sId).style.display === "none";
 	},
 	setHidden: function (sId, bHidden, sDisplay) { // optional sDisplay: block or flex
 		var element = document.getElementById(sId);
 
-		//element.hidden = bHidden;
 		element.style.display = (bHidden) ? "none" : (sDisplay || "block");
 		return this;
 	},

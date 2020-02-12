@@ -7,7 +7,7 @@
 <title id="title">CPC Basic v0.7</title>
 </head>
 
-<body>
+<body id="pageBody">
 	<fieldset class="flexBox">
 		<legend>
 			<button id="inputButton" class="legendButton" title="Show/Hide BASIC">CPC BASIC</button>
@@ -43,24 +43,25 @@
 			<canvas id="cpcCanvas" width="640" height="400"></canvas>
 		</div>
 	</fieldset>
-	<fieldset class="flexBox clearLeft">
+	<fieldset class="flexBox clearLeft" id="kbdAreaBox">
 		<legend>
-			<button id="keyboardButton" class="legendButton" title="CPC Keyboard">Keyboard</button>
+			<button id="kbdButton" class="legendButton" title="CPC Keyboard">Keyboard</button>
+			<span id="kbdMove" class="kbdMove">Move</span>
 		</legend>
-		<div id="keyboardArea" class="area kbdArea kbdFlex" tabindex="0">
-			<div id="keyboardAlpha" class="area">
+		<div id="kbdArea" class="area kbdArea kbdFlex" tabindex="0">
+			<div id="kbdAlpha" class="area">
 			</div>
-			<div id="keyboardNum" class="area">
+			<div id="kbdNum" class="area">
 			</div>
 		</div>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
 		<legend>
-			<button id="keyboardLayoutButton" class="legendButton" title="Keyboard Layout">Keyboard Layout</button>
+			<button id="kbdLayoutButton" class="legendButton" title="Keyboard Layout">Keyboard Layout</button>
 		</legend>
-		<div id="keyboardLayoutArea" class="area">
-			<select id="keyboardLayoutSelect" title="Select Keyboard Lyout">
+		<div id="kbdLayoutArea" class="area">
+			<select id="kbdLayoutSelect" title="Select Keyboard Lyout">
 				<option value="alphanum" title="AlphaNum">AlphaNum</option>
 				<option value="alpha" title="Alpha">Alpha</option>
 				<option value="num" title="Numpad">Num</option>
@@ -109,7 +110,9 @@
 		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft" id="consoleBox" hidden>
-		<button id="consoleButton" class="legendButton" title="Show/Hide Console log">Console log</button>
+		<legend>
+			<button id="consoleButton" class="legendButton" title="Show/Hide Console log">Console log</button>
+		</legend>
 		<div id="consoleArea" class="area">
 			<textarea id="consoleText" rows="15" cols="80"></textarea>
 		</div>
