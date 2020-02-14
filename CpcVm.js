@@ -229,7 +229,9 @@ CpcVm.prototype = {
 				iPos: 0, // current text position in line
 				iVpos: 0,
 				bTextEnabled: true, // text enabled
-				bTag: false // tag=text at graphics
+				bTag: false, // tag=text at graphics
+				bTransparent: false, // transparent mode
+				bCursor: false // TODO
 			},
 			i, oWin;
 
@@ -756,6 +758,12 @@ CpcVm.prototype = {
 			iAddr = iPage << 14; // eslint-disable-line no-bitwise
 			this.vmCopyToScreen(iAddr, iAddr);
 		}
+	},
+
+	vmSetTransparentMode: function (iStream, iTransparent) {
+		var oWin = this.aWindow[iStream];
+
+		oWin.bTransparent = Boolean(iTransparent);
 	},
 
 	// --
@@ -1332,7 +1340,7 @@ CpcVm.prototype = {
 
 		if (iTransparentMode !== undefined) {
 			iTransparentMode = this.vmInRangeRound(iTransparentMode, 0, 1, "GRAPHICS PEN");
-			this.oCanvas.setTranspartentMode(iTransparentMode);
+			this.oCanvas.setGTransparentMode(Boolean(iTransparentMode));
 		}
 	},
 
@@ -1882,7 +1890,8 @@ CpcVm.prototype = {
 
 		if (iTransparent !== null && iTransparent !== undefined) {
 			iTransparent = this.vmInRangeRound(iTransparent, 0, 1, sPen);
-			this.oCanvas.setTranspartentMode(iTransparent);
+			//this.oCanvas.setTransparentMode(iTransparent);
+			this.vmSetTransparentMode(iStream, iTransparent);
 		}
 	},
 
@@ -1976,7 +1985,7 @@ CpcVm.prototype = {
 		for (i = 0; i < sStr.length; i += 1) {
 			iChar = this.vmGetCpcCharCode(sStr.charCodeAt(i));
 			this.vmMoveCursor2AllowedPos(iStream);
-			this.oCanvas.printChar(iChar, oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper);
+			this.oCanvas.printChar(iChar, oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper, oWin.bTransparent);
 			oWin.iPos += 1;
 		}
 	},
@@ -2084,7 +2093,8 @@ CpcVm.prototype = {
 			break;
 		case 0x16: // SYN
 			// parameter: only bit 0 relevant (ROM: &14E3)
-			this.oCanvas.setTranspartentMode(sPara.charCodeAt(0) & 0x01); // eslint-disable-line no-bitwise
+			//this.oCanvas.setTransparentMode(sPara.charCodeAt(0) & 0x01); // eslint-disable-line no-bitwise
+			this.vmSetTransparentMode(iStream, sPara.charCodeAt(0) & 0x01); // eslint-disable-line no-bitwise
 			break;
 		case 0x17: // ETB
 			this.oCanvas.setGColMode(sPara.charCodeAt(0) % 4);

@@ -126,50 +126,53 @@ BasicLexer.prototype = {
 					return "\\x" + ("00" + sChar2.charCodeAt().toString(16)).slice(-2);
 				});
 			},
-			fnParseCompleteLineForRemOrData = function () {
-				sToken = sToken.toLowerCase();
-				if (sToken === "rem") { // special handling for line comment
-					if (sChar === " ") {
-						sChar = advance();
-					}
-					if (isNotNewLine(sChar)) {
-						sToken = advanceWhile(isNotNewLine);
-						addToken("string", sToken, iStartPos + 1);
-					}
-				} else if (sToken === "data") { // special handling because strings in data lines need not be quoted
+			fnParseCompleteLineForRem = function () { // special handling for line comment
+				if (sChar === " ") {
+					sChar = advance();
+				}
+				if (isNotNewLine(sChar)) {
+					sToken = advanceWhile(isNotNewLine);
+					addToken("string", sToken, iStartPos + 1);
+				}
+			},
+			fnParseCompleteLineForData = function () { // special handling because strings in data lines need not be quoted
+				while (isNotNewLine(sChar)) {
 					if (isWhiteSpace(sChar)) {
 						advanceWhile(isWhiteSpace);
 					}
-					while (isNotNewLine(sChar)) {
-						if (isQuotes(sChar)) {
-							sChar = "";
-							sToken = advanceWhile(isNotQuotes);
-							if (!isQuotes(sChar)) {
-								Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
-							}
-							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
-							sToken = hexEscape(sToken);
-							addToken("string", sToken, iStartPos + 1);
-							if (sChar === '"') { // not for newline
-								sChar = advance();
-							}
-						} else if (sChar === ",") { // empty argument?
-							sToken = "";
-							addToken("string", sToken, iStartPos);
-						} else {
-							sToken = advanceWhile(isUnquotedData);
-							sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
-							addToken("string", sToken, iStartPos);
+					if (isQuotes(sChar)) {
+						sChar = "";
+						sToken = advanceWhile(isNotQuotes);
+						if (!isQuotes(sChar)) {
+							Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
 						}
-						if (sChar !== ",") {
-							break;
+						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
+						sToken = hexEscape(sToken);
+						addToken("string", sToken, iStartPos + 1);
+						if (sChar === '"') { // not for newline
+							sChar = advance();
 						}
-						addToken(sChar, sChar, iStartPos); // ","
-						sChar = advance();
-						if (isNewLine(sChar)) { // data ending with "," (empty argument) => append dummy token
-							sToken = "";
-							addToken("string", sToken, iStartPos);
-						}
+					} else if (sChar === ",") { // empty argument?
+						sToken = "";
+						addToken("string", sToken, iStartPos);
+					} else {
+						sToken = advanceWhile(isUnquotedData);
+						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
+						addToken("string", sToken, iStartPos);
+					}
+
+					if (isWhiteSpace(sChar)) {
+						advanceWhile(isWhiteSpace);
+					}
+
+					if (sChar !== ",") {
+						break;
+					}
+					addToken(sChar, sChar, iStartPos); // ","
+					sChar = advance();
+					if (isNewLine(sChar)) { // data ending with "," (empty argument) => append dummy token
+						sToken = "";
+						addToken("string", sToken, iStartPos);
 					}
 				}
 			};
@@ -263,7 +266,12 @@ BasicLexer.prototype = {
 					sChar = advance();
 				}
 				addToken("identifier", sToken, iStartPos);
-				fnParseCompleteLineForRemOrData();
+				sToken = sToken.toLowerCase();
+				if (sToken === "rem") { // special handling for line comment
+					fnParseCompleteLineForRem();
+				} else if (sToken === "data") { // special handling because strings in data lines need not be quoted
+					fnParseCompleteLineForData();
+				}
 			} else if (isAddress(sChar)) {
 				addToken(sChar, sChar, iStartPos);
 				sChar = advance();

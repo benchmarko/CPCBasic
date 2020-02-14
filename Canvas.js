@@ -356,13 +356,13 @@ Canvas.prototype = {
 		}
 	},
 
-	setChar: function (iChar, x, y, iPen, iPaper, iGColMode, bTextAtGraphics) {
+	setChar: function (iChar, x, y, iPen, iPaper, bTransparent, iGColMode, bTextAtGraphics) {
 		var aCharData = this.oCustomCharset[iChar] || this.aCharset[iChar],
 			iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
 			iScaleWidth = iCharWidth / 8,
 			iScaleHeight = iCharHeight / 8,
-			iTransparent = this.iTransparent,
+			//iTransparent = this.iTransparent,
 			iBit, iPenOrPaper,
 			iCharData, row, col;
 
@@ -370,7 +370,7 @@ Canvas.prototype = {
 			for (col = 0; col < 8; col += 1) {
 				iCharData = aCharData[row];
 				iBit = iCharData & (0x80 >> col); // eslint-disable-line no-bitwise
-				if (!(iTransparent && !iBit)) { // do not set background pixel in transparent mode
+				if (!(bTransparent && !iBit)) { // do not set background pixel in transparent mode
 					iPenOrPaper = (iBit) ? iPen : iPaper;
 					if (bTextAtGraphics) {
 						this.setPixel(x + col * iScaleWidth, y - row * iScaleHeight, iPenOrPaper, iGColMode);
@@ -690,8 +690,8 @@ Canvas.prototype = {
 		// TODO
 	},
 
-	setTranspartentMode: function (iTransparent) {
-		this.iTransparent = iTransparent;
+	setGTransparentMode: function (bTransparent) {
+		this.bGTransparent = bTransparent;
 	},
 
 	printGChar: function (iChar) {
@@ -700,12 +700,12 @@ Canvas.prototype = {
 			return;
 		}
 
-		this.setChar(iChar, this.xPos, this.yPos, this.iGPen, this.iGPaper, this.iGColMode, true);
+		this.setChar(iChar, this.xPos, this.yPos, this.iGPen, this.iGPaper, this.bGTransparent, this.iGColMode, true);
 		this.xPos += this.aModeData[this.iMode].iCharWidth;
 		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);
 	},
 
-	printChar: function (iChar, x, y, iPen, iPaper) {
+	printChar: function (iChar, x, y, iPen, iPaper, bTransparent) {
 		var oModeData = this.aModeData[this.iMode];
 
 		if (iChar >= this.aCharset.length) {
@@ -719,7 +719,7 @@ Canvas.prototype = {
 		x *= oModeData.iCharWidth;
 		y *= oModeData.iCharHeight;
 
-		this.setChar(iChar, x, y, iPen, iPaper, 0, false);
+		this.setChar(iChar, x, y, iPen, iPaper, bTransparent, 0, false);
 		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
 	},
 
@@ -866,6 +866,6 @@ Canvas.prototype = {
 		this.setGColMode(0);
 		this.setGPen(this.iGPen); // keep, but maybe different for other mode
 		this.setGPaper(this.iGPaper); // keep, maybe different for other mode
-		this.iTransparent = 0;
+		this.setGTransparentMode(false);
 	}
 };

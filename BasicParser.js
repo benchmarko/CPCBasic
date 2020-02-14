@@ -75,7 +75,7 @@ BasicParser.mKeywords = {
 	drawr: "c n n n0? n?",
 	edit: "c n",
 	ei: "c",
-	"else": "x",
+	"else": "c", // else belongs to "if", but can also be used as command
 	end: "c",
 	ent: "c n *",
 	env: "c n *",
@@ -627,7 +627,7 @@ BasicParser.prototype = {
 
 		// define additional statement parts
 		symbol("break");
-		symbol("else");
+		//symbol("else");
 		symbol("spc");
 		symbol("step");
 		symbol("swap");
@@ -820,6 +820,32 @@ BasicParser.prototype = {
 			advance("=");
 
 			oValue.value = expression(0);
+			return oValue;
+		});
+
+		stmt("else", function () {
+			var oValue = oPreviousToken,
+				oString = {
+					type: "string",
+					value: "else",
+					pos: oToken.pos
+				};
+
+			oValue.type = "rem"; // create a comment form else
+			oValue.args = [];
+
+			Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line", that.iLine);
+
+			// TTT TODO: data line as separate statement is taken
+			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
+				if (oToken.value) {
+					oString.value += " " + oToken.value;
+				}
+				advance();
+			}
+
+			oValue.args.push(oString);
+
 			return oValue;
 		});
 
@@ -1240,7 +1266,7 @@ BasicParser.prototype = {
 			oStream = fnGetOptionalStream();
 			oValue.args.push(oStream);
 
-			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)") {
+			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "'") {
 				if (oToken.type === "spc") {
 					advance("spc");
 					oValue2 = fnCreateFuncCall();
