@@ -619,7 +619,9 @@ Controller.prototype = {
 			this.fnScript(oVm);
 		} catch (e) {
 			if (e instanceof CpcVm.ErrorObject) {
-				oVm.print(0, String(e) + "\r\n");
+				if (!e.hidden) {
+					oVm.print(0, String(e) + "\r\n");
+				}
 			} else {
 				oError = oVm.vmSetError(2, String(e)); // Syntax Error
 				oVm.print(0, String(oError) + "\r\n");

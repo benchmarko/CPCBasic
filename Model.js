@@ -36,23 +36,6 @@ Model.prototype = {
 		return this.initialConfig;
 	},
 
-	/*
-	getVariable: function (sVar) {
-		return this.variables[sVar];
-	},
-	setVariable: function (sVar, sValue) {
-		this.variables[sVar] = sValue;
-		return this;
-	},
-	getAllVariables: function () {
-		return this.variables;
-	},
-	initVariables: function () {
-		this.variables = { };
-		return this;
-	},
-	*/
-
 	addDatabases: function (oDb) {
 		var sPar, oEntry;
 

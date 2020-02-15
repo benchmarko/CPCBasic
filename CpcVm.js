@@ -21,6 +21,8 @@ CpcVm.prototype = {
 	iTimerCount: 4, // number of timers
 	iSqTimerCount: 3, // sound queue timers
 	iStreamCount: 10, // 0..7 window, 8 printer, 9 cassette
+	iMinHimem: 370,
+	iMaxHimem: 42747, // high memory limit (42747 after symbol after 256)
 
 	mWinData: [ // window data for mode mode 0,1,2,3 (we are counting from 0 here)
 		{
@@ -175,7 +177,10 @@ CpcVm.prototype = {
 		this.iRamSelect = 0; // for banking with 16K banks in the range 0x4000-0x7fff (0=default; 1...=additional)
 		this.iScreenPage = 3; // 16K screen page, 3=0xc000..0xffff
 
-		this.iHimem = 42747; // high memory limit (42747 after symbol after 256)
+		this.iMinCharHimem = this.iMaxHimem;
+		this.iMaxCharHimem = this.iMaxHimem;
+		this.iHimem = this.iMaxHimem;
+		this.iMinCustomChar = 256;
 		this.symbolAfter(240); // set also iMinCustomChar
 
 		this.vmResetTimers();
@@ -893,7 +898,6 @@ CpcVm.prototype = {
 			this.oCanvas.clearGraphics(0); // (SCR Mode Clear)
 			break;
 		case 0xbc06: // SCR SET BASIC (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E
-			//this.vmSetScreenBase(arguments.length ? arguments[1] : undefined);
 			this.vmSetScreenBase(arguments[1]);
 			break;
 		case 0xbca7: // SOUND Reset (ROM &1E68)
@@ -1254,31 +1258,34 @@ CpcVm.prototype = {
 	},
 
 	vmSetError: function (iErr, sErrInfo) {
-		var sError, sErrorWithInfo, sLine;
+		var sError, sErrorWithInfo, sLine,
+			bHidden = false; // hide errors wich are catched
 
 		this.iErr = iErr;
 		this.iErl = this.iLine;
 
 		sError = this.vmGetError(iErr);
 
-		sErrorWithInfo = sError + " in " + this.iErl;
+		sLine = this.iErl;
+		if (this.iTronLine) {
+			sLine += " (trace: " + this.iTronLine + ")";
+		}
+
+		sErrorWithInfo = sError + " in " + sLine;
 		if (sErrInfo) {
 			sErrorWithInfo += ": " + sErrInfo;
 		}
-		Utils.console.log("BASIC error(" + iErr + "):", sErrorWithInfo);
 
 		if (this.iErrorGotoLine > 0) {
 			this.iErrorResumeLine = this.iErl;
 			this.vmGotoLine(this.iErrorGotoLine, "onError");
 			this.vmStop("onError", 50);
+			bHidden = true;
 		} else {
 			this.vmStop("error", 50);
 		}
-		sLine = this.iErl;
-		if (this.iTronLine) {
-			sLine += " (trace: " + this.iTronLine + ")";
-		}
-		return new CpcVm.ErrorObject(sError, sErrInfo, sLine);
+		Utils.console.log("BASIC error(" + iErr + "):", sErrorWithInfo + (bHidden ? " (hidden: " + bHidden + ")" : ""));
+		return new CpcVm.ErrorObject(sError, sErrInfo, sLine, bHidden);
 	},
 
 	error: function (iErr, sErrInfo) {
@@ -1597,7 +1604,7 @@ CpcVm.prototype = {
 	},
 
 	mask: function (n1, n2) { // one of n1 or n2 is optional
-		var iMask = 0, //TODO: set defaults
+		var iMask = 0, // TODO: set defaults
 			iFirst = 0;
 
 		/*
@@ -1618,7 +1625,13 @@ CpcVm.prototype = {
 	},
 
 	memory: function (n) {
-		n = this.vmRound(n, "MEMORY");
+		n = this.vmRound(n);
+
+		//n = this.vmInRangeRound(n, 370, this.iMinCharHimem, "MEMORY");
+		// vmInRangeRound prints "Improper Argument", so we check it here:
+		if (n < this.iMinHimem || n > this.iMinCharHimem) {
+			this.error(7, "MEMORY " + n); // Memory full
+		}
 		this.iHimem = n;
 	},
 
@@ -1708,6 +1721,9 @@ CpcVm.prototype = {
 
 	onErrorGoto: function (iLine) {
 		this.iErrorGotoLine = iLine;
+		if (!iLine && this.iErrorResumeLine) { // line=0 but an error to resume?
+			throw this.vmSetError(this.iErr, "ON ERROR GOTO without RESUME from " + this.iErl);
+		}
 	},
 
 	onGosub: function (retLabel, n) { // varargs
@@ -1854,6 +1870,23 @@ CpcVm.prototype = {
 		oWin.iPaper = iPaper;
 	},
 
+	vmGetCharDataByte: function (iAddr) {
+		var iDataPos = (iAddr - 1 - this.iMinCharHimem) % 8,
+			iChar = this.iMinCustomChar + (iAddr - 1 - iDataPos - this.iMinCharHimem) / 8,
+			aCharData = this.oCanvas.getCharData(iChar);
+
+		return aCharData[iDataPos];
+	},
+
+	vmSetCharDataByte: function (iAddr, iByte) {
+		var iDataPos = (iAddr - 1 - this.iMinCharHimem) % 8,
+			iChar = this.iMinCustomChar + (iAddr - 1 - iDataPos - this.iMinCharHimem) / 8,
+			aCharData = Object.assign({}, this.oCanvas.getCharData(iChar)); // we need a copy to not modify original data
+
+		aCharData[iDataPos] = iByte; // change one byte
+		this.oCanvas.setCustomChar(iChar, aCharData);
+	},
+
 	peek: function (iAddr) {
 		var iByte, iPage;
 
@@ -1868,10 +1901,12 @@ CpcVm.prototype = {
 			if (iByte === null) { // byte not visible on screen?
 				iByte = this.aMem[iAddr] || 0; // get it from our memory
 			}
+		} else if (iPage === 1 && this.iRamSelect) { // memory mapped RAM with page 1=0x4000..0x7fff?
+			iAddr = (this.iRamSelect - 1) * 0x4000 + 0x10000 + iAddr;
+			iByte = this.aMem[iAddr] || 0;
+		} else if (iAddr > this.iMinCharHimem && iAddr <= this.iMaxCharHimem) { // character map?
+			iByte = this.vmGetCharDataByte(iAddr);
 		} else {
-			if (iPage === 1 && this.iRamSelect) { // memory mapped RAM with page 1=0x4000..0x7fff?
-				iAddr = (this.iRamSelect - 1) * 0x4000 + 0x10000 + iAddr;
-			}
 			iByte = this.aMem[iAddr] || 0;
 		}
 		return iByte;
@@ -1890,7 +1925,6 @@ CpcVm.prototype = {
 
 		if (iTransparent !== null && iTransparent !== undefined) {
 			iTransparent = this.vmInRangeRound(iTransparent, 0, 1, sPen);
-			//this.oCanvas.setTransparentMode(iTransparent);
 			this.vmSetTransparentMode(iStream, iTransparent);
 		}
 	},
@@ -1923,6 +1957,8 @@ CpcVm.prototype = {
 			iAddr = (this.iRamSelect - 1) * 0x4000 + 0x10000 + iAddr;
 		} else if (iPage === this.iScreenPage) { // screen memory page?
 			this.oCanvas.setByte(iAddr, iByte); // write byte also to screen memory
+		} else if (iAddr > this.iMinCharHimem && iAddr <= this.iMaxCharHimem) { // character map?
+			this.vmSetCharDataByte(iAddr, iByte);
 		}
 		this.aMem[iAddr] = iByte;
 	},
@@ -2093,7 +2129,6 @@ CpcVm.prototype = {
 			break;
 		case 0x16: // SYN
 			// parameter: only bit 0 relevant (ROM: &14E3)
-			//this.oCanvas.setTransparentMode(sPara.charCodeAt(0) & 0x01); // eslint-disable-line no-bitwise
 			this.vmSetTransparentMode(iStream, sPara.charCodeAt(0) & 0x01); // eslint-disable-line no-bitwise
 			break;
 		case 0x17: // ETB
@@ -2374,7 +2409,7 @@ CpcVm.prototype = {
 
 	resumeNext: function () {
 		if (!this.iErrorGotoLine) {
-			this.error(20, "NEXT"); // Unexpected RESUME
+			this.error(20, "RESUME NEXT"); // Unexpected RESUME
 		}
 		this.vmNotImplemented("RESUME NEXT");
 	},
@@ -2578,7 +2613,6 @@ CpcVm.prototype = {
 	speedInk: function (iTime1, iTime2) { // default: 10,10
 		iTime1 = this.vmInRangeRound(iTime1, 1, 255, "SPEED INK");
 		iTime2 = this.vmInRangeRound(iTime2, 1, 255, "SPEED INK");
-		//this.vmNotImplemented("SPEED INK " + iTime1 + " " + iTime2);
 		this.oCanvas.setSpeedInk(iTime1, iTime2);
 	},
 
@@ -2658,10 +2692,32 @@ CpcVm.prototype = {
 	},
 
 	symbolAfter: function (iChar) {
+		var iMinCharHimem;
+
 		iChar = this.vmInRangeRound(iChar, 0, 256, "SYMBOL AFTER");
+
+		if (this.iMinCustomChar < 256) { // symbol after <256 set?
+			if (this.iMinCharHimem !== this.iHimem) { // himem changed?
+				this.error(5, "SYMBOL AFTER " + iChar); // Improper argument
+			}
+		} else {
+			this.iMaxCharHimem = this.iHimem; // no characters defined => use current himem
+		}
+
+		iMinCharHimem = this.iMaxCharHimem - (256 - iChar) * 8;
+		if (iMinCharHimem < this.iMinHimem) {
+			this.error(7, "SYMBOL AFTER " + iMinCharHimem); // Memory full
+		}
+		this.iHimem = iMinCharHimem;
+
 		this.oCanvas.resetCustomChars();
+		if (iChar === 256) { // maybe move up again
+			iMinCharHimem = this.iMaxHimem;
+			this.MaxCharHimem = iMinCharHimem;
+		}
+		// TODO: Copy char data to screen memory, if screen starts at 0x4000 and chardata is in that range (and ram 0 is selected)
 		this.iMinCustomChar = iChar;
-		this.iHimem = 42747 - (256 - iChar) * 8;
+		this.iMinCharHimem = iMinCharHimem;
 	},
 
 	tab: function (iStream, n) { // special tab function with additional parameter iStream, which is called delayed by print (ROM &F280)
@@ -2913,10 +2969,11 @@ CpcVm.prototype = {
 };
 
 
-CpcVm.ErrorObject = function (message, value, pos) {
+CpcVm.ErrorObject = function (message, value, pos, hidden) {
 	this.message = message;
 	this.value = value;
 	this.pos = pos;
+	this.hidden = hidden;
 };
 
 CpcVm.ErrorObject.prototype = {

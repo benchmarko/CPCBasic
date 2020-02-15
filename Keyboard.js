@@ -507,13 +507,6 @@ Keyboard.prototype = {
 		{
 			keys: "107NumpadAdd" // 89:
 		},
-
-		/*
-		{
-			key: "Shift", // 90: shift right (special value to avoid duplicate key)
-			style: 2
-		},
-		*/
 		{
 			keys: "",
 			key: "", // 90: special num lock key to switch between joystick and numpad
@@ -607,43 +600,11 @@ Keyboard.prototype = {
 		cpcArea.addEventListener("keydown", this.onCpcAreaKeydown.bind(this), false);
 		cpcArea.addEventListener("keyup", this.oncpcAreaKeyup.bind(this), false);
 
-		/*
-		kbdArea = document.getElementById("kbdArea");
-		this.fnVirtualKeydown = this.onVirtualKeyboardKeydown.bind(this);
-		this.fnVirtualKeyUp = this.onVirtualKeyboardKeyup.bind(this);
-		this.fnVirtualKeyout = this.onVirtualKeyboardKeyout.bind(this);
-		if (window.PointerEvent) {
-			kbdArea.addEventListener("pointerdown", this.fnVirtualKeydown, false); // +clicked?
-			kbdArea.addEventListener("pointerup", this.fnVirtualKeyUp, false);
-			kbdArea.addEventListener("pointercancel", this.fnVirtualKeyUp, false);
-			if (Utils.debug > 0) {
-				Utils.console.log("Keyboard:init: Using pointerEvents");
-			}
-		} else if ("ontouchstart" in window || navigator.maxTouchPoints) {
-			kbdArea.addEventListener("touchstart", this.fnVirtualKeydown, false); // +clicked?
-			kbdArea.addEventListener("touchend", this.fnVirtualKeyUp, false);
-			kbdArea.addEventListener("touchcancel", this.fnVirtualKeyUp, false);
-			if (Utils.debug > 0) {
-				Utils.console.log("Keyboard:init: Using touch events");
-			}
-		} else {
-			kbdArea.addEventListener("mousedown", this.fnVirtualKeydown, false);
-			kbdArea.addEventListener("mouseup", this.fnVirtualKeyUp, false);
-			if (Utils.debug > 0) {
-				Utils.console.log("Keyboard:init: Using mouse events");
-			}
-		}
-		*/
 		oEventNames = this.fnAttachPointerEvents("kbdArea", this.onVirtualKeyboardKeydown.bind(this), null, this.onVirtualKeyboardKeyup.bind(this));
 		if (oEventNames.out) {
 			this.sPointerOutEvent = oEventNames.out;
-			//kbdArea = document.getElementById("kbdArea");
 			this.fnVirtualKeyout = this.onVirtualKeyboardKeyout.bind(this);
 		}
-
-		//TTT also for key navigation on virtual keyboard
-		// kbdArea.addEventListener("keydown", this.fnVirtualKeydown, false);
-		// kbdArea.addEventListener("keyup", this.fnVirtualKeyUp, false);
 
 		this.dragInit("pageBody", "kbdAreaBox");
 	},
@@ -1086,42 +1047,6 @@ Keyboard.prototype = {
 		var oKey = this.aCpcKey2Key[iCpcKey],
 			sKey, sText, sTitle, oAscii;
 
-
-		/*
-		if (oKey) {
-			sKey = oKey.key;
-			if (sKey.indexOf("~") >= 0) {
-				aKey = sKey.split("~");
-				sKey = (this.bShiftLock || bShiftKey) ? aKey[1] : aKey[0];
-			}
-		}
-		*/
-		/*
-		if (bNumLock && oKey.keyNumLock) {
-			sKey = oKey.keyNumLock;
-		} else if (bShiftKey && oKey.keyShift) {
-			sKey = oKey.keyShift;
-		} else {
-			sKey = oKey.key;
-		}
-		//oAscii.key = sKey;
-
-		return sKey;
-		//return oAscii;
-		*/
-
-		/*
-		sType = sType || "key"; // key, text, title
-		if (bNumLock && oKey[sType + "NumLock"]) {
-			sKey = oKey[sType + "NumLock"];
-		} else if (bShiftKey && oKey[sType + "Shift"]) {
-			sKey = oKey[sType + "Shift"];
-		} else {
-			sKey = oKey[sType];
-		}
-		return sKey;
-		*/
-
 		if (bNumLock && oKey.keyNumLock) {
 			sKey = oKey.keyNumLock;
 			sText = oKey.textNumLock || sKey;
@@ -1154,7 +1079,6 @@ Keyboard.prototype = {
 		for (i = 0; i < aOptions.length; i += 1) {
 			oItem = aOptions[i];
 			button = document.createElement("button");
-			//button.id = ("0" + String(oItem.key)).slice(-2) + "Key";
 			button.innerText = oItem.text;
 			button.setAttribute("title", oItem.title);
 			button.className = oItem.className;
@@ -1193,13 +1117,6 @@ Keyboard.prototype = {
 
 					oKey = aCpcKey2Key[oCpcKey.key];
 					oAscii = this.fnVirtualGetAscii(iCpcKey, bShiftLock, bNumLock);
-					/*
-					sKey = (oKey.text !== undefined) ? oKey.text : oKey.key;
-					if (sKey.indexOf("~") >= 0) {
-						aKey = sKey.split("~");
-						sKey = bShiftLock ? aKey[1] : aKey[0];
-					}
-					*/
 
 					sClassName = "kbdButton" + (oCpcKey.style || oKey.style || "");
 					if (iCol === aRow.length - 1) { // last column
@@ -1207,7 +1124,6 @@ Keyboard.prototype = {
 					}
 
 					oOptions = {
-						//id: ("0" + String(iCpcKey)).slice(-2) + "Key",
 						key: iCpcKey,
 						text: oAscii.text,
 						title: oAscii.title,
@@ -1238,29 +1154,10 @@ Keyboard.prototype = {
 			}
 
 			oAscii = this.fnVirtualGetAscii(iCpcKey, bShiftLock, bNumLock);
-			if (oAscii.key !== oButton.innerText) { //TTT
+			if (oAscii.key !== oButton.innerText) {
 				oButton.innerText = oAscii.text;
 				oButton.title = oAscii.title;
 			}
-
-			/*
-			oKey = this.aCpcKey2Key[iCpcKey];
-			if (oKey) {
-				if (oKey.keyShift) {
-					sKey = bShiftLock ? oKey.keyShift : oKey.key;
-					oButton.innerText = sKey;
-					oButton.title = sKey;
-				}
-
-				sKey = oKey.key;
-				if (sKey.indexOf("~") >= 0) {
-					aKey = sKey.split("~");
-					sKey = bShiftLock ? aKey[1] : aKey[0];
-					oButton.innerText = sKey;
-					oButton.title = sKey;
-				}
-			}
-			*/
 		}
 	},
 
@@ -1290,13 +1187,7 @@ Keyboard.prototype = {
 			if (this.bNumLock) {
 				iCpcKey = this.mapNumLockCpcKey(iCpcKey);
 			}
-			/*
-			if (iCpcKey === 90) { // map pseudo key right shift to left shift
-				iCpcKey = 21;
-			}
-			*/
 			sPressedKey = this.fnVirtualGetPressedKey(iCpcKey);
-			//sKey = this.fnVirtualGetAscii(iCpcKey, event.shiftKey);
 			oAscii = this.fnVirtualGetAscii(iCpcKey, this.bShiftLock || event.shiftKey, this.bNumLock);
 
 			this.fnPressCpcKey(iCpcKey, sPressedKey, oAscii.key, event.shiftKey, event.ctrlKey);
@@ -1318,11 +1209,6 @@ Keyboard.prototype = {
 			if (this.bNumLock) {
 				iCpcKey = this.mapNumLockCpcKey(iCpcKey);
 			}
-			/*
-			if (iCpcKey === 90) { // map pseudo key right shift to left shift
-				iCpcKey = 21;
-			}
-			*/
 			sPressedKey = this.fnVirtualGetPressedKey(iCpcKey);
 			oAscii = this.fnVirtualGetAscii(iCpcKey, this.bShiftLock || event.shiftKey, this.bNumLock);
 

@@ -158,6 +158,7 @@ BasicLexer.prototype = {
 					} else {
 						sToken = advanceWhile(isUnquotedData);
 						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
+						sToken = sToken.replace(/"/g, "\\\""); // escape "
 						addToken("string", sToken, iStartPos);
 					}
 

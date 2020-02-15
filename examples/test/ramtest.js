@@ -25,6 +25,6 @@ cpcBasic.addItem("", function () { /*
 250 next lo,hi
 270 return
 280 '
-300 IF INP(&FB7E)<>255 then WHILE (INP(&FB7E) AND &F0)<>&80:i=INP(&FB7F):?i;:WEND:' throw away FDC bytes
+300 IF INP(&FB7E)<>255 then WHILE (INP(&FB7E) AND &F0)<>&80:i=INP(&FB7F):WEND:' throw away FDC bytes
 310 end
 */ });

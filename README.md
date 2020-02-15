@@ -93,10 +93,12 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Extensions and Features
 
-- *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
+- *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters. Demo: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
 - *|MODE,n*: Change mode without *CLS* (experimental)
-- Computations are not limited to 16 bits
-- *PEEK&POKE*: Screen memory can be accessed in the range &c000-&ffff.
+- Computations with numbers are not limited to 16 bit
+- *PEEK&POKE* features:
+  - Access screen memory in address range &C000-&FFFF or &4000-&7FFF
+  - Access character map data starting at HIMEM+1 after SYMBOL AFTER n with n<256
 
 ## Supported CALLs and OUTs
 
@@ -162,7 +164,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Links
 
-- [CPC 6128 User Instructions](http://www.cpcwiki.eu/manuals/AmstradCPC6128-hypertext-en-Sinewalker.pdf) - (I have the German version)
+- [Amstrad CPC 6128 User Instructions](http://www.cpcwiki.eu/manuals/AmstradCPC6128-hypertext-en-Sinewalker.pdf), or:
+  [Schneider CPC 6128 Benutzerhandbuch](https://acpc.me/ACME/MANUELS/[DEU]DEUTSCH(GERMAN)/CPC6128_SCHNEIDER[DEU]_Erste_Ausgabe_1985[OCR].pdf)
 
 - [ROM-Listing CPC 464/664/6128](http://www.cpcwiki.eu/index.php/ROM-Listing_CPC_464/664/6128) - German, excellent information
 

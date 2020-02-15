@@ -627,7 +627,6 @@ BasicParser.prototype = {
 
 		// define additional statement parts
 		symbol("break");
-		//symbol("else");
 		symbol("spc");
 		symbol("step");
 		symbol("swap");

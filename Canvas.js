@@ -56,7 +56,7 @@ Canvas.prototype = {
 	],
 
 	aModeData: [
-		{ // node 0
+		{ // mode 0
 			iPens: 16, // number of pens
 			iLineWidth: 4, // pixel width
 			iLineHeight: 2, // pixel height
@@ -78,7 +78,7 @@ Canvas.prototype = {
 			iCharHeight: 16
 		},
 		{ // mode 3
-			iPens: 16, // mode 3 not available on real CPC
+			iPens: 16, // mode 3 not available on a real CPC
 			iLineWidth: 1,
 			iLineHeight: 1,
 			iCharWidth: 8,
@@ -275,6 +275,12 @@ Canvas.prototype = {
 		this.oCustomCharset[iChar] = aCharData;
 	},
 
+	getCharData: function (iChar) {
+		var aCharData = this.oCustomCharset[iChar] || this.aCharset[iChar];
+
+		return aCharData;
+	},
+
 	setDefaultInks: function () {
 		this.aCurrentInks[0] = this.aDefaultInks[0].slice(); // copy ink set 0 array
 		this.aCurrentInks[1] = this.aDefaultInks[1].slice(); // copy ink set 1 array
@@ -362,7 +368,6 @@ Canvas.prototype = {
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
 			iScaleWidth = iCharWidth / 8,
 			iScaleHeight = iCharHeight / 8,
-			//iTransparent = this.iTransparent,
 			iBit, iPenOrPaper,
 			iCharData, row, col;
 
@@ -382,7 +387,7 @@ Canvas.prototype = {
 		}
 	},
 
-	getCharData: function (x, y, iExpectedPen) {
+	readCharData: function (x, y, iExpectedPen) {
 		var aCharData = [],
 			iCharWidth = this.aModeData[this.iMode].iCharWidth,
 			iCharHeight = this.aModeData[this.iMode].iCharHeight,
@@ -755,10 +760,10 @@ Canvas.prototype = {
 		x *= oModeData.iCharWidth;
 		y *= oModeData.iCharHeight;
 
-		aCharData = this.getCharData(x, y, iPen);
+		aCharData = this.readCharData(x, y, iPen);
 		iChar = this.findMatchingChar(aCharData);
 		if (iChar < 0 || iChar === 32) { // no match? => check inverse with paper TTT =32?
-			aCharData = this.getCharData(x, y, iPaper);
+			aCharData = this.readCharData(x, y, iPaper);
 			for (i = 0; i < aCharData.length; i += 1) {
 				aCharData[i] ^= 0xff; // eslint-disable-line no-bitwise
 			}
