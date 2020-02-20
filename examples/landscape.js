@@ -12,21 +12,25 @@ cpcBasic.addItem("", function () { /*
 114 DIM x(64),y(64),x1(64),y1(64),w(64),w1(64)
 116 anz=3
 118 BORDER 1:INK 0,1:INK 1,24:INK 2,18:INK 3,12
-120 c.c=4:c.m%=3:gosub 9020:'checkMode
-122 for m=1 to 3
-124 if m<>3 or c.m%=3 then gosub 130
+120 c.c=4:gosub 9020:'checkMode
+122 for m=0 to c.m%
+124 gosub 130
 126 next
 127 goto 122
 128 '
 130 MODE m
-132 PRINT CHR$(23)+CHR$(0);
+131 locate 1,1:pen 3:?"Mode";m:pen 1
+132 after 100 gosub 1200
+134 PRINT CHR$(23)+CHR$(0);
 135 col=2:if m=2 then col=1
 137 GOSUB 300:'area
-140 col=3:GOSUB 400:'mountains
+138 col=3
+140 GOSUB 400:'mountains
 150 GOSUB 900:'stones
 160 GOSUB 500:'trees
 165 GOSUB 1000:'moon
 170 c.c=3:c.iv%=250:gosub 9020:'waitOrKey
+175 r=remain(0)
 180 return
 290 '
 300 s1=0:z1=50+FNr(40):PLOT s1,z1,col
@@ -61,7 +65,7 @@ cpcBasic.addItem("", function () { /*
 580 x2=COS(w)*la+x(n):y2=SIN(w)*la+y(n)
 590 MOVE x(n),y(n):DRAW x2,y2:w1(f)=w:x1(f)=x2:y1(f)=y2:NEXT
 600 FOR n=1 TO f:w(n)=w1(n):x(n)=x1(n):y(n)=y1(n):NEXT n
-610 la=0.699999999953434*la
+610 la=0.7*la
 615 NEXT et,ba
 620 RETURN
 880 '
@@ -86,6 +90,9 @@ cpcBasic.addItem("", function () { /*
 1000 x1=RND*540+50:y1=RND*70+280:r=RND*30+20:st=10:f=RND*3+1
 1010 GOSUB 950:MOVE x1,y1:FILL f
 1090 RETURN
+1190 '
+1200 r=remain(0):LOCATE 1,1:?space$(7);:return
+1220 '
 9000 'cpclib will be merged...
 9010 chain merge "cpclib"
 9020 return

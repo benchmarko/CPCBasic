@@ -14,7 +14,7 @@ cpcBasic.addItem("", function () { /*
 180 '
 1730 sa=120
 1760 st=1:m=1
-1765 c.c=4:c.m%=3:gosub 9020:'checkMode
+1765 c.c=4:gosub 9020:'checkMode
 1790 INK 0,13:INK 1,2:INK 2,6:INK 3,18:BORDER 13
 1792 gosub 1800
 1793 if c.m%=3 then if m=1 then m=3 else m=1

@@ -3,13 +3,23 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 'Sphere 1 (Kugel 1)
-110 'Marco Vieth, 2.12.1989
+100 REM Sphere 1 (Kugel 1)
+110 REM Marco Vieth, 2.12.1989
 120 '
-130 MODE 1:INK 0,0:INK 1,24:INK 3,6
-140 CLEAR:DEFINT a-z:DEFREAL a,x-z
-150 DEG
-160 w1=10:w2=0:w3=80:r=150
+130 CLEAR:DEFINT a-z:DEFREAL a,x-z:DEG
+131 w1=10:w2=0:w3=80:r=150
+132 INK 0,0:INK 1,24:INK 3,6
+133 c.c=1:gosub 9010:'initCpcLib
+134 c.c=4:gosub 9020:'checkMode
+135 '
+140 for m=0 to c.m%
+142 gosub 160
+148 next
+150 goto 140
+155 '
+160 MODE m
+163 locate 1,1:pen 3:?"Mode";m:pen 1
+165 after 100 gosub 700
 170 'Laengenkreise
 180 FOR a=0 TO 180 STEP 15
 190 GOSUB 390:p1=bx:p2=by
@@ -30,7 +40,10 @@ cpcBasic.addItem("", function () { /*
 340 PLOT p1,p2:DRAW p3,p4,3
 350 p1=p3:p2=p4
 360 NEXT a,h
-370 END
+365 c.c=3:c.iv%=200:gosub 9020:'waitOrKey
+367 rm=remain(0)
+370 return
+375 '
 380 'Rotationsmatrix
 390 x=COS(h)*COS(a)
 400 y=COS(h)*SIN(a)
@@ -50,4 +63,9 @@ cpcBasic.addItem("", function () { /*
 540 bx=320+r*xa:by=200+r*za
 550 RETURN
 560 '
+700 rm=remain(0):LOCATE 1,1:?space$(7);:return
+710 '
+9000 'cpclib will be merged...
+9010 chain merge "cpclib"
+9020 return
 */ });

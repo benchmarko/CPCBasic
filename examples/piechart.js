@@ -3,79 +3,84 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-100 REM Pie Chart (Kreisdiagramm)
-101 rem ugly code
-102 '
-103 T$="Y":g=8
-104 read w:dim ws(w),w$(w),p%(w):u=0
-105 for n=1 to w
-106 read ws(n),w$(n):u=u+ws(n)
-107 next
-108 goto 310
-109 '
-110 IF T$="J" THEN DIM W$(W)
-120 TAGOFF
+10 REM Pie Chart (Kreisdiagramm)
+20 rem ugly code, improved by MV
+30 '
+50 clear:deg
+52 c.c=1:gosub 9010:'initCpcLib
+53 c.c=4:gosub 9020:'checkMode
+55 'PEN 1:PAPER 0
+101 T$="J":'with description
+102 g=8*20:'size 8
+104 read w:'number of values
+105 dim ws(w),w$(w)
+106 u=0
+107 for n=1 to w
+108 read ws(n),w$(n)
+109 u=u+ws(n)
+110 next
+120 goto 310
+128 '
 130 MODE 1
-140 IF T$="N" THEN 310:'300
-150 REM
 160 INPUT"WIEVIELE ZU VERGLEICHENDE WERTE (MAX 10) :";W
 170 IF W<1 OR W >10 OR W<>INT(W) THEN CLS:GOTO 160
 180 INPUT"WIE GROSS SOLL DAS KREISDIAGRAMM SEIN (1-10) :";G
 190 IF G<1 OR G >10 OR G<>INT(G) THEN CLS:GOTO 180
-200 DIM WS(W)
-210 DIM P%(W)
-220 INK 2,12
-230 INPUT "  MIT BESCHRIFTUNG (J/ODER N) : ";T$: t$=upper$(t$): IF T$<>"N" AND T$<>"J" THEN 230
-240 CLS
-245 '
+195 g=g*20
+230 INPUT "  MIT BESCHRIFTUNG (J/ODER N) : ";T$:
+235 t$=upper$(t$):
+237 IF T$<>"N" AND T$<>"J" THEN 230
+242 '
+245 DIM WS(W)
+246 IF T$<>"N" then DIM W$(W)
 250 FOR N=1 TO W
+255 cls
 260 INPUT"   PROZENTSATZ : ";WS(N)
 270 U=U+WS(N)
-280 IF T$="N" THEN 300
-290 INPUT"   BESCHRIFTUNG : ";W$(N)
-300 CLS:NEXT N
+280 IF T$<>"N" THEN INPUT"   BESCHRIFTUNG : ";W$(N)
+300 NEXT N
 305 '
 310 IF U>100 OR U<90 THEN PRINT"FALSCHE EINGABE":STOP
-320 MODE 1:TAG
-330 PEN 1:PAPER 0
-340 FARB=1:PP=1
+312 '
+313 for m=0 to c.m%
+314 gosub 320
+315 next
+316 goto 313
+319 '
+320 MODE m
+321 pens=4^(2-m mod 3)+abs(m=2)
+322 ORIGIN 425,200
+340 FARB=1:P1=1
 345 '
 350 FOR N=1 TO W
-360 P%(N)=360*WS(N)/100
-370 PP=PP+P%(N)
-380 P%(N)=PP
-390 FOR A=P%(N-1) TO P%(N)
-400 DEG
-410 ORIGIN 425,200
-420 IF FARB=0 THEN PLOT (G*20)*COS(A),(G*20)*SIN(A),1:GOTO 440
-430 DRAW (G*20)*COS(A),(G*20)*SIN(A),FARB
+360 P2=P1+360*WS(N)/100
+390 FOR A=P1 TO P2
+410 move 0,0:x=G*COS(A):y=G*SIN(A)
+425 IF FARB=0 THEN PLOT x,y,1 else draw x,y,FARB
 440 NEXT A
-450 GOTO 530
+442 P1=P2
+447 IF T$<>"N" THEN TAG:PRINT right$(str$(N),1);:TAGOFF
+448 FARB=(FARB+1) mod pens
 460 NEXT N
-470 GOTO 570
 475 '
-480 FOR N=1 TO W
-490 IF A=P%(N) THEN 530
-500 NEXT N
-510 'NEXT A
-520 STOP
-530 FARB=FARB+1:IF FARB>3 THEN FARB=0
-540 IF T$<>"N" THEN TAG:PRINT N;:TAGOFF
-550 P%(N-1)= P%(N-1)+5
-560 GOTO 460
-570 WINDOW #1,1,13,1,25:CLS#1
 580 IF T$="N" THEN 630
-590 TAGOFF
+590 WINDOW #1,1,8,1,25
 600 FOR N=1 TO W
-610 PRINT #1,N;"= ";W$(N):PRINT #1
+610 PRINT #1,right$(str$(N),1);": ";W$(N):PRINT #1
+612 'PRINT #1,right$(str$(N),1);":";W$(N);" ";right$(str$(WS(N)),2);"%";:PRINT #1
 620 NEXT N
-630 ORIGIN 425,200:DRAW (G*20)*COS(1),(G*20)*SIN(1),0
-640 CALL &BB18
-650 stop
+630 move 0,0:DRAW G*COS(1),G*SIN(1),0
+640 c.c=3:c.iv%=250:gosub 9020:'waitOrKey
+650 return
 790 '
+795 'example data
 800 data 4
 810 data 23,"A"
 820 data 34,"B"
 830 data 15,"C"
 840 data 28,"D"
+990 '
+9000 'cpclib will be merged...
+9010 chain merge "cpclib"
+9020 return
 */ });

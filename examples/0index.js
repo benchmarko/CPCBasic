@@ -108,7 +108,11 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
     	"key": "math/funcspec",
 		"title": "Functional Spectrum"
-    },
+	},
+	{
+    	"key": "math/regress",
+		"title": "Regression (Ausgleich)"
+	},
 	{
 		"key": "test/bmbench3",
 		"title": "BM Benchmark 3"

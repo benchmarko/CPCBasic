@@ -7,13 +7,15 @@ cpcBasic.addItem("", function () { /*
 60 rem Idea from: https://scruss.com/blog/tag/amstrad/
 70 clear:defint a-z
 75 c.c=1:gosub 9010:'initCpcLib
-80 c.c=4:c.m%=3:gosub 9020:'checkMode
-82 for m=0 to 3
-83 if m<>3 or c.m%=3 then gosub 100
+80 c.c=4:gosub 9020:'checkMode
+81 '
+82 for m=0 to c.m%
+83 gosub 100
 84 next
 85 goto 82
 90 '
 100 mode m
+102 locate 1,25?"Mode";m;:locate 1,1
 105 cols=80/2^(2-min(m,2))
 106 f=0
 107 after 50*8 gosub 300
@@ -30,6 +32,7 @@ cpcBasic.addItem("", function () { /*
 185 return
 190 '
 300 r=remain(0):f=1:return
+310 '
 9000 'cpclib will be merged...
 9010 chain merge "cpclib"
 9020 return

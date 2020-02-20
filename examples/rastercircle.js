@@ -3,17 +3,25 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-40 rem rastercircle
-50 rem https://de.wikipedia.org/wiki/Bresenham-Algorithmus
-55 mode 0
-60 origin 320,200
-70 radius=200:c=0
-75 dim col(8)
-77 for i=0 to 7:read d:col(i)=d:next
-78 'for i=1 to 8:ink i,24:next
-80 gosub 100
-85 'every 50 gosub 100
-90 goto 400
+10 rem rastercircle - Raster circle
+20 rem https://de.wikipedia.org/wiki/Bresenham-Algorithmus
+30 '
+40 clear:defint a-z
+41 c.c=1:gosub 9010:'initCpcLib
+42 c.c=4:gosub 9020:'checkMode
+44 radius=200:c=0
+45 dim col(8)
+46 for i=0 to 7:read d:col(i)=d:next
+49 '
+50 for m=0 to c.m%
+51 gosub 60
+53 next
+55 goto 50
+57 '
+60 mode m
+62 locate 1,1:pen 3:?"Mode";m:pen 1
+70 after 100,1 gosub 800
+80 origin 320,200
 100 f=1-radius
 110 ddFx=0
 120 ddFy=-2*radius
@@ -37,18 +45,24 @@ cpcBasic.addItem("", function () { /*
 311 move 0,0:draw x0 - y, y0 + x,7
 315 move 0,0:draw x0 - x, y0 + y,8
 320 wend
-330 return
 390 '
 400 every 15 gosub 500
-410 goto 800
+410 c.c=3:c.iv%=250:gosub 9020:'waitOrKey
+420 r=remain(0)+remain(1)
+440 return
+490 '
 500 for i=0 to 7
 510 ink i+1,col((i+c1) mod 8)
 525 next
 526 c1=c1+1
 530 return
 700 '
-800 while inkey$="":call &bd19:wend
-810 r=remain(0)
-900 end
+800 r=remain(1):LOCATE 1,1:?space$(7);:return
+810 '
+940 'colors
 950 data 24, 20, 6, 26, 0, 2, 8, 10
+980 '
+9000 'cpclib will be merged...
+9010 chain merge "cpclib"
+9020 return
 */ });
