@@ -62,7 +62,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *FILL*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME* (partly), *SAVE*, *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME* (partly), *SAVE*, *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
@@ -83,13 +83,14 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [fixed: Comparison with equal in assignment is possible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
 - [fixed: No sound]
 - [fixed: *ENT* (tone envelopes); hardware volume envelopes with sepcial *ENV* syntax "="]
-- [fixed: RESTORE for lines without *DATA*: search next *DATA* line]
+- [fixed: *RESTORE* for lines without *DATA*: search next *DATA* line]
 - [done: Separate sample library; sample category]
 - [fixed: Almost no type checking]
 - [fixed: Access screen memory in the range &c000-&ffff with *PEEK&POKE*]
 - [done: Pause key: Use ESC, and then any key to continue]
-- [done: COPYCHR$]
-- [done: SPEED INK]
+- [done: *COPYCHR$*]
+- [done: *SPEED INK*]
+- [done: *FILL*]
 
 ## Extensions and Features
 
@@ -98,7 +99,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Computations with numbers are not limited to 16 bit
 - *PEEK&POKE* features:
   - Access screen memory in address range &C000-&FFFF or &4000-&7FFF
-  - Access character map data starting at HIMEM+1 after SYMBOL AFTER n with n<256
+  - Access character map data starting at *HIMEM*+1 after *SYMBOL AFTER* n with n<256
 
 ## Supported CALLs and OUTs
 
@@ -112,7 +113,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - *CALL &BB4E*: TXT Initialize (initialize window parameter, delete custom chars)
 - *CALL &BB9C*: TXT Inverse (same as print chr$(24); )
 - *CALL &BBDE,n1,n2,...*: GRA Set Pen (set *GRAPHICS PEN* depending on number of arguments)
-- *CALL &BBFF*: SCR Initialize (set mode 1, reset inks, clear screen)
+- *CALL &BBFF*: SCR Initialize (set *MODE* 1, reset inks, clear screen)
 - *CALL &BC06,nn*: SCR SET BASE (really &BC08; set screen start high byte: &00, &40, &80 or &C0)
 - *CALL &BCA7*: SOUND Reset
 - *CALL &BCB6*: SOUND Hold (TODO)

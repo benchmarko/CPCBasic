@@ -767,6 +767,33 @@ CodeGeneratorJs.prototype = {
 
 					return this.fnCommandWithGoto(node);
 				},
+				save: function (node) { //TTT
+					var aNodeArgs = [],
+						sFileName, sType, aNodeArgs2;
+
+					if (node.args.length) {
+						sFileName = fnParseOneArg(node.args[0]);
+						aNodeArgs.push(sFileName);
+						if (node.args.length > 1) {
+							oDevScopeArgs = {};
+							bDevScopeArgsCollect = true;
+							sType = '"' + fnParseOneArg(node.args[1]) + '"';
+							aNodeArgs.push(sType);
+							//fnParseArgs(node.args);
+							bDevScopeArgsCollect = false;
+							oDevScopeArgs = null;
+							aNodeArgs2 = fnParseArgs(node.args.splice(2)); // remaining args
+							aNodeArgs = aNodeArgs.concat(aNodeArgs2);
+						}
+					}
+
+					/*
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						aNodeArgs[i] = '"' + aNodeArgs[i] + '"'; // put in quotes
+					}
+					*/
+					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
+				},
 				sound: function (node) {
 					return this.fnCommandWithGoto(node); // maybe queue is full, so insert break
 				},

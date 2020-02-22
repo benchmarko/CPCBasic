@@ -333,19 +333,42 @@ CpcVm.prototype = {
 		}
 	},
 
+	// round number (-2^31..2^31) to integer; throw error if no number
 	vmRound: function (n, sErr) { // optional sErr
 		this.vmAssertNumber(n, sErr || "?");
 		return (n >= 0) ? (n + 0.5) | 0 : (n - 0.5) | 0; // eslint-disable-line no-bitwise
 	},
 
+	// round for comparison /ODO
+	vmRound4Cmp: function (n) {
+		var nAdd = (n >= 0) ? 0.5 : -0.5;
+
+		return ((n * 1e12 + nAdd) | 0) / 1e12; // eslint-disable-line no-bitwise
+	},
+
 	vmInRangeRound: function (n, iMin, iMax, sErr) { // optional sErr
 		n = this.vmRound(n, sErr);
 		if (n < iMin || n > iMax) {
-			Utils.console.warn("vmInRange: number not in range:", iMin + "<=" + n + "<=" + iMax);
-			this.error(5, sErr + " " + n); // Improper argument
+			Utils.console.warn("vmInRangeRound: number not in range:", iMin + "<=" + n + "<=" + iMax);
+			this.error(n < -32768 || n > 32767 ? 6 : 5, sErr + " " + n); // 6=Overflow, 5=Improper argument
 		}
 		return n;
 	},
+
+	/*
+	// range round with overflow check (-32768..32767)
+	vmInt16Round: function (n, sErr) { // optional sErr
+		var iMin = -32768,
+			iMax = 32767;
+
+		n = this.vmRound(n, sErr);
+		if (n < iMin || n > iMax) {
+			Utils.console.warn("vmInt16Round: number not in range:", iMin + "<=" + n + "<=" + iMax);
+			this.error(6, sErr + " " + n); // Overflow
+		}
+		return n;
+	},
+	*/
 
 	vmAssertNumberType: function (sVarType) {
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
@@ -355,6 +378,7 @@ CpcVm.prototype = {
 		}
 	},
 
+	// format a value for assignment to a variable with type determined from sVarType
 	vmAssign: function (sVarType, value) {
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
 
@@ -699,8 +723,8 @@ CpcVm.prototype = {
 	vmDrawMovePlot: function (sType, x, y, iGPen, iGColMode) {
 		var sTypeUc = sType.toUpperCase();
 
-		x = this.vmRound(x, sTypeUc);
-		y = this.vmRound(y, sTypeUc);
+		x = this.vmInRangeRound(x, -32768, 32767, sTypeUc);
+		y = this.vmInRangeRound(y, -32768, 32767, sTypeUc);
 		if (iGPen !== undefined && iGPen !== null) {
 			this.graphicsPen(iGPen);
 		}
@@ -715,7 +739,7 @@ CpcVm.prototype = {
 		var sTypeUc = sType.toUpperCase(),
 			oTimer,	iIntervalMs;
 
-		iInterval = this.vmInRangeRound(iInterval, 0, 65535, sTypeUc); // more would be overflow
+		iInterval = this.vmInRangeRound(iInterval, 0, 32767, sTypeUc); // more would be overflow
 		iTimer = this.vmInRangeRound(iTimer, 0, 3, sTypeUc);
 		oTimer = this.aTimer[iTimer];
 		iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
@@ -828,7 +852,7 @@ CpcVm.prototype = {
 	},
 
 	bin$: function (n, iPad) {
-		n = this.vmRound(n, "BIN$");
+		n = this.vmInRangeRound(n, -32768, 65535, "BIN$");
 		iPad = this.vmInRangeRound(iPad || 0, 0, 16, "BIN$");
 		return n.toString(2).padStart(iPad || 16, 0);
 	},
@@ -952,8 +976,7 @@ CpcVm.prototype = {
 	},
 
 	cint: function (n) {
-		this.vmAssertNumber(n, "CINT");
-		return Math.round(n);
+		return this.vmInRangeRound(n, -32768, 32767);
 	},
 
 	clear: function () {
@@ -1054,8 +1077,14 @@ CpcVm.prototype = {
 		return n;
 	},
 
-	cursor: function () {
-		this.vmNotImplemented("CURSOR");
+	cursor: function (iSystem, iUser) { // one of iSystem, iUser is optional
+		if (iSystem !== null) {
+			iSystem = this.vmInRangeRound(iSystem, 0, 1, "CURSOR");
+		}
+		if (iUser !== undefined) {
+			iUser = this.vmInRangeRound(iUser, 0, 1, "CURSOR");
+		}
+		this.vmNotImplemented("CURSOR: " + iSystem + " " + iUser);
 	},
 
 	data: function () { // varargs
@@ -1128,8 +1157,8 @@ CpcVm.prototype = {
 		this.vmDrawMovePlot("drawr", x, y, iGPen, iGColMode);
 	},
 
-	edit: function () {
-		this.vmNotImplemented("EDIT");
+	edit: function (iLine) {
+		this.vmNotImplemented("EDIT:", iLine);
 	},
 
 	ei: function () {
@@ -1168,7 +1197,7 @@ CpcVm.prototype = {
 					}
 				} else { // special handling
 					oArg = {
-						period: this.vmRound(arguments[i + 1], "ENT"), // absolute period
+						period: this.vmInRangeRound(arguments[i + 1], 0, 4095, "ENT"), // absolute period
 						time: this.vmInRangeRound(arguments[i + 2], 0, 255, "ENT") // time: 0..255 (0=256)
 					};
 				}
@@ -1291,7 +1320,7 @@ CpcVm.prototype = {
 	error: function (iErr, sErrInfo) {
 		var oError;
 
-		iErr = this.vmRound(iErr, "ERROR"); // no range check (could trigger another error)
+		iErr = this.vmInRangeRound(iErr, 0, 255, "ERROR"); // could trigger another error
 		oError = this.vmSetError(iErr, sErrInfo);
 		throw oError;
 	},
@@ -1307,7 +1336,7 @@ CpcVm.prototype = {
 
 	fill: function (iGPen) {
 		iGPen = this.vmInRangeRound(iGPen, 0, 15, "FILL");
-		this.vmNotImplemented("FILL " + iGPen);
+		this.oCanvas.fill(iGPen);
 	},
 
 	fix: function (n) {
@@ -1352,7 +1381,7 @@ CpcVm.prototype = {
 	},
 
 	hex$: function (n, iPad) {
-		n = this.vmRound(n, "HEX$");
+		n = this.vmInRangeRound(n, -32768, 65535, "HEX$");
 		iPad = this.vmInRangeRound(iPad || 0, 0, 16, "HEX$");
 		return n.toString(16).toUpperCase().padStart(iPad, "0"); // eslint-disable-line no-bitwise
 	},
@@ -1375,11 +1404,8 @@ CpcVm.prototype = {
 	},
 
 	inkey: function (iKey) {
-		var iKeyState;
-
 		iKey = this.vmInRangeRound(iKey, 0, 79, "INKEY");
-		iKeyState = this.oKeyboard.getKeyState(iKey);
-		return iKeyState;
+		return this.oKeyboard.getKeyState(iKey);
 	},
 
 	inkey$: function () {
@@ -1561,7 +1587,7 @@ CpcVm.prototype = {
 		sName = this.vmAdaptFilename(sName, "LOAD");
 		if (iAddr !== undefined) {
 			iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "LOAD");
-			if (iAddr < 0) { // 2nd complement of 16 bit address?
+			if (iAddr < 0) { // 2nd complement of 16 bit address
 				iAddr += 65536;
 			}
 		}
@@ -1603,15 +1629,14 @@ CpcVm.prototype = {
 		return s;
 	},
 
-	mask: function (n1, n2) { // one of n1 or n2 is optional
-		var iMask = 0, // TODO: set defaults
-			iFirst = 0;
-
-		/*
-		if (typeof n2 !== undefined) { // 2 parameters?
-			iFirst = this.vmInRangeRound(n2, 0, 1, "MASK");
+	mask: function (iMask, iFirst) { // one of iMask, iFirst is optional
+		if (iMask !== null) {
+			iMask = this.vmInRangeRound(iMask, 0, 255, "MASK");
 		}
-		*/
+
+		if (iFirst !== undefined) {
+			iFirst = this.vmInRangeRound(iFirst, 0, 1, "MASK");
+		}
 		this.vmNotImplemented("MASK: " + iMask + " " + iFirst);
 	},
 
@@ -1625,10 +1650,8 @@ CpcVm.prototype = {
 	},
 
 	memory: function (n) {
-		n = this.vmRound(n);
+		n = this.vmInRangeRound(n, -32768, 65535, "MEMORY");
 
-		//n = this.vmInRangeRound(n, 370, this.iMinCharHimem, "MEMORY");
-		// vmInRangeRound prints "Improper Argument", so we check it here:
 		if (n < this.iMinHimem || n > this.iMinCharHimem) {
 			this.error(7, "MEMORY " + n); // Memory full
 		}
@@ -1729,7 +1752,7 @@ CpcVm.prototype = {
 	onGosub: function (retLabel, n) { // varargs
 		var iLine;
 
-		n = this.vmRound(n, "ON GOSUB");
+		n = this.vmInRangeRound(n, 0, 255, "ON GOSUB");
 		if (!n || (n + 2) > arguments.length) { // out of range? => continue with line after onGosub
 			if (Utils.debug > 0) {
 				Utils.console.debug("DEBUG: onGosub: out of range: n=" + n + " in " + this.iLine);
@@ -1745,7 +1768,7 @@ CpcVm.prototype = {
 	onGoto: function (retLabel, n) { // varargs
 		var iLine;
 
-		n = this.vmRound(n, "ON GOTO");
+		n = this.vmInRangeRound(n, 0, 255, "ON GOTO");
 		if (!n || (n + 2) > arguments.length) { // out of range? => continue with line after onGoto
 			if (Utils.debug > 0) {
 				Utils.console.debug("DEBUG: onGoto: out of range: n=" + n + " in " + this.iLine);
@@ -1820,15 +1843,15 @@ CpcVm.prototype = {
 	origin: function (xOff, yOff, xLeft, xRight, yTop, yBottom) { // parameters starting from xLeft are optional
 		var tmp;
 
-		xOff = this.vmRound(xOff, "ORIGIN");
-		yOff = this.vmRound(yOff, "ORIGIN");
+		xOff = this.vmInRangeRound(xOff, -32768, 32767, "ORIGIN");
+		yOff = this.vmInRangeRound(yOff, -32768, 32767, "ORIGIN");
 		this.oCanvas.setOrigin(xOff, yOff);
 
 		if (xLeft !== undefined) {
-			xLeft = this.vmRound(xLeft, "ORIGIN");
-			xRight = this.vmRound(xRight, "ORIGIN");
-			yTop = this.vmRound(yTop, "ORIGIN");
-			yBottom = this.vmRound(yBottom, "ORIGIN");
+			xLeft = this.vmInRangeRound(xLeft, -32768, 32767, "ORIGIN");
+			xRight = this.vmInRangeRound(xRight, -32768, 32767, "ORIGIN");
+			yTop = this.vmInRangeRound(yTop, -32768, 32767, "ORIGIN");
+			yBottom = this.vmInRangeRound(yBottom, -32768, 32767, "ORIGIN");
 			if (yTop < yBottom) {
 				tmp = yTop;
 				yTop = yBottom;
@@ -2365,8 +2388,21 @@ CpcVm.prototype = {
 		return iRemain;
 	},
 
-	renum: function () { // optional args: new number, old number, step
-		this.vmNotImplemented("RENUM");
+	renum: function (iNew, iOld, iStep) { // optional args: new number, old number, step
+		if (iNew !== null && iNew !== undefined) {
+			iNew = this.vmInRangeRound(iNew, 1, 65535, "RENUM");
+		} else {
+			iNew = 10;
+		}
+		if (iOld !== null && iOld !== undefined) {
+			iOld = this.vmInRangeRound(iOld, 1, 65535, "RENUM");
+		}
+		if (iStep !== undefined) {
+			iStep = this.vmInRangeRound(iStep, 1, 65535, "RENUM");
+		} else {
+			iStep = 10;
+		}
+		this.vmNotImplemented("RENUM: " + iNew + " " + iOld + " " + iStep);
 	},
 
 	restore: function (iLine) {
@@ -2523,8 +2559,26 @@ CpcVm.prototype = {
 		}
 	},
 
-	save: function () {
-		this.vmNotImplemented("SAVE");
+	save: function (sName, sType, iAddr, iLen, iEntry) { // varargs; parameter sType,... are optional
+		sName = this.vmAdaptFilename(sName, "SAVE");
+
+		if (sType !== undefined) {
+			sType = String(sType).toUpperCase();
+			if (sType === "A") {
+				// ...
+			} else if (sType === "B") {
+				iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "SAVE");
+				iLen = this.vmInRangeRound(iLen, -32768, 65535, "SAVE");
+				if (iEntry !== undefined) {
+					iEntry = this.vmInRangeRound(iEntry, -32768, 65535, "SAVE");
+				}
+			} else if (sType === "P") { // protected BASIC
+				// ...
+			} else {
+				this.error(2, "SAVE " + sType); // Syntax Error
+			}
+		}
+		this.vmNotImplemented("SAVE: " + sName + " " + sType + " " + iAddr + " " + iLen + " " + iEntry);
 	},
 
 	sgn: function (n) {
@@ -2552,8 +2606,18 @@ CpcVm.prototype = {
 
 		iState = this.vmInRangeRound(iState, 1, 255, "SOUND");
 		iPeriod = this.vmInRangeRound(iPeriod, 0, 4095, "SOUND");
-		iDuration = this.vmRound(iDuration !== undefined ? iDuration : 20, "SOUND");
-		iVolume = this.vmInRangeRound(iVolume !== undefined && iVolume !== null ? iVolume : 12, 0, 15, "SOUND");
+
+		if (iDuration !== undefined) {
+			iDuration = this.vmInRangeRound(iDuration, -32768, 32767, "SOUND");
+		} else {
+			iDuration = 20;
+		}
+
+		if (iVolume !== undefined && iVolume !== null) {
+			iVolume = this.vmInRangeRound(iVolume, 0, 15, "SOUND");
+		} else {
+			iVolume = 12;
+		}
 
 		if (iVolEnv !== undefined && iVolEnv !== null) {
 			iVolEnv = this.vmInRangeRound(iVolEnv, 0, 15, "SOUND");
@@ -2598,7 +2662,7 @@ CpcVm.prototype = {
 			iWidth = oWin.iRight - oWin.iLeft + 1,
 			sStr = "";
 
-		n = this.vmRound(n, "SPC");
+		n = this.vmInRangeRound(n, -32768, 32767, "SPC");
 		if (iWidth) {
 			n %= iWidth;
 		}
@@ -2727,7 +2791,7 @@ CpcVm.prototype = {
 		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "TAB");
 		oWin = this.aWindow[iStream];
 		iWidth = oWin.iRight - oWin.iLeft + 1;
-		n = this.vmRound(n, "TAB");
+		n = this.vmInRangeRound(n, -32768, 32767, "TAB");
 		if (n > 0) {
 			n -= 1;
 			if (iWidth) {
@@ -2769,14 +2833,14 @@ CpcVm.prototype = {
 	},
 
 	test: function (x, y) {
-		x = this.vmRound(x, "TEST");
-		y = this.vmRound(y, "TEST");
+		x = this.vmInRangeRound(x, -32768, 32767, "TEST");
+		y = this.vmInRangeRound(y, -32768, 32767, "TEST");
 		return this.oCanvas.test(x, y);
 	},
 
 	testr: function (x, y) {
-		x = this.vmRound(x, "TESTR");
-		y = this.vmRound(y, "TESTR");
+		x = this.vmInRangeRound(x, -32768, 32767, "TESTR");
+		y = this.vmInRangeRound(y, -32768, 32767, "TESTR");
 		return this.oCanvas.testr(x, y);
 	},
 
@@ -2797,7 +2861,7 @@ CpcVm.prototype = {
 	},
 
 	unt: function (n) {
-		n = this.vmRound(n, "UNT");
+		n = this.vmInRangeRound(n, -32768, 65535, "UNT");
 		if (n > 32767) {
 			n -= 65536;
 		}
@@ -2877,10 +2941,14 @@ CpcVm.prototype = {
 		return this.aWindow[iStream].iVpos + 1;
 	},
 
-	wait: function (iPort /* , iMask, iInv */) {
+	wait: function (iPort, iMask, iInv) { // optional iInv
 		iPort = this.vmInRangeRound(iPort, -32768, 65535, "WAIT");
-		if (iPort < 0) { // 2nd complement of 16 bit address?
+		if (iPort < 0) { // 2nd complement of 16 bit address
 			iPort += 65536;
+		}
+		iMask = this.vmInRangeRound(iMask, 0, 255, "WAIT");
+		if (iInv !== undefined) {
+			iInv = this.vmInRangeRound(iInv, 0, 255, "WAIT");
 		}
 		if (iPort === 0) {
 			debugger; // Testing
@@ -2902,10 +2970,10 @@ CpcVm.prototype = {
 		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "WINDOW");
 		oWin = this.aWindow[iStream];
 
-		iLeft = this.vmRound(iLeft, "WINDOW");
-		iRight = this.vmRound(iRight, "WINDOW");
-		iTop = this.vmRound(iTop, "WINDOW");
-		iBottom = this.vmRound(iBottom, "WINDOW");
+		iLeft = this.vmInRangeRound(iLeft, 1, 255, "WINDOW");
+		iRight = this.vmInRangeRound(iRight, 1, 255, "WINDOW");
+		iTop = this.vmInRangeRound(iTop, 1, 255, "WINDOW");
+		iBottom = this.vmInRangeRound(iBottom, 1, 255, "WINDOW");
 		oWin.iLeft = Math.min(iLeft, iRight) - 1;
 		oWin.iRight = Math.max(iLeft, iRight) - 1;
 		oWin.iTop = Math.min(iTop, iBottom) - 1;

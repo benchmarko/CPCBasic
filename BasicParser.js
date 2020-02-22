@@ -59,7 +59,7 @@ BasicParser.mKeywords = {
 	copychr$: "f n?",
 	cos: "f n",
 	creal: "f n",
-	cursor: "c n? n?",
+	cursor: "c n0? n?",
 	data: "c *",
 	dec$: "f n s",
 	def: "c s *", // not checked
@@ -121,7 +121,7 @@ BasicParser.mKeywords = {
 	log: "f n",
 	log10: "f n",
 	lower$: "f s",
-	mask: "c n? n?",
+	mask: "c n0? n?",
 	max: "f n *",
 	memory: "c n",
 	merge: "c s",
@@ -161,7 +161,7 @@ BasicParser.mKeywords = {
 	release: "c n",
 	rem: "c s?",
 	remain: "f n",
-	renum: "c n? n? n?",
+	renum: "c n0? n0? n?",
 	restore: "c n?",
 	resume: "c n?", // resume, resume next
 	resumeNext: "c",
@@ -170,7 +170,7 @@ BasicParser.mKeywords = {
 	rnd: "f n?",
 	round: "f n n?",
 	run: "c a?", // cannot check "c s | n?"
-	save: "c s a n? n? n?",
+	save: "c s a? n? n? n?",
 	sgn: "f n",
 	sin: "f n",
 	sound: "c n n n? n0? n0? n0? n?",

@@ -61,6 +61,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"key": "sphere",
 		"title": "Sphere"
 	},
+	{
+    	"key": "demo/blocky",
+		"title": "Blocky CPC Demo"
+	},
     {
     	"key": "demo/colors",
 		"title": "Colors CPC Demo"
@@ -132,6 +136,10 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
     	"key": "test/fancy",
 		"title": "Test copychr$"
+	},
+		{
+    	"key": "test/fill",
+		"title": "Test Fill"
 	},
 	{
 		"key": "test/keyboard",
