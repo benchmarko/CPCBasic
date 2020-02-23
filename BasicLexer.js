@@ -99,7 +99,7 @@ BasicLexer.prototype = {
 			},
 			aTokens = [],
 			iIndex = 0,
-			sToken, sChar, iStartPos,
+			sToken, sChar, iStartPos, iNumber,
 
 			advance = function () {
 				iIndex += 1;
@@ -114,12 +114,19 @@ BasicLexer.prototype = {
 				} while (fn(sChar));
 				return sToken2;
 			},
-			addToken = function (type, value, iPos) {
-				aTokens.push({
+			addToken = function (type, value, iPos, sOrig) { // optional original value
+				var oNode = {
 					type: type,
 					value: value,
 					pos: iPos
-				});
+				};
+
+				if (sOrig !== undefined) {
+					if (sOrig !== String(value)) {
+						oNode.orig = sOrig;
+					}
+				}
+				aTokens.push(oNode);
 			},
 			hexEscape = function (str) {
 				return str.replace(/[\x00-\x1f]/g, function (sChar2) { // eslint-disable-line no-control-regex
@@ -207,12 +214,12 @@ BasicLexer.prototype = {
 						sToken += advanceWhile(isDigit);
 					}
 				}
-				sToken = parseFloat(sToken);
+				iNumber = parseFloat(sToken);
 				if (!isFinite(sToken)) {
-					throw new BasicLexer.ErrorObject("Number is too large or too small", sToken, iStartPos); // for a 64-bit double
+					throw new BasicLexer.ErrorObject("Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
 				}
-				addToken("number", sToken, iStartPos);
-			} else if (isDot(sChar)) { // number starting with dot (similat code to normal number)
+				addToken("number", iNumber, iStartPos, sToken);
+			} else if (isDot(sChar)) { // number starting with dot (similar code to normal number)
 				sToken = sChar;
 				sChar = advance();
 				sToken += advanceWhile(isDigit);
@@ -222,11 +229,11 @@ BasicLexer.prototype = {
 						sToken += advanceWhile(isDigit);
 					}
 				}
-				sToken = parseFloat(sToken);
-				if (!isFinite(sToken)) {
-					throw new BasicLexer.ErrorObject("Number is too large or too small", sToken, iStartPos); // for a 64-bit double
+				iNumber = parseFloat(sToken);
+				if (!isFinite(iNumber)) {
+					throw new BasicLexer.ErrorObject("Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
 				}
-				addToken("number", sToken, iStartPos);
+				addToken("number", iNumber, iStartPos, sToken);
 			} else if (isHexOrBin(sChar)) {
 				sToken = sChar;
 				sChar = advance();

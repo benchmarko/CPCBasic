@@ -40,7 +40,7 @@ cpcBasic.addItem("", function () { /*
 1030 NEXT y
 1031 DIM b(3)
 1032 b(0)="Sueden":b(1)="Osten ":b(2)="Norden":b(3)="Westen"
-1031035 return
+1035 return
 1036 '
 1040 z=0
 1041 locate 1,24:?chr$(20);

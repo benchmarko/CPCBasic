@@ -31,11 +31,11 @@ function BasicParser(options) {
 }
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, l=line number, a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
 	abs: "f n",
 	after: "c n n?",
-	afterGosub: "c n n?", // special, cannot check optional first n
+	afterGosub: "c n n?", // special, cannot check optional first n, and line number
 	and: "o",
 	asc: "f s",
 	atn: "f n",
@@ -85,7 +85,7 @@ BasicParser.mKeywords = {
 	err: "f",
 	error: "c n",
 	every: "c n n?",
-	everyGosub: "c n n?", // special, cannot check optional first n
+	everyGosub: "c n n?", // special, cannot check optional first n, and line number
 	exp: "f n",
 	fill: "c n",
 	fix: "f n",
@@ -133,13 +133,13 @@ BasicParser.mKeywords = {
 	move: "c n n n0? n?",
 	mover: "c n n n0? n?",
 	"new": "c",
-	next: "c *", // v*
+	next: "c v*", // v*
 	not: "o",
 	on: "c", // on break cont, on break gosub, on break stop, on error goto, on <ex> gosub, on <ex> goto, on sq(n) gosub
 	onBreakGosub: "c l", // special
 	onErrorGoto: "c l", // special
-	onGosub: "c n l *", // special
-	onGoto: "c n l *", // special
+	onGosub: "c l l*", // special (n not checked)
+	onGoto: "c l l*", // special (n not checked)
 	onSqGosub: "c l", // special
 	openin: "c s",
 	openout: "c s",
@@ -157,19 +157,19 @@ BasicParser.mKeywords = {
 	print: "c #0? *", // print also with spc(), tab(), using
 	rad: "c",
 	randomize: "c n?",
-	read: "c v *",
+	read: "c v v*",
 	release: "c n",
 	rem: "c s?",
 	remain: "f n",
 	renum: "c n0? n0? n?",
-	restore: "c n?",
-	resume: "c n?", // resume, resume next
+	restore: "c l?",
+	resume: "c l?", // resume, resume <line>
 	resumeNext: "c",
 	"return": "c",
 	right$: "f s n",
 	rnd: "f n?",
 	round: "f n n?",
-	run: "c a?", // cannot check "c s | n?"
+	run: "c a?", // cannot check "c s | l?"
 	save: "c s a? n? n? n?",
 	sgn: "f n",
 	sin: "f n",
@@ -444,7 +444,7 @@ BasicParser.prototype = {
 				if (aTypes && aTypes.length) { // some more parameters expected?
 					do {
 						sType = aTypes.shift();
-					} while (sType && (sType === "*" || Utils.stringEndsWith(sType, "?")));
+					} while (sType && (Utils.stringEndsWith(sType, "*") || Utils.stringEndsWith(sType, "?")));
 					if (sType && !Utils.stringEndsWith(sType, "?")) {
 						throw new BasicParser.ErrorObject("Expected parameter " + sType + " for arguments after", oPreviousToken.value, oToken.pos);
 					}
@@ -476,7 +476,7 @@ BasicParser.prototype = {
 				}
 
 				while (bNeedMore || (sType && !oCloseTokens[oToken.type])) {
-					if (aTypes && sType !== "*") { // "*"= any number of parameters
+					if (aTypes && sType.slice(-1) !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
 						if (!sType) {
 							throw new BasicParser.ErrorObject("Expected end of arguments", oPreviousToken.type, oPreviousToken.pos);
@@ -504,10 +504,18 @@ BasicParser.prototype = {
 								value: null,
 								len: 0
 							};
-						} else {
-							if (sType.substr(0, 1) === "l" && oToken.type !== "number") { // line number expected
-								throw new BasicParser.ErrorObject("Line number expected at", oToken.type, oToken.pos);
+						} else if (sType.substr(0, 1) === "l") {
+							oExpression = expression(0);
+							if (oExpression.type !== "number") { // maybe an expression and no plain number
+								throw new BasicParser.ErrorObject("Line number expected at", oExpression.value, oExpression.pos);
 							}
+							oExpression.type = "linenumber"; // change type: number => linenumber
+						} else if (sType.substr(0, 1) === "v") { // variable (identifier)
+							if (oToken.type !== "identifier") {
+								throw new BasicParser.ErrorObject("Variable expected at", oToken.value, oToken.pos);
+							}
+							oExpression = expression(0);
+						} else {
 							oExpression = expression(0);
 						}
 						if (oToken.type === sSeparator) {
@@ -650,6 +658,10 @@ BasicParser.prototype = {
 			return number;
 		});
 
+		symbol("linenumber", function (number) {
+			return number;
+		});
+
 		symbol("string", function (s) {
 			return s;
 		});
@@ -765,16 +777,19 @@ BasicParser.prototype = {
 		});
 
 		stmt("after", function () {
-			var oValue = fnCreateCmdCall("afterGosub"); // interval and optional timer
+			var oValue = fnCreateCmdCall("afterGosub"), // interval and optional timer
+				aLine;
 
 			if (oValue.args.length < 2) { // add default timer 0
 				oValue.args.push({ // create
 					type: "number",
-					value: 0
+					value: 0,
+					orig: ""
 				});
 			}
 			advance("gosub");
-			oValue.args.push(expression(0)); // line
+			aLine = fnGetArgs("gosub"); // line number
+			oValue.args.push(aLine[0]);
 			return oValue;
 		});
 
@@ -905,16 +920,19 @@ BasicParser.prototype = {
 		});
 
 		stmt("every", function () {
-			var oValue = fnCreateCmdCall("everyGosub"); // interval and optional timer
+			var oValue = fnCreateCmdCall("everyGosub"), // interval and optional timer
+				aLine;
 
 			if (oValue.args.length < 2) { // add default timer
 				oValue.args.push({ // create
 					type: "number",
-					value: 0
+					value: 0,
+					orig: ""
 				});
 			}
 			advance("gosub");
-			oValue.args.push(expression(0)); // line
+			aLine = fnGetArgs("gosub"); // line number
+			oValue.args.push(aLine[0]);
 			return oValue;
 		});
 
@@ -1179,6 +1197,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
 		stmt("next", function () {
 			var oValue = oPreviousToken;
 
@@ -1193,6 +1212,7 @@ BasicParser.prototype = {
 			}
 			return oValue;
 		});
+		*/
 
 		stmt("on", function () {
 			var oValue = oPreviousToken,

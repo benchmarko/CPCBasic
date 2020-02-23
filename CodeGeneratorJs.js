@@ -50,7 +50,6 @@ CodeGeneratorJs.prototype = {
 	//
 	evaluate: function (parseTree, variables) {
 		var that = this,
-			sOutput = "",
 
 			fnGetVarDefault = function (/* sName */) {
 				return 1; // during compile step, we just init all variables with 1
@@ -305,6 +304,9 @@ CodeGeneratorJs.prototype = {
 
 					value = "0x" + ((value.length) ? value : "0"); // &->0x
 					return value;
+				},
+				linenumber: function (node) {
+					return node.value;
 				},
 				identifier: function (node) {
 					var sName = fnAdaptVariableName(node.value); // here we use node.value
@@ -749,9 +751,7 @@ CodeGeneratorJs.prototype = {
 					var aNodeArgs = fnParseArgs(node.args);
 
 					if (aNodeArgs.length) {
-						if (node.args[0].type === "number") { // optional line number
-							this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]);
-						}
+						this.fnAddReferenceLabel(aNodeArgs[0], node.args[0]); // optional line number
 					}
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + "); break"; // append break
 				},
@@ -760,14 +760,14 @@ CodeGeneratorJs.prototype = {
 				},
 				run: function (node) { // optional arg can be number or string
 					if (node.args.length) {
-						if (node.args[0].type === "number") { // line number
+						if (node.args[0].type === "linenumber" || node.args[0].type === "number") { // optional line number //TTT should be linenumber only
 							this.fnAddReferenceLabel(fnParseOneArg(node.args[0]), node.args[0]); // parse only one arg, args are parsed later
 						}
 					}
 
 					return this.fnCommandWithGoto(node);
 				},
-				save: function (node) { //TTT
+				save: function (node) {
 					var aNodeArgs = [],
 						sFileName, sType, aNodeArgs2;
 
@@ -779,19 +779,12 @@ CodeGeneratorJs.prototype = {
 							bDevScopeArgsCollect = true;
 							sType = '"' + fnParseOneArg(node.args[1]) + '"';
 							aNodeArgs.push(sType);
-							//fnParseArgs(node.args);
 							bDevScopeArgsCollect = false;
 							oDevScopeArgs = null;
 							aNodeArgs2 = fnParseArgs(node.args.splice(2)); // remaining args
 							aNodeArgs = aNodeArgs.concat(aNodeArgs2);
 						}
 					}
-
-					/*
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						aNodeArgs[i] = '"' + aNodeArgs[i] + '"'; // put in quotes
-					}
-					*/
 					return "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 				},
 				sound: function (node) {
@@ -870,54 +863,74 @@ CodeGeneratorJs.prototype = {
 				return sOutput2;
 			},
 
-			oLabels = this.oLabels,
-			i,
-			sNode;
+			fnCreateLabelsMap = function (oLabels2) {
+				var iLastLine = 0,
+					i, oNode, sLine, iLine;
+
+				for (i = 0; i < parseTree.length; i += 1) {
+					oNode = parseTree[i];
+					if (oNode.type === "label") {
+						sLine = oNode.value;
+						iLine = Number(sLine);
+						if (sLine in oLabels2) {
+							throw new CodeGeneratorJs.ErrorObject("Duplicate line number", sLine, oNode.pos);
+						}
+						if (iLine <= iLastLine) {
+							throw new CodeGeneratorJs.ErrorObject("Line number not increasing", sLine, oNode.pos);
+						}
+						if (iLine < 1 || iLine > 65535) {
+							throw new CodeGeneratorJs.ErrorObject("Line number overflow", sLine, oNode.pos);
+						}
+						iLastLine = iLine;
+						oLabels2[sLine] = 0; // init call count
+					}
+				}
+			},
+
+			fnEvaluate = function () {
+				var sOutput = "",
+					i, sNode;
+
+				for (i = 0; i < parseTree.length; i += 1) {
+					if (Utils.debug > 2) {
+						Utils.console.debug("evaluate: parseTree i=%d, node=%o", i, parseTree[i]);
+					}
+					sNode = parseNode(parseTree[i]);
+					if ((sNode !== undefined) && (sNode !== "")) {
+						if (sNode !== null) {
+							if (sOutput.length === 0) {
+								sOutput = sNode;
+							} else {
+								sOutput += "\n" + sNode;
+							}
+						} else {
+							sOutput = ""; // cls (clear output when sNode is set to null)
+						}
+					}
+				}
+
+				/*
+				if (Utils.debug > 1) {
+					Utils.console.debug("evaluate: line number reference counts:");
+					for (sNode in oLabels) {
+						if (oLabels[sNode]) {
+							Utils.console.debug("evaluate: line", sNode, "count", oLabels[sNode]);
+						}
+					}
+				}
+				*/
+
+				// optional: comment lines which are not referenced
+				if (!that.bMergeFound) {
+					sOutput = fnCommentUnusedCases(sOutput, that.oLabels);
+				}
+				return sOutput;
+			};
 
 		// create labels map
-		for (i = 0; i < parseTree.length; i += 1) {
-			if (parseTree[i].type === "label") {
-				if (parseTree[i].value in oLabels) {
-					throw new CodeGeneratorJs.ErrorObject("Duplicate line number", parseTree[i].value, parseTree[i].pos);
-				}
-				oLabels[parseTree[i].value] = 0; // init call count
-			}
-		}
+		fnCreateLabelsMap(this.oLabels);
 
-		for (i = 0; i < parseTree.length; i += 1) {
-			if (Utils.debug > 2) {
-				Utils.console.debug("evaluate: parseTree i=%d, node=%o", i, parseTree[i]);
-			}
-			sNode = parseNode(parseTree[i]);
-			if ((sNode !== undefined) && (sNode !== "")) {
-				if (sNode !== null) {
-					if (sOutput.length === 0) {
-						sOutput = sNode;
-					} else {
-						sOutput += "\n" + sNode;
-					}
-				} else {
-					sOutput = ""; // cls (clear output when sNode is set to null)
-				}
-			}
-		}
-
-		/*
-		if (Utils.debug > 1) {
-			Utils.console.debug("evaluate: line number reference counts:");
-			for (sNode in oLabels) {
-				if (oLabels[sNode]) {
-					Utils.console.debug("evaluate: line", sNode, "count", oLabels[sNode]);
-				}
-			}
-		}
-		*/
-
-		// optional: comment lines which are not referenced
-		if (!this.bMergeFound) {
-			sOutput = fnCommentUnusedCases(sOutput, oLabels);
-		}
-		return sOutput;
+		return fnEvaluate();
 	},
 
 	generate: function (input, variables) {

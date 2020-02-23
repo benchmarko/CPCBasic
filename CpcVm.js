@@ -88,6 +88,7 @@ CpcVm.prototype = {
 		this.oCanvas = this.options.canvas;
 		this.oKeyboard = this.options.keyboard;
 		this.oSound = this.options.sound;
+		//this.oFormatter = this.options.formatter; //TTT
 
 		this.oRandom = new Random();
 
@@ -251,13 +252,13 @@ CpcVm.prototype = {
 		}
 	},
 
-	vmResetInputHandling: function () {
+	vmResetInputHandling: function (aInputValues) {
 		var oData = {
 			iStream: 0,
 			sInput: "",
 			sNoCRLF: "",
 			fnInputCallback: null, // callback for stop reason "input"
-			aInputValues: []
+			aInputValues: aInputValues || []
 		};
 
 		Object.assign(this.oInput, oData);
@@ -339,12 +340,14 @@ CpcVm.prototype = {
 		return (n >= 0) ? (n + 0.5) | 0 : (n - 0.5) | 0; // eslint-disable-line no-bitwise
 	},
 
-	// round for comparison /ODO
+	/*
+	// round for comparison TODO
 	vmRound4Cmp: function (n) {
 		var nAdd = (n >= 0) ? 0.5 : -0.5;
 
 		return ((n * 1e12 + nAdd) | 0) / 1e12; // eslint-disable-line no-bitwise
 	},
+	*/
 
 	vmInRangeRound: function (n, iMin, iMax, sErr) { // optional sErr
 		n = this.vmRound(n, sErr);
@@ -354,21 +357,6 @@ CpcVm.prototype = {
 		}
 		return n;
 	},
-
-	/*
-	// range round with overflow check (-32768..32767)
-	vmInt16Round: function (n, sErr) { // optional sErr
-		var iMin = -32768,
-			iMax = 32767;
-
-		n = this.vmRound(n, sErr);
-		if (n < iMin || n > iMax) {
-			Utils.console.warn("vmInt16Round: number not in range:", iMin + "<=" + n + "<=" + iMax);
-			this.error(6, sErr + " " + n); // Overflow
-		}
-		return n;
-	},
-	*/
 
 	vmAssertNumberType: function (sVarType) {
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
@@ -1874,14 +1862,9 @@ CpcVm.prototype = {
 			} else if (iByte >= 0xc4) {
 				this.iRamSelect = iByte - 0xc4 + 1;
 			}
-		} else {
-			this.vmNotImplemented("OUT " + iPort + ": " + iByte);
+		} else if (Utils.debug > 0) {
+			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte, ": unknown port");
 		}
-		/*
-		if (Utils.debug > 0) {
-			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte);
-		}
-		*/
 	},
 
 	paper: function (iStream, iPaper) {
@@ -2346,7 +2329,9 @@ CpcVm.prototype = {
 			if (n === 0) {
 				n = iRndInit;
 			}
-			Utils.console.log("randomize:", n);
+			if (Utils.debug > 0) {
+				Utils.console.debug("randomize:", n);
+			}
 			this.oRandom.init(n);
 		}
 	},
@@ -2391,18 +2376,20 @@ CpcVm.prototype = {
 	renum: function (iNew, iOld, iStep) { // optional args: new number, old number, step
 		if (iNew !== null && iNew !== undefined) {
 			iNew = this.vmInRangeRound(iNew, 1, 65535, "RENUM");
-		} else {
-			iNew = 10;
 		}
 		if (iOld !== null && iOld !== undefined) {
 			iOld = this.vmInRangeRound(iOld, 1, 65535, "RENUM");
 		}
 		if (iStep !== undefined) {
 			iStep = this.vmInRangeRound(iStep, 1, 65535, "RENUM");
-		} else {
-			iStep = 10;
 		}
-		this.vmNotImplemented("RENUM: " + iNew + " " + iOld + " " + iStep);
+
+		this.oInput.aInputValues = [ // we misuse aInputValues
+			iNew || 10,
+			iOld || 1,
+			iStep || 10
+		];
+		this.vmStop("renum", 85);
 	},
 
 	restore: function (iLine) {
@@ -2591,6 +2578,7 @@ CpcVm.prototype = {
 		return Math.sin((this.bDeg) ? Utils.toRadians(n) : n);
 	},
 
+	/*
 	vmSoundCallback: function (sInput) {
 		var oSoundData;
 
@@ -2600,6 +2588,7 @@ CpcVm.prototype = {
 			this.oSound.sound(oSoundData);
 		}
 	},
+	*/
 
 	sound: function (iState, iPeriod, iDuration, iVolume, iVolEnv, iToneEnv, iNoise) {
 		var oSoundData, i, oSqTimer;

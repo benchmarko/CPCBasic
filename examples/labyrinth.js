@@ -5,14 +5,15 @@
 cpcBasic.addItem("", function () { /*
 100 REM Drawing Labyrinth
 110 MODE 1
-111 defint a-z
-114 randomize time: 'randomize 159253:'TEST
+111 clear
+112 defint a-z
+113 def fnRoundSec(x!)=round(x!/300,3)
+114 randomize time: '159253:'TEST
 115 DIM t(5),sr(3),zr(3),p(4):zr(0)=-1:sr(1)=1:zr(2)=1:sr(3)=-1
 120 FOR i=0 TO 3:p(i)=2^i:NEXT
-122 ll=19:lb=10:'size: ll (1-63), lb (1-49)
-130 randomize t!: 'randomize 159253:'TEST
+122 ll=19:lb=12:'size: ll (1-63), lb (1-49)
 150 rz=ll*lb:a=ll:ll=ll-1:lb=lb-1
-151 '
+152 '
 153 t!=time
 154 dim m(rz)
 156 s=INT(RND*ll):z=INT(RND*lb):r=1
@@ -28,17 +29,22 @@ cpcBasic.addItem("", function () { /*
 220 ri=t(INT(RND*q)+1):m(adr)=m(adr)+p(ri):s=s+sr(ri):z=z+zr(ri)
 230 nr=ri-2:IF nr<0 THEN nr=nr+4
 240 adr=z*a+s:m(adr)=m(adr)+p(nr)
-242 r=r+1
-243 wend
+241 r=r+1
+242 wend
+243 t1!=time-t!:t!=time
 244 m(0)=m(0)+1:locate 1,1:GOSUB 500
-245 locate 1,25:?round((time-t!)/300,3);"sec  ";
+245 t2!=time-t!
 246 t!=time+150*6:while time<t! and inkey$="":wend
-247 gosub 710
-248 t!=time+250*6:while time<t! and inkey$="":wend
-252 'll=ll+1:lb=lb+1
-254 erase m
-255 goto 153
-256 '
+248 window #2,1,13,1,7:cls#2
+249 t!=time
+250 gosub 710
+251 t3!=time-t!: t!=time+50*6:while time<t! and inkey$="":wend
+252 locate 1,25:paper 2:?fnRoundSec(t1!);"/";fnRoundSec(t2!);"/";fnRoundSec(t3!);"sec  ";:paper 0
+253 t!=time+250*6:while time<t! and inkey$="":wend
+254 'll=ll+1:lb=lb+1
+255 erase m
+256 goto 153
+257 '
 258 z=z+1:IF z>lb THEN z=0:s=s+1:IF s>ll THEN s=0
 260 IF m(z*a+s)=0 THEN 258 ELSE 160
 270 '

@@ -43,7 +43,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   - Use the *second selection field* to select a sample program. It will reset the CPC, and run the program.
   - The **Help** button opens the readme file in a browser.
   - The **Reload** button reloads the page with the current settings. (Please note that changes to the BASIC program are not saved.)
-  - The **Compile only** button compiles the program without running it. (Usually you use the *Run* button below.)
+  - The **Check** button checks the syntax of the program. It compiles the program to JavaScript.
+  - The **Renum** button renumbers the line numbers starting with 10 and increasing by 10 (see also *RENUM*)
 - The *CPC* window shows the output on a CPC screen.
   - If you change the BASIC program, press the **Run** button to compile the BASIC program to JavaScript and run it.
   - If the focus is on the CPC screen, keystrokes will be detected by a running program. (An alternative way of input is the *virtual keyboard* below.)
@@ -62,7 +63,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *OUT*, *PRINT#8/#9*, *RENUM*, *RESUME* (partly), *SAVE*, *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *PRINT#8/#9*, *RESUME* (partly), *SAVE*, *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
@@ -91,6 +92,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: *COPYCHR$*]
 - [done: *SPEED INK*]
 - [done: *FILL*]
+- [done: *RENUM*]
 
 ## Extensions and Features
 

@@ -6,11 +6,12 @@
 
 "use strict";
 
-var Utils, BasicLexer, BasicParser, Canvas, CodeGeneratorJs, CpcVm, Keyboard, Sound;
+var Utils, BasicFormatter, BasicLexer, BasicParser, Canvas, CodeGeneratorJs, CpcVm, Keyboard, Sound;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
 	Utils = require("./Utils.js");
+	BasicFormatter = require("./BasicFormatter.js");
 	BasicLexer = require("./BasicLexer.js");
 	BasicParser = require("./BasicParser.js");
 	Canvas = require("./Canvas.js");
@@ -509,6 +510,35 @@ Controller.prototype = {
 		this.fnInvalidateScript();
 	},
 
+	fnRenum2: function (iNew, iOld, iStep) {
+		var sInput = this.view.getAreaValue("inputText"),
+			oOutput, oError, iEndPos, sOutput;
+
+		if (!this.oBasicFormatter) {
+			this.oBasicFormatter = new BasicFormatter({
+				lexer: new BasicLexer(),
+				parser: new BasicParser()
+			});
+		}
+
+		this.oBasicFormatter.reset();
+		oOutput = this.oBasicFormatter.renumber(sInput, iNew, iOld, iStep);
+
+		if (oOutput.error) {
+			oError = oOutput.error;
+			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
+			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
+			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
+			Utils.console.warn(sOutput);
+			this.oVm.print(0, sOutput + "\r\n"); // Error
+		} else {
+			sOutput = oOutput.text;
+			this.view.setAreaValue("inputText", sOutput);
+			this.view.setAreaValue("outputText", ""); // JS
+		}
+		return oOutput;
+	},
+
 	fnParse2: function () {
 		var sInput = this.view.getAreaValue("inputText"),
 			iBench = this.model.getProperty("bench"),
@@ -639,7 +669,7 @@ Controller.prototype = {
 
 		this.view.setDisabled("runButton", sReason === "reset");
 		this.view.setDisabled("stopButton", sReason !== "input" && sReason !== "key" && sReason !== "loadFile");
-		this.view.setDisabled("continueButton", sReason === "end" || sReason === "reset" || sReason === "input" || sReason === "key" || sReason === "loadFile" || sReason === "parse");
+		this.view.setDisabled("continueButton", sReason === "end" || sReason === "input" || sReason === "key" || sReason === "loadFile" || sReason === "parse" || sReason === "renum" || sReason === "reset");
 		if (this.oVariables) {
 			this.fnSetVarSelectOptions("varSelect", this.oVariables);
 			this.commonEventHandler.onVarSelectChange();
@@ -706,6 +736,10 @@ Controller.prototype = {
 			this.fnParseRun2();
 			break;
 
+		case "renum":
+			this.fnRenum2(oVm.vmGetNextInput(""), oVm.vmGetNextInput(""), oVm.vmGetNextInput(""));
+			break;
+
 		case "reset":
 			this.fnReset2();
 			break;
@@ -746,6 +780,19 @@ Controller.prototype = {
 
 	fnParse: function () {
 		this.oVm.vmStop("parse", 99);
+		if (this.iTimeoutHandle === null) {
+			this.fnRunLoop();
+		}
+	},
+
+	fnRenum: function () {
+		// set input values for renum
+		this.oVm.vmResetInputHandling([
+			10,
+			1,
+			10
+		]);
+		this.oVm.vmStop("renum", 99);
 		if (this.iTimeoutHandle === null) {
 			this.fnRunLoop();
 		}

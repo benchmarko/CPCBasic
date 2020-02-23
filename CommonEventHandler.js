@@ -127,6 +127,10 @@ CommonEventHandler.prototype = {
 		this.controller.fnParse();
 	},
 
+	onRenumButtonClick: function () {
+		this.controller.fnRenum();
+	},
+
 	onRunButtonClick: function () {
 		var sInput = this.view.getAreaValue("outputText");
 
