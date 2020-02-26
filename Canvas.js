@@ -564,8 +564,8 @@ Canvas.prototype = {
 			iGColMode = this.iGColMode,
 			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
 
-		dx = (xend - xstart) / iLineWidth;
-		dy = (yend - ystart) / iLineHeight;
+		dx = ((xend - xstart) / iLineWidth) | 0; // eslint-disable-line no-bitwise
+		dy = ((yend - ystart) / iLineHeight) | 0; // eslint-disable-line no-bitwise
 
 		incx = Math.sign(dx) * iLineWidth;
 		incy = Math.sign(dy) * iLineHeight;
@@ -594,7 +594,7 @@ Canvas.prototype = {
 
 		x = xstart;
 		y = ystart;
-		err = deltafastdirection / 2;
+		err = deltafastdirection >> 1; // eslint-disable-line no-bitwise
 		this.setPixel(x, y, iGPen, iGColMode); // we expect integers
 
 		for (t = 0; t < deltafastdirection; t += 1) {
