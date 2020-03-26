@@ -637,8 +637,7 @@ CpcVm.prototype = {
 	vmUsingFormat1: function (sFormat, arg) {
 		var sPadChar = " ",
 			re1 = /^\\ *\\$/,
-			iPadLen, sPad, aFormat,
-			sStr;
+			iDecimals, iPadLen, sPad, aFormat, sStr;
 
 		if (typeof arg === "string") {
 			if (sFormat === "&") {
@@ -661,7 +660,11 @@ CpcVm.prototype = {
 				arg = Number(arg).toFixed(0);
 			} else { // assume ###.##
 				aFormat = sFormat.split(".", 2);
-				arg = Number(arg).toFixed(aFormat[1].length);
+				iDecimals = aFormat[1].length;
+				// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
+				arg = Number(Math.round(arg + "e" + iDecimals) + "e-" + iDecimals);
+				//arg = Number(arg).toFixed(iDecimals); // arg must be string
+				arg = String(arg);
 			}
 			iPadLen = sFormat.length - arg.length;
 			sPad = (iPadLen > 0) ? sPadChar.repeat(iPadLen) : "";
@@ -827,6 +830,9 @@ CpcVm.prototype = {
 
 	asc: function (s) {
 		this.vmAssertString(s, "ASC");
+		if (!s.length) {
+			this.error(5, "ASC"); // Improper argument
+		}
 		return this.vmGetCpcCharCode(s.charCodeAt(0));
 	},
 
@@ -1293,7 +1299,7 @@ CpcVm.prototype = {
 			sErrorWithInfo += ": " + sErrInfo;
 		}
 
-		if (this.iErrorGotoLine > 0) {
+		if (this.iErrorGotoLine && !this.iErrorResumeLine) {
 			this.iErrorResumeLine = this.iErl;
 			this.vmGotoLine(this.iErrorGotoLine, "onError");
 			this.vmStop("onError", 50);
@@ -2373,7 +2379,7 @@ CpcVm.prototype = {
 		return iRemain;
 	},
 
-	renum: function (iNew, iOld, iStep) { // optional args: new number, old number, step
+	renum: function (iNew, iOld, iStep, iKeep) { // optional args: new number, old number, step, keep line (only for |renum)
 		if (iNew !== null && iNew !== undefined) {
 			iNew = this.vmInRangeRound(iNew, 1, 65535, "RENUM");
 		}
@@ -2383,11 +2389,15 @@ CpcVm.prototype = {
 		if (iStep !== undefined) {
 			iStep = this.vmInRangeRound(iStep, 1, 65535, "RENUM");
 		}
+		if (iKeep !== undefined) {
+			iKeep = this.vmInRangeRound(iKeep, 1, 65535, "RENUM");
+		}
 
 		this.oInput.aInputValues = [ // we misuse aInputValues
 			iNew || 10,
 			iOld || 1,
-			iStep || 10
+			iStep || 10,
+			iKeep || 65535 // keep lines
 		];
 		this.vmStop("renum", 85);
 	},
@@ -2476,17 +2486,21 @@ CpcVm.prototype = {
 	},
 
 	round: function (n, iDecimals) {
-		var iFact;
+		//var iFact;
 
 		this.vmAssertNumber(n, "ROUND");
 		iDecimals = this.vmInRangeRound(iDecimals || 0, -39, 39, "ROUND");
+		/*
 		if (iDecimals >= 0) {
 			iFact = Math.pow(10, iDecimals);
 		} else {
 			iFact = 1 / Math.pow(10, -iDecimals);
 		}
 		return Math.round(n * iFact) / iFact;
-		// TEST: or to avoid rounding errors: return Number(Math.round(value + "e" + iDecimals) + "e-" + iDecimals); // https://www.jacklmoore.com/notes/rounding-in-javascript/
+		*/
+
+		// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
+		return Number(Math.round(n + "e" + iDecimals) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
 	},
 
 	rsxBasic: function () {
@@ -2511,6 +2525,10 @@ CpcVm.prototype = {
 			Object.assign(oWin, oWinData);
 		}
 		this.oCanvas.changeMode(iMode); // or setMode?
+	},
+
+	rsxRenum: function () { // optional args: new number, old number, step, keep line (only for |renum)
+		this.renum.apply(this, arguments);
 	},
 
 	vmRunCallback: function (sInput) {

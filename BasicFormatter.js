@@ -31,7 +31,7 @@ BasicFormatter.prototype = {
 		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
 	},
 
-	fnRenumber: function (sInput, aParseTree, iNew, iOld, iStep) {
+	fnRenumber: function (sInput, aParseTree, iNew, iOld, iStep, iKeep) {
 		var oLines = {}, // line numbers
 			aRefs = [], // references
 			oChanges = {},
@@ -103,7 +103,7 @@ BasicFormatter.prototype = {
 
 				for (i = 0; i < aKeys.length; i += 1) {
 					oLine = oLines[aKeys[i]];
-					if (oLine.value >= iOld) {
+					if (oLine.value >= iOld && oLine.value < iKeep) {
 						if (iNew > 65535) {
 							throw new BasicFormatter.ErrorObject("Line number overflow", oLine.value, oLine.pos);
 						}
@@ -115,7 +115,7 @@ BasicFormatter.prototype = {
 
 				for (i = 0; i < aRefs.length; i += 1) {
 					oRef = aRefs[i];
-					if (oRef.value >= iOld) {
+					if (oRef.value >= iOld && oRef.value < iKeep) {
 						if (oRef.value !== oLines[oRef.value].newLine) {
 							oRef.newLine = oLines[oRef.value].newLine;
 							oChanges[oRef.pos] = oRef;
@@ -169,7 +169,7 @@ BasicFormatter.prototype = {
 	},
 	*/
 
-	renumber: function (sInput, iNew, iOld, iStep) {
+	renumber: function (sInput, iNew, iOld, iStep, iKeep) {
 		var oOut = {
 				text: ""
 			},
@@ -178,7 +178,7 @@ BasicFormatter.prototype = {
 		try {
 			aTokens = this.lexer.lex(sInput);
 			aParseTree = this.parser.parse(aTokens);
-			sOutput = this.fnRenumber(sInput, aParseTree, iNew, iOld, iStep);
+			sOutput = this.fnRenumber(sInput, aParseTree, iNew, iOld, iStep, iKeep || 65535);
 			oOut.text = sOutput;
 		} catch (e) {
 			oOut.error = e;

@@ -510,7 +510,7 @@ Controller.prototype = {
 		this.fnInvalidateScript();
 	},
 
-	fnRenum2: function (iNew, iOld, iStep) {
+	fnRenum2: function (iNew, iOld, iStep, iKeep) {
 		var sInput = this.view.getAreaValue("inputText"),
 			oOutput, oError, iEndPos, sOutput;
 
@@ -522,7 +522,7 @@ Controller.prototype = {
 		}
 
 		this.oBasicFormatter.reset();
-		oOutput = this.oBasicFormatter.renumber(sInput, iNew, iOld, iStep);
+		oOutput = this.oBasicFormatter.renumber(sInput, iNew, iOld, iStep, iKeep);
 
 		if (oOutput.error) {
 			oError = oOutput.error;
@@ -737,7 +737,7 @@ Controller.prototype = {
 			break;
 
 		case "renum":
-			this.fnRenum2(oVm.vmGetNextInput(""), oVm.vmGetNextInput(""), oVm.vmGetNextInput(""));
+			this.fnRenum2(oVm.vmGetNextInput(""), oVm.vmGetNextInput(""), oVm.vmGetNextInput(""), oVm.vmGetNextInput(""));
 			break;
 
 		case "reset":

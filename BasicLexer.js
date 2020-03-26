@@ -46,6 +46,11 @@ BasicLexer.prototype = {
 			isDigit = function (c) {
 				return (/[0-9]/).test(c);
 			},
+			/*
+			isDigitOrSpace = function (c) {
+				return (/[0-9 ]/).test(c);
+			},
+			*/
 			isDot = function (c) {
 				return (/[.]/).test(c);
 			},
@@ -128,6 +133,26 @@ BasicLexer.prototype = {
 				}
 				aTokens.push(oNode);
 			},
+			/*
+			fnParseNumber = function () {
+				sToken = advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces! (how to differentiate e5 and e.g. err?)
+				if (sChar === ".") {
+					sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace
+				}
+				if (sChar === "e" || sChar === "E") { // TODO: how to check? [eE][+-]?\d+
+					sToken += advanceWhile(isSign); // TODO: allow at most one sign!
+					if (isDigit(sChar)) { // TODO: isDigitOrSpace
+						sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace
+					}
+				}
+				sToken = sToken.trim(); // remove trailing spaces
+				iNumber = parseFloat(sToken);
+				if (!isFinite(sToken)) {
+					throw new BasicLexer.ErrorObject("Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
+				}
+				addToken("number", iNumber, iStartPos, sToken);
+			},
+			*/
 			hexEscape = function (str) {
 				return str.replace(/[\x00-\x1f]/g, function (sChar2) { // eslint-disable-line no-control-regex
 					return "\\x" + ("00" + sChar2.charCodeAt().toString(16)).slice(-2);
@@ -204,22 +229,23 @@ BasicLexer.prototype = {
 				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 			} else if (isDigit(sChar)) {
-				sToken = advanceWhile(isDigit);
+				sToken = advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces! (how to differentiate e5 and e.g. err?)
 				if (sChar === ".") {
-					sToken += advanceWhile(isDigit);
+					sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace
 				}
-				if (sChar === "e" || sChar === "E") {
-					sToken += advanceWhile(isSign);
-					if (isDigit(sChar)) {
-						sToken += advanceWhile(isDigit);
+				if (sChar === "e" || sChar === "E") { // TODO: how to check? [eE][+-]?\d+
+					sToken += advanceWhile(isSign); // TODO: allow at most one sign!
+					if (isDigit(sChar)) { // TODO: isDigitOrSpace
+						sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace
 					}
 				}
+				sToken = sToken.trim(); // remove trailing spaces
 				iNumber = parseFloat(sToken);
 				if (!isFinite(sToken)) {
 					throw new BasicLexer.ErrorObject("Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
 				}
 				addToken("number", iNumber, iStartPos, sToken);
-			} else if (isDot(sChar)) { // number starting with dot (similar code to normal number)
+			} else if (isDot(sChar)) { // number starting with dot (similar code to normal number) // TODO: .( *\d+)+[eE] *[+-]? *\d[\d ]*
 				sToken = sChar;
 				sChar = advance();
 				sToken += advanceWhile(isDigit);
