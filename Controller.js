@@ -574,7 +574,9 @@ Controller.prototype = {
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
-			Utils.console.warn(sOutput);
+			//Utils.console.warn(sOutput);
+			oError.message = sOutput;
+			Utils.console.warn(oError);
 			this.oVm.print(0, sOutput + "\r\n"); // Error
 		} else {
 			sOutput = oOutput.text;
@@ -651,10 +653,14 @@ Controller.prototype = {
 			if (e instanceof CpcVm.ErrorObject) {
 				if (!e.hidden) {
 					oVm.print(0, String(e) + "\r\n");
+					Utils.console.warn(e);
+				} else {
+					Utils.console.log(e);
 				}
 			} else {
 				oError = oVm.vmSetError(2, String(e)); // Syntax Error
 				oVm.print(0, String(oError) + "\r\n");
+				Utils.console.error(e);
 			}
 		}
 	},
@@ -737,7 +743,7 @@ Controller.prototype = {
 			break;
 
 		case "renum":
-			this.fnRenum2(oVm.vmGetNextInput(""), oVm.vmGetNextInput(""), oVm.vmGetNextInput(""), oVm.vmGetNextInput(""));
+			this.fnRenum2(oVm.vmGetNextInput(".I"), oVm.vmGetNextInput(".I"), oVm.vmGetNextInput(".I"), oVm.vmGetNextInput(".I"));
 			break;
 
 		case "reset":
@@ -746,7 +752,7 @@ Controller.prototype = {
 
 		case "run":
 			this.fnRun2();
-			this.oVm.vmSetStartLine(oVm.vmGetNextInput("")); // set start line number (after line 0)
+			this.oVm.vmSetStartLine(oVm.vmGetNextInput(".$") || 0); // set start line number (after line 0)
 			break;
 
 		case "sound":
@@ -790,7 +796,8 @@ Controller.prototype = {
 		this.oVm.vmResetInputHandling([
 			10,
 			1,
-			10
+			10,
+			65535
 		]);
 		this.oVm.vmStop("renum", 99);
 		if (this.iTimeoutHandle === null) {

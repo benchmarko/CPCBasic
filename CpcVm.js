@@ -383,6 +383,42 @@ CpcVm.prototype = {
 		return value;
 	},
 
+	/*
+	vmAssign_t1: function (sVarName, value) {
+		var sVarType = sVarName.charAt(sVarName.length - 1),
+			sDefType = this.oVarTypes[sVarName.charAt(0)],
+			sType = sVarType || sDefType,
+			sName2;
+
+		if (sType === "R") { // real
+			this.vmAssertNumber(value, "=");
+		} else if (sType === "I") { // integer
+			value = this.vmRound(value, "="); // round number to integer
+		} else if (sType === "$") { // string
+			if (typeof value !== "string") {
+				Utils.console.warn("vmAssign: expected string but got:", value);
+				this.error(13, "type " + sType + "=" + value); // "Type mismatch"
+			}
+		}
+		//this.v[sVarName] = value; // assign
+
+			//how to deal with arrays?
+		sName2 = sVarName.slice(0, -1) + "V";
+		// side effect 1: set "a1R": if <defType> is "R" and "a1" exists, set also "a1"
+		if (sType === sDefType && sName2 in this.v) {
+			this.v[sName2] = value; // assign side effect
+		}
+		// side effect 2: set a1: if a1<defType> exists: set also a1<defType>, e.g. "a1R"
+
+		sName2 = sVarName.slice(0, -1) + sDefType;
+		if (sType === "V" && sName2 in this.v) {
+			this.v[sName2] = value; // assign side effect
+		}
+		return value;
+	},
+	*/
+
+
 	vmGetError: function (iErr) { // BASIC error numbers
 		var aErrors = [
 				"Improper argument", // 0
@@ -1273,7 +1309,9 @@ CpcVm.prototype = {
 	},
 
 	erl: function () {
-		return this.iErl;
+		var iErl = parseInt(this.iErl, 10); // in cpcBasic we have an error label here, so return number only
+
+		return iErl || 0;
 	},
 
 	err: function () {
@@ -1430,6 +1468,10 @@ CpcVm.prototype = {
 		return iByte;
 	},
 
+	vmSetInputValues: function (aInputValues) {
+		this.oInput.aInputValues = aInputValues;
+	},
+
 	vmGetNextInput: function (sVarType) {
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
 			aInputValues = this.oInput.aInputValues,
@@ -1449,8 +1491,10 @@ CpcVm.prototype = {
 	},
 
 	vmInputCallback: function (sInput) {
+		var aInputValues = sInput.split(",");
+
 		Utils.console.log("vmInputCallback:", sInput);
-		this.oInput.aInputValues = sInput.split(",");
+		this.vmSetInputValues(aInputValues);
 	},
 
 	input: function (iStream, sNoCRLF, sMsg) { // varargs
@@ -1463,17 +1507,20 @@ CpcVm.prototype = {
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else if (iStream === 8) {
-			this.oInput.aInputValues = [];
+			//this.oInput.aInputValues = [];
+			this.vmSetInputValues([]);
 			this.vmNotImplemented("INPUT #" + iStream);
 		} else if (iStream === 9) {
 			this.oInput.iStream = iStream;
-			this.oInput.aInputValues = [];
+			//this.oInput.aInputValues = [];
+			this.vmSetInputValues([]);
 			if (!this.oInFile.bOpen) {
 				this.error(31, "INPUT #" + iStream); // File not open
 			} else if (this.eof()) {
 				this.error(24, "INPUT #" + iStream); // EOF met
 			} else {
-				this.oInput.aInputValues = this.oInFile.aInput.splice(0, arguments.length - 3);
+				//this.oInput.aInputValues = this.oInFile.aInput.splice(0, arguments.length - 3);
+				this.vmSetInputValues(this.oInFile.aInput.splice(0, arguments.length - 3));
 			}
 		}
 	},
@@ -1542,7 +1589,8 @@ CpcVm.prototype = {
 
 	vmLineInputCallback: function (sInput) {
 		Utils.console.log("vmLineInputCallback:", sInput);
-		this.oInput.aInputValues = [sInput];
+		//this.oInput.aInputValues = [sInput];
+		this.vmSetInputValues([sInput]);
 	},
 
 	lineInput: function (iStream, sNoCRLF, sMsg, sVarType) { // sVarType must be string variable
@@ -1563,10 +1611,12 @@ CpcVm.prototype = {
 				this.vmStop("input", 45);
 			}
 		} else if (iStream === 8) {
-			this.oInput.aInputValues = [];
+			//this.oInput.aInputValues = [];
+			this.vmSetInputValues([]);
 			this.vmNotImplemented("LINE INPUT # " + iStream);
 		} else if (iStream === 9) {
-			this.oInput.aInputValues = [];
+			//this.oInput.aInputValues = [];
+			this.vmSetInputValues([]);
 			this.vmNotImplemented("LINE INPUT # " + iStream);
 		}
 	},
@@ -2315,7 +2365,8 @@ CpcVm.prototype = {
 
 	vmRandomizeCallback: function (sInput) {
 		Utils.console.log("vmRandomizeCallback:", sInput);
-		this.oInput.aInputValues = [sInput];
+		//this.oInput.aInputValues = [sInput];
+		this.vmSetInputValues([sInput]);
 	},
 
 	randomize: function (n) {
@@ -2393,12 +2444,12 @@ CpcVm.prototype = {
 			iKeep = this.vmInRangeRound(iKeep, 1, 65535, "RENUM");
 		}
 
-		this.oInput.aInputValues = [ // we misuse aInputValues
+		this.vmSetInputValues([ // we misuse aInputValues
 			iNew || 10,
 			iOld || 1,
 			iStep || 10,
 			iKeep || 65535 // keep lines
-		];
+		]);
 		this.vmStop("renum", 85);
 	},
 
@@ -2536,7 +2587,7 @@ CpcVm.prototype = {
 			sName;
 
 		if (sInput !== null) {
-			this.oInput.aInputValues = [oInFile.iLine]; // we misuse aInputValues
+			this.vmSetInputValues([oInFile.iLine]); // we misuse aInputValues
 			this.vmStop("run", 90);
 		} else {
 			sName = oInFile.sName;
@@ -2559,7 +2610,7 @@ CpcVm.prototype = {
 			oInFile.fnFileCallback = this.vmRunCallback.bind(this);
 			this.vmStop("loadFile", 90);
 		} else { // line number or no argument
-			this.oInput.aInputValues = [numOrString || 0]; // we misuse aInputValues
+			this.vmSetInputValues([numOrString || 0]); // we misuse aInputValues
 			this.vmStop("run", 90); // number or undefined
 		}
 	},

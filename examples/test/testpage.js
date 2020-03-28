@@ -62,121 +62,144 @@ cpcBasic.addItem("", function () { /*
 600 '
 610 ?"DEC$(number,format)"
 620 a$=dec$(8.575,"##.##"):if a$<>" 8.58" then error 33
-630 '
-640 ?"ELSE"
-650 a=1 else a=2
-660 else a=3
-670 if a<>1 then error 33
-680 '
-690 ?"FOR with integer constants"
-700 a$="":for i=+4 to 0 step -2:a$=a$+str$(i):next:if a$<>" 4 2 0" then error 33
-710 a=0:for i=++4 to 1 step ---2:a=a+i:next:if a<>6 then error 33 'avoid ++ and -- in js!
-720 ?"FOR with floating point variable"
-730 a=0:for i%=1.2 to 9.7 step 3.2:a=a+i%:next:if a<>22 then error 33: '1+4+7+10
-740 gosub 9040:cls
-750 '
-760 ?"ON n GOSUB"
-770 a=0:on 1 gosub 840,850:if a<>1 then error 33
-780 a=0:on 2 gosub 840,850:if a<>2 then error 33
-790 a=0:on 1.5 gosub 840,850:if a<>2 then error 33
-800 a=1.5:on a gosub 840,850:if a<>2 then error 33
-810 a=0:on 3 gosub 840,850:if a<>0 then error 33
-820 a=0:on 0 gosub 840,850:if a<>0 then error 33
-830 goto 860
-840 a=1:return
-850 a=2:return
-860 ?"ON n GOTO"
-870 a=1.7:on a-0.2 goto 890,900
-880 goto 910
-890 a=1:goto 910
-900 a=2:goto 910
-910 if a<>2 then error 33
-920 gosub 9040:cls
-930 '
-940 ?"PRINT in FOR loop"
-950 for i=1 to 5:print i;:next i:print"#";
-960 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
-970 ?"PRINT in GOTO loop"
-980 a=1
-990 print a;: a=a+1: if a <= 5 then goto 990 else print "#";
-1000 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
-1010 ?"PRINT in WHILE loop"
-1020 a=1: while a<=5: print a;: a=a+1: wend: print "#";
-1030 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
-1040 ?"PRINT concatenated string"
-1050 a=1: s$="": while a<=5: s$=s$+str$(a)+":": a=a+1: b=0: while b<3: b=b+1: s$=s$+str$(b): wend: s$=s$+" ": wend: s$=s$+"#":print s$;
-1060 gosub 9010:if a$<>" 1: 1 2 3  2: 1 2 3  3: 1 2 3  4: 1 2 3  5: 1 2 3 #" then error 33
-1070 '
-1080 ?"IF THEN ELSE: WEND in ELSE"
-1090 a=0: while a<5: a=a+1: if a=3 or 3=a then print "a=";a;"(three) "; else print "a<>3:";a;"(not three) ";: wend : ?"after WEND": 'WEND in ELSE
-1100 ?"#";
-1110 gosub 9010:if a$<>"a<>3: 1 (not three) a<>3: 2 (not three) a= 3 (three) #" then error 33
-1120 '
-1130 gosub 9040:cls
-1140 ?"PRINT numbers separated by space"
-1150 print 1 2 3;:?"#";
-1160 gosub 9010:if a$<>" 1  2  3 #" then error 33: 'not ok! On real CPC one number: " 123 #"
-1170 ?"PRINT numbers separated by ;"
-1180 print 1;2;3;:?"#";
-1190 gosub 9010:if a$<>" 1  2  3 #" then error 33
-1200 ?"PRINT numbers separated by , (default ZONE 13)"
-1210 print 1,2,3;:?"#";
-1220 gosub 9010:if a$<>" 1            2            3 #" then error 33
-1230 ?"PRINT numbers, computed"
-1240 print -1 -2 -3;"#";
-1250 gosub 9010:if a$<>"-6 #" then error 33
-1260 print -1;-2;-3;"#";
-1270 gosub 9010:if a$<>"-1 -2 -3 #" then error 33
-1280 ?"PRINT strings separated by space"
-1290 print "a" "b" "c": 'abc
-1300 ?"PRINT strings separated by ;"
-1310 print "a";"b";"c": 'abc
-1320 ?"PRINT strings separated by ,"
-1330 print "a","b","c": 'a        b           c   [zone 13]
-1340 '
-1350 ?"PRINT USING number format"
-1360 print using "##.##";8.575;:?"#";
-1370 gosub 9010:if a$<>" 8.58#" then error 33
-1380 '
-1390 gosub 9040:cls
-1400 ?"ROUND"
-1410 a=round(PI):if a<>3 then error 33
-1420 a=round(PI,0):if a<>3 then error 33
-1430 a=round(PI,0.4):if a<>3 then error 33
-1440 a=round(PI,2):if a<>3.14 then error 33
-1450 a=round(PI,2.4):if a<>3.14 then error 33
-1460 a=round(1234.5678,-2):if a<>1200 then error 33
-1470 a=round(8.575,2):if a<>8.58 then error 33
-1480 '
-1490 gosub 9040:cls
-1500 ?"DATA and RESTORE"
-1510 restore 1520: read s$,t$: if s$+t$<>"1" then error 33
-1520 data 1,
-1530 '
-1540 ?"OPENIN and INPUT #9"
-1550 ?"OPENIN testdat with characters 33..255"
-1560 openin "testdat1"
-1570 for i=33 to 255:input #9,t$
-1580 t=asc(t$):?t$;: if t<>i then ?"Warning: ";i;"<>";t
-1590 tag:move ((i-33) mod 80)*8, 90-((i-33)\80)*16:?t$;:tagoff
-1600 next
-1610 ?
-1620 closein
-1630 '
-1640 gosub 9040
-1650 mode 1:border 2
-1660 print "stairs"
-1670 move 0,350
-1680 for n=1 to 8
-1690 drawr 50,0
-1700 drawr 0,-50
-1710 next
-1720 move 348,0
-1730 fill 3
-1740 '
-1750 print "test finished: ok"
-1760 end
-1770 '
+630 a$=dec$(15.35,"#.##"):if a$<>"%15.35" then error 33
+640 '
+650 ?"ELSE"
+660 a=1 else a=2
+670 else a=3
+680 if a<>1 then error 33
+690 '
+700 ?"FOR with integer constants"
+710 a$="":for i=+4 to 0 step -2:a$=a$+str$(i):next:if a$<>" 4 2 0" then error 33
+720 a=0:for i=++4 to 1 step ---2:a=a+i:next:if a<>6 then error 33: 'avoid ++ and -- in js!
+730 ?"FOR with integer variable and floating point ranges"
+740 a=0:for i%=1.2 to 9.7 step 3.2:a=a+i%:next:if a<>22 then error 33: '1+4+7+10
+750 ?"FOR with condition expressions"
+760 a=3:for i=a<>3 to a>=3 step a=3:?i;:next:print "#";
+770 gosub 9010:if a$<>" 0 -1 #" then error 33
+780 ?"FOR up to 2*PI"
+790 a=13/8*PI:for i=1 to 3:a=a+1/8*PI:next:if a>2*PI then ?"limit exceeded by";a-2*PI;"(TODO)" else ?"ok"
+800 gosub 9040:cls
+810 '
+820 ?"GOTO with leading zeros"
+830 goto 840
+840 ?"ok"
+850 '
+860 ?"ON n GOSUB"
+870 a=0:on 1 gosub 940,950:if a<>1 then error 33
+880 a=0:on 2 gosub 940,950:if a<>2 then error 33
+890 a=0:on 1.5 gosub 940,950:if a<>2 then error 33
+900 a=1.5:on a gosub 940,950:if a<>2 then error 33
+910 a=0:on 3 gosub 940,950:if a<>0 then error 33
+920 a=0:on 0 gosub 940,950:if a<>0 then error 33
+930 goto 960
+940 a=1:return
+950 a=2:return
+960 ?"ON n GOTO"
+970 a=1.7:on a-0.2 goto 990,1000
+980 goto 1010
+990 a=1:goto 1010
+1000 a=2:goto 1010
+1010 if a<>2 then error 33
+1020 gosub 9040:cls
+1030 '
+1040 ?"PRINT in FOR loop"
+1050 for i=1 to 5:print i;:next i:print"#";
+1060 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
+1070 ?"PRINT in GOTO loop"
+1080 a=1
+1090 print a;: a=a+1: if a <= 5 then goto 1090 else print "#";
+1100 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
+1110 ?"PRINT in WHILE loop"
+1120 a=1: while a<=5: print a;: a=a+1: wend: print "#";
+1130 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
+1140 ?"PRINT concatenated string"
+1150 a=1: s$="": while a<=5: s$=s$+str$(a)+":": a=a+1: b=0: while b<3: b=b+1: s$=s$+str$(b): wend: s$=s$+" ": wend: s$=s$+"#":print s$;
+1160 gosub 9010:if a$<>" 1: 1 2 3  2: 1 2 3  3: 1 2 3  4: 1 2 3  5: 1 2 3 #" then error 33
+1170 '
+1180 ?"IF THEN ELSE: WEND in ELSE"
+1190 a=0: while a<5: a=a+1: if a=3 or 3=a then print "a=";a;"(three) "; else print "a<>3:";a;"(not three) ";: wend : ?"after WEND": 'WEND in ELSE
+1200 ?"#";
+1210 gosub 9010:if a$<>"a<>3: 1 (not three) a<>3: 2 (not three) a= 3 (three) #" then error 33
+1220 '
+1230 gosub 9040:cls
+1240 ?"PRINT numbers separated by space"
+1250 print 1 2 3;:?"#";
+1260 gosub 9010:if a$<>" 1  2  3 #" then error 33: 'not ok! On real CPC one number: " 123 #"
+1270 ?"PRINT numbers separated by ;"
+1280 print 1;2;3;:?"#";
+1290 gosub 9010:if a$<>" 1  2  3 #" then error 33
+1300 ?"PRINT numbers separated by , (default ZONE 13)"
+1310 print 1,2,3;:?"#";
+1320 gosub 9010:if a$<>" 1            2            3 #" then error 33
+1330 ?"PRINT numbers, computed"
+1340 print -1 -2 -3;"#";
+1350 gosub 9010:if a$<>"-6 #" then error 33
+1360 print -1;-2;-3;"#";
+1370 gosub 9010:if a$<>"-1 -2 -3 #" then error 33
+1380 ?"PRINT strings separated by space"
+1390 print "a" "b" "c": 'abc
+1400 ?"PRINT strings separated by ;"
+1410 print "a";"b";"c": 'abc
+1420 ?"PRINT strings separated by ,"
+1430 print "a","b","c": 'a        b           c   [zone 13]
+1440 '
+1450 ?"PRINT USING number format"
+1460 print using "##.##";8.575;:?"#";
+1470 gosub 9010:if a$<>" 8.58#" then error 33
+1480 ?"PRINT USING number too long"
+1490 print using "#.##";15.35;:?"#";
+1500 gosub 9010:if a$<>"%15.35#" then error 33
+1510 '
+1520 gosub 9040:cls
+1530 ?"ROUND"
+1540 a=round(PI):if a<>3 then error 33
+1550 a=round(PI,0):if a<>3 then error 33
+1560 a=round(PI,0.4):if a<>3 then error 33
+1570 a=round(PI,2):if a<>3.14 then error 33
+1580 a=round(PI,2.4):if a<>3.14 then error 33
+1590 a=round(1234.5678,-2):if a<>1200 then error 33
+1600 a=round(8.575,2):if a<>8.58 then error 33
+1610 '
+1620 gosub 9040:cls
+1630 ?"DATA and RESTORE"
+1640 restore 1650: read s$,t$: if s$+t$<>"1" then error 33
+1650 data 1,
+1660 '
+1670 ?"OPENIN and INPUT #9"
+1680 ?"OPENIN testdat with characters 33..255"
+1690 openin "testdat1"
+1700 for i=33 to 255:input #9,t$
+1710 t=asc(t$):?t$;: if t<>i then ?"Warning: ";i;"<>";t
+1720 tag:move ((i-33) mod 80)*8, 90-((i-33)\80)*16:?t$;:tagoff
+1730 next
+1740 ?:closein:?
+1750 '
+1760 ?"SYMBOL AFTER"
+1770 a=240:h=himem+(256-a)*8
+1780 a=256:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h
+1790 a=0:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h
+1800 a=240:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h
+1810 memory himem-1
+1820 on error goto 1830:symbol after 241:?"Error expected!":error 33: 'expect error 5
+1830 if err<>5 then ?"err=";err;"erl=";erl:error 33 else resume 1840
+1840 on error goto 0
+1850 memory himem+1
+1860 '
+1870 gosub 9040
+1880 mode 1:border 2
+1890 print "stairs"
+1900 move 0,350
+1910 for n=1 to 8
+1920 drawr 50,0
+1930 drawr 0,-50
+1940 next
+1950 move 348,0
+1960 fill 3
+1970 '
+1980 print "test finished: ok"
+1990 end
+2000 '
 9000 'get characters from screen; print crlf
 9010 a$="":i=1:while i<80 and right$(a$,1)<>"#":locate i,vpos(#0):a$=a$+copychr$(#0):i=i+1:wend:?:return
 9020 '
