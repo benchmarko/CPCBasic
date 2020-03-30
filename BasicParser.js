@@ -671,10 +671,19 @@ BasicParser.prototype = {
 
 			if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 				if (oToken.type !== "(") { // Fnxxx name without ()?
+					oValue = {
+						type: "fn",
+						value: sName.substr(0, 2), // fn
+						args: [],
+						left: oName, // identifier
+						pos: oName.pos // same pos as identifier?
+					};
+					/*
 					oValue = oPreviousToken; // identifier => fn
 					oValue.type = "fn";
 					oValue.args = [];
-					oValue.left = sName; // .value
+					oValue.left = oName; // //sName; // .value
+					*/
 
 					return oValue;
 				}
@@ -687,7 +696,11 @@ BasicParser.prototype = {
 
 				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
 					oValue.type = "fn"; // FNxxx in e.g. print
-					oValue.left = oValue.value;
+					oValue.left = {
+						type: "identifier",
+						value: oValue.value,
+						pos: oValue.pos
+					};
 				}
 			} else {
 				oValue = oName;
@@ -745,7 +758,8 @@ BasicParser.prototype = {
 			var oValue = oPreviousToken;
 
 			if (oToken.type === "identifier") {
-				oValue.left = "fn" + oToken.value;
+				oToken.value = "fn" + oToken.value;
+				oValue.left = oToken;
 				advance();
 			} else {
 				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos);
@@ -819,12 +833,13 @@ BasicParser.prototype = {
 			if (oToken.type === "fn") { // fn <identifier> separate?
 				advance("fn");
 				if (oToken.type === "identifier") {
-					oValue.left = "FN" + oToken.value;
+					oToken.value = "FN" + oToken.value;
+					oValue.left = oToken;
 				} else {
 					throw new BasicParser.ErrorObject("Invalid DEF at", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "identifier" && Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) { // fn<identifier>
-				oValue.left = oToken.value;
+				oValue.left = oToken;
 			} else {
 				throw new BasicParser.ErrorObject("Invalid DEF at", oToken.type, oToken.pos);
 			}
@@ -833,7 +848,7 @@ BasicParser.prototype = {
 			oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : [];
 			advance("=");
 
-			oValue.value = expression(0);
+			oValue.right = expression(0);
 			return oValue;
 		});
 

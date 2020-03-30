@@ -87,51 +87,6 @@ CodeGeneratorJs.prototype = {
 				return sName;
 			},
 
-			/*
-			fnAdaptVariableName_t1 = function (sName, iArrayIndices) {
-				var sType;
-
-				sName = sName.toLowerCase();
-				sName = sName.replace(/\./g, "_");
-
-				sType = sName.charAt(sName.length - 1); // last character could be type
-				if (sType === "!") { // real number?
-					sName = sName.slice(0, -1);
-					sType = "R"; // "!" => "R"
-				} else if (sType === "%") { // integer number?
-					sName = sName.slice(0, -1);
-					sType = "I"; // "%" => "I"
-				} else if (sType === "$") { // string?
-					sName = sName.slice(0, -1);
-				} else { // other character => not a type
-					sType = "V"; // variable type
-				}
-
-				if (iArrayIndices) {
-					sName += "A".repeat(iArrayIndices);
-				}
-
-				sName += sType; // last character
-
-				if (oDevScopeArgs) {
-					if (sName === "o") { // we must not use format parameter "o" since this is our vm object
-						sName = "oNo"; // change variable name to something we cannot set in BASIC
-					}
-					if (bDevScopeArgsCollect) {
-						oDevScopeArgs[sName] = fnGetVarDefault(sName); // declare
-					} else if (!(sName in oDevScopeArgs)) {
-						// variable
-						variables[sName] = fnGetVarDefault(sName); // declare
-						sName = "v." + sName; // access with "v."
-					}
-				} else {
-					variables[sName] = fnGetVarDefault(sName); // declare
-					sName = "v." + sName; // access with "v."
-				}
-				return sName;
-			},
-			*/
-
 			fnParseOneArg = function (oArg) {
 				var sValue = parseNode(oArg); // eslint-disable-line no-use-before-define
 
@@ -168,31 +123,12 @@ CodeGeneratorJs.prototype = {
 				return sNameType;
 			},
 
-			/*
-			fnDetermineStaticVarType_t1 = function (sName) {
-				var sVarType = sName.charAt(sName.length - 1);
-
-				if (sName.indexOf("v.") === 0) {
-					sName = sName.substr(2); // remove preceiding "v."
-				}
-				return sVarType;
-			},
-			*/
-
 			fnIsIntConst = function (a) {
 				var reIntConst = /^[+-]?([0-9]+|0x[0-9a-f]+|0b[0-1]+)$/; // regex for integer, hex, binary constant
 
 				return reIntConst.test(String(a));
 			},
 
-			/*
-			fnGetRoundString = function (a) {
-				if (!fnIsIntConst(a)) { // no rounding needed for integer, hex, binary constants (optimization)
-					a = "o.vmRound(" + a + ")";
-				}
-				return a;
-			},
-			*/
 			fnGetRoundString = function (node) {
 				if (node.pt !== "I") { // no rounding needed for integer, hex, binary constants, integer variables, functions returning integer (optimization)
 					node.pv = "o.vmRound(" + node.pv + ")";
@@ -209,47 +145,14 @@ CodeGeneratorJs.prototype = {
 					if (fnIsInString(sTypes, oLeft.pt + oRight.pt)) {
 						node.pt = oLeft.pt === oRight.pt ? oLeft.pt : "R";
 					} else {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.pv || node.value, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
 					}
 				} else if (oLeft.pt && !fnIsInString(sTypes, oLeft.pt) || oRight.pt && !fnIsInString(sTypes, oRight.pt)) {
-					throw new CodeGeneratorJs.ErrorObject("Type error", node.pv || node.value, node.pos); //TTT
+					throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
 				}
 			},
 
 			mOperators = {
-				/*
-				fnIsNumType: function (oNode) {
-					return oNode.pt === "I" || oNode.pt === "R";
-				},
-				*/
-				/*
-				fnIsInTypes: function (oNode, sTypes) {
-					var sType = oNode.pt;
-
-					if (sType && sTypes.indexOf(sType) >= 0) {
-						return true;
-					}
-					return false;
-				},
-				*/
-				/*
-				fnIsInString: function (sString, sFind) {
-					return sFind && sString.indexOf(sFind) >= 0;
-				},
-
-				fnPropagateStaticTypes: function (node, oLeft, oRight, sTypes) {
-					if (oLeft.pt && oRight.pt) {
-						if (fnIsInString(sTypes, oLeft.pt + oRight.pt)) {
-							node.pt = oLeft.pt === oRight.pt ? oLeft.pt : "R";
-						} else {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
-						}
-					} else if (oLeft.pt && !fnIsInString(sTypes, oLeft.pt) || oRight.pt && !fnIsInString(sTypes, oRight.pt)) {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
-					}
-				},
-				*/
-
 				"+": function (node, oLeft, oRight) {
 					var a = oLeft.pv;
 
@@ -263,23 +166,11 @@ CodeGeneratorJs.prototype = {
 						if (fnIsInString("IR$", oLeft.pt)) {
 							node.pt = oLeft.pt;
 						} else if (oLeft.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
+							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
 						}
 					} else {
 						node.pv = a + " + " + oRight.pv;
-
 						fnPropagateStaticTypes(node, oLeft, oRight, "II RR IR RI $$");
-						/*
-						if (oLeft.pt && !fnIsInString("IR$", oLeft.pt) || oRight.pt && !fnIsInString("IR$", oRight.pt)) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
-						}
-
-						if (fnIsInString("II RR IR RI $$", oLeft.pt + oRight.pt)) {
-							node.pt = oLeft.pt === oRight.pt ? oLeft.pt : "R";
-						} else if (oLeft.pt && oRight.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
-						}
-						*/
 					}
 					return node.pv;
 				},
@@ -302,23 +193,11 @@ CodeGeneratorJs.prototype = {
 						if (fnIsInString("IR", oLeft.pt)) {
 							node.pt = oLeft.pt;
 						} else if (oLeft.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
+							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
 						}
 					} else {
 						node.pv = a + " - " + oRight.pv;
-
 						fnPropagateStaticTypes(node, oLeft, oRight, "II RR IR RI");
-						/*
-						if (oLeft.pt && !fnIsInString("IR", oLeft.pt) || oRight.pt && !fnIsInString("IR", oRight.pt)) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
-						}
-
-						if (fnIsInString("II RR IR RI", oLeft.pt + oRight.pt)) {
-							node.pt = oLeft.pt === oRight.pt ? oLeft.pt : "R";
-						} else if (oLeft.pt && oRight.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
-						}
-						*/
 					}
 					return node.pv;
 				},
@@ -411,7 +290,7 @@ CodeGeneratorJs.prototype = {
 				"@": function (node, oLeft) {
 					node.pv = 'o.addressOf("' + oLeft.pv + '")'; // address of
 					if (oLeft.type !== "identifier" && oLeft.type !== "array") {
-						throw new CodeGeneratorJs.ErrorObject("Identifier expected", node.pv, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Identifier expected", node.value, node.pos);
 					}
 					node.pt = "I";
 					return node.pv;
@@ -421,7 +300,7 @@ CodeGeneratorJs.prototype = {
 					if (fnIsInString("IR", oLeft.pt)) {
 						node.pt = oLeft.pt;
 					} else if (oLeft.pt) {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.pv, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
 					}
 					return node.pv;
 				}
@@ -501,7 +380,7 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				number: function (node) {
-					node.pt = (/^[0-9]+$/).test(node.value) ? "I" : "R"; //TTT propagated type; TODO: check too long integers!
+					node.pt = (/^[0-9]+$/).test(node.value) ? "I" : "R";
 					node.pv = node.value;
 					return node.pv;
 				},
@@ -540,11 +419,6 @@ CodeGeneratorJs.prototype = {
 
 					if (sVarType.length > 1) {
 						sVarType = sVarType.charAt(1);
-						/*
-						if (sVarType === "$") { //TTT
-							sVarType = "S";
-						}
-						*/
 						node.pt = sVarType;
 					}
 					node.pv = sName;
@@ -554,139 +428,44 @@ CodeGeneratorJs.prototype = {
 					node.pv = "null";
 					return node.pv;
 				},
-				array: function (node) {
+				array: function (node) { // identifier with array; TOTO: extend identifier?
 					var aNodeArgs = fnParseArgs(node.args),
 						sName = fnAdaptVariableName(node.value, aNodeArgs.length),
+						sVarType = fnDetermineStaticVarType(sName),
 						sValue = sName + aNodeArgs.map(function (val) {
 							return "[" + val + "]";
 						}).join("");
 
+					if (sVarType.length > 1) {
+						sVarType = sVarType.charAt(1);
+						node.pt = sVarType;
+					}
 					node.pv = sValue;
 					return node.pv;
 				},
-				assign: function (node) { // eslint-disable-line complexity
+				assign: function (node) {
 					// see also "let"
-					var aNodeArgs, sName, sVarType, sArray, value, sValue;
+					var sName, sVarType, value, sValue;
 
 					if (node.left.type === "array") {
-						aNodeArgs = fnParseArgs(node.left.args);
-						sName = fnAdaptVariableName(node.left.value, aNodeArgs.length);
-						sArray = aNodeArgs.map(function (val) {
-							return "[" + val + "]";
-						}).join("");
+						sName = fnParseOneArg(node.left);
 					} else if (node.left.type === "identifier") {
 						sName = fnParseOneArg(node.left);
-						//sName = fnAdaptVariableName(value);
-						sArray = "";
 					} else {
 						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos); // should not occur
 					}
-
-					// value = sName + value + " = " + fnParseOneArg(node.right); // assign without type checking and rounding
 
 					value = fnParseOneArg(node.right);
 
 					fnPropagateStaticTypes(node, node.left, node.right, "II RR IR RI $$");
 					sVarType = fnDetermineStaticVarType(sName);
 
-					/*
-					sValueType = node.right.type;
-					// type checking and rounding is more accurate but will cost much performance...
-					sVarType = fnDetermineStaticVarType(sName);
-
-					sType = (sVarType.length > 1) ? sVarType.charAt(1) : "";
-
-					sValue = "";
-
-					bIsIntNumber = (sValueType === "number" && (/^\d+$/).test(value)) || sValueType === "binnumber" || sValueType === "hexnumber";
-					bIsNumber = sValueType === "number" || sValueType === "binnumber" || sValueType === "hexnumber";
-
-					bIsString = sValueType === "string";
-					bIsIdentifier = sValueType === "identifier" || sValueType === "array"; // identifier or identifier with array access??
-
-					// do some optimizations
-					switch (sType) {
-					case "I":
-						if (bIsIntNumber // optimize for int number
-							|| (bIsIdentifier && (/^v\.\w+I/).test(value))) { // optimize for int variable
-							sValue = value;
-						}
-						break;
-
-					case "R":
-						if (bIsNumber // optimize for number (int or fp)
-							|| (bIsIdentifier && (/^v\.\w+R/).test(value))) { // optimize for fp variable
-							sValue = value;
-						}
-						break;
-
-					case "$":
-						if (bIsString // optimize for simple string
-							|| (bIsIdentifier && (/^v\.\w+\$/).test(value))) { // optimize for string variable
-							sValue = value;
-						}
-						break;
-
-					default:
-						break;
-					}
-					*/
-
-					/*
-					if (sType === "R" && (typeof value === "number")) { // optimize for number
-						sValue = value;
-					} else if (sType === "I" && (typeof value === "number") && (/^\d+$/).test(value)) { // optimize for int number
-
-					} else if (sType === "R" && (typeof value === "string") && (/^v\.\w+R$/).test(value)) { // optimize for simple fp variable
-						sValue = value;
-					} else if (sType === "I" && (typeof value === "string") && (/^v\.\w+I$/).test(value)) { // optimize for simple int variable
-						sValue = value;
-					} else if (sType === "$" && (typeof value === "string") && (/^v\.\w+\$$/).test(value)) { // optimize for simple string variable
-						sValue = value;
-					} else if (sType === "$" && (typeof value === "string") && (/^"[^"]*"$/).test(value)) { // optimize for simple string
+					if (node.pt) {
 						sValue = value;
 					} else {
 						sValue = "o.vmAssign(\"" + sVarType + "\", " + value + ")";
 					}
-					*/
-
-					/*
-					// do some optimizations
-					switch (sType) {
-					case "I":
-						if (((typeof value === "number") && (/^\d+$/).test(value)) // optimize for int number
-							|| ((typeof value === "string") && (/^v\.\w+I/).test(value))) { // optimize for int variable
-							sValue = value;
-						}
-						break;
-
-					case "R":
-						if ((typeof value === "number") // optimize for number (int or fp)
-							|| ((typeof value === "string") && (/^v\.\w+R/).test(value))) { // optimize for fp variable
-							sValue = value;
-						}
-						break;
-
-					case "$":
-						if ((typeof value === "string") && ((/^"[^"]*"$/).test(value) // optimize for simple string
-							|| (/^v\.\w+\$/).test(value))) { // optimize for string variable
-							sValue = value;
-						}
-						break;
-
-					default:
-						break;
-					}
-					*/
-
-					if (node.pt) { //TTT
-						sValue = value;
-					} else {
-						sValue = "o.vmAssign(\"" + sVarType + "\", " + value + ")";
-					}
-
-					sValue = sName + sArray + " = " + sValue;
-					//sValue = sName + sArray + " = o.vmAssign(\"" + sVarType + "\", " + value + ")";
+					sValue = sName + " = " + sValue;
 					node.pv = sValue;
 					return node.pv;
 				},
@@ -752,16 +531,26 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				def: function (node) { // somehow special because we need to get plain variables
-					var aNodeArgs, sName, value;
+					var aNodeArgs, sName, sExpression, sVarType, sValue;
 
-					sName = fnAdaptVariableName(node.left);
+					sName = fnParseOneArg(node.left);
+
 					oDevScopeArgs = {};
 					bDevScopeArgsCollect = true;
 					aNodeArgs = fnParseArgs(node.args);
 					bDevScopeArgsCollect = false;
-					value = fnParseOneArg(node.value);
+					sExpression = fnParseOneArg(node.right);
 					oDevScopeArgs = null;
-					node.pv = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + value + "; };";
+
+					fnPropagateStaticTypes(node, node.left, node.value, "II RR IR RI $$");
+					sVarType = fnDetermineStaticVarType(sName);
+					if (node.pt) {
+						sValue = sExpression;
+					} else {
+						sValue = "o.vmAssign(\"" + sVarType + "\", " + sExpression + ")";
+					}
+					sValue = sName + " = function (" + aNodeArgs.join(", ") + ") { return " + sValue + "; };";
+					node.pv = sValue;
 					return node.pv;
 				},
 				defint: function (node) { // somehow special because we need to get first character of variable only
@@ -819,8 +608,11 @@ CodeGeneratorJs.prototype = {
 				},
 				fn: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						sName = fnAdaptVariableName(node.left);
+						sName = fnParseOneArg(node.left);
 
+					if (node.left.pt) {
+						node.pt = node.left.pt;
+					}
 					node.pv = sName + "(" + aNodeArgs.join(", ") + ")";
 					return node.pv;
 				},
@@ -952,7 +744,8 @@ CodeGeneratorJs.prototype = {
 				},
 				input: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						sLabel, sVarType, value, i, sStream, sNoCRLF, sMsg;
+						aVarTypes = [],
+						i, sLabel, sVarType, value, sStream, sNoCRLF, sMsg;
 
 					sLabel = that.iLine + "s" + that.iStopCount;
 					that.iStopCount += 1;
@@ -961,10 +754,14 @@ CodeGeneratorJs.prototype = {
 					sNoCRLF = aNodeArgs.shift();
 					sMsg = aNodeArgs.shift();
 
-					value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aNodeArgs.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sVarType = fnDetermineStaticVarType(aNodeArgs[i]);
-						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + sVarType + "\")";
+						aVarTypes[i] = sVarType;
+					}
+
+					value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput()";
 					}
 
 					node.pv = value;
@@ -993,7 +790,7 @@ CodeGeneratorJs.prototype = {
 
 					value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput(\"" + aVarTypes[i] + "\")";
+						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput()";
 					}
 					node.pv = value;
 					return node.pv;
@@ -1097,7 +894,7 @@ CodeGeneratorJs.prototype = {
 						aNodeArgs = fnParseArgs(node.args);
 						value = "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 					} else {
-						value = this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput(\".R\"))";
+						value = this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput())";
 					}
 					node.pv = value;
 					return node.pv;
@@ -1252,12 +1049,12 @@ CodeGeneratorJs.prototype = {
 						value = parseNode(node.left);
 						if (mOperators[node.left.type]) { // binary operator?
 							value = "(" + value + ")";
-							node.left.pv = value; //TTT
+							node.left.pv = value;
 						}
 						value2 = parseNode(node.right);
 						if (mOperators[node.right.type]) { // binary operator?
 							value2 = "(" + value2 + ")";
-							node.right.pv = value2; //TTT
+							node.right.pv = value2;
 						}
 						value = mOperators[node.type](node, node.left, node.right);
 					} else {

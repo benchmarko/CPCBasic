@@ -88,7 +88,6 @@ CpcVm.prototype = {
 		this.oCanvas = this.options.canvas;
 		this.oKeyboard = this.options.keyboard;
 		this.oSound = this.options.sound;
-		//this.oFormatter = this.options.formatter; //TTT
 
 		this.oRandom = new Random();
 
@@ -255,9 +254,11 @@ CpcVm.prototype = {
 	vmResetInputHandling: function (aInputValues) {
 		var oData = {
 			iStream: 0,
+			sMessage: "",
 			sInput: "",
 			sNoCRLF: "",
 			fnInputCallback: null, // callback for stop reason "input"
+			aTypes: [],
 			aInputValues: aInputValues || []
 		};
 
@@ -382,42 +383,6 @@ CpcVm.prototype = {
 		}
 		return value;
 	},
-
-	/*
-	vmAssign_t1: function (sVarName, value) {
-		var sVarType = sVarName.charAt(sVarName.length - 1),
-			sDefType = this.oVarTypes[sVarName.charAt(0)],
-			sType = sVarType || sDefType,
-			sName2;
-
-		if (sType === "R") { // real
-			this.vmAssertNumber(value, "=");
-		} else if (sType === "I") { // integer
-			value = this.vmRound(value, "="); // round number to integer
-		} else if (sType === "$") { // string
-			if (typeof value !== "string") {
-				Utils.console.warn("vmAssign: expected string but got:", value);
-				this.error(13, "type " + sType + "=" + value); // "Type mismatch"
-			}
-		}
-		//this.v[sVarName] = value; // assign
-
-			//how to deal with arrays?
-		sName2 = sVarName.slice(0, -1) + "V";
-		// side effect 1: set "a1R": if <defType> is "R" and "a1" exists, set also "a1"
-		if (sType === sDefType && sName2 in this.v) {
-			this.v[sName2] = value; // assign side effect
-		}
-		// side effect 2: set a1: if a1<defType> exists: set also a1<defType>, e.g. "a1R"
-
-		sName2 = sVarName.slice(0, -1) + sDefType;
-		if (sType === "V" && sName2 in this.v) {
-			this.v[sName2] = value; // assign side effect
-		}
-		return value;
-	},
-	*/
-
 
 	vmGetError: function (iErr) { // BASIC error numbers
 		var aErrors = [
@@ -699,7 +664,6 @@ CpcVm.prototype = {
 				iDecimals = aFormat[1].length;
 				// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
 				arg = Number(Math.round(arg + "e" + iDecimals) + "e-" + iDecimals);
-				//arg = Number(arg).toFixed(iDecimals); // arg must be string
 				arg = String(arg);
 			}
 			iPadLen = sFormat.length - arg.length;
@@ -1472,54 +1436,84 @@ CpcVm.prototype = {
 		this.oInput.aInputValues = aInputValues;
 	},
 
-	vmGetNextInput: function (sVarType) {
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
-			aInputValues = this.oInput.aInputValues,
+	vmGetNextInput: function () {
+		var aInputValues = this.oInput.aInputValues,
 			sValue;
 
+		//sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
 		sValue = aInputValues.shift();
 
+		/*
 		if (sType !== "$") { // no string?
 			sValue = Number(sValue);
 			if (isNaN(sValue)) {
-				Utils.console.warn("vmGetNextInput: Redo from start:", sValue);
-				this.print(this.oInput.iStream, "?Redo from start\r\n");
+				Utils.console.warn("vmGetNextInput: XXX: Redo from start:", sValue);
+				//this.print(this.oInput.iStream, "?Redo from start\r\n");
 				sValue = 0; // the best we can do here
 			}
 		}
+		*/
 		return sValue;
 	},
 
 	vmInputCallback: function (sInput) {
-		var aInputValues = sInput.split(",");
+		var aInputValues = sInput.split(","),
+			aTypes = this.oInput.aTypes,
+			oInput = this.oInput,
+			bInputOk = true,
+			i, sVarType, sType, value;
 
 		Utils.console.log("vmInputCallback:", sInput);
-		this.vmSetInputValues(aInputValues);
+		if (aInputValues.length === aTypes.length) {
+			for (i = 0; i < aTypes.length; i += 1) {
+				sVarType = aTypes[i];
+				sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+				value = aInputValues[i];
+				if (sType !== "$") { // no string?
+					value = this.vmVal(value); // convert to number (also binary, hex)
+					if (isNaN(value)) {
+						bInputOk = false;
+						//value = 0; // the best we can do here
+					}
+					aInputValues[i] = this.vmAssign(sVarType, value);
+				}
+			}
+		} else {
+			bInputOk = false;
+		}
+
+		if (!bInputOk) {
+			this.print(oInput.iStream, "?Redo from start\r\n");
+			oInput.sInput = "";
+			this.print(oInput.iStream, oInput.sMessage);
+		} else {
+			this.vmSetInputValues(aInputValues);
+		}
+		return bInputOk;
 	},
 
 	input: function (iStream, sNoCRLF, sMsg) { // varargs
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "INPUT");
 		if (iStream < 8) {
 			this.oInput.iStream = iStream;
+			this.oInput.sMessage = sMsg;
 			this.oInput.sNoCRLF = sNoCRLF;
 			this.oInput.fnInputCallback = this.vmInputCallback.bind(this);
 			this.oInput.sInput = "";
+			this.oInput.aTypes = Array.prototype.slice.call(arguments, 3); // remaining arguments
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45);
 		} else if (iStream === 8) {
-			//this.oInput.aInputValues = [];
 			this.vmSetInputValues([]);
 			this.vmNotImplemented("INPUT #" + iStream);
 		} else if (iStream === 9) {
 			this.oInput.iStream = iStream;
-			//this.oInput.aInputValues = [];
 			this.vmSetInputValues([]);
 			if (!this.oInFile.bOpen) {
 				this.error(31, "INPUT #" + iStream); // File not open
 			} else if (this.eof()) {
 				this.error(24, "INPUT #" + iStream); // EOF met
 			} else {
-				//this.oInput.aInputValues = this.oInFile.aInput.splice(0, arguments.length - 3);
 				this.vmSetInputValues(this.oInFile.aInput.splice(0, arguments.length - 3));
 			}
 		}
@@ -1589,8 +1583,8 @@ CpcVm.prototype = {
 
 	vmLineInputCallback: function (sInput) {
 		Utils.console.log("vmLineInputCallback:", sInput);
-		//this.oInput.aInputValues = [sInput];
 		this.vmSetInputValues([sInput]);
+		return true;
 	},
 
 	lineInput: function (iStream, sNoCRLF, sMsg, sVarType) { // sVarType must be string variable
@@ -1598,10 +1592,11 @@ CpcVm.prototype = {
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "LINE INPUT");
 		if (iStream < 8) {
-			this.print(iStream, sMsg);
 			this.oInput.iStream = iStream;
+			this.oInput.sMessage = sMsg;
 			this.oInput.sNoCRLF = sNoCRLF;
 			this.oInput.sInput = "";
+			this.print(iStream, sMsg);
 
 			if (sType !== "$") { // not string?
 				this.print(iStream, "\r\n");
@@ -1611,11 +1606,9 @@ CpcVm.prototype = {
 				this.vmStop("input", 45);
 			}
 		} else if (iStream === 8) {
-			//this.oInput.aInputValues = [];
 			this.vmSetInputValues([]);
 			this.vmNotImplemented("LINE INPUT # " + iStream);
 		} else if (iStream === 9) {
-			//this.oInput.aInputValues = [];
 			this.vmSetInputValues([]);
 			this.vmNotImplemented("LINE INPUT # " + iStream);
 		}
@@ -2364,9 +2357,21 @@ CpcVm.prototype = {
 	},
 
 	vmRandomizeCallback: function (sInput) {
+		var oInput = this.oInput,
+			bInputOk = true,
+			value;
+
 		Utils.console.log("vmRandomizeCallback:", sInput);
-		//this.oInput.aInputValues = [sInput];
-		this.vmSetInputValues([sInput]);
+		value = this.vmVal(sInput); // convert to number (also binary, hex)
+		if (isNaN(value)) {
+			bInputOk = false;
+			//value = 0; // the best we can do here
+			oInput.sInput = "";
+			this.print(oInput.iStream, oInput.sMessage);
+		} else {
+			this.vmSetInputValues([value]);
+		}
+		return bInputOk;
 	},
 
 	randomize: function (n) {
@@ -2375,7 +2380,10 @@ CpcVm.prototype = {
 			sMsg;
 
 		if (n === undefined) { // no arguments? input...
-			sMsg = "Random number seed?";
+			sMsg = "Random number seed ? ";
+			this.oInput.iStream = iStream;
+			this.oInput.sMessage = sMsg;
+			//this.oInput.sNoCRLF = true;
 			this.oInput.fnInputCallback = this.vmRandomizeCallback.bind(this);
 			this.oInput.sInput = "";
 			this.print(iStream, sMsg);
@@ -2401,8 +2409,10 @@ CpcVm.prototype = {
 			item = this.aData[this.iData];
 			this.iData += 1;
 			if (sType !== "$") { // not string? => convert to number (also binary, hex)
+				// Note : Using a number variable ro read a string would cause a syntax error on a real CPC. We cannot detect it since we get always strings.
 				item = this.val(item);
 			}
+			item = this.vmAssign(sVarType, item); // maybe rounding for type I
 		} else {
 			this.error(4, "READ"); // DATA exhausted
 		}
@@ -2537,18 +2547,8 @@ CpcVm.prototype = {
 	},
 
 	round: function (n, iDecimals) {
-		//var iFact;
-
 		this.vmAssertNumber(n, "ROUND");
 		iDecimals = this.vmInRangeRound(iDecimals || 0, -39, 39, "ROUND");
-		/*
-		if (iDecimals >= 0) {
-			iFact = Math.pow(10, iDecimals);
-		} else {
-			iFact = 1 / Math.pow(10, -iDecimals);
-		}
-		return Math.round(n * iFact) / iFact;
-		*/
 
 		// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
 		return Number(Math.round(n + "e" + iDecimals) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
@@ -2969,10 +2969,9 @@ CpcVm.prototype = {
 		return s;
 	},
 
-	val: function (s) {
+	vmVal: function (s) {
 		var iNum = 0;
 
-		this.vmAssertString(s, "VAL");
 		s = s.trim().toLowerCase();
 		if (Utils.stringStartsWith(s, "&x")) { // binary &x
 			s = s.slice(2);
@@ -2986,6 +2985,14 @@ CpcVm.prototype = {
 		} else {
 			iNum = parseFloat(s);
 		}
+		return iNum;
+	},
+
+	val: function (s) {
+		var iNum;
+
+		this.vmAssertString(s, "VAL");
+		iNum = this.vmVal(s);
 
 		if (isNaN(iNum)) {
 			iNum = 0;

@@ -295,6 +295,7 @@ Controller.prototype = {
 		var oInput = this.oVm.vmGetInputObject(),
 			iStream = oInput.iStream,
 			sInput = oInput.sInput,
+			bInputOk = true,
 			sKey;
 
 		do {
@@ -322,17 +323,19 @@ Controller.prototype = {
 
 		oInput.sInput = sInput;
 		if (sKey === "\r") {
-			this.oKeyboard.setKeyDownHandler(null);
-			this.oVm.vmStop("", 0, true);
-			Utils.console.log("Wait for input:", sInput);
+			Utils.console.log("fnWaitForInput:", sInput);
 			if (!oInput.sNoCRLF) {
 				this.oVm.print(iStream, "\r\n");
 			}
 			if (oInput.fnInputCallback) {
-				oInput.fnInputCallback(sInput);
+				bInputOk = oInput.fnInputCallback(sInput);
 			}
-			if (this.iTimeoutHandle === null) {
-				this.fnRunLoop();
+			if (bInputOk) {
+				this.oKeyboard.setKeyDownHandler(null);
+				this.oVm.vmStop("", 0, true);
+				if (this.iTimeoutHandle === null) {
+					this.fnRunLoop();
+				}
 			}
 		}
 	},
@@ -743,7 +746,7 @@ Controller.prototype = {
 			break;
 
 		case "renum":
-			this.fnRenum2(oVm.vmGetNextInput(".I"), oVm.vmGetNextInput(".I"), oVm.vmGetNextInput(".I"), oVm.vmGetNextInput(".I"));
+			this.fnRenum2(oVm.vmGetNextInput(), oVm.vmGetNextInput(), oVm.vmGetNextInput(), oVm.vmGetNextInput());
 			break;
 
 		case "reset":
@@ -752,7 +755,7 @@ Controller.prototype = {
 
 		case "run":
 			this.fnRun2();
-			this.oVm.vmSetStartLine(oVm.vmGetNextInput(".$") || 0); // set start line number (after line 0)
+			this.oVm.vmSetStartLine(oVm.vmGetNextInput() || 0); // set start line number (after line 0)
 			break;
 
 		case "sound":
