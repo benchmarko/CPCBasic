@@ -1609,8 +1609,15 @@ CpcVm.prototype = {
 			this.vmSetInputValues([]);
 			this.vmNotImplemented("LINE INPUT # " + iStream);
 		} else if (iStream === 9) {
+			this.oInput.iStream = iStream;
 			this.vmSetInputValues([]);
-			this.vmNotImplemented("LINE INPUT # " + iStream);
+			if (!this.oInFile.bOpen) {
+				this.error(31, "LINE INPUT #" + iStream); // File not open
+			} else if (this.eof()) {
+				this.error(24, "LINE INPUT #" + iStream); // EOF met
+			} else {
+				this.vmSetInputValues(this.oInFile.aInput.splice(0, arguments.length - 3)); // always 1 element
+			}
 		}
 	},
 

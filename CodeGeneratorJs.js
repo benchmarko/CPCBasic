@@ -145,10 +145,10 @@ CodeGeneratorJs.prototype = {
 					if (fnIsInString(sTypes, oLeft.pt + oRight.pt)) {
 						node.pt = oLeft.pt === oRight.pt ? oLeft.pt : "R";
 					} else {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
 					}
 				} else if (oLeft.pt && !fnIsInString(sTypes, oLeft.pt) || oRight.pt && !fnIsInString(sTypes, oRight.pt)) {
-					throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
+					throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
 				}
 			},
 
@@ -156,17 +156,12 @@ CodeGeneratorJs.prototype = {
 				"+": function (node, oLeft, oRight) {
 					var a = oLeft.pv;
 
-					if (oRight === undefined) { // unary plus?
-						if (typeof a === "string" && a.charAt(0) === "(" && a.charAt(a.length - 1) === ")") { // already in parenthesis?
-							node.pv = a;
-						} else {
-							node.pv = fnIsIntConst(a) ? a : "(" + a + ")"; // a can be an expression
-						}
-
-						if (fnIsInString("IR$", oLeft.pt)) {
+					if (oRight === undefined) { // unary plus? => skip it
+						node.pv = a;
+						if (fnIsInString("IR$", oLeft.pt)) { // I, R or $?
 							node.pt = oLeft.pt;
 						} else if (oLeft.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
+							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
 						}
 					} else {
 						node.pv = a + " + " + oRight.pv;
@@ -178,9 +173,9 @@ CodeGeneratorJs.prototype = {
 					var a = oLeft.pv;
 
 					if (oRight === undefined) { // unary minus?
-						// when optimizing, beware of "--"!
-						if (fnIsIntConst(a)) {
-							a = String(a);
+						// when optimizing, beware of "--" operator in JavaScript!
+						if (fnIsIntConst(a) || oLeft.type === "number") { // int const or number const (also fp)
+							a = String(a); // also ok for hex or bin strings
 							if (a.charAt(0) === "-") { // starting already with "-"?
 								node.pv = a.substr(1); // remove "-"
 							} else {
@@ -190,10 +185,10 @@ CodeGeneratorJs.prototype = {
 							node.pv = "-(" + a + ")"; // a can be an expression
 						}
 
-						if (fnIsInString("IR", oLeft.pt)) {
+						if (fnIsInString("IR", oLeft.pt)) { // I or R?
 							node.pt = oLeft.pt;
 						} else if (oLeft.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
+							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
 						}
 					} else {
 						node.pv = a + " - " + oRight.pv;
@@ -218,7 +213,7 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				"^": function (node, oLeft, oRight) {
-					node.pv = "Math.pow(" + oLeft.pv + " , " + oRight.pv + ")";
+					node.pv = "Math.pow(" + oLeft.pv + ", " + oRight.pv + ")";
 					fnPropagateStaticTypes(node, oLeft, oRight, "II RR IR RI");
 					return node.pv;
 				},
@@ -289,24 +284,25 @@ CodeGeneratorJs.prototype = {
 				},
 				"@": function (node, oLeft) {
 					node.pv = 'o.addressOf("' + oLeft.pv + '")'; // address of
-					if (oLeft.type !== "identifier" && oLeft.type !== "array") {
-						throw new CodeGeneratorJs.ErrorObject("Identifier expected", node.value, node.pos);
+					if (oLeft.type !== "identifier") {
+						throw new CodeGeneratorJs.ErrorObject("Identifier expected", node.value, node.pos, that.iLine);
 					}
 					node.pt = "I";
 					return node.pv;
 				},
 				"#": function (node, oLeft) {
 					node.pv = oLeft.pv; // stream
-					if (fnIsInString("IR", oLeft.pt)) {
+					if (fnIsInString("IR", oLeft.pt)) { // I or R?
 						node.pt = oLeft.pt;
 					} else if (oLeft.pt) {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
 					}
 					return node.pv;
 				}
 			},
 
 			mParseFunctions = {
+				/*
 				fnParseDefIntRealStr: function (node) {
 					var reVarLetters = /^[A-Za-z]( - [A-Za-z])?$/,
 						aNodeArgs, i, sArg;
@@ -326,6 +322,19 @@ CodeGeneratorJs.prototype = {
 							throw new CodeGeneratorJs.ErrorObject("Wrong format for " + node.type, sArg, node.args.length ? node.args[0].pos : node.pos);
 							// how to get correct position and length of expression?
 						}
+						aNodeArgs[i] = "o." + node.type + '("' + sArg + '")';
+					}
+					node.pv = aNodeArgs.join("; ");
+					return node.pv;
+				},
+				*/
+				fnParseDefIntRealStr: function (node) {
+					var aNodeArgs, i, sArg;
+
+					aNodeArgs = fnParseArgs(node.args);
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sArg = aNodeArgs[i];
 						aNodeArgs[i] = "o." + node.type + '("' + sArg + '")';
 					}
 					node.pv = aNodeArgs.join("; ");
@@ -356,7 +365,7 @@ CodeGeneratorJs.prototype = {
 							Utils.console.debug("fnAddReferenceLabel: line does not (yet) exist:", sLabel);
 						}
 						if (!that.bMergeFound) {
-							throw new CodeGeneratorJs.ErrorObject("Line does not exist", sLabel, node.pos);
+							throw new CodeGeneratorJs.ErrorObject("Line does not exist", sLabel, node.pos, that.iLine);
 						}
 					}
 				},
@@ -384,11 +393,6 @@ CodeGeneratorJs.prototype = {
 					node.pv = node.value;
 					return node.pv;
 				},
-				string: function (node) {
-					node.pt = "$";
-					node.pv = '"' + node.value + '"';
-					return node.pv;
-				},
 				binnumber: function (node) {
 					var sValue = node.value.slice(2);
 
@@ -413,21 +417,48 @@ CodeGeneratorJs.prototype = {
 					node.pv = node.value;
 					return node.pv;
 				},
-				identifier: function (node) {
-					var sName = fnAdaptVariableName(node.value), // here we use node.value
-						sVarType = fnDetermineStaticVarType(sName);
+				identifier: function (node) { // identifier or identifier with array
+					var aNodeArgs, sName, sValue, sVarType;
 
+					aNodeArgs = node.args ? fnParseArgs(node.args) : []; // array?
+					sName = fnAdaptVariableName(node.value, aNodeArgs.length); // here we use node.value
+
+					sValue = sName + aNodeArgs.map(function (val) {
+						return "[" + val + "]";
+					}).join("");
+
+					sVarType = fnDetermineStaticVarType(sName);
 					if (sVarType.length > 1) {
 						sVarType = sVarType.charAt(1);
 						node.pt = sVarType;
 					}
-					node.pv = sName;
+					node.pv = sValue;
+					return node.pv;
+				},
+				letter: function (node) { // for defint...
+					node.pv = node.value;
+					return node.pv;
+				},
+				range: function (node) { // for defint...
+					var sLeft = fnParseOneArg(node.left),
+						sRight = fnParseOneArg(node.right);
+
+					if (sLeft > sRight) {
+						throw new CodeGeneratorJs.ErrorObject("Decreasing range", node.value, node.pos, that.iLine);
+					}
+					node.pv = sLeft + " - " + sRight;
+					return node.pv;
+				},
+				string: function (node) {
+					node.pt = "$";
+					node.pv = '"' + node.value + '"';
 					return node.pv;
 				},
 				"null": function (node) { // means: no parameter specified
 					node.pv = "null";
 					return node.pv;
 				},
+				/*
 				array: function (node) { // identifier with array; TOTO: extend identifier?
 					var aNodeArgs = fnParseArgs(node.args),
 						sName = fnAdaptVariableName(node.value, aNodeArgs.length),
@@ -443,16 +474,15 @@ CodeGeneratorJs.prototype = {
 					node.pv = sValue;
 					return node.pv;
 				},
+				*/
 				assign: function (node) {
 					// see also "let"
 					var sName, sVarType, value, sValue;
 
-					if (node.left.type === "array") {
-						sName = fnParseOneArg(node.left);
-					} else if (node.left.type === "identifier") {
+					if (node.left.type === "identifier") {
 						sName = fnParseOneArg(node.left);
 					} else {
-						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos); // should not occur
+						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos, that.iLine); // should not occur
 					}
 
 					value = fnParseOneArg(node.right);
@@ -461,7 +491,11 @@ CodeGeneratorJs.prototype = {
 					sVarType = fnDetermineStaticVarType(sName);
 
 					if (node.pt) {
-						sValue = value;
+						if (node.left.pt === "I" && node.right.pt === "R") {
+							sValue = "o.vmRound(" + value + ")";
+						} else {
+							sValue = value;
+						}
 					} else {
 						sValue = "o.vmAssign(\"" + sVarType + "\", " + value + ")";
 					}
@@ -553,15 +587,15 @@ CodeGeneratorJs.prototype = {
 					node.pv = sValue;
 					return node.pv;
 				},
-				defint: function (node) { // somehow special because we need to get first character of variable only
+				defint: function (node) { // somehow special
 					node.pv = this.fnParseDefIntRealStr(node);
 					return node.pv;
 				},
-				defreal: function (node) { // somehow special because we need to get first character of variable only
+				defreal: function (node) { // somehow special
 					node.pv = this.fnParseDefIntRealStr(node);
 					return node.pv;
 				},
-				defstr: function (node) { // somehow special because we need to get first character of variable only
+				defstr: function (node) { // somehow special
 					node.pv = this.fnParseDefIntRealStr(node);
 					return node.pv;
 				},
@@ -631,7 +665,7 @@ CodeGeneratorJs.prototype = {
 					endValue = fnParseOneArg(node.right);
 					stepValue = fnParseOneArg(node.third);
 
-					// optimization for integer constants
+					// optimization for integer constants (check value and not type, because we also want to accept e.g. -<number>)
 					bStartIsIntConst = fnIsIntConst(startValue);
 					bEndIsIntConst = fnIsIntConst(endValue);
 					bStepIsIntConst = fnIsIntConst(stepValue);
@@ -639,7 +673,7 @@ CodeGeneratorJs.prototype = {
 					sVarType = fnDetermineStaticVarType(sVarName);
 					sType = (sVarType.length > 1) ? sVarType.charAt(1) : "";
 					if (sType === "$") {
-						throw new CodeGeneratorJs.ErrorObject("String type in FOR at", node.type, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("String type in FOR at", node.type, node.pos, that.iLine);
 					}
 
 					if (!bStartIsIntConst) {
@@ -820,11 +854,11 @@ CodeGeneratorJs.prototype = {
 							} else { // identifier arg
 								oErrorNode = node.args[i];
 							}
-							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", oErrorNode.type, oErrorNode.pos);
+							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", oErrorNode.type, oErrorNode.pos, that.iLine);
 						}
 						if (aNodeArgs[i] !== "" && aNodeArgs[i] !== sVarName) {
 							oErrorNode = node.args[i];
-							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT variable", oErrorNode.value, oErrorNode.pos);
+							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT variable", oErrorNode.value, oErrorNode.pos, that.iLine);
 						}
 						aNodeArgs[i] = "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "e\":";
 					}
@@ -1003,7 +1037,7 @@ CodeGeneratorJs.prototype = {
 					var sLabel = that.oStack.whileLabel.pop();
 
 					if (sLabel === undefined) {
-						throw new CodeGeneratorJs.ErrorObject("Unexpected WEND at", node.type, node.pos);
+						throw new CodeGeneratorJs.ErrorObject("Unexpected WEND at", node.type, node.pos, that.iLine);
 					}
 					node.pv = "/* o.wend() */ o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "e\":";
 					return node.pv;
@@ -1047,12 +1081,12 @@ CodeGeneratorJs.prototype = {
 				if (mOperators[node.type]) {
 					if (node.left) {
 						value = parseNode(node.left);
-						if (mOperators[node.left.type]) { // binary operator?
+						if (mOperators[node.left.type] && node.left.left) { // binary operator?
 							value = "(" + value + ")";
 							node.left.pv = value;
 						}
 						value2 = parseNode(node.right);
-						if (mOperators[node.right.type]) { // binary operator?
+						if (mOperators[node.right.type] && node.right.left) { // binary operator?
 							value2 = "(" + value2 + ")";
 							node.right.pv = value2;
 						}
@@ -1087,13 +1121,13 @@ CodeGeneratorJs.prototype = {
 						sLine = oNode.value;
 						iLine = Number(sLine);
 						if (sLine in oLabels2) {
-							throw new CodeGeneratorJs.ErrorObject("Duplicate line number", sLine, oNode.pos);
+							throw new CodeGeneratorJs.ErrorObject("Duplicate line number", sLine, oNode.pos, that.iLine);
 						}
 						if (iLine <= iLastLine) {
-							throw new CodeGeneratorJs.ErrorObject("Line number not increasing", sLine, oNode.pos);
+							throw new CodeGeneratorJs.ErrorObject("Line number not increasing", sLine, oNode.pos, that.iLine);
 						}
 						if (iLine < 1 || iLine > 65535) {
-							throw new CodeGeneratorJs.ErrorObject("Line number overflow", sLine, oNode.pos);
+							throw new CodeGeneratorJs.ErrorObject("Line number overflow", sLine, oNode.pos, that.iLine);
 						}
 						iLastLine = iLine;
 						oLabels2[sLine] = 0; // init call count
@@ -1174,7 +1208,9 @@ CodeGeneratorJs.prototype = {
 				+ "\ncase \"end\": o.vmStop(\"end\", 90); break;\ndefault: o.error(8); o.goto(\"end\"); break;\n}}\n";
 		} catch (e) {
 			oOut.error = e;
-			if (!("pos" in e)) { // our errors have pos defined
+			if ("pos" in e) {
+				Utils.console.warn(e);// our errors have "pos" defined => show as warning
+			} else { // other errors
 				Utils.console.error(e);
 			}
 		}
@@ -1183,10 +1219,13 @@ CodeGeneratorJs.prototype = {
 };
 
 
-CodeGeneratorJs.ErrorObject = function (message, value, pos) {
-	this.message = message;
+CodeGeneratorJs.ErrorObject = function (sMessage, value, iPos, iLine) {
+	this.message = sMessage;
 	this.value = value;
-	this.pos = pos;
+	this.pos = iPos;
+	if (iLine) {
+		this.line = iLine;
+	}
 };
 
 if (typeof module !== "undefined" && module.exports) {
