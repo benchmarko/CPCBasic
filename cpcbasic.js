@@ -252,4 +252,23 @@ if (!String.prototype.repeat) {
 	};
 }
 
+
+// And a polyfill for older browsers (e.g. SliTaz tazweb browser)
+// https://wiki.selfhtml.org/wiki/JavaScript/Window/requestAnimationFrame
+(function () {
+	var lastTime = 0;
+
+	if (!window.requestAnimationFrame) {
+		window.requestAnimationFrame = function (callback /* , element */) {
+			var currTime = new Date().getTime(),
+				timeToCall = Math.max(0, 16 - (currTime - lastTime)),
+				id = window.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
+
+			lastTime = currTime + timeToCall;
+			return id;
+		};
+	}
+}());
+
+
 cpcBasic.fnOnLoad(); // if cpcbasic.js is the last script, we do not need to wait for window.onload

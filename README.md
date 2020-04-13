@@ -63,7 +63,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *OPENOUT*, *PRINT#8/#9*, *RESUME* (partly), *SAVE*, *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8/#9*
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *PRINT#8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, most AMDSOS commands
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
@@ -74,7 +74,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
-- Some more things...
+- Maybe something more...
 
 ## Fixed Restrictions
 
@@ -93,11 +93,15 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: *SPEED INK*]
 - [done: *FILL*]
 - [done: *RENUM*]
+- [done: *SAVE* ASCII, *OPENOUT*, *PRINT #9*, *WRITE #9*]
 
 ## Extensions and Features
 
+- File save operations *SAVE*, *OPENOUT* write to Browser local storage
+- Data can be loadad again with file load and merge commands like *LOAD*, *MERGE*, *OPENIN*. These also work on the predefined examples
 - *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters. Demo: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
 - *|MODE,n*: Change mode without *CLS* (experimental)
+- *|RENUM,...*: similar to *RENUM* but with 4th parameter to keep line numbers starting with that line
 - Computations with numbers are not limited to 16 bit
 - *PEEK&POKE* features:
   - Access screen memory in address range &C000-&FFFF or &4000-&7FFF
@@ -155,6 +159,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 ## Possible Future Enhancements
 
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
+- Edit and direct execution mode
 - DSK images support
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
 - RSX extension libraries / plugins programmed in JavaScript
@@ -197,4 +202,4 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - [Locomotive Software](https://www.cpcwiki.eu/index.php/Locomotive_Software) - The developer of CPCs BASIC and operating system
 
-### **mv, 02/2020**
+### **mv, 04/2020**

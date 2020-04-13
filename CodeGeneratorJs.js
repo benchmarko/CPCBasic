@@ -18,10 +18,11 @@ function CodeGeneratorJs(options) {
 
 CodeGeneratorJs.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. tron
+		this.options = options || {}; // e.g. tron, rsx
 
 		this.lexer = this.options.lexer;
 		this.parser = this.options.parser;
+
 		this.reset();
 	},
 
@@ -302,32 +303,6 @@ CodeGeneratorJs.prototype = {
 			},
 
 			mParseFunctions = {
-				/*
-				fnParseDefIntRealStr: function (node) {
-					var reVarLetters = /^[A-Za-z]( - [A-Za-z])?$/,
-						aNodeArgs, i, sArg;
-
-					oDevScopeArgs = {};
-					bDevScopeArgsCollect = true;
-					aNodeArgs = fnParseArgs(node.args);
-					bDevScopeArgsCollect = false;
-					oDevScopeArgs = null;
-
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						sArg = aNodeArgs[i];
-						if (sArg.indexOf("oNo") >= 0) { // need to replace modified "o" variable!
-							sArg = sArg.replace(/oNo/g, "o");
-						}
-						if (!reVarLetters.test(sArg)) {
-							throw new CodeGeneratorJs.ErrorObject("Wrong format for " + node.type, sArg, node.args.length ? node.args[0].pos : node.pos);
-							// how to get correct position and length of expression?
-						}
-						aNodeArgs[i] = "o." + node.type + '("' + sArg + '")';
-					}
-					node.pv = aNodeArgs.join("; ");
-					return node.pv;
-				},
-				*/
 				fnParseDefIntRealStr: function (node) {
 					var aNodeArgs, i, sArg;
 
@@ -382,10 +357,18 @@ CodeGeneratorJs.prototype = {
 				},
 
 				"|": function (node) { // rsx
-					var sRsxName = "rsx" + Utils.stringCapitalize(node.value.toLowerCase()),
-						aNodeArgs = fnParseArgs(node.args);
+					var sRsxName, aNodeArgs, sLabel;
 
-					node.pv = "o." + sRsxName + "(" + aNodeArgs.join(", ") + ")";
+					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_"); //sRsxName = "rsx" + Utils.stringCapitalize(node.value.toLowerCase()),
+					aNodeArgs = fnParseArgs(node.args);
+					if (that.options.rsx.rsxIsAvailable(sRsxName)) { // RSX available?
+						sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
+						that.iStopCount += 1;
+						//node.pv = "o.rsx." + sAdaptedRsxName + "(" + aNodeArgs.join(", ") + ")";
+						node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, renum,...)
+					} else {
+						throw new CodeGeneratorJs.ErrorObject("Unknown RSX command", node.value, node.pos, that.iLine);
+					}
 					return node.pv;
 				},
 				number: function (node) {
@@ -458,23 +441,6 @@ CodeGeneratorJs.prototype = {
 					node.pv = "null";
 					return node.pv;
 				},
-				/*
-				array: function (node) { // identifier with array; TOTO: extend identifier?
-					var aNodeArgs = fnParseArgs(node.args),
-						sName = fnAdaptVariableName(node.value, aNodeArgs.length),
-						sVarType = fnDetermineStaticVarType(sName),
-						sValue = sName + aNodeArgs.map(function (val) {
-							return "[" + val + "]";
-						}).join("");
-
-					if (sVarType.length > 1) {
-						sVarType = sVarType.charAt(1);
-						node.pt = sVarType;
-					}
-					node.pv = sValue;
-					return node.pv;
-				},
-				*/
 				assign: function (node) {
 					// see also "let"
 					var sName, sVarType, value, sValue;
@@ -547,6 +513,10 @@ CodeGeneratorJs.prototype = {
 				},
 				chainMerge: function (node) {
 					that.bMergeFound = true;
+					node.pv = this.fnCommandWithGoto(node);
+					return node.pv;
+				},
+				closeout: function (node) {
 					node.pv = this.fnCommandWithGoto(node);
 					return node.pv;
 				},
@@ -979,6 +949,11 @@ CodeGeneratorJs.prototype = {
 					node.pv = "o.return(); break;";
 					return node.pv;
 				},
+				/*
+				rsxEra: function (node) {
+					return this.fnCommandWithGoto(node);
+				},
+				*/
 				run: function (node) { // optional arg can be number or string
 					if (node.args.length) {
 						if (node.args[0].type === "linenumber" || node.args[0].type === "number") { // optional line number //TTT should be linenumber only

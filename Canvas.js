@@ -3,7 +3,7 @@
 // https://benchmarko.github.io/CPCBasic/
 //
 /* globals Utils */
-/* globals ArrayBuffer Uint8ClampedArray Uint32Array Uint8Array */
+/* globals ArrayBuffer Uint8Array */
 
 "use strict";
 
@@ -88,7 +88,7 @@ Canvas.prototype = {
 
 	init: function (options) {
 		var iBorderWidth = 4,
-			iWidth, iHeight, canvas, ctx;
+			iWidth, iHeight, canvas, ctx, dataset;
 
 		this.options = Object.assign({}, options);
 
@@ -112,12 +112,18 @@ Canvas.prototype = {
 
 		ctx = this.canvas.getContext("2d");
 		this.imageData = ctx.getImageData(0, 0, iWidth, iHeight);
-		this.buf = new ArrayBuffer(this.imageData.data.length);
-		this.buf8 = new Uint8ClampedArray(this.buf);
-		this.data = new Uint32Array(this.buf);
+		//buf = new ArrayBuffer(this.imageData.data.length);
+		//this.buf8 = new Uint8ClampedArray(buf);
+		//this.data = new Uint32Array(buf);
+		this.buf8 = this.imageData.data; // use Uint8ClampedArray from canvas
 
-		this.dataset = new ArrayBuffer(iWidth * iHeight);
-		this.dataset8 = new Uint8Array(this.dataset); // array with pen values
+		dataset = new ArrayBuffer(iWidth * iHeight);
+		if (typeof Uint8Array !== "undefined") { // in modern browsers we have it
+			this.dataset8 = new Uint8Array(dataset); // array with pen values
+		} else {
+			Utils.console.warn("Canvas:init: Uint8Array not available. Using fallback.");
+			this.dataset8 = dataset; // fallbaCK
+		}
 
 		this.bNeedUpdate = false;
 		this.oUpdateRect = {};
@@ -240,7 +246,7 @@ Canvas.prototype = {
 				buf8[i + 3] = 255; // a
 			}
 		}
-		this.imageData.data.set(buf8);
+		// this.imageData.data.set(buf8); // already set
 		ctx.putImageData(this.imageData, 0, 0);
 	},
 

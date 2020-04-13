@@ -104,6 +104,14 @@ var Utils = {
 		} catch (err) {
 			return false;
 		}
+	}()),
+	localStorage: (function () {
+		try {
+			return window.localStorage; // due to a bug in MS Edge this will throw an error when hosting locally (https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/8816771/)
+		} catch (e) {
+			console.warn("Utils.localStorage:", e);
+			return null;
+		}
 	}())
 };
 

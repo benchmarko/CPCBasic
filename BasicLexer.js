@@ -290,10 +290,10 @@ BasicLexer.prototype = {
 				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 			} else if (isRsx(sChar)) {
+				sToken = sChar;
 				sChar = advance();
-				sToken = "";
 				if (isIdentifierMiddle(sChar)) {
-					sToken = advanceWhile(isIdentifierMiddle);
+					sToken += advanceWhile(isIdentifierMiddle);
 					addToken("|", sToken, iStartPos);
 				}
 			} else if (isStream(sChar)) { // stream can be an expression
