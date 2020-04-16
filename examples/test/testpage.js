@@ -318,44 +318,87 @@ cpcBasic.addItem("", function () { /*
 3160 t=asc(t$):if t<>i then ?"error:";i;"<>";t:error 33
 3170 next
 3180 closein
-3190 ?
-3200 |ERA,"testdat2"
-3210 '
-3220 gosub 9040:cls
-3230 '
-3240 ?"SYMBOL AFTER"
-3250 a=240:h=himem+(256-a)*8
-3260 a=256:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
-3270 a=0:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
-3280 a=240:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
-3290 memory himem-1
-3300 on error goto 3310:symbol after 241:?"Error expected!":error 33: 'expect error 5
-3310 if err<>5 then ?"err=";err;"erl=";erl:error 33 else resume 3320
-3320 on error goto 0
-3330 memory himem+1
-3340 ?"UNT"
-3350 a=unt(32767):if a<>32767 then error 33
-3360 a=unt(32768):if a<>-32768 then error 33
-3370 a=unt(65535):if a<>-1 then error 33
-3380 ?"VAL"
-3390 a=val(""):if a<>0 then error 33
-3400 a=val("4r"):if a<>4 then error 33
-3410 a=val("&ff"):if a<>&ff then error 33
-3420 '
-3430 gosub 9040
-3440 mode 1:border 2
-3450 print "stairs"
-3460 move 0,350
-3470 for n=1 to 8
-3480 drawr 50,0
-3490 drawr 0,-50
-3500 next
-3510 move 348,0
-3520 fill 3
-3530 '
-3540 print "test finished: ok"
-3550 end
-3560 '
+3190 ?:?
+3200 '
+3210 ?"Numbers in files"
+3220 openout "testdat2"
+3230 for i=0 to 10:?#9,i:next :'separate lines
+3240 closeout
+3250 openin "testdat2"
+3260 for i=0 to 10:input #9,t
+3270 if i<>t then ?"error:";i;"<>";t:error 33
+3280 next
+3290 closein
+3300 openin "testdat2"
+3310 for i=0 to 10:input #9,t$
+3320 a$=str$(i)+" ":a$=right$(a$,len(a$)-1):if a$<>t$ then ?"error:";a$;"<>";t$:error 33
+3330 next
+3340 closein
+3350 '
+3360 openout "testdat2"
+3370 for i=0 to 10:?#9,i;:next :'one line
+3380 closeout
+3390 openin "testdat2"
+3400 for i=0 to 10:input #9,t
+3410 if i<>t then ?"error:";i;"<>";t:error 33
+3420 next
+3430 closein
+3440 openin "testdat2"
+3450 input #9,t$
+3460 if t$<>"0  1  2  3  4  5  6  7  8  9  10 " then ?"error:";:error 33
+3470 closein
+3480 ?
+3490 '
+3500 ?"Mixed style"
+3510 openout "testdat2"
+3520 for i=0 to 10:?#9,i;"&a1";&a2:next
+3530 closeout
+3540 openin "testdat2"
+3550 for i=0 to 10:input #9,t,t2
+3560 if i<>t then ?"error:";i;"<>";t:error 33
+3570 if t2<>&a1 then ?"error:";t2;"<>";&a1:error 33
+3580 input #9,t2
+3590 if t2<>&a2 then ?"error:";t2;"<>";&a2:error 33
+3600 next
+3610 closein
+3620 '
+3630 |ERA,"testdat2"
+3640 '
+3650 gosub 9040:cls
+3660 '
+3670 ?"SYMBOL AFTER"
+3680 a=240:h=himem+(256-a)*8
+3690 a=256:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
+3700 a=0:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
+3710 a=240:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
+3720 memory himem-1
+3730 on error goto 3740:symbol after 241:?"Error expected!":error 33: 'expect error 5
+3740 if err<>5 then ?"err=";err;"erl=";erl:error 33 else resume 3750
+3750 on error goto 0
+3760 memory himem+1
+3770 ?"UNT"
+3780 a=unt(32767):if a<>32767 then error 33
+3790 a=unt(32768):if a<>-32768 then error 33
+3800 a=unt(65535):if a<>-1 then error 33
+3810 ?"VAL"
+3820 a=val(""):if a<>0 then error 33
+3830 a=val("4r"):if a<>4 then error 33
+3840 a=val("&ff"):if a<>&ff then error 33
+3850 '
+3860 gosub 9040
+3870 mode 1:border 2
+3880 print "stairs"
+3890 move 0,350
+3900 for n=1 to 8
+3910 drawr 50,0
+3920 drawr 0,-50
+3930 next
+3940 move 348,0
+3950 fill 3
+3960 '
+3970 print "test finished: ok"
+3980 end
+3990 '
 9000 'get characters from screen; print crlf
 9010 a$="":i=1:while i<=80 and right$(a$,1)<>"#":locate i,vpos(#0):a$=a$+copychr$(#0):i=i+1:wend:?:return
 9020 '

@@ -17,7 +17,6 @@ if (typeof require !== "undefined") {
 	Canvas = require("./Canvas.js");
 	CodeGeneratorJs = require("./CodeGeneratorJs.js");
 	CpcVm = require("./CpcVm.js");
-	//CpcVmRsx = require("./CpcVmRsx.js");
 	Keyboard = require("./Keyboard.js");
 	Sound = require("./Sound.js");
 	/* eslint-enable global-require */
@@ -40,7 +39,7 @@ Controller.prototype = {
 
 		this.fnScript = null;
 
-		this.iTimeoutHandle = null;
+		this.bTimeoutHandlerActive = false;
 
 		this.sLabelBeforeStop = "";
 		this.iPrioBeforeStop = 0;
@@ -64,6 +63,7 @@ Controller.prototype = {
 			aCharset: cpcBasicCharset,
 			cpcDivId: "cpcArea"
 		});
+		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
 		sKbdLayout = oModel.getProperty("kbdLayout");
 		oView.setSelectValue("kbdLayoutSelect", sKbdLayout);
@@ -76,12 +76,9 @@ Controller.prototype = {
 			this.oKeyboard.virtualKeyboardCreate();
 		}
 
-		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
+		//oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
 		this.oSound = new Sound();
-		if (oModel.getProperty("sound")) { // activate sound needs user action
-			this.fnSetSoundActive(); // activate in waiting state
-		}
 		this.commonEventHandler.fnActivateUserAction(this.onUserAction.bind(this)); // check first user action, also if sound is not yet on
 
 		sExample = oModel.getProperty("example");
@@ -95,6 +92,12 @@ Controller.prototype = {
 		});
 
 		this.fnInitDatabases();
+		if (oModel.getProperty("sound")) { // activate sound needs user action
+			this.fnSetSoundActive(); // activate in waiting state
+		}
+		if (oModel.getProperty("showCpc")) {
+			this.oCanvas.startUpdateCanvas();
+		}
 	},
 
 	fnInitDatabases: function () {
@@ -275,9 +278,7 @@ Controller.prototype = {
 		this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
 
 		this.oVm.vmStop("escape", 85);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnWaitForKey: function () {
@@ -287,9 +288,7 @@ Controller.prototype = {
 		sKey = this.oKeyboard.getKeyFromBuffer();
 		this.oVm.vmStop("", 0, true);
 		Utils.console.log("Wait for key:", sKey);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnWaitForInput: function () {
@@ -334,9 +333,7 @@ Controller.prototype = {
 			if (bInputOk) {
 				this.oKeyboard.setKeyDownHandler(null);
 				this.oVm.vmStop("", 0, true);
-				if (this.iTimeoutHandle === null) {
-					this.fnRunLoop();
-				}
+				this.startMainLoop();
 			}
 		}
 	},
@@ -344,11 +341,13 @@ Controller.prototype = {
 	fnWaitForSound: function () {
 		var aSoundData;
 
+		this.oVm.vmLoopCondition(); // update iNextFrameTime, timers, inks; schedule sound: free queue
 		if (!this.oSound.isActivatedByUser()) { // not yet activated?
+			//this.oVm.vmLoopCondition(); // update iNextFrameTime, timers, inks
 			return;
 		}
 
-		this.oSound.scheduler(); // we need to schedule here as well to free queue
+		//this.oSound.scheduler(); // we need to schedule here as well to free queue
 		aSoundData = this.oVm.vmGetSoundData();
 		while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
 			this.oSound.sound(aSoundData.shift());
@@ -389,7 +388,6 @@ Controller.prototype = {
 			sCommand = oInFile.sCommand,
 			iStartLine = 0;
 
-		//this.model.setProperty("example", oInFile.sMemorizedExample);
 		this.oVm.vmStop("", 0, true);
 		if (oInFile.fnFileCallback) {
 			try {
@@ -436,9 +434,7 @@ Controller.prototype = {
 			}
 			this.oVm.vmSetStartLine(iStartLine);
 		}
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnLoadFile: function () {
@@ -447,62 +443,6 @@ Controller.prototype = {
 			oInFile = this.oVm.vmGetInFileObject(),
 			sPath = "",
 			sDatabaseDir, sName, sExample, oExample, sKey, iLastSlash, sUrl, oError,
-
-			/*
-			fnLoadContinue = function (sInput) {
-				var sCommand = oInFile.sCommand,
-					iStartLine = 0;
-
-				that.model.setProperty("example", oInFile.sMemorizedExample);
-				that.oVm.vmStop("", 0, true);
-				if (oInFile.fnFileCallback) {
-					try {
-						oInFile.fnFileCallback(sInput);
-					} catch (e) {
-						Utils.console.error(e);
-					}
-				}
-				if (sInput) {
-					switch (sCommand) {
-					case "openin":
-						break;
-					case "chainMerge":
-						sInput = that.fnMergeScripts(that.view.getAreaValue("inputText"), sInput);
-						that.view.setAreaValue("inputText", sInput);
-						that.view.setAreaValue("resultText", "");
-						iStartLine = oInFile.iLine || 0;
-						that.fnParseRun2();
-						break;
-					case "load":
-						that.view.setAreaValue("inputText", sInput);
-						that.view.setAreaValue("resultText", "");
-						that.fnInvalidateScript();
-						break;
-					case "merge":
-						sInput = that.fnMergeScripts(that.view.getAreaValue("inputText"), sInput);
-						that.view.setAreaValue("inputText", sInput);
-						that.view.setAreaValue("resultText", "");
-						that.fnInvalidateScript();
-						break;
-					case "chain": // run through...
-					case "run":
-						that.view.setAreaValue("inputText", sInput);
-						that.view.setAreaValue("resultText", "");
-						iStartLine = oInFile.iLine || 0;
-						that.fnReset2();
-						that.fnParseRun2();
-						break;
-					default:
-						Utils.console.error("fnLoadFile: Unknown command:", sCommand);
-						break;
-					}
-					that.oVm.vmSetStartLine(iStartLine);
-				}
-				if (that.iTimeoutHandle === null) {
-					that.fnRunLoop();
-				}
-			},
-			*/
 
 			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
 				var sInput;
@@ -567,16 +507,6 @@ Controller.prototype = {
 				}
 				sInput = oStorage.getItem(sName);
 				sMeta = oStorage.getItem(sName + "Meta");
-				/*
-				this.oVm.vmStop("", 0, true);
-				if (oInFile.fnFileCallback) {
-					try {
-						oInFile.fnFileCallback(sInput);
-					} catch (e) {
-						Utils.console.error(e);
-					}
-				}
-				*/
 				this.fnLoadContinue(sInput, sMeta);
 				oInFile.sState = "loaded";
 			} else { // load from example
@@ -611,7 +541,7 @@ Controller.prototype = {
 					}
 				}
 				oStorage.setItem(sName, sFileData);
-				oStorage.setItem(sName + "Meta", oOutFile.sType);
+				oStorage.setItem(sName + "Meta", oOutFile.sType || "");
 			}
 		}
 	},
@@ -669,7 +599,6 @@ Controller.prototype = {
 		} else {
 			sOutput = oOutput.text;
 			this.view.setAreaValue("inputText", sOutput);
-			//this.view.setAreaValue("outputText", ""); // JS
 		}
 		return oOutput;
 	},
@@ -750,8 +679,6 @@ Controller.prototype = {
 		} else {
 			oVm.clear(); // we do a clear as well here //TTT
 		}
-		//oVm.vmResetInks();
-		//oVm.clearInput();
 		oVm.vmReset4Run();
 
 		if (this.fnScript) {
@@ -815,7 +742,7 @@ Controller.prototype = {
 			this.fnSetVarSelectOptions("varSelect", this.oVariables);
 			this.commonEventHandler.onVarSelectChange();
 		}
-		this.iTimeoutHandle = null; // not running any more
+		this.bTimeoutHandlerActive = false; // not running any more
 	},
 
 	fnRunLoop: function () { // eslint-disable-line complexity
@@ -917,10 +844,17 @@ Controller.prototype = {
 			break;
 		}
 
-		if (!oStop.sReason || oStop.sReason === "sound") {
-			this.iTimeoutHandle = setTimeout(this.fnRunLoopHandler, iTimeOut);
-		} else {
+		if (oStop.sReason && oStop.sReason !== "sound") {
 			this.fnExitLoop();
+		} else {
+			setTimeout(this.fnRunLoopHandler, iTimeOut);
+		}
+	},
+
+	startMainLoop: function () {
+		if (!this.bTimeoutHandlerActive) {
+			this.bTimeoutHandlerActive = true;
+			this.fnRunLoop();
 		}
 	},
 
@@ -931,9 +865,7 @@ Controller.prototype = {
 
 	fnParse: function () {
 		this.oVm.vmStop("parse", 99);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnRenum: function () {
@@ -945,27 +877,21 @@ Controller.prototype = {
 			65535
 		]);
 		this.oVm.vmStop("renum", 99);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnRun: function () {
 		this.fnSetStopLabelPrio("", 0);
 		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("run", 99);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnParseRun: function () {
 		this.fnSetStopLabelPrio("", 0);
 		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("parseRun", 99);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnStop: function () {
@@ -975,9 +901,7 @@ Controller.prototype = {
 		this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
 		this.oKeyboard.setKeyDownHandler(null);
 		oVm.vmStop("break", 80);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnContinue: function () {
@@ -991,9 +915,7 @@ Controller.prototype = {
 			oVm.vmStop(this.sLabelBeforeStop, this.iPrioBeforeStop, true);
 			this.fnSetStopLabelPrio("", 0);
 		}
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnReset: function () {
@@ -1002,9 +924,7 @@ Controller.prototype = {
 		this.fnSetStopLabelPrio("", 0);
 		this.oKeyboard.setKeyDownHandler(null);
 		oVm.vmStop("reset", 99);
-		if (this.iTimeoutHandle === null) {
-			this.fnRunLoop();
-		}
+		this.startMainLoop();
 	},
 
 	fnScreenshot: function () {
@@ -1035,7 +955,8 @@ Controller.prototype = {
 		var oSound = this.oSound,
 			soundButton = document.getElementById("soundButton"),
 			bActive = this.model.getProperty("sound"),
-			sText = "";
+			sText = "",
+			oStop;
 
 		if (bActive) {
 			try {
@@ -1048,6 +969,10 @@ Controller.prototype = {
 		} else {
 			oSound.soundOff();
 			sText = "Sound is off";
+			oStop = this.oVm && this.oVm.vmGetStopObject();
+			if (oStop && oStop.sReason === "sound") {
+				this.oVm.vmStop("", 0, true); //TTT do not wait
+			}
 		}
 		soundButton.innerText = sText;
 	}

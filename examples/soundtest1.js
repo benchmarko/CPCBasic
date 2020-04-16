@@ -12,23 +12,26 @@ cpcBasic.addItem("", function () { /*
 150 ?
 160 ?"Your choice ";
 170 x=pos(#0):y=vpos(#0)
-175 pMax=3:p=0:gosub 500:every 50*2 gosub 500
-180 t$=inkey$:if t$="" then 180
-190 if t$=chr$(13) or t$=" " then t$=hex$(p)
+172 ?:?:?"(Or wait for random sound...)"
+175 pMax=3:p=-1:gosub 500:every 50*2 gosub 500
+180 t$=inkey$:if t$="" and p<pMax*2 then 180
+190 if t$=chr$(13) or t$=" " or p>=pMax*2 then t$=hex$((p mod pMax)+1)
 200 t=val(t$):if t<1 or t>pMax then 180
 205 r=remain(0)
 210 ?t$;
 220 on t gosub 1000,1100,1800
+222 ink 0,1,1:speed ink 10,10
 225 ?" stopping...";
 227 WHILE SQ(4)<>4:call &bd19:WEND
 230 ?chr$(17);chr$(13);:goto 160
 490 '
-500 p=p+1:if p>pMax then p=1
-510 locate x,y:?"[";p;"]: ";:return
+500 p=p+1:if p>=pMax*2 then p=p+int(rnd*pMax)
+510 locate x,y:?"[";(p mod pMax)+1;"]: ";:return
 970 '
 980 '
 990 REM Richard Wagner: Brautchor aus 'Lohengrin'
 1000 RESTORE 1060
+1005 ink 0,0,3:speed ink 20,5
 1010 ENV 3,10,-1,10:laut=12
 1020 READ ton,dauer
 1030 IF ton=-1 or inkey$<>"" THEN return
@@ -41,6 +44,7 @@ cpcBasic.addItem("", function () { /*
 1087 '
 1090 REM Franz Schubert: Die Forelle
 1100 ENV 2,10,-1,10
+1105 ink 0,0,3:speed ink 25,5
 1110 RESTORE 1150:laut1=12:laut2=10
 1120 READ ton,dauer:IF ton=-1 or inkey$<>"" THEN return
 1130 IF ton=0 THEN SOUND 1,ton,dauer:SOUND 2,ton,dauer:SOUND 4,ton,dauer:GOTO 1120
@@ -54,6 +58,7 @@ cpcBasic.addItem("", function () { /*
 1780 '
 1790 REM Marc-Antoine Charpentiers: Te Deum
 1800 RESTORE 2000:la=40:la1=la
+1805 ink 0,0,3:speed ink 40,5
 1810 READ note:if note<0 then 1816
 1812 SOUND 1,note,la1-2,10:SOUND 2,note,la1,8:SOUND 4,note,la1,6
 1814 goto 1810

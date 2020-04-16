@@ -1394,17 +1394,6 @@ BasicParser.prototype = {
 			return fnCreateCmdCall(sName);
 		});
 
-		/*
-		stmt("write", function () {
-			var oValue;
-
-			//oStream = fnGetOptionalStream();
-			oValue = fnCreateCmdCall("write");
-			//oValue.args.unshift(oStream);
-			return oValue;
-		});
-		*/
-
 
 		// line
 		iIndex = 0;

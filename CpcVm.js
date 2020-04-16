@@ -90,10 +90,9 @@ CpcVm.prototype = {
 		this.options = options || {};
 		this.oCanvas = this.options.canvas;
 		this.oKeyboard = this.options.keyboard;
-		//this.oRsx = this.options.rsx;
 		this.oSound = this.options.sound;
 
-		this.rsx = new CpcVmRsx(this); //TTT
+		this.rsx = new CpcVmRsx(this);
 
 		this.oRandom = new Random();
 
@@ -256,7 +255,7 @@ CpcVm.prototype = {
 			oPrintData = {
 				iPos: 0,
 				iVpos: 0,
-				iRight: 132 //TTT override
+				iRight: 132 // override
 			},
 			oCassetteData = {
 				iPos: 0,
@@ -465,9 +464,9 @@ CpcVm.prototype = {
 	},
 
 	vmGotoLine: function (line, sMsg) {
-		if (Utils.debug > 3) {
-			if (typeof line === "number" || Utils.debug > 5) { // non-number labels only in higher debug levels
-				Utils.console.debug("DEBUG: vmGotoLine:", sMsg + ": " + line);
+		if (Utils.debug > 5) {
+			if (typeof line === "number" || Utils.debug > 7) { // non-number labels only in higher debug levels
+				Utils.console.debug("dvmGotoLine:", sMsg + ": " + line);
 			}
 		}
 		this.iLine = line;
@@ -1233,7 +1232,6 @@ CpcVm.prototype = {
 
 		if (iToneEnv) { // not 0
 			for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
-				/* eslint-disable no-bitwise */
 				if (arguments[i] !== null) {
 					oArg = {
 						steps: this.vmInRangeRound(arguments[i], 0, 239, "ENT"), // number of steps: 0..239
@@ -1249,7 +1247,6 @@ CpcVm.prototype = {
 						time: this.vmInRangeRound(arguments[i + 2], 0, 255, "ENT") // time: 0..255 (0=256)
 					};
 				}
-				/* eslint-enable no-bitwise */
 				aArgs.push(oArg);
 			}
 			this.oSound.setToneEnv(iToneEnv, aArgs);
@@ -1534,6 +1531,45 @@ CpcVm.prototype = {
 		return bInputOk;
 	},
 
+	vmInputFromFile: function () {
+		var aTypes = this.oInput.aTypes,
+			aFileData = this.oInFile.aFileData,
+			aInputValues = [],
+			i, sVarType, sType, value, aValue;
+
+		for (i = 0; i < aTypes.length; i += 1) {
+			sVarType = aTypes[i];
+			sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+
+			if (sType === "$") { // string?
+				value = aFileData.shift(); // get complete (remaining) line
+				value = value.replace(/^\s+/, ""); // remove preceding whitespace
+			} else { // number (in same line or in next line)
+				value = "";
+				while (aFileData.length && value === "") {
+					aFileData[0] = aFileData[0].replace(/^\s+/, ""); // remove preceding whitespace
+					if (aFileData[0].length) { // do we have something in line?
+						aValue = aFileData[0].match(/^(\S+)(.*)/);
+						value = aValue[1];
+						aFileData[0] = aValue[2];
+						value = this.vmVal(value); // convert to number (also binary, hex)
+						if (isNaN(value)) { // eslint-disable-line max-depth
+							this.error(13, "INPUT #9 " + value); // Type mismatch
+						}
+					} else { // empty line
+						aFileData.shift(); // remove empty line
+					}
+				}
+				if (value === "") {
+					this.error(24, "INPUT #9"); // EOF met
+				}
+			}
+
+			aInputValues[i] = this.vmAssign(sVarType, value);
+		}
+		this.vmSetInputValues(aInputValues);
+	},
+
 	input: function (iStream, sNoCRLF, sMsg) { // varargs
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "INPUT");
 		if (iStream < 8) {
@@ -1556,7 +1592,11 @@ CpcVm.prototype = {
 			} else if (this.eof()) {
 				this.error(24, "INPUT #" + iStream); // EOF met
 			} else {
-				this.vmSetInputValues(this.oInFile.aFileData.splice(0, arguments.length - 3));
+				this.oInput.aTypes = Array.prototype.slice.call(arguments, 3); // remaining arguments
+				//this.oInput.sInput = this.oInFile.aFileData.shift();
+				//this.vmSetInputValues(this.oInFile.aFileData.splice(0, arguments.length - 3));
+				//this.vmInputCallback(this.oInput.sInput);
+				this.vmInputFromFile();
 			}
 		}
 	},
@@ -1947,6 +1987,7 @@ CpcVm.prototype = {
 				oOutFile.sCommand = "openout";
 				oOutFile.sName = sName;
 				oOutFile.aFileData.length = 0; // to be sure
+				oOutFile.sType = "A"; // ASCII
 			}
 		} else {
 			this.error(27, "OPENOUT " + oOutFile.sName); // file already open
@@ -2383,14 +2424,6 @@ CpcVm.prototype = {
 		}
 	},
 
-	/*
-	vmCollectFileData: function (sStr) {
-		var oOutFile = this.oOutFile;
-
-		oOutFile.aFileData.push(sStr);
-	},
-	*/
-
 	print: function (iStream) { // varargs
 		var sBuf = "",
 			oWin, aSpecialArgs, sStr, i, arg;
@@ -2444,54 +2477,6 @@ CpcVm.prototype = {
 			this.oOutFile.aFileData.push(sBuf);
 		}
 	},
-
-	/*
-	print_ok1: function (iStream) { // varargs
-		var sBuf = "",
-			oWin, aSpecialArgs, sStr, i, arg;
-
-		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "PRINT");
-		oWin = this.aWindow[iStream];
-		if (iStream < 8) {
-			for (i = 1; i < arguments.length; i += 1) {
-				arg = arguments[i];
-				if (typeof arg === "object") { // delayed call for spc(), tab(), commaTab()
-					aSpecialArgs = arg.args; // just a reference
-					aSpecialArgs.unshift(iStream);
-					sStr = this[arg.type].apply(this, aSpecialArgs);
-				} else if (typeof arg === "number") {
-					sStr = ((arg >= 0) ? " " : "") + String(arg) + " ";
-				} else {
-					sStr = String(arg);
-				}
-
-				if (oWin.bTag) {
-					this.vmPrintGraphChars(sStr);
-				} else {
-					sBuf = this.vmPrintCharsOrControls(sStr, iStream, sBuf);
-				}
-				this.sOut += sStr; // console
-			}
-		} else if (iStream === 8) {
-			this.vmNotImplemented("PRINT # " + iStream);
-		} else if (iStream === 9) {
-			this.oOutFile.iStream = iStream;
-			if (!this.oOutFile.bOpen) {
-				this.error(31, "PRINT #" + iStream); // File not open
-			}
-			for (i = 1; i < arguments.length; i += 1) {
-				arg = arguments[i];
-				sStr = String(arg); //TTT
-				if (sStr === "\r\n") { // for now we replace CRLF by LF
-					sStr = "\n";
-				}
-				sBuf += sStr;
-			}
-			//this.vmCollectFileData(sBuf);
-			this.oOutFile.aFileData.push(sBuf);
-		}
-	},
-	*/
 
 	rad: function () {
 		this.bDeg = false;
@@ -2713,43 +2698,6 @@ CpcVm.prototype = {
 		return Number(Math.round(n + "e" + iDecimals) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
 	},
 
-	/*
-	rsxBasic: function () {
-		Utils.console.log("rsxBasic: |BASIC");
-		this.vmStop("reset", 90);
-	},
-
-	rsxCpm: function () {
-		this.vmNotImplemented("|CPM");
-	},
-
-	rsxEra: function (sName) {
-		sName = this.vmAdaptFilename(sName, "|ERA");
-
-		this.vmSetInputValues([sName]); // we misuse aInputValues
-		this.vmStop("eraseFile", 90);
-	},
-
-	rsxMode: function (iMode, s) {
-		var oWinData, i, oWin;
-
-		iMode = this.vmInRangeRound(iMode, 0, 3, "|MODE");
-		this.iMode = iMode;
-		oWinData = this.mWinData[this.iMode];
-		Utils.console.log("rsxMode: (test)", iMode, s);
-
-		for (i = 0; i < this.iStreamCount - 2; i += 1) { // for window streams
-			oWin = this.aWindow[i];
-			Object.assign(oWin, oWinData);
-		}
-		this.oCanvas.changeMode(iMode); // or setMode?
-	},
-
-	rsxRenum: function () { // optional args: new number, old number, step, keep line (only for |renum)
-		this.renum.apply(this, arguments);
-	},
-	*/
-
 	vmRunCallback: function (sInput) {
 		var oInFile = this.oInFile,
 			sName;
@@ -2783,14 +2731,6 @@ CpcVm.prototype = {
 		}
 	},
 
-	/*
-	vmSave: function (sName, sData) {
-		if (Utils.localStorage) {
-			Utils.localStorage.setItem(sName, sData);
-		}
-	},
-	*/
-
 	save: function (sName, sType, iAddr, iLen, iEntry) { // varargs; parameter sType,... are optional
 		var oOutFile = this.oOutFile,
 			i;
@@ -2809,7 +2749,7 @@ CpcVm.prototype = {
 				if (iLen < 0) {
 					iLen += 65536;
 				}
-				sType += "," + iAddr + "," + iLen; //sMeta
+				sType += "," + iAddr + "," + iLen; // it gets sMeta
 				if (iEntry !== undefined) {
 					iEntry = this.vmInRangeRound(iEntry, -32768, 65535, "SAVE");
 					if (iEntry < 0) {
@@ -2818,7 +2758,7 @@ CpcVm.prototype = {
 					sType += "," + iEntry;
 				}
 				for (i = 0; i < iLen; i += 1) {
-					oOutFile.aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); //TTT  how to store binary data?
+					oOutFile.aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); // store binary data
 				}
 			} else if (sType === "P") { // protected BASIC
 				// ...
@@ -2838,11 +2778,9 @@ CpcVm.prototype = {
 			oOutFile.sName = sName;
 			oOutFile.sType = sType;
 			//oOutFile.aFileData.length = 0; // to be sure, not for binary
-			// TODO: how to store binary data?
 			oOutFile.fnFileCallback = this.vmCloseOutCallback.bind(this); // we use closeout callback to reset out file handling
 			this.vmStop("saveFile", 90); // must stop directly after save
 		}
-		//this.vmNotImplemented("SAVE: " + sName + " " + sType + " " + iAddr + " " + iLen + " " + iEntry);
 	},
 
 	sgn: function (n) {

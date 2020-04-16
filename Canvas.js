@@ -92,6 +92,8 @@ Canvas.prototype = {
 
 		this.options = Object.assign({}, options);
 
+		this.fnUpdateCancasHandler = this.updateCanvas.bind(this);
+
 		this.cpcAreaBox = document.getElementById("cpcAreaBox");
 
 		this.aCharset = this.options.aCharset;
@@ -103,6 +105,10 @@ Canvas.prototype = {
 		this.canvas = canvas;
 
 		// make sure canvas is not hidden (allows to get width, height, set style)
+		if (canvas.offsetParent === null) {
+			Utils.console.error("Error: canvas is not visible!");
+		}
+
 		iWidth = canvas.width;
 		iHeight = canvas.height;
 		this.iWidth = iWidth;
@@ -112,17 +118,13 @@ Canvas.prototype = {
 
 		ctx = this.canvas.getContext("2d");
 		this.imageData = ctx.getImageData(0, 0, iWidth, iHeight);
-		//buf = new ArrayBuffer(this.imageData.data.length);
-		//this.buf8 = new Uint8ClampedArray(buf);
-		//this.data = new Uint32Array(buf);
-		this.buf8 = this.imageData.data; // use Uint8ClampedArray from canvas
 
 		dataset = new ArrayBuffer(iWidth * iHeight);
 		if (typeof Uint8Array !== "undefined") { // in modern browsers we have it
 			this.dataset8 = new Uint8Array(dataset); // array with pen values
 		} else {
 			Utils.console.warn("Canvas:init: Uint8Array not available. Using fallback.");
-			this.dataset8 = dataset; // fallbaCK
+			this.dataset8 = dataset; // fallback
 		}
 
 		this.bNeedUpdate = false;
@@ -135,7 +137,9 @@ Canvas.prototype = {
 		this.aSpeedInk = [];
 		this.reset();
 
-		this.updateCanvas();
+		this.animationTimeout = null;
+		this.animationFrame = null;
+		//this.updateCanvas();
 	},
 
 	reset: function () {
@@ -212,11 +216,11 @@ Canvas.prototype = {
 	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
 	updateCanvas: function () {
 		var iFps = 15,
-			that = this,
-			fnCanvasUpdateHandler = this.updateCanvas.bind(this);
+			that = this;
+			//fnCanvasUpdateHandler = this.updateCanvas.bind(this);
 
-		setTimeout(function () {
-			requestAnimationFrame(fnCanvasUpdateHandler);
+		this.animationTimeout = setTimeout(function () {
+			that.animationFrame = requestAnimationFrame(that.fnUpdateCancasHandler);
 			if (that.bNeedUpdate) { // could be improved: update only updateRect
 				that.bNeedUpdate = false;
 				that.initUpdateRect();
@@ -225,11 +229,26 @@ Canvas.prototype = {
 		}, 1000 / iFps);
 	},
 
+	startUpdateCanvas: function () {
+		if (this.animationFrame === null && this.canvas.offsetParent !== null) { // animation off and canvas visible in DOM?
+			this.updateCanvas();
+		}
+	},
+
+	stopUpdateCanvas: function () {
+		if (this.animationFrame !== null) {
+			cancelAnimationFrame(this.animationFrame);
+			clearTimeout(this.animationTimeout);
+			this.animationFrame = null;
+			this.animationTimeout = null;
+		}
+	},
+
 	copy2Canvas8bit: function () {
 		var ctx = this.canvas.getContext("2d"),
 			iWidth = this.iWidth,
 			iHeight = this.iHeight,
-			buf8 = this.buf8,
+			buf8 = this.imageData.data, // use Uint8ClampedArray from canvas
 			aCurrentInksInSet = this.aCurrentInks[this.iInkSet],
 			aColorValues = this.aColorValues,
 			dataset8 = this.dataset8,
@@ -246,7 +265,6 @@ Canvas.prototype = {
 				buf8[i + 3] = 255; // a
 			}
 		}
-		// this.imageData.data.set(buf8); // already set
 		ctx.putImageData(this.imageData, 0, 0);
 	},
 
@@ -299,7 +317,7 @@ Canvas.prototype = {
 		this.bHasFocus = true;
 	},
 
-	onCpcCanvasClick: function () {
+	onCpcCanvasClick: function (event) {
 		this.setFocusOnCanvas();
 		event.stopPropagation();
 	},

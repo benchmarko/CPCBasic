@@ -268,6 +268,11 @@ if (!String.prototype.repeat) {
 			return id;
 		};
 	}
+	if (!window.cancelAnimationFrame) {
+		window.cancelAnimationFrame = function (id) {
+			clearTimeout(id);
+		};
+	}
 }());
 
 

@@ -17,7 +17,6 @@ function CpcVmRsx(oVm) {
 
 CpcVmRsx.prototype = {
 	rsxInit: function (oVm) {
-		//this.options = options || {};
 		this.oVm = oVm;
 	},
 

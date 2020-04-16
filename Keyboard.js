@@ -553,9 +553,6 @@ Keyboard.prototype = {
 		[72, 73, 74, 75, 76, 77],
 		[48, 49, 50, 51, 52, 53]
 	],
-
-
-	/* eslint-disable array-element-newline */
 	aVirtualKeyboardAlpha: [
 		[66, 64, 65, 57, 56, 49, 48, 41, 40, 33, 32, 25, 24, 16, 79],
 		[68, 67, 59, 58, 50, 51, 43, 42, 35, 34, 27, 26, 17, 18],
@@ -1227,7 +1224,6 @@ Keyboard.prototype = {
 	onVirtualKeyboardKeyup: function (event) {
 		if (Utils.debug > 1) {
 			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event", String(event), "type:", event.type, "title:", event.target.title, "cpcKey:", event.target.getAttribute("data-key"));
-
 		}
 
 		this.fnVirtualKeyboardKeyupOrKeyout(event);

@@ -359,12 +359,11 @@ CodeGeneratorJs.prototype = {
 				"|": function (node) { // rsx
 					var sRsxName, aNodeArgs, sLabel;
 
-					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_"); //sRsxName = "rsx" + Utils.stringCapitalize(node.value.toLowerCase()),
+					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_");
 					aNodeArgs = fnParseArgs(node.args);
 					if (that.options.rsx.rsxIsAvailable(sRsxName)) { // RSX available?
 						sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
 						that.iStopCount += 1;
-						//node.pv = "o.rsx." + sAdaptedRsxName + "(" + aNodeArgs.join(", ") + ")";
 						node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, renum,...)
 					} else {
 						throw new CodeGeneratorJs.ErrorObject("Unknown RSX command", node.value, node.pos, that.iLine);
@@ -949,11 +948,6 @@ CodeGeneratorJs.prototype = {
 					node.pv = "o.return(); break;";
 					return node.pv;
 				},
-				/*
-				rsxEra: function (node) {
-					return this.fnCommandWithGoto(node);
-				},
-				*/
 				run: function (node) { // optional arg can be number or string
 					if (node.args.length) {
 						if (node.args[0].type === "linenumber" || node.args[0].type === "number") { // optional line number //TTT should be linenumber only

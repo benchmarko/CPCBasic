@@ -74,6 +74,7 @@ CommonEventHandler.prototype = {
 		var bShow = !this.view.toogleHidden(sId, sDisplay).getHidden(sId);
 
 		this.model.setProperty(sProp, bShow);
+		return bShow;
 	},
 
 	fnActivateUserAction: function (fnAction) {
@@ -109,7 +110,11 @@ CommonEventHandler.prototype = {
 	},
 
 	onCpcButtonClick: function () {
-		this.toogleHidden("cpcArea", "showCpc");
+		if (this.toogleHidden("cpcArea", "showCpc")) {
+			this.controller.oCanvas.startUpdateCanvas();
+		} else {
+			this.controller.oCanvas.stopUpdateCanvas();
+		}
 	},
 
 	onKbdButtonClick: function () {
