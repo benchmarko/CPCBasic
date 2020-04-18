@@ -116,9 +116,6 @@ Canvas.prototype = {
 		canvas.style.borderWidth = iBorderWidth + "px";
 		canvas.style.borderStyle = "solid";
 
-		ctx = this.canvas.getContext("2d");
-		this.imageData = ctx.getImageData(0, 0, iWidth, iHeight);
-
 		dataset = new ArrayBuffer(iWidth * iHeight);
 		if (typeof Uint8Array !== "undefined") { // in modern browsers we have it
 			this.dataset8 = new Uint8Array(dataset); // array with pen values
@@ -139,7 +136,14 @@ Canvas.prototype = {
 
 		this.animationTimeout = null;
 		this.animationFrame = null;
-		//this.updateCanvas();
+
+		if (this.canvas.getContext) {
+			ctx = this.canvas.getContext("2d");
+			this.imageData = ctx.getImageData(0, 0, iWidth, iHeight);
+		} else {
+			Utils.console.error("Error: canvas.getContext is not supported.");
+			this.imageData = null;
+		}
 	},
 
 	reset: function () {
@@ -217,7 +221,6 @@ Canvas.prototype = {
 	updateCanvas: function () {
 		var iFps = 15,
 			that = this;
-			//fnCanvasUpdateHandler = this.updateCanvas.bind(this);
 
 		this.animationTimeout = setTimeout(function () {
 			that.animationFrame = requestAnimationFrame(that.fnUpdateCancasHandler);
@@ -230,7 +233,7 @@ Canvas.prototype = {
 	},
 
 	startUpdateCanvas: function () {
-		if (this.animationFrame === null && this.canvas.offsetParent !== null) { // animation off and canvas visible in DOM?
+		if (this.animationFrame === null && this.canvas.offsetParent !== null && this.imageData) { // animation off and canvas visible in DOM?
 			this.updateCanvas();
 		}
 	},

@@ -1593,9 +1593,6 @@ CpcVm.prototype = {
 				this.error(24, "INPUT #" + iStream); // EOF met
 			} else {
 				this.oInput.aTypes = Array.prototype.slice.call(arguments, 3); // remaining arguments
-				//this.oInput.sInput = this.oInFile.aFileData.shift();
-				//this.vmSetInputValues(this.oInFile.aFileData.splice(0, arguments.length - 3));
-				//this.vmInputCallback(this.oInput.sInput);
 				this.vmInputFromFile();
 			}
 		}
@@ -2777,7 +2774,6 @@ CpcVm.prototype = {
 			oOutFile.sCommand = "save";
 			oOutFile.sName = sName;
 			oOutFile.sType = sType;
-			//oOutFile.aFileData.length = 0; // to be sure, not for binary
 			oOutFile.fnFileCallback = this.vmCloseOutCallback.bind(this); // we use closeout callback to reset out file handling
 			this.vmStop("saveFile", 90); // must stop directly after save
 		}

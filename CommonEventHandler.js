@@ -71,10 +71,11 @@ CommonEventHandler.prototype = {
 	},
 
 	toogleHidden: function (sId, sProp, sDisplay) {
-		var bShow = !this.view.toogleHidden(sId, sDisplay).getHidden(sId);
+		var bVisible = !this.model.getProperty(sProp);
 
-		this.model.setProperty(sProp, bShow);
-		return bShow;
+		this.model.setProperty(sProp, bVisible);
+		this.view.setHidden(sId, !bVisible, sDisplay);
+		return bVisible;
 	},
 
 	fnActivateUserAction: function (fnAction) {
@@ -118,9 +119,11 @@ CommonEventHandler.prototype = {
 	},
 
 	onKbdButtonClick: function () {
-		this.toogleHidden("kbdArea", "showKbd", "flex");
-		if (this.model.getProperty("showKbd")) { // maybe we need to draw it
-			this.controller.oKeyboard.virtualKeyboardCreate();
+		if (this.toogleHidden("kbdArea", "showKbd", "flex")) {
+			if (this.view.getHidden("kbdArea")) { // on old browsers, display "flex" is not available, so set "block" if still hidden
+				this.view.setHidden("kbdArea", false);
+			}
+			this.controller.oKeyboard.virtualKeyboardCreate(); // maybe draw it
 		}
 	},
 
@@ -260,6 +263,7 @@ CommonEventHandler.prototype = {
 				Utils.console.log("Example", sUrl, " error");
 				that.view.setAreaValue("inputText", "");
 				that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
+				//TTT do we need initial reset?
 			};
 
 		this.model.setProperty("example", sExample);

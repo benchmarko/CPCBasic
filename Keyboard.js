@@ -1172,11 +1172,12 @@ Keyboard.prototype = {
 	},
 
 	onVirtualKeyboardKeydown: function (event) {
-		var sCpcKey = event.target.getAttribute("data-key"),
+		var node = event.currentTarget || event.srcElement, //event.target?
+			sCpcKey = node.getAttribute("data-key"),
 			iCpcKey, sPressedKey, oAscii;
 
 		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: onVirtualKeyboardKeydown: event", String(event), "type:", event.type, "title:", event.target.title, "cpcKey:", event.target.getAttribute("data-key"));
+			Utils.console.log("DEBUG: onVirtualKeyboardKeydown: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
 		}
 
 		if (sCpcKey !== null) {
@@ -1191,14 +1192,15 @@ Keyboard.prototype = {
 		}
 
 		if (this.sPointerOutEvent) {
-			event.target.addEventListener(this.sPointerOutEvent, this.fnVirtualKeyout, false);
+			node.addEventListener(this.sPointerOutEvent, this.fnVirtualKeyout, false);
 		}
 		event.preventDefault();
 		return false;
 	},
 
 	fnVirtualKeyboardKeyupOrKeyout: function (event) {
-		var sCpcKey = event.target.getAttribute("data-key"),
+		var node = event.currentTarget || event.srcElement, //event.target?
+			sCpcKey = node.getAttribute("data-key"),
 			iCpcKey, sPressedKey, oAscii;
 
 		if (sCpcKey !== null) {
@@ -1222,26 +1224,30 @@ Keyboard.prototype = {
 	},
 
 	onVirtualKeyboardKeyup: function (event) {
+		var node = event.currentTarget || event.srcElement; //event.target?
+
 		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event", String(event), "type:", event.type, "title:", event.target.title, "cpcKey:", event.target.getAttribute("data-key"));
+			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
 		}
 
 		this.fnVirtualKeyboardKeyupOrKeyout(event);
 
 		if (this.sPointerOutEvent) {
-			event.target.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout); // do not need out event any more
+			node.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout); // do not need out event any more
 		}
 		event.preventDefault();
 		return false;
 	},
 
 	onVirtualKeyboardKeyout: function (event) {
+		var node = event.currentTarget || event.srcElement; //event.target?
+
 		if (Utils.debug > 1) {
 			Utils.console.log("DEBUG: onVirtualKeyboardKeyout: event=", event);
 		}
 		this.fnVirtualKeyboardKeyupOrKeyout(event);
 		if (this.sPointerOutEvent) {
-			event.target.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout);
+			node.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout);
 		}
 		event.preventDefault();
 		return false;
@@ -1264,9 +1270,10 @@ Keyboard.prototype = {
 	},
 
 	dragStart: function (event) {
-		var parent2 = event.target.parentElement ? event.target.parentElement.parentElement : null;
+		var node = event.currentTarget || event.srcElement, //event.target?
+			parent2 = node.parentElement ? node.parentElement.parentElement : null;
 
-		if (event.target === this.dragItem || parent2 === this.dragItem) {
+		if (node === this.dragItem || parent2 === this.dragItem) {
 			if (event.type === "touchstart") {
 				this.initialX = event.touches[0].clientX - this.xOffset;
 				this.initialY = event.touches[0].clientY - this.yOffset;

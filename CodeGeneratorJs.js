@@ -574,13 +574,20 @@ CodeGeneratorJs.prototype = {
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						sName = aNodeArgs[i];
-						aName = sName.split(/\[|\]\[|\]/);
+						sName += " "; // for buggy IE8 split: Otherwise it won't return last empty element in split
+						aName = sName.split(/\[|\]\[|\]/); // split in variable and dimension(s)
 						aName.pop(); // remove empty last element
 						sName = aName.shift();
 						sStringType = (sName.indexOf("$") > -1) ? "$" : "";
 						aNodeArgs[i] = sName + " = o.dim(\"" + sStringType + "\", " + aName.join(", ") + ")";
 					}
 					node.pv = aNodeArgs.join("; ");
+					return node.pv;
+				},
+				"delete": function (node) {
+					var sName = Utils.bSupportReservedNames ? "o.delete" : 'o["delete"]';
+
+					node.pv = sName + "();";
 					return node.pv;
 				},
 				end: function (node) {
@@ -718,11 +725,12 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				"goto": function (node) {
-					var aNodeArgs = fnParseArgs(node.args),
+					var sName = Utils.bSupportReservedNames ? "o.goto" : 'o["goto"]',
+						aNodeArgs = fnParseArgs(node.args),
 						iLine = aNodeArgs[0];
 
 					this.fnAddReferenceLabel(iLine, node.args[0]);
-					node.pv = "o.goto(" + iLine + "); break";
+					node.pv = sName + "(" + iLine + "); break";
 					return node.pv;
 				},
 				"if": function (node) {
@@ -805,6 +813,12 @@ CodeGeneratorJs.prototype = {
 				merge: function (node) {
 					that.bMergeFound = true;
 					node.pv = this.fnCommandWithGoto(node);
+					return node.pv;
+				},
+				"new": function (node) {
+					var sName = Utils.bSupportReservedNames ? "o.new" : 'o["new"]';
+
+					node.pv = sName + "();";
 					return node.pv;
 				},
 				next: function (node) {
@@ -945,7 +959,9 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				"return": function (node) {
-					node.pv = "o.return(); break;";
+					var sName = Utils.bSupportReservedNames ? "o.return" : 'o["return"]';
+
+					node.pv = sName + "(); break;";
 					return node.pv;
 				},
 				run: function (node) { // optional arg can be number or string

@@ -11,7 +11,8 @@ var Utils = {
 
 	fnLoadScriptOrStyle: function (script, sFullUrl, fnSuccess, fnError) {
 		// inspired by https://github.com/requirejs/requirejs/blob/master/require.js
-		var onScriptLoad = function (event) {
+		var iIEtimeoutCount = 3,
+			onScriptLoad = function (event) {
 				var node = event.currentTarget || event.srcElement;
 
 				if (Utils.debug > 1) {
@@ -36,10 +37,50 @@ var Utils = {
 				if (fnError) {
 					fnError(sFullUrl);
 				}
+			},
+			onScriptReadyStateChange = function (event) { // for old IE8
+				var node, iTimeout;
+
+				if (event) {
+					node = event.currentTarget || event.srcElement;
+				} else {
+					node = script;
+				}
+				if (node.detachEvent) {
+					node.detachEvent("onreadystatechange", onScriptReadyStateChange);
+				}
+
+				if (Utils.debug > 1) {
+					Utils.console.debug("onScriptReadyStateChange: " + node.src || node.href);
+				}
+				// check also: https://stackoverflow.com/questions/1929742/can-script-readystate-be-trusted-to-detect-the-end-of-dynamic-script-loading
+				if (node.readyState !== "loaded" && node.readyState !== "complete") {
+					if (node.readyState === "loading" && iIEtimeoutCount) {
+						iIEtimeoutCount -= 1;
+						iTimeout = 200; // some delay
+						Utils.console.error("onScriptReadyStateChange: Still loading: " + (node.src || node.href) + " Waiting " + iTimeout + "ms (count=" + iIEtimeoutCount + ")");
+						setTimeout(function () {
+							onScriptReadyStateChange(); // check again
+						}, iTimeout);
+					} else {
+						// iIEtimeoutCount = 3;
+						Utils.console.error("onScriptReadyStateChange: Cannot load file " + (node.src || node.href) + " readystate=" + node.readyState);
+						if (fnError) {
+							fnError(sFullUrl);
+						}
+					}
+				} else if (fnSuccess) {
+					fnSuccess(sFullUrl);
+				}
 			};
 
-		script.addEventListener("load", onScriptLoad, false);
-		script.addEventListener("error", onScriptError, false);
+		if (script.readyState) { // old IE8
+			iIEtimeoutCount = 3;
+			script.attachEvent("onreadystatechange", onScriptReadyStateChange);
+		} else { // Others
+			script.addEventListener("load", onScriptLoad, false);
+			script.addEventListener("error", onScriptError, false);
+		}
 		document.getElementsByTagName("head")[0].appendChild(script);
 		return sFullUrl;
 	},
@@ -105,6 +146,16 @@ var Utils = {
 			return false;
 		}
 	}()),
+
+	bSupportReservedNames: (function () { // does the browser support reserved names in dot notation? (not old IE8)
+		try {
+			Function('"({"return": function () { }}).return()'); // eslint-disable-line no-new-func
+			return true;
+		} catch (err) {
+			return false;
+		}
+	}()),
+
 	localStorage: (function () {
 		try {
 			return window.localStorage; // due to a bug in MS Edge this will throw an error when hosting locally (https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/8816771/)

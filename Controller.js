@@ -44,6 +44,8 @@ Controller.prototype = {
 		this.sLabelBeforeStop = "";
 		this.iPrioBeforeStop = 0;
 
+		this.oVariables = {};
+
 		this.model = oModel;
 		this.view = oView;
 		this.commonEventHandler = new CommonEventHandler(oModel, oView, this);
@@ -76,8 +78,6 @@ Controller.prototype = {
 			this.oKeyboard.virtualKeyboardCreate();
 		}
 
-		//oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
-
 		this.oSound = new Sound();
 		this.commonEventHandler.fnActivateUserAction(this.onUserAction.bind(this)); // check first user action, also if sound is not yet on
 
@@ -90,6 +90,7 @@ Controller.prototype = {
 			sound: this.oSound,
 			tron: oModel.getProperty("tron")
 		});
+		this.oVm.vmReset();
 
 		this.fnInitDatabases();
 		if (oModel.getProperty("sound")) { // activate sound needs user action
@@ -343,11 +344,9 @@ Controller.prototype = {
 
 		this.oVm.vmLoopCondition(); // update iNextFrameTime, timers, inks; schedule sound: free queue
 		if (!this.oSound.isActivatedByUser()) { // not yet activated?
-			//this.oVm.vmLoopCondition(); // update iNextFrameTime, timers, inks
 			return;
 		}
 
-		//this.oSound.scheduler(); // we need to schedule here as well to free queue
 		aSoundData = this.oVm.vmGetSoundData();
 		while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
 			this.oSound.sound(aSoundData.shift());
@@ -493,20 +492,25 @@ Controller.prototype = {
 		}
 	},
 
+	fnLocalStorageName: function (sName, bMeta) {
+		return sName + (bMeta ? "_M" : "_D"); // modify name to not clash with localstorage methods/properites
+	},
+
 	fnWaitForFile: function () {
 		var oInFile = this.oVm.vmGetInFileObject(),
 			sName = oInFile.sName,
 			oStorage = Utils.localStorage,
+			sStorageName = this.fnLocalStorageName(sName),
 			sInput, sMeta;
 
 		if (!oInFile.sState) {
 			oInFile.sState = "loading";
-			if (oStorage && (sName in oStorage)) {
+			if (oStorage && (oStorage.getItem(sStorageName) !== null)) {
 				if (Utils.debug > 0) {
 					Utils.console.debug("DEBUG: fnWaitForFile: sName=" + sName + ": get from localStorage");
 				}
-				sInput = oStorage.getItem(sName);
-				sMeta = oStorage.getItem(sName + "Meta");
+				sInput = oStorage.getItem(sStorageName);
+				sMeta = oStorage.getItem(this.fnLocalStorageName(sName, true));
 				this.fnLoadContinue(sInput, sMeta);
 				oInFile.sState = "loaded";
 			} else { // load from example
@@ -519,6 +523,7 @@ Controller.prototype = {
 		var oOutFile = this.oVm.vmGetOutFileObject(),
 			sName = oOutFile.sName,
 			oStorage = Utils.localStorage,
+			sStorageName = this.fnLocalStorageName(sName),
 			sFileData = oOutFile.aFileData.join("");
 
 		if (!oOutFile.sState) {
@@ -540,19 +545,20 @@ Controller.prototype = {
 						Utils.console.error(e);
 					}
 				}
-				oStorage.setItem(sName, sFileData);
-				oStorage.setItem(sName + "Meta", oOutFile.sType || "");
+				oStorage.setItem(sStorageName, sFileData);
+				oStorage.setItem(this.fnLocalStorageName(sName, true), oOutFile.sType || "");
 			}
 		}
 	},
 
 	fnEraseFile: function (sName) {
-		var oStorage = Utils.localStorage;
+		var oStorage = Utils.localStorage,
+			sStorageName = this.fnLocalStorageName(sName);
 
 		if (oStorage) {
-			if (sName in oStorage) {
-				oStorage.removeItem(sName);
-				oStorage.removeItem(sName + "Meta");
+			if (oStorage.getItem(sStorageName) !== null) {
+				oStorage.removeItem(sStorageName);
+				oStorage.removeItem(this.fnLocalStorageName(sName, true));
 				if (Utils.debug > 0) {
 					Utils.console.debug("DEBUG: fnEraseFile: sName=" + sName + ": removed from localStorage");
 				}

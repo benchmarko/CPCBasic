@@ -26,9 +26,11 @@ View.prototype = {
 		element.style.display = (bHidden) ? "none" : (sDisplay || "block");
 		return this;
 	},
+	/*
 	toogleHidden: function (sId, sDisplay) {
 		return this.setHidden(sId, !this.getHidden(sId), sDisplay);
 	},
+	*/
 
 	setDisabled: function (sId, bDisabled) {
 		var element = document.getElementById(sId);
