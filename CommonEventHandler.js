@@ -131,6 +131,10 @@ CommonEventHandler.prototype = {
 		this.toogleHidden("kbdLayoutArea", "showKbdLayout");
 	},
 
+	onConsoleButtonClick: function () {
+		this.toogleHidden("consoleArea", "showConsole");
+	},
+
 	onParseButtonClick: function () {
 		this.controller.fnParse();
 	},

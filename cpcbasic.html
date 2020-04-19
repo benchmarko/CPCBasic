@@ -22,7 +22,7 @@
 				<select id="exampleSelect" title="Load Example"></select>
 			</div>
 		</div>
-		<div id="inputArea" class="area  clearLeft">
+		<div id="inputArea" class="area clearLeft">
 			<textarea id="inputText" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 			<div>
 				<button id="parseButton" title="Check BASIC script (compile to JavaScript)">Check</button>
@@ -49,7 +49,7 @@
 			<button id="kbdButton" class="legendButton" title="CPC Keyboard">Keyboard</button>
 			<span id="kbdMove" class="kbdMove">Move</span>
 		</legend>
-		<div id="kbdArea" class="area kbdArea kbdFlex" tabindex="0">
+		<div id="kbdArea" class="area kbdArea displayFlex" tabindex="0">
 			<div id="kbdAlpha" class="area">
 			</div>
 			<div id="kbdNum" class="area">
@@ -82,7 +82,7 @@
 		<legend>
 			<button id="resultButton" class="legendButton" title="Show/Hide BASIC Console">Console</button>
 		</legend>
-		<div id="resultArea" class="area" style="display:none">
+		<div id="resultArea" class="area">
 			<textarea id="resultText" placeholder="" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 		</div>
 	</fieldset>
@@ -90,7 +90,7 @@
 		<legend>
 			<button id="variableButton" class="legendButton" title="Show/Hide Variables">Variables</button>
 		</legend>
-			<div id="variableArea" class="area" hidden>
+			<div id="variableArea" class="area">
 			<div class="field">
 				<select id="varSelect" title="Select variable">
 				</select>
@@ -104,7 +104,7 @@
 		<legend>
 			<button id="outputButton" class="legendButton" title="Show/Hide JavaScript">JavaScript</button>
 		</legend>
-		<div id="outputArea" class="area" hidden>
+		<div id="outputArea" class="area">
 			<button id="runButton" title="Run JavaScript">Run</button>
 			<br>
 			<textarea id="outputText" placeholder="Use input field, press 'Run'" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>

@@ -1072,7 +1072,7 @@ Keyboard.prototype = {
 			buttonList, i, oItem, button;
 
 		buttonList = document.createElement("div");
-		buttonList.className = "kbdFlex";
+		buttonList.className = "displayFlex";
 		for (i = 0; i < aOptions.length; i += 1) {
 			oItem = aOptions[i];
 			button = document.createElement("button");
@@ -1172,7 +1172,7 @@ Keyboard.prototype = {
 	},
 
 	onVirtualKeyboardKeydown: function (event) {
-		var node = event.currentTarget || event.srcElement, //event.target?
+		var node = event.target || event.srcElement, // target, not currentTarget
 			sCpcKey = node.getAttribute("data-key"),
 			iCpcKey, sPressedKey, oAscii;
 
@@ -1199,7 +1199,7 @@ Keyboard.prototype = {
 	},
 
 	fnVirtualKeyboardKeyupOrKeyout: function (event) {
-		var node = event.currentTarget || event.srcElement, //event.target?
+		var node = event.target || event.srcElement,
 			sCpcKey = node.getAttribute("data-key"),
 			iCpcKey, sPressedKey, oAscii;
 
@@ -1224,7 +1224,7 @@ Keyboard.prototype = {
 	},
 
 	onVirtualKeyboardKeyup: function (event) {
-		var node = event.currentTarget || event.srcElement; //event.target?
+		var node = event.target || event.srcElement;
 
 		if (Utils.debug > 1) {
 			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
@@ -1240,7 +1240,7 @@ Keyboard.prototype = {
 	},
 
 	onVirtualKeyboardKeyout: function (event) {
-		var node = event.currentTarget || event.srcElement; //event.target?
+		var node = event.target || event.srcElement;
 
 		if (Utils.debug > 1) {
 			Utils.console.log("DEBUG: onVirtualKeyboardKeyout: event=", event);
@@ -1258,11 +1258,6 @@ Keyboard.prototype = {
 	dragInit: function (sContainerId, sItemId) {
 		this.dragItem = document.getElementById(sItemId);
 		this.active = false;
-
-		// currentX;
-		// currentY;
-		// initialX;
-		// initialY;
 		this.xOffset = 0;
 		this.yOffset = 0;
 
@@ -1270,7 +1265,7 @@ Keyboard.prototype = {
 	},
 
 	dragStart: function (event) {
-		var node = event.currentTarget || event.srcElement, //event.target?
+		var node = event.target || event.srcElement,
 			parent2 = node.parentElement ? node.parentElement.parentElement : null;
 
 		if (node === this.dragItem || parent2 === this.dragItem) {

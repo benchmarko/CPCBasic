@@ -17,6 +17,7 @@ View.prototype = {
 		this.bDirty = false;
 	},
 
+	/*
 	getHidden: function (sId) {
 		return document.getElementById(sId).style.display === "none";
 	},
@@ -26,17 +27,52 @@ View.prototype = {
 		element.style.display = (bHidden) ? "none" : (sDisplay || "block");
 		return this;
 	},
-	/*
-	toogleHidden: function (sId, sDisplay) {
-		return this.setHidden(sId, !this.getHidden(sId), sDisplay);
-	},
 	*/
+	getHidden: function (sId) {
+		return document.getElementById(sId).className.indexOf("displayNone") >= 0;
+	},
+	setHidden: function (sId, bHidden, sDisplay) { // optional sDisplay: block or flex
+		var element = document.getElementById(sId),
+			sDisplayVisible = "display" + Utils.stringCapitalize(sDisplay || "block");
+
+		//element.style.display = (bHidden) ? "none" : (sDisplay || "block");
+		if (bHidden) {
+			if (element.className.indexOf("displayNone") < 0) {
+				this.toggleClass(sId, "displayNone");
+			}
+			if (element.className.indexOf(sDisplayVisible) >= 0) {
+				this.toggleClass(sId, sDisplayVisible);
+			}
+		} else {
+			if (element.className.indexOf("displayNone") >= 0) {
+				this.toggleClass(sId, "displayNone");
+			}
+			if (element.className.indexOf(sDisplayVisible) < 0) {
+				this.toggleClass(sId, sDisplayVisible);
+			}
+		}
+
+		return this;
+	},
 
 	setDisabled: function (sId, bDisabled) {
 		var element = document.getElementById(sId);
 
 		element.disabled = bDisabled;
 		return this;
+	},
+
+	toggleClass: function (sId, sClassName) {
+		var element = document.getElementById(sId),
+			sClasses = element.className,
+			iNameIndex = sClasses.indexOf(sClassName);
+
+		if (iNameIndex === -1) {
+			sClasses += " " + sClassName;
+		} else {
+			sClasses = sClasses.substr(0, iNameIndex) + sClasses.substr(iNameIndex + sClassName.length + 1);
+		}
+		element.className = sClasses;
 	},
 
 	getAreaValue: function (sId) {

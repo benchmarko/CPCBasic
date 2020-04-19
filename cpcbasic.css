@@ -63,8 +63,16 @@ body {
 	user-select: none;
 }
 
-.kbdFlex {
+.displayFlex {
 	display: flex;
+}
+
+.displayBlock {
+	display: block;
+}
+
+.displayNone {
+	display: none;
 }
 
 .kbdButton, .kbdButton1, .kbdButton2, .kbdButton3, .kbdButton4 , .kbdButton5 {
