@@ -49,7 +49,7 @@
 			<button id="kbdButton" class="legendButton" title="CPC Keyboard">Keyboard</button>
 			<span id="kbdMove" class="kbdMove">Move</span>
 		</legend>
-		<div id="kbdArea" class="area kbdArea displayFlex" tabindex="0">
+		<div id="kbdArea" class="area kbdArea displayNone" tabindex="0">
 			<div id="kbdAlpha" class="area">
 			</div>
 			<div id="kbdNum" class="area">
@@ -61,7 +61,7 @@
 		<legend>
 			<button id="kbdLayoutButton" class="legendButton" title="Keyboard Layout">Keyboard Layout</button>
 		</legend>
-		<div id="kbdLayoutArea" class="area">
+		<div id="kbdLayoutArea" class="area displayNone">
 			<select id="kbdLayoutSelect" title="Select Keyboard Lyout">
 				<option value="alphanum" title="AlphaNum">AlphaNum</option>
 				<option value="alpha" title="Alpha">Alpha</option>
@@ -73,7 +73,7 @@
 		<legend>
 			<button id="inp2Button" class="legendButton" title="Alternative way of input">Input</button>
 		</legend>
-		<div id="inp2Area" class="area clearLeft">
+		<div id="inp2Area" class="area clearLeft displayNone">
 			<textarea id="inp2Text" placeholder="experimental" rows="1" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 			<button id="enterButton" title="Enter">Enter</button>
 		</div>
@@ -82,7 +82,7 @@
 		<legend>
 			<button id="resultButton" class="legendButton" title="Show/Hide BASIC Console">Console</button>
 		</legend>
-		<div id="resultArea" class="area">
+		<div id="resultArea" class="area displayNone">
 			<textarea id="resultText" placeholder="" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 		</div>
 	</fieldset>
@@ -90,7 +90,7 @@
 		<legend>
 			<button id="variableButton" class="legendButton" title="Show/Hide Variables">Variables</button>
 		</legend>
-			<div id="variableArea" class="area">
+			<div id="variableArea" class="area displayNone">
 			<div class="field">
 				<select id="varSelect" title="Select variable">
 				</select>
@@ -104,7 +104,7 @@
 		<legend>
 			<button id="outputButton" class="legendButton" title="Show/Hide JavaScript">JavaScript</button>
 		</legend>
-		<div id="outputArea" class="area">
+		<div id="outputArea" class="area displayNone">
 			<button id="runButton" title="Run JavaScript">Run</button>
 			<br>
 			<textarea id="outputText" placeholder="Use input field, press 'Run'" rows="15" cols="80" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>

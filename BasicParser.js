@@ -54,12 +54,12 @@ BasicParser.mKeywords = {
 	clg: "c n?",
 	closein: "c",
 	closeout: "c",
-	cls: "c n?",
+	cls: "c #0?",
 	cont: "c",
-	copychr$: "f n?",
+	copychr$: "f #",
 	cos: "f n",
 	creal: "f n",
-	cursor: "c n0? n?",
+	cursor: "c #0? n0? n?",
 	data: "c *",
 	dec$: "f n s",
 	def: "c s *", // not checked
@@ -115,7 +115,7 @@ BasicParser.mKeywords = {
 	len: "f s",
 	let: "c",
 	line: "c", // line input (not checked)
-	list: "c",
+	list: "c l?",
 	load: "c s n?",
 	locate: "c #0? n n",
 	log: "f n",
@@ -153,7 +153,7 @@ BasicParser.mKeywords = {
 	plot: "c n n n0? n?",
 	plotr: "c n n n0? n?",
 	poke: "c n n",
-	pos: "f n",
+	pos: "f #",
 	print: "c #0? *", // print also with spc(), tab(), using
 	rad: "c",
 	randomize: "c n?",
@@ -204,13 +204,13 @@ BasicParser.mKeywords = {
 	upper$: "f s",
 	using: "x", // print using
 	val: "f s",
-	vpos: "f n",
+	vpos: "f #",
 	wait: "c n n n?",
 	wend: "c",
 	"while": "c n",
 	width: "c n",
 	window: "c #0? n n n n", // window, window swap
-	windowSwap: "c n n?", // special
+	windowSwap: "c n n?", // special: with numbers (no streams)
 	write: "c #0? *", // not checked
 	xor: "o",
 	xpos: "f",
@@ -227,6 +227,7 @@ BasicParser.prototype = {
 
 	reset: function () {
 		this.iLine = 0; // for error messages
+		//this.bAllowdirect = Boolean(this.options.bAllowdirect);
 	},
 
 	// http://crockford.com/javascript/tdop/tdop.html (old: http://javascript.crockford.com/tdop/tdop.html)
@@ -236,7 +237,7 @@ BasicParser.prototype = {
 	// Operator: With left binding power (lbp) and operational function.
 	// Manipulates tokens to its left (e.g: +)? => left denotative function led(), otherwise null denotative function nud()), (e.g. unary -)
 	// identifiers, numbers: also nud.
-	parse: function (aTokens) {
+	parse: function (aTokens, bAllowDirect) {
 		var that = this,
 			oSymbols = {},
 			iIndex = 0,
@@ -372,11 +373,20 @@ BasicParser.prototype = {
 			line = function () {
 				var oValue;
 
-				advance("number");
-				oValue = oPreviousToken; // number token
+				if (oToken.type !== "number" && bAllowDirect) {
+					bAllowDirect = false; // allow only once
+					oValue = { // insert dummy label
+						type: "label",
+						value: "direct",
+						len: 0
+					};
+				} else {
+					advance("number");
+					oValue = oPreviousToken; // number token
+					oValue.type = "label"; // number => label
+				}
 				that.iLine = oValue.value; // set line number for error messages
 				oValue.args = statements();
-				oValue.type = "label"; // number => label
 
 				if (oToken.type === "(eol)") {
 					advance("(eol)");
@@ -425,9 +435,11 @@ BasicParser.prototype = {
 				if (oToken.type === "#") { // stream?
 					advance("#");
 					oValue = expression(0);
+					/*
 					if (oToken.type === ",") {
 						advance(",");
 					}
+					*/
 				} else { // create number token
 					oValue = {
 						type: "number",
@@ -489,7 +501,7 @@ BasicParser.prototype = {
 					if (sType === "#0?") { // optional stream?
 						if (oToken.type === "#") { // stream?
 							advance("#");
-							oExpression = expression(0);
+							oExpression = expression(0); // keep just number or expression without "#"
 							if (oToken.type === ",") {
 								advance(",");
 								bNeedMore = true;
@@ -502,7 +514,10 @@ BasicParser.prototype = {
 							};
 						}
 					} else {
-						if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
+						if (sType === "#") { // stream expected? (for functions)
+							advance("#");
+							oExpression = expression(0); // keep just number or expression without "#"
+						} else if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
 							oExpression = {
 								type: "null",
 								value: null,
@@ -535,6 +550,9 @@ BasicParser.prototype = {
 							}
 						} else {
 							oExpression = expression(0);
+							if (oExpression.type === "#") { // got stream?
+								throw new BasicParser.ErrorObject("Unexpected stream at", oExpression.value, oExpression.pos, that.iLine);
+							}
 						}
 						if (oToken.type === sSeparator) {
 							advance(sSeparator);
@@ -602,7 +620,8 @@ BasicParser.prototype = {
 			},
 
 			fnCreateFuncCall = function (sType) { // optional sType
-				var oValue = oPreviousToken;
+				var oValue = oPreviousToken,
+					sKeyOpts;
 
 				if (sType) {
 					oValue.type = sType;
@@ -615,8 +634,14 @@ BasicParser.prototype = {
 						throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos, that.iLine);
 					}
 					advance(")");
-				} else {
+				} else { // no parenthesis?
 					oValue.args = [];
+
+					// if we have a check, make sure there are no non-optional parameters left
+					sKeyOpts = BasicParser.mKeywords[oValue.type];
+					if (sKeyOpts) {
+						fnCheckRemainingTypes(sKeyOpts.substr(2).split(" "));
+					}
 				}
 
 				return oValue;
@@ -760,7 +785,8 @@ BasicParser.prototype = {
 		infixr("or", 21);
 		infixr("xor", 20);
 
-		prefix("#", 10); // stream
+		//prefix("#", 10); // stream
+		symbol("#"); // stream
 
 		infixr("=", 30); // equal for comparison
 
@@ -1054,11 +1080,15 @@ BasicParser.prototype = {
 		stmt("input", function () {
 			var oValue = oPreviousToken,
 				sText = "",
-				oValue2;
+				oValue2, oStream;
 
 			oValue.args = [];
 
-			oValue.args.push(fnGetOptionalStream());
+			oStream = fnGetOptionalStream();
+			oValue.args.push(oStream);
+			if (oStream.len !== 0) { // not an inserted stream?
+				advance(",");
+			}
 
 			oValue.args.push({ // create
 				type: "string",
@@ -1131,14 +1161,18 @@ BasicParser.prototype = {
 		stmt("line", function () {
 			var oValue = oPreviousToken,
 				sText = "",
-				oValue2;
+				oValue2, oStream;
 
 			advance("input");
 
 			oValue.type = "lineInput";
 			oValue.args = [];
 
-			oValue.args.push(fnGetOptionalStream());
+			oStream = fnGetOptionalStream();
+			oValue.args.push(oStream);
+			if (oStream.len !== 0) { // not an inserted stream?
+				advance(",");
+			}
 
 			oValue.args.push({ // create
 				type: "string",
@@ -1280,14 +1314,22 @@ BasicParser.prototype = {
 			var oValue = oPreviousToken,
 				bTrailingSemicolon = false,
 				iSpcOrTabEnd = 0,
+				bCommaAfterStream = false,
 				oValue2, t, oStream;
 
 			oValue.args = [];
 
 			oStream = fnGetOptionalStream();
 			oValue.args.push(oStream);
+			if (oStream.len !== 0) { // not an inserted stream?
+				bCommaAfterStream = true;
+			}
 
 			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "'") {
+				if (bCommaAfterStream) {
+					advance(",");
+					bCommaAfterStream = false;
+				}
 				if (oToken.type === "spc") {
 					advance("spc");
 					oValue2 = fnCreateFuncCall();

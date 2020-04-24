@@ -389,6 +389,24 @@ Canvas.prototype = {
 		}
 	},
 
+	invertChar: function (x, y, iPen, iPaper) {
+		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
+			iCharHeight = this.aModeData[this.iMode].iCharHeight,
+			iScaleWidth = iCharWidth / 8,
+			iScaleHeight = iCharHeight / 8,
+			iPenXorPaper = iPen ^ iPaper, // eslint-disable-line no-bitwise
+			iGColMode = 0,
+			row, col, iTestPen;
+
+		for (row = 0; row < 8; row += 1) {
+			for (col = 0; col < 8; col += 1) {
+				iTestPen = this.testSubPixel(x + col * iScaleWidth, y + row * iScaleHeight);
+				iTestPen ^= iPenXorPaper; // eslint-disable-line no-bitwise
+				this.setSubPixels(x + col * iScaleWidth, y + row * iScaleHeight, iTestPen, iGColMode);
+			}
+		}
+	},
+
 	setChar: function (iChar, x, y, iPen, iPaper, bTransparent, iGColMode, bTextAtGraphics) {
 		var aCharData = this.oCustomCharset[iChar] || this.aCharset[iChar],
 			iCharWidth = this.aModeData[this.iMode].iCharWidth,
@@ -752,6 +770,18 @@ Canvas.prototype = {
 		y *= oModeData.iCharHeight;
 
 		this.setChar(iChar, x, y, iPen, iPaper, bTransparent, 0, false);
+		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
+	},
+
+	drawCursor: function (x, y, iPen, iPaper) {
+		var oModeData = this.aModeData[this.iMode];
+
+		iPen %= oModeData.iPens;
+		iPaper %= oModeData.iPens; // also pens
+
+		x *= oModeData.iCharWidth;
+		y *= oModeData.iCharHeight;
+		this.invertChar(x, y, iPen, iPaper);
 		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
 	},
 

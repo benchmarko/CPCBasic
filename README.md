@@ -48,7 +48,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - The *CPC* window shows the output on a CPC screen.
   - If you change the BASIC program, press the **Run** button to compile the BASIC program to JavaScript and run it.
   - If the focus is on the CPC screen, keystrokes will be detected by a running program. (An alternative way of input is the *virtual keyboard* below.)
-  - The **Break** button stops the simulation. You can continue with the **Continue** button.
+  - The **Break** button halts the simulation. You can continue with the **Continue** button.
+    This is an unconditional break. Pressing the ESC key once also halts the program, if not masked with *ON BREAK CONT*
   - The **Reset** button resets the CPC.
   - The **Screenshot** button creates a screenshot of the current CPC screen.
   - The **Sound** button activates or deactivates sound.
@@ -63,7 +64,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *CONT*, *CURSOR*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *PRINT#8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, most AMDSOS commands
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *PRINT#8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, most AMDSOS commands
 - Sound: More hardware volume envelopes
 - No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
@@ -94,10 +95,12 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: *FILL*]
 - [done: *RENUM*]
 - [done: *SAVE* ASCII, *OPENOUT*, *PRINT #9*, *WRITE #9*]
+- [done: *CURSOR*, *CONT*]
+- [done: Edit and direct execution mode]
 
 ## Extensions and Features
 
-- File save operations *SAVE*, *OPENOUT* write to Browser local storage
+- File save operations *SAVE*, *OPENOUT* write to Browser local storage; |ERA to erase a file.
 - Data can be loadad again with file load and merge commands like *LOAD*, *MERGE*, *OPENIN*. These also work on the predefined examples
 - *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters. Demo: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
 - *|MODE,n*: Change mode without *CLS* (experimental)
@@ -114,8 +117,10 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - *CALL &BB00*: KM Initialize (KM Reset and reset also CPC key extensions)
 - *CALL &BB03*: KM Reset (clear input and reset expansion tokens)
 - *CALL &BB18*: KM Wait Key
-- *CALL &BB81*: TXT Cursor On (TODO)
-- *CALL &BB84*: TXT Cursor Off (TODO)
+- *CALL &BB7B*: TXT Cursor Enable
+- *CALL &BB7E*: TXT Cursor Disable
+- *CALL &BB81*: TXT Cursor On
+- *CALL &BB84*: TXT Cursor Off
 - *CALL &BB4E*: TXT Initialize (initialize window parameter, delete custom chars)
 - *CALL &BB9C*: TXT Inverse (same as print chr$(24); )
 - *CALL &BBDE,n1,n2,...*: GRA Set Pen (set *GRAPHICS PEN* depending on number of arguments)
@@ -141,7 +146,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
     You may check that the CPU load stays low.
     - This is not true for the *INKEY* function. Use *CALL &BD19* again. An example on how to wait 5 seconds or the SPACE key: `t!=TIME+300*5:WHILE TIME<t! AND INKEY(47)<0:CALL &BD19:WEND :?"Done."`
 - Use URL parameter "tron=true" to activate line tracing mode with *TRON* and *TROFF*
-- Use *OPENIN* and *INPUT#9* to load data from a file in the current "directory"
+- Use *OPENIN* and *INPUT#9* to load data from a file in the current "directory" or from Browser local storage
 - If the program is complete (that means, no *MERGE* or *CHAIN MERGE* inside), line number destinations are checked for existence. For example, if the *line number* in *GOTO line* does not exist, the compilation fails.
 - Most commands and functions are checked for number of arguments but not for argument types.
 
@@ -159,7 +164,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 ## Possible Future Enhancements
 
 - Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
-- Edit and direct execution mode
 - DSK images support
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
 - RSX extension libraries / plugins programmed in JavaScript

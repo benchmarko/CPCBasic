@@ -17,17 +17,6 @@ View.prototype = {
 		this.bDirty = false;
 	},
 
-	/*
-	getHidden: function (sId) {
-		return document.getElementById(sId).style.display === "none";
-	},
-	setHidden: function (sId, bHidden, sDisplay) { // optional sDisplay: block or flex
-		var element = document.getElementById(sId);
-
-		element.style.display = (bHidden) ? "none" : (sDisplay || "block");
-		return this;
-	},
-	*/
 	getHidden: function (sId) {
 		return document.getElementById(sId).className.indexOf("displayNone") >= 0;
 	},
@@ -35,7 +24,6 @@ View.prototype = {
 		var element = document.getElementById(sId),
 			sDisplayVisible = "display" + Utils.stringCapitalize(sDisplay || "block");
 
-		//element.style.display = (bHidden) ? "none" : (sDisplay || "block");
 		if (bHidden) {
 			if (element.className.indexOf("displayNone") < 0) {
 				this.toggleClass(sId, "displayNone");

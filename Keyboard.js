@@ -737,6 +737,10 @@ Keyboard.prototype = {
 		oCpcKeyExpansions.repeat = {};
 	},
 
+	getKeyDownHandler: function () {
+		return this.fnOnKeyDown;
+	},
+
 	setKeyDownHandler: function (fnOnKeyDown) {
 		this.fnOnKeyDown = fnOnKeyDown;
 	},

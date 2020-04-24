@@ -34,16 +34,27 @@ CodeGeneratorJs.prototype = {
 			forVarName: [],
 			whileLabel: []
 		};
+		/*
 		this.iGosubCount = 0;
 		this.iIfCount = 0;
 		this.iStopCount = 0;
 		this.iForCount = 0; // stack needed
 		this.iWhileCount = 0; // stack needed
+		*/
+		this.resetCountsPerLine();
 
 		this.aData = []; // collected data from data lines
 
 		this.oLabels = {}; // labels or line numbers
 		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
+	},
+
+	resetCountsPerLine: function () {
+		this.iGosubCount = 0;
+		this.iIfCount = 0;
+		this.iStopCount = 0;
+		this.iForCount = 0; // stack needed
+		this.iWhileCount = 0; // stack needed
 	},
 
 	//
@@ -52,7 +63,18 @@ CodeGeneratorJs.prototype = {
 	evaluate: function (parseTree, variables) {
 		var that = this,
 
-			fnGetVarDefault = function (/* sName */) {
+			/*
+			fnGetVarDefault = function (/ * sName * /) {
+				return 1; // during compile step, we just init all variables with 1
+			},
+			*/
+
+			fnDeclareVariable = function (sName, sValue) {
+				// during compile step, we just init all (not yet defined) variables with a value
+				sValue = sValue || 0;
+				if (!(sName in variables)) { // variable not yet defined?
+					variables[sName] = sValue;
+				}
 				return 1; // during compile step, we just init all variables with 1
 			},
 
@@ -75,14 +97,16 @@ CodeGeneratorJs.prototype = {
 						sName = "oNo"; // change variable name to something we cannot set in BASIC
 					}
 					if (bDevScopeArgsCollect) {
-						oDevScopeArgs[sName] = fnGetVarDefault(sName); // declare
+						oDevScopeArgs[sName] = 1; //TTT declare //fnGetVarDefault(sName); // declare
 					} else if (!(sName in oDevScopeArgs)) {
 						// variable
-						variables[sName] = fnGetVarDefault(sName); // declare
+						//variables[sName] = fnGetVarDefault(sName); // declare
+						fnDeclareVariable(sName);
 						sName = "v." + sName; // access with "v."
 					}
 				} else {
-					variables[sName] = fnGetVarDefault(sName); // declare
+					//variables[sName] = fnGetVarDefault(sName); // declare
+					fnDeclareVariable(sName);
 					sName = "v." + sName; // access with "v."
 				}
 				return sName;
@@ -291,14 +315,17 @@ CodeGeneratorJs.prototype = {
 					node.pt = "I";
 					return node.pv;
 				},
-				"#": function (node, oLeft) {
-					node.pv = oLeft.pv; // stream
+				"#": function (node, oLeft) { // should not occure
+					node.pv = oLeft.pv; // stream expression
+					/*
 					if (fnIsInString("IR", oLeft.pt)) { // I or R?
 						node.pt = oLeft.pt;
 					} else if (oLeft.pt) {
 						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
 					}
 					return node.pv;
+					*/
+					throw new CodeGeneratorJs.ErrorObject("Unexpected stream in expression at", node.value, node.pos, that.iLine);
 				}
 			},
 
@@ -469,10 +496,32 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				label: function (node) {
-					var value = "case " + node.value + ":",
-						aNodeArgs, value2, i;
+					var bDirect = false,
+						value = "",
+						label, aNodeArgs, value2, i;
 
-					that.iLine = node.value; // set line first
+					label = node.value;
+					that.iLine = label; // set line before parsing args
+
+					/*
+					that.iGosubCount = 0;
+					that.iIfCount = 0;
+					that.iStopCount = 0;
+					that.iForCount = 0; // stack needed
+					that.iWhileCount = 0; // stack needed
+					*/
+					that.resetCountsPerLine(); // we want to have "stable" counts, even if other lines change, e.g. direct
+
+					if (isNaN(label)) {
+						if (label === "direct") { // special handling
+							bDirect = true;
+							value = "o.goto(\"directEnd\"); break;\n";
+						}
+						label = '"' + label + '"'; // for "direct"
+					}
+
+					value += "case " + label + ":";
+
 					aNodeArgs = fnParseArgs(node.args);
 
 					if (that.options.tron) {
@@ -489,6 +538,11 @@ CodeGeneratorJs.prototype = {
 							value += " " + value2;
 						}
 					}
+
+					if (bDirect) {
+						value += " o.goto(\"end\"); break;\ncase \"directEnd\":";
+					}
+
 					node.pv = value;
 					return node.pv;
 				},
@@ -523,6 +577,10 @@ CodeGeneratorJs.prototype = {
 					var aNodeArgs = fnParseArgs(node.args);
 
 					node.pv = "{type: \"commaTab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the commaTab() call until print() is called
+					return node.pv;
+				},
+				cont: function (node) {
+					node.pv = "o." + node.type + "(); break;"; // append break
 					return node.pv;
 				},
 				data: function (node) {
@@ -663,7 +721,8 @@ CodeGeneratorJs.prototype = {
 						}
 						sEndName = sVarName + "End";
 						value = sEndName.substr(2); // remove preceiding "v."
-						variables[value] = 0; // declare also end variable
+						//variables[value] = 0; // declare also end variable
+						fnDeclareVariable(value, 0); // declare also end variable
 					}
 					if (!bStepIsIntConst) {
 						if (node.third.pt !== "I") {
@@ -671,7 +730,8 @@ CodeGeneratorJs.prototype = {
 						}
 						sStepName = sVarName + "Step";
 						value = sStepName.substr(2); // remove preceiding "v."
-						variables[value] = 0; // declare also step variable
+						//variables[value] = 0; // declare also step variable
+						fnDeclareVariable(value, 0); // declare also step variable
 					}
 
 					value = "/* for() */";
@@ -725,12 +785,11 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				"goto": function (node) {
-					var sName = Utils.bSupportReservedNames ? "o.goto" : 'o["goto"]',
-						aNodeArgs = fnParseArgs(node.args),
+					var aNodeArgs = fnParseArgs(node.args),
 						iLine = aNodeArgs[0];
 
 					this.fnAddReferenceLabel(iLine, node.args[0]);
-					node.pv = sName + "(" + iLine + "); break";
+					node.pv = "o.goto(" + iLine + "); break";
 					return node.pv;
 				},
 				"if": function (node) {
@@ -940,6 +999,10 @@ CodeGeneratorJs.prototype = {
 					node.pv = "//" + sValue + "\n";
 					return node.pv;
 				},
+				renum: function (node) {
+					node.pv = this.fnCommandWithGoto(node);
+					return node.pv;
+				},
 				restore: function (node) {
 					var aNodeArgs = fnParseArgs(node.args);
 
@@ -1097,24 +1160,26 @@ CodeGeneratorJs.prototype = {
 			},
 
 			fnCreateLabelsMap = function (oLabels2) {
-				var iLastLine = 0,
+				var iLastLine = -1,
 					i, oNode, sLine, iLine;
 
 				for (i = 0; i < parseTree.length; i += 1) {
 					oNode = parseTree[i];
 					if (oNode.type === "label") {
 						sLine = oNode.value;
-						iLine = Number(sLine);
 						if (sLine in oLabels2) {
 							throw new CodeGeneratorJs.ErrorObject("Duplicate line number", sLine, oNode.pos, that.iLine);
 						}
-						if (iLine <= iLastLine) {
-							throw new CodeGeneratorJs.ErrorObject("Line number not increasing", sLine, oNode.pos, that.iLine);
+						iLine = Number(sLine);
+						if (!isNaN(iLine)) { // not for "direct"
+							if (iLine <= iLastLine) {
+								throw new CodeGeneratorJs.ErrorObject("Line number not increasing", sLine, oNode.pos, that.iLine);
+							}
+							if (iLine < 1 || iLine > 65535) {
+								throw new CodeGeneratorJs.ErrorObject("Line number overflow", sLine, oNode.pos, that.iLine);
+							}
+							iLastLine = iLine;
 						}
-						if (iLine < 1 || iLine > 65535) {
-							throw new CodeGeneratorJs.ErrorObject("Line number overflow", sLine, oNode.pos, that.iLine);
-						}
-						iLastLine = iLine;
 						oLabels2[sLine] = 0; // init call count
 					}
 				}
@@ -1166,7 +1231,7 @@ CodeGeneratorJs.prototype = {
 		return fnEvaluate();
 	},
 
-	generate: function (input, variables) {
+	generate: function (input, variables, bAllowDirect) {
 		var fnCombineData = function (aData) {
 				var sData = "";
 
@@ -1183,7 +1248,7 @@ CodeGeneratorJs.prototype = {
 
 		try {
 			aTokens = this.lexer.lex(input);
-			aParseTree = this.parser.parse(aTokens);
+			aParseTree = this.parser.parse(aTokens, bAllowDirect);
 			sOutput = this.evaluate(aParseTree, variables);
 			oOut.text = "var v=o.v;\n";
 			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"

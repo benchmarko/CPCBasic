@@ -147,9 +147,9 @@ var Utils = {
 		}
 	}()),
 
-	bSupportReservedNames: (function () { // does the browser support reserved names in dot notation? (not old IE8)
+	bSupportReservedNames: (function () { // does the browser support reserved names (delete, new, return) in dot notation? (not old IE8; "goto" is ok)
 		try {
-			Function('"({"return": function () { }}).return()'); // eslint-disable-line no-new-func
+			Function("({}).return()"); // eslint-disable-line no-new-func
 			return true;
 		} catch (err) {
 			return false;

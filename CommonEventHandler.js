@@ -309,7 +309,8 @@ CommonEventHandler.prototype = {
 		this.view.setHidden("kbdNum", sValue === "alpha");
 	},
 
-	onVarTextChange: function () {
+	/*
+	onVarTextChange_ok1: function () {
 		var sPar = this.view.getSelectValue("varSelect"),
 			sValue = this.view.getSelectValue("varText"),
 			oVariables = this.controller.oVariables,
@@ -331,6 +332,11 @@ CommonEventHandler.prototype = {
 
 		this.controller.fnSetVarSelectOptions("varSelect", oVariables);
 		this.onVarSelectChange(); // title change?
+	},
+	*/
+
+	onVarTextChange: function () {
+		this.controller.fnChangeVariable();
 	},
 
 	onScreenshotButtonClick: function () {
