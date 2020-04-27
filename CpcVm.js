@@ -128,8 +128,6 @@ CpcVm.prototype = {
 		// "reset": 90 (reset system)
 		// "run": 90
 
-		//this.oInput = {}; // input handling
-
 		this.aInputValues = []; // values to input into script
 
 		this.oInFile = {}; // file handling
@@ -176,7 +174,6 @@ CpcVm.prototype = {
 		this.iErrorGotoLine = 0;
 		this.iBreakGosubLine = 0;
 
-		//this.vmResetInputHandling();
 		this.aInputValues.length = 0;
 		this.vmResetFileHandling(this.oInFile);
 		this.vmResetFileHandling(this.oOutFile);
@@ -224,7 +221,6 @@ CpcVm.prototype = {
 		this.oKeyboard.reset();
 		this.oSound.reset();
 		this.aSoundData.length = 0;
-		this.iClgPen = 0;
 
 		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "frame"
 	},
@@ -292,22 +288,6 @@ CpcVm.prototype = {
 		oWin = this.aWindow[9]; // cassette
 		Object.assign(oWin, oWinData, oCassetteData);
 	},
-
-	/*
-	vmResetInputHandling: function (oInputData) {
-		var oDefaultData = {
-			iStream: 0,
-			sMessage: "",
-			sInput: "",
-			sNoCRLF: "",
-			fnInputCallback: null, // callback for stop reason "input"
-			aTypes: [],
-			aInputValues: []
-		};
-
-		Object.assign(this.oInput, oDefaultData, oInputData || {});
-	},
-	*/
 
 	vmResetFileHandling: function (oFile) {
 		var oData = {
@@ -740,18 +720,6 @@ CpcVm.prototype = {
 		return this.oStop;
 	},
 
-	/*
-	vmSetInputParas: function (sInput) {
-		this.oInput.sInput = sInput;
-	},
-	*/
-
-	/*
-	vmGetInputObject: function () {
-		return this.oInput;
-	},
-	*/
-
 	vmGetInFileObject: function () {
 		return this.oInFile;
 	},
@@ -763,7 +731,7 @@ CpcVm.prototype = {
 	vmAdaptFilename: function (sName, sErr) {
 		this.vmAssertString(sName, sErr);
 		if (sName.indexOf("!") === 0) {
-			sName = sName.substr(1); // remove preceiding "!"
+			sName = sName.substr(1); // remove preceding "!"
 		}
 		return sName;
 	},
@@ -987,7 +955,7 @@ CpcVm.prototype = {
 			this.iMode = 1;
 			this.vmResetInks();
 			this.oCanvas.setMode(this.iMode); // does not clear canvas
-			this.oCanvas.clearGraphics(0); // (SCR Mode Clear)
+			this.oCanvas.clearFullWindow(); // (SCR Mode Clear)
 			break;
 		case 0xbc06: // SCR SET BASIC (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E
 			this.vmSetScreenBase(arguments[1]);
@@ -1071,14 +1039,12 @@ CpcVm.prototype = {
 		this.oKeyboard.clearInput();
 	},
 
-	clg: function (iGPen) {
-		if (iGPen !== undefined) {
-			iGPen = this.vmInRangeRound(iGPen, 0, 15, "CLG");
-			this.iClgPen = iGPen; // memorize pen
-		} else {
-			iGPen = this.iClgPen; // use last memorized pen
+	clg: function (iGPaper) {
+		if (iGPaper !== undefined) {
+			iGPaper = this.vmInRangeRound(iGPaper, 0, 15, "CLG");
+			this.oCanvas.setGPaper(iGPaper);
 		}
-		this.oCanvas.clearGraphics(iGPen);
+		this.oCanvas.clearGraphicsWindow();
 	},
 
 	vmCloseinCallback: function () {
@@ -1092,7 +1058,6 @@ CpcVm.prototype = {
 
 		if (oInFile.bOpen) {
 			this.vmCloseinCallback(); // not really used as a callback here
-			//this.vmResetFileHandling(oInFile);
 		}
 	},
 
@@ -1117,7 +1082,7 @@ CpcVm.prototype = {
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "CLS");
 		oWin = this.aWindow[iStream];
-		this.oCanvas.clearWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom, oWin.iPaper); // cls window
+		this.oCanvas.clearTextWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom, oWin.iPaper); // cls window
 		this.sOut = "";
 		oWin.iPos = 0;
 		oWin.iVpos = 0;
@@ -1201,7 +1166,6 @@ CpcVm.prototype = {
 				this.vmDrawUndrawCursor(iStream); // draw
 			}
 		}
-		//this.vmNotImplemented("CURSOR: " + iSystem + " " + iUser);
 	},
 
 	data: function () { // varargs
@@ -1554,13 +1518,11 @@ CpcVm.prototype = {
 	},
 
 	vmSetInputValues: function (aInputValues) {
-		//this.oInput.aInputValues = aInputValues;
 		this.aInputValues = aInputValues;
 	},
 
 	vmGetNextInput: function () {
 		var aInputValues = this.aInputValues,
-			//aInputValues = this.oInput.aInputValues,
 			sValue;
 
 		sValue = aInputValues.shift();
@@ -1585,7 +1547,6 @@ CpcVm.prototype = {
 					value = this.vmVal(value); // convert to number (also binary, hex)
 					if (isNaN(value)) {
 						bInputOk = false;
-						//value = 0; // the best we can do here
 					}
 					aInputValues[i] = this.vmAssign(sVarType, value);
 				}
@@ -1607,8 +1568,7 @@ CpcVm.prototype = {
 	},
 
 	vmInputFromFile: function (aTypes) {
-		var //aTypes = this.oInput.aTypes,
-			aFileData = this.oInFile.aFileData,
+		var aFileData = this.oInFile.aFileData,
 			aInputValues = [],
 			i, sVarType, sType, value, aValue;
 
@@ -1648,23 +1608,6 @@ CpcVm.prototype = {
 	input: function (iStream, sNoCRLF, sMsg) { // varargs
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "INPUT");
 		if (iStream < 8) {
-			/*
-			this.oInput.iStream = iStream;
-			this.oInput.sMessage = sMsg;
-			this.oInput.sNoCRLF = sNoCRLF;
-			this.oInput.fnInputCallback = this.vmInputCallback.bind(this);
-			this.oInput.sInput = "";
-			this.oInput.aTypes = Array.prototype.slice.call(arguments, 3); // remaining arguments
-			*/
-			/*
-			this.vmResetInputHandling({
-				iStream: iStream,
-				sMessage: sMsg,
-				sNoCRLF: sNoCRLF,
-				fnInputCallback: this.vmInputCallback.bind(this),
-				aTypes: Array.prototype.slice.call(arguments, 3) // remaining arguments
-			});
-			*/
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45, false, {
 				iStream: iStream,
@@ -1676,17 +1619,14 @@ CpcVm.prototype = {
 			});
 			this.cursor(iStream, 1);
 		} else if (iStream === 8) {
-			this.vmSetInputValues([]); //does not make sense
+			this.vmSetInputValues([]); //does not make sense?
 			this.vmNotImplemented("INPUT #" + iStream);
 		} else if (iStream === 9) {
-			//this.oInput.iStream = iStream;
-			//this.vmSetInputValues([]);
 			if (!this.oInFile.bOpen) {
 				this.error(31, "INPUT #" + iStream); // File not open
 			} else if (this.eof()) {
 				this.error(24, "INPUT #" + iStream); // EOF met
 			}
-			//this.oInput.aTypes = Array.prototype.slice.call(arguments, 3); // remaining arguments
 			this.vmInputFromFile(Array.prototype.slice.call(arguments, 3)); // remaining arguments
 		}
 	},
@@ -1774,21 +1714,6 @@ CpcVm.prototype = {
 				this.error(13, "LINE INPUT " + sType); // Type mismatch
 			}
 
-			/*
-			this.vmResetInputHandling({
-				iStream: iStream,
-				sMessage: sMsg,
-				sNoCRLF: sNoCRLF,
-				fnInputCallback: this.vmLineInputCallback.bind(this)
-			});
-			*/
-			/*
-			this.oInput.iStream = iStream;
-			this.oInput.sMessage = sMsg;
-			this.oInput.sNoCRLF = sNoCRLF;
-			this.oInput.sInput = "";
-			this.oInput.fnInputCallback = this.vmLineInputCallback.bind(this);
-			*/
 			this.cursor(iStream, 1);
 			this.vmStop("input", 45, false, {
 				iStream: iStream,
@@ -1798,7 +1723,7 @@ CpcVm.prototype = {
 				sInput: ""
 			});
 		} else if (iStream === 8) {
-			this.vmSetInputValues([]); //does not make sense
+			this.vmSetInputValues([]); //does not make sense?
 			this.vmNotImplemented("LINE INPUT # " + iStream);
 		} else if (iStream === 9) {
 			if (!this.oInFile.bOpen) {
@@ -1830,14 +1755,6 @@ CpcVm.prototype = {
 				}
 			}
 		}
-		/*
-		} else {
-			sName = oInFile.sName;
-			Utils.console.warn("Cannot open file:", sName);
-			//this.error(32, "LOAD " + sName); // broken in
-			this.error(32, "LOAD: " + sName + " not found"); // broken in
-		}
-		*/
 		this.closein();
 	},
 
@@ -1976,9 +1893,9 @@ CpcVm.prototype = {
 		this.iMode = iMode;
 		this.vmResetWindowData(false); // do not reset pen and paper
 		this.sOut = "";
-		this.iClgPen = 0;
 		this.oCanvas.setMode(iMode); // does not clear canvas
-		this.oCanvas.clearGraphics(0); // always clear with paper 0! (SCR MODE CLEAR)
+
+		this.oCanvas.clearFullWindow(); // always with paper 0 (SCR MODE CLEAR)
 	},
 
 	move: function (x, y, iGPen, iGColMode) {
@@ -2079,14 +1996,6 @@ CpcVm.prototype = {
 		} else {
 			this.closein();
 		}
-		/*
-		} else { // file in directory index but cannot open
-			this.closein(); // deletes oInFile.sName
-			Utils.console.error("Cannot open file:", sName);
-			//this.error(32, "OPENIN " + sName); // broken in
-			this.error(32, "OPENIN: " + sName + " not found"); // broken in
-		}
-		*/
 	},
 
 	openin: function (sName) {
@@ -2126,8 +2035,6 @@ CpcVm.prototype = {
 	// or
 
 	origin: function (xOff, yOff, xLeft, xRight, yTop, yBottom) { // parameters starting from xLeft are optional
-		var tmp;
-
 		xOff = this.vmInRangeRound(xOff, -32768, 32767, "ORIGIN");
 		yOff = this.vmInRangeRound(yOff, -32768, 32767, "ORIGIN");
 		this.oCanvas.setOrigin(xOff, yOff);
@@ -2137,11 +2044,13 @@ CpcVm.prototype = {
 			xRight = this.vmInRangeRound(xRight, -32768, 32767, "ORIGIN");
 			yTop = this.vmInRangeRound(yTop, -32768, 32767, "ORIGIN");
 			yBottom = this.vmInRangeRound(yBottom, -32768, 32767, "ORIGIN");
+			/*
 			if (yTop < yBottom) {
 				tmp = yTop;
 				yTop = yBottom;
 				yBottom = tmp;
 			}
+			*/
 			this.oCanvas.setGWindow(xLeft, xRight, yTop, yBottom);
 		}
 	},
@@ -2274,9 +2183,9 @@ CpcVm.prototype = {
 			this.vmMoveCursor2AllowedPos(iStream);
 			iPos = this.aWindow[iStream].iPos + 1;
 		} else if (iStream === 8) { // printer position
-			iPos = 1; //TODO
+			iPos = 1; // TODO
 		} else { // stream 9: number of characters written since last CR (\r)
-			iPos = 1; //TODO
+			iPos = 1; // TODO
 		}
 		return iPos;
 	},
@@ -2374,11 +2283,9 @@ CpcVm.prototype = {
 			this.vmPrintChars(sPara, iStream);
 			break;
 		case 0x02: // STX
-			//this.cursor(iStream, null, 0); // cursor disable (user)
 			oWin.bCursorEnabled = false; // cursor disable (user)
 			break;
 		case 0x03: // ETX
-			//this.cursor(iStream, null, 1); // cursor enable (user)
 			oWin.bCursorEnabled = true; // cursor enable (user)
 			break;
 		case 0x04: // EOT 0-3 (on CPC: 0-2, 3 is ignored; really mod 4)
@@ -2388,7 +2295,6 @@ CpcVm.prototype = {
 			this.vmPrintGraphChars(sPara);
 			break;
 		case 0x06: // ACK
-			//this.cursor(iStream, null, 1); // cursor enable (user)
 			oWin.bCursorEnabled = true;
 			oWin.bTextEnabled = true;
 			break;
@@ -2447,7 +2353,6 @@ CpcVm.prototype = {
 			this.oCanvas.fillTextBox(oWin.iLeft, oWin.iTop + oWin.iVpos + 1, oWin.iRight - oWin.iLeft + 1, oWin.iBottom - oWin.iTop - oWin.iVpos, oWin.iPaper); // clear window from cursor line +1
 			break;
 		case 0x15: // NAK
-			//this.cursor(iStream, null, 0); // cursor disable (user)
 			oWin.bCursorEnabled = false;
 			oWin.bTextEnabled = false;
 			break;
@@ -2664,7 +2569,6 @@ CpcVm.prototype = {
 		value = this.vmVal(sInput); // convert to number (also binary, hex)
 		if (isNaN(value)) {
 			bInputOk = false;
-			//value = 0; // the best we can do here
 			oInput.sInput = "";
 			this.print(oInput.iStream, oInput.sMessage);
 		} else {
@@ -2680,19 +2584,6 @@ CpcVm.prototype = {
 
 		if (n === undefined) { // no arguments? input...
 			sMsg = "Random number seed ? ";
-			/*
-			this.oInput.iStream = iStream;
-			this.oInput.sMessage = sMsg;
-			this.oInput.fnInputCallback = this.vmRandomizeCallback.bind(this);
-			this.oInput.sInput = "";
-			*/
-			/*
-			this.vmResetInputHandling({
-				iStream: iStream,
-				sMessage: sMsg,
-				fnInputCallback: this.vmRandomizeCallback.bind(this)
-			});
-			*/
 			this.print(iStream, sMsg);
 			this.vmStop("input", 45, false, {
 				iStream: iStream,
@@ -2872,15 +2763,6 @@ CpcVm.prototype = {
 			this.vmSetInputValues([oInFile.iLine]); // we misuse aInputValues
 			this.vmStop("run", 90);
 		}
-
-		/*
-		} else {
-			sName = oInFile.sName;
-			Utils.console.warn("Cannot open file:", sName);
-			this.closein();
-			this.error(32, "RUN: " + sName + " not found"); // broken in
-		}
-		*/
 		this.closein();
 	},
 
@@ -2941,7 +2823,7 @@ CpcVm.prototype = {
 		}
 
 		if (oOutFile.bOpen) {
-			//TODO: closeout?
+			// TODO: closeout?
 		}
 		if (sName) {
 			oOutFile.bOpen = true;

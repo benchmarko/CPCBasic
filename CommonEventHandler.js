@@ -267,7 +267,6 @@ CommonEventHandler.prototype = {
 				Utils.console.log("Example", sUrl, " error");
 				that.view.setAreaValue("inputText", "");
 				that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
-				//TTT do we need initial reset?
 			};
 
 		this.model.setProperty("example", sExample);
@@ -308,32 +307,6 @@ CommonEventHandler.prototype = {
 		this.view.setHidden("kbdAlpha", sValue === "num");
 		this.view.setHidden("kbdNum", sValue === "alpha");
 	},
-
-	/*
-	onVarTextChange_ok1: function () {
-		var sPar = this.view.getSelectValue("varSelect"),
-			sValue = this.view.getSelectValue("varText"),
-			oVariables = this.controller.oVariables,
-			sType, value;
-
-		if (typeof oVariables[sPar] === "function") { // TODO
-			value = sValue;
-			value = new Function("o", value); // eslint-disable-line no-new-func
-		} else {
-			sType = this.controller.oVm.vmDetermineVarType(sPar);
-			if (sType !== "$") { // not string? => convert to number
-				value = parseFloat(sValue);
-			} else {
-				value = sValue;
-			}
-		}
-		Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
-		oVariables[sPar] = value;
-
-		this.controller.fnSetVarSelectOptions("varSelect", oVariables);
-		this.onVarSelectChange(); // title change?
-	},
-	*/
 
 	onVarTextChange: function () {
 		this.controller.fnChangeVariable();

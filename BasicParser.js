@@ -31,7 +31,7 @@ function BasicParser(options) {
 }
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), r=letter or range, a=any, n0?=optional papameter with default null, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
 	abs: "f n",
 	after: "c n n?",
@@ -227,7 +227,6 @@ BasicParser.prototype = {
 
 	reset: function () {
 		this.iLine = 0; // for error messages
-		//this.bAllowdirect = Boolean(this.options.bAllowdirect);
 	},
 
 	// http://crockford.com/javascript/tdop/tdop.html (old: http://javascript.crockford.com/tdop/tdop.html)
@@ -435,11 +434,6 @@ BasicParser.prototype = {
 				if (oToken.type === "#") { // stream?
 					advance("#");
 					oValue = expression(0);
-					/*
-					if (oToken.type === ",") {
-						advance(",");
-					}
-					*/
 				} else { // create number token
 					oValue = {
 						type: "number",
@@ -785,7 +779,6 @@ BasicParser.prototype = {
 		infixr("or", 21);
 		infixr("xor", 20);
 
-		//prefix("#", 10); // stream
 		symbol("#"); // stream
 
 		infixr("=", 30); // equal for comparison

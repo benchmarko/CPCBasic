@@ -43,8 +43,6 @@ Controller.prototype = {
 
 		this.bTimeoutHandlerActive = false;
 
-		//this.sLabelBeforeStop = "";
-		//this.iPrioBeforeStop = 0;
 		this.oSavedStop = {}; // backup of stop object
 
 		this.oVariables = {};
@@ -281,29 +279,22 @@ Controller.prototype = {
 	fnEscape: function () {
 		var oStop = this.oVm.vmGetStopObject(),
 			iStream = 0,
-			//oSavedStop = this.fnGetStopObject(),
 			sMsg;
 
 		if (oStop.sReason === "direct") {
 			sMsg = "*Break*\r\n";
 			this.oVm.print(0, sMsg);
 		} else if (oStop.sReason !== "escape") { // first escape?
-			//this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
-			//this.fnSetStopObject(oStop);
 			this.oVm.cursor(iStream, 1);
 			this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
 			this.oVm.vmStop("escape", 85);
-			//this.startMainLoop();
 		} else { // second escape
 			this.oKeyboard.setKeyDownHandler(null);
 			this.oVm.cursor(iStream, 0);
 			this.oVm.vmStop("stop", 0, true); // stop
 
-			//this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
-			//this.fnSetStopObject(oStop);
-			sMsg = "Break in " + this.oVm.iLine + "\r\n"; //TTT
+			sMsg = "Break in " + this.oVm.iLine + "\r\n";
 			this.oVm.print(0, sMsg);
-			//this.fnStop();
 		}
 
 		this.startMainLoop();
@@ -342,7 +333,6 @@ Controller.prototype = {
 				} else {
 					sKey = "\x07"; // ignore BS, use BEL
 				}
-				//this.oVm.print(iStream, sKey);
 				break;
 			case "\xf0": // cursor up
 				if (!sInput.length) {
@@ -373,7 +363,6 @@ Controller.prototype = {
 				}
 				break;
 			default:
-				//this.oVm.print(iStream, sKey);
 				if (sKey >= "\x20") { // no control codes in buffer
 					sInput += sKey;
 				}
@@ -382,27 +371,6 @@ Controller.prototype = {
 			if (sKey && sKey !== "\r") {
 				this.oVm.print(iStream, sKey);
 			}
-
-			/*
-			if (sKey !== "") {
-				if (sKey === "\x7f") { // del?
-					if (sInput.length > 0) {
-						sInput = sInput.slice(0, -1);
-						sKey = "\x08\x10"; // use backspace and clr  // or: "\x08 \x08"
-					} else {
-						sKey = "\x07"; // ignore Backspace, use BEL
-					}
-					this.oVm.print(iStream, sKey);
-				} else if (sKey === "\r") {
-					// ignore
-				} else {
-					this.oVm.print(iStream, sKey);
-					if (sKey >= "\x20") { // no control codes in buffer
-						sInput += sKey;
-					}
-				}
-			}
-			*/
 		} while (sKey !== "" && sKey !== "\r"); // get all keys until CR or no more key
 
 		oInput.sInput = sInput;
@@ -416,29 +384,9 @@ Controller.prototype = {
 			}
 			if (bInputOk) {
 				this.oKeyboard.setKeyDownHandler(null);
-				//this.oVm.vmStop("", 0, true);
-				//this.startMainLoop();
-				this.fnContinue(); //TTT
+				this.fnContinue();
 			}
 		}
-
-		/*
-		oInput.sInput = sInput;
-		if (sKey === "\r") {
-			Utils.console.log("fnWaitForInput:", sInput);
-			if (!oInput.sNoCRLF) {
-				this.oVm.print(iStream, "\r\n");
-			}
-			if (oInput.fnInputCallback) {
-				bInputOk = oInput.fnInputCallback();
-			}
-			if (bInputOk) {
-				this.oKeyboard.setKeyDownHandler(null);
-				this.oVm.vmStop("", 0, true);
-				this.startMainLoop();
-			}
-		}
-		*/
 	},
 
 	fnWaitForSound: function () {
@@ -495,7 +443,6 @@ Controller.prototype = {
 				oInFile.fnFileCallback(sInput, sMeta);
 			} catch (e) {
 				Utils.console.warn(e);
-				//this.oVm.print(0, String(e) + "\r\n");
 			}
 		}
 		if (sInput) {
@@ -538,17 +485,16 @@ Controller.prototype = {
 			}
 			this.oVm.vmSetStartLine(iStartLine);
 		} else {
-			this.oVm.vmStop("stop", 60); //TTT
+			this.oVm.vmStop("stop", 60);
 		}
 		this.startMainLoop();
 	},
 
 	fnLoadFile: function () {
 		var that = this,
-			oVm = this.oVm,
 			oInFile = this.oVm.vmGetInFileObject(),
 			sPath = "",
-			sDatabaseDir, sName, sExample, oExample, sKey, iLastSlash, sUrl, oError,
+			sDatabaseDir, sName, sExample, oExample, sKey, iLastSlash, sUrl,
 
 			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
 				var sInput;
@@ -563,6 +509,9 @@ Controller.prototype = {
 				that.fnLoadContinue(sInput);
 			},
 			fnExampleError = function () {
+				var oVm = that.oVm,
+					oError;
+
 				Utils.console.log("Example", sUrl, "error");
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				oError = oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
@@ -597,8 +546,6 @@ Controller.prototype = {
 		} else { // keep original sExample in this error case
 			sUrl = sExample;
 			Utils.console.warn("fnLoadFile: Unknown file:", sExample);
-			//oError = oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
-			//oVm.print(0, String(oError) + "\r\n");
 			fnExampleError(); //TTT
 		}
 	},
@@ -854,10 +801,8 @@ Controller.prototype = {
 			sInputText, sMsg, oOutput, oError, sOutput, fnScript;
 
 		this.oVm.cursor(oInput.iStream, 0);
-		//this.oVm.vmStop("end", 0);
 		sInput = sInput.trim();
 		if (sInput !== "") {
-
 			oInput.sInput = "";
 			if ((/^(\d)+ /).test(sInput)) { // start with number?
 				Utils.console.log("fnDirectInput: TODO: insert line :", sInput);
@@ -892,8 +837,7 @@ Controller.prototype = {
 
 			if (!oOutput.error) {
 				oVm.vmSetVariables(this.oVariables);
-				//this.oVm.vmSetStartLine(0); //TTT
-				this.oVm.vmSetStartLine(this.oVm.iLine); //fast hack
+				this.oVm.vmSetStartLine(this.oVm.iLine); // fast hack
 				this.oVm.vmGotoLine("direct");
 
 				try {
@@ -902,11 +846,9 @@ Controller.prototype = {
 				} catch (e) {
 					Utils.console.error(e);
 					oVm.print(0, String(e) + "\r\n");
-					//this.fnScript = null;
 				}
 			}
 
-			//oInput.sInput = "";
 			if (!oOutput.error) {
 				return true;
 			}
@@ -923,17 +865,9 @@ Controller.prototype = {
 
 	fnStartDirectInput: function () {
 		var oVm = this.oVm,
-			//oStop = oVm.vmGetStopObject(),
 			iStream = 0,
 			sMsg = "Ready\r\n";
 
-		//this.oVm.vmStop("", 0, true);
-		//this.fnSetStopLabelPrio("", 0); //TTT
-		//this.fnSetStopObject(oStop);
-		//oInput.iStream = 0;
-		//oInput.sInput = "";
-
-		//this.fnSetStopObject(oStop); //TTT
 		if (this.oVm.pos(iStream) > 1) {
 			this.oVm.print(iStream, "\r\n");
 		}
@@ -942,12 +876,12 @@ Controller.prototype = {
 		oVm.vmStop("direct", 0, true, {
 			iStream: iStream,
 			sMessage: sMsg,
-			//sNoCRLF: true,
+			// sNoCRLF: true,
 			fnInputCallback: this.fnDirectInputHandler,
 			sInput: ""
-		}); //TTT direct input mode
+		});
 		this.oKeyboard.setKeyDownHandler(this.fnWaitForInputHandler);
-		this.fnWaitForInput(); //TTT
+		this.fnWaitForInput();
 	},
 
 	fnExitLoop: function () {
@@ -1085,12 +1019,6 @@ Controller.prototype = {
 		}
 	},
 
-	/*
-	fnSetStopLabelPrio: function (sReason, iPriority) {
-		this.sLabelBeforeStop = sReason;
-		this.iPrioBeforeStop = iPriority;
-	},
-	*/
 	fnSetStopObject: function (oStop) {
 		Object.assign(this.oSavedStop, oStop);
 	},
@@ -1105,17 +1033,6 @@ Controller.prototype = {
 	},
 
 	fnRenum: function () {
-		// set input values for renum
-		/*
-		this.oVm.vmResetInputHandling({
-			aInputValues: [
-				10,
-				1,
-				10,
-				65535
-			]
-		});
-		*/
 		this.oVm.vmSetInputValues([
 			10,
 			1,
@@ -1127,10 +1044,7 @@ Controller.prototype = {
 	},
 
 	fnRun: function () {
-		//this.oVm.vmStop("", 0, true);
-		//this.fnSetStopObject(oStop);
 		this.fnSetStopObject(this.oNoStop);
-		//this.fnSetStopLabelPrio("", 0);
 
 		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("run", 99);
@@ -1138,10 +1052,7 @@ Controller.prototype = {
 	},
 
 	fnParseRun: function () {
-		//this.oVm.vmStop("", 0, true);
-		//this.fnSetStopObject(oStop);
 		this.fnSetStopObject(this.oNoStop);
-		//this.fnSetStopLabelPrio("", 0);
 		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("parseRun", 99);
 		this.startMainLoop();
@@ -1151,7 +1062,6 @@ Controller.prototype = {
 		var oVm = this.oVm,
 			oStop = oVm.vmGetStopObject();
 
-		//this.fnSetStopLabelPrio(oStop.sReason, oStop.iPriority);
 		this.fnSetStopObject(oStop);
 		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("break", 80);
@@ -1167,18 +1077,14 @@ Controller.prototype = {
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
 		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop" || oStop.sReason === "direct" || oStop.sReason === "input") {
-			Object.assign(oStop, oSavedStop); //TTT fast hack
-			//oVm.vmStop(oSavedStop.sLabel, oSavedStop.iPrio, true, oSavedStop.oParas);
-			//this.fnSetStopLabelPrio("", 0);
-			//Object.assign(this.oSavedStop, this.oNoStop); //TTT
+			Object.assign(oStop, oSavedStop); // fast hack
 			this.fnSetStopObject(this.oNoStop);
 		}
 		this.startMainLoop();
 	},
 
 	fnReset: function () {
-		//this.oVm.vmStop("", 0, true);
-		this.fnSetStopObject(this.oNoStop); //TTT
+		this.fnSetStopObject(this.oNoStop);
 		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("reset", 99);
 		this.startMainLoop();
@@ -1191,30 +1097,21 @@ Controller.prototype = {
 	},
 
 	fnEnter: function () {
-		var //oVm = this.oVm,
-			//oStop = oVm.vmGetStopObject(),
-			sInput = this.view.getAreaValue("inp2Text"),
+		var sInput = this.view.getAreaValue("inp2Text"),
 			i, oKeyDownHandler;
 
-		sInput = sInput.replace("\n", "\r"); //LF => CR
+		sInput = sInput.replace("\n", "\r"); // LF => CR
 		if (!Utils.stringEndsWith(sInput, "\r")) {
 			sInput += "\r";
 		}
 		for (i = 0; i < sInput.length; i += 1) {
 			this.oKeyboard.putKeyInBuffer(sInput.charAt(i));
 		}
-		//this.oKeyboard.putKeyInBuffer("\r");
+
 		oKeyDownHandler = this.oKeyboard.getKeyDownHandler();
 		if (oKeyDownHandler) {
-			oKeyDownHandler(); //TTT fnWaitForInput or fnWaitForKey
+			oKeyDownHandler();
 		}
-		/*
-		if (oStop.sReason === "input" || oStop.sReason === "direct") {
-			this.fnWaitForInput();
-		} else if (oStop.sReason === "waitKey") {
-			this.fnWaitForKey();
-		}*/
-
 		this.view.setAreaValue("inp2Text", "");
 	},
 
@@ -1224,31 +1121,15 @@ Controller.prototype = {
 			oVariables = this.oVariables,
 			sVarType, sType, value,
 
-/*			
-			fnDetermineVarType = function (sName) {
-				var sType, aMatch, sChar;
-
-				if (sName.indexOf("v.") === 0) {
-					sName = sName.substr(2); // remove preceiding "v."
-				}
-				aMatch = sName.match(/[IR$]/); // explicit type?
-				if (aMatch) {
-					sType = aMatch[0];
-				} else {
-					sChar = sName.charAt(0); // take first character of variable name
-					sType = this.oVarTypes[sChar];
-				}
-				return sType;
-			};
-*/
-
-			// similar to that in BasicParser
+			// similar to that function in BasicParser
 			fnDetermineStaticVarType = function (sName) {
 				var sNameType;
 
+				/*
 				if (sName.indexOf("v.") === 0) {
-					sName = sName.substr(2); // remove preceiding "v."
+					sName = sName.substr(2); // remove preceding "v."
 				}
+				*/
 
 				sNameType = sName.charAt(0); // take first character to determine var type later
 
@@ -1261,18 +1142,6 @@ Controller.prototype = {
 					sNameType += "$";
 				}
 				return sNameType;
-			},
-
-			fnDetermineVarType = function (sName) {
-				var sType, aMatch;
-
-				aMatch = sName.match(/[IR$]/); // explicit type?
-				if (aMatch) {
-					sType = aMatch[0];
-				} else {
-					sType = sName.charAt(0); // take first character of variable name
-				}
-				return sType;
 			};
 
 		if (typeof oVariables[sPar] === "function") { // TODO

@@ -97,15 +97,13 @@ CodeGeneratorJs.prototype = {
 						sName = "oNo"; // change variable name to something we cannot set in BASIC
 					}
 					if (bDevScopeArgsCollect) {
-						oDevScopeArgs[sName] = 1; //TTT declare //fnGetVarDefault(sName); // declare
+						oDevScopeArgs[sName] = 1; // declare devscope variable
 					} else if (!(sName in oDevScopeArgs)) {
 						// variable
-						//variables[sName] = fnGetVarDefault(sName); // declare
 						fnDeclareVariable(sName);
 						sName = "v." + sName; // access with "v."
 					}
 				} else {
-					//variables[sName] = fnGetVarDefault(sName); // declare
 					fnDeclareVariable(sName);
 					sName = "v." + sName; // access with "v."
 				}
@@ -132,7 +130,7 @@ CodeGeneratorJs.prototype = {
 				var sNameType;
 
 				if (sName.indexOf("v.") === 0) {
-					sName = sName.substr(2); // remove preceiding "v."
+					sName = sName.substr(2); // remove preceding "v."
 				}
 
 				sNameType = sName.charAt(0); // take first character to determine var type later
@@ -314,18 +312,6 @@ CodeGeneratorJs.prototype = {
 					}
 					node.pt = "I";
 					return node.pv;
-				},
-				"#": function (node, oLeft) { // should not occure
-					node.pv = oLeft.pv; // stream expression
-					/*
-					if (fnIsInString("IR", oLeft.pt)) { // I or R?
-						node.pt = oLeft.pt;
-					} else if (oLeft.pt) {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
-					}
-					return node.pv;
-					*/
-					throw new CodeGeneratorJs.ErrorObject("Unexpected stream in expression at", node.value, node.pos, that.iLine);
 				}
 			},
 
@@ -503,13 +489,6 @@ CodeGeneratorJs.prototype = {
 					label = node.value;
 					that.iLine = label; // set line before parsing args
 
-					/*
-					that.iGosubCount = 0;
-					that.iIfCount = 0;
-					that.iStopCount = 0;
-					that.iForCount = 0; // stack needed
-					that.iWhileCount = 0; // stack needed
-					*/
 					that.resetCountsPerLine(); // we want to have "stable" counts, even if other lines change, e.g. direct
 
 					if (isNaN(label)) {
@@ -720,8 +699,7 @@ CodeGeneratorJs.prototype = {
 							endValue = "o.vmAssign(\"" + sVarType + "\", " + endValue + ")";
 						}
 						sEndName = sVarName + "End";
-						value = sEndName.substr(2); // remove preceiding "v."
-						//variables[value] = 0; // declare also end variable
+						value = sEndName.substr(2); // remove preceding "v."
 						fnDeclareVariable(value, 0); // declare also end variable
 					}
 					if (!bStepIsIntConst) {
@@ -729,8 +707,7 @@ CodeGeneratorJs.prototype = {
 							stepValue = "o.vmAssign(\"" + sVarType + "\", " + stepValue + ")";
 						}
 						sStepName = sVarName + "Step";
-						value = sStepName.substr(2); // remove preceiding "v."
-						//variables[value] = 0; // declare also step variable
+						value = sStepName.substr(2); // remove preceding "v."
 						fnDeclareVariable(value, 0); // declare also step variable
 					}
 
@@ -1259,7 +1236,7 @@ CodeGeneratorJs.prototype = {
 		} catch (e) {
 			oOut.error = e;
 			if ("pos" in e) {
-				Utils.console.warn(e);// our errors have "pos" defined => show as warning
+				Utils.console.warn(e); // our errors have "pos" defined => show as warning
 			} else { // other errors
 				Utils.console.error(e);
 			}
