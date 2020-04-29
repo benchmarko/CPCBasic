@@ -34,13 +34,7 @@ CodeGeneratorJs.prototype = {
 			forVarName: [],
 			whileLabel: []
 		};
-		/*
-		this.iGosubCount = 0;
-		this.iIfCount = 0;
-		this.iStopCount = 0;
-		this.iForCount = 0; // stack needed
-		this.iWhileCount = 0; // stack needed
-		*/
+
 		this.resetCountsPerLine();
 
 		this.aData = []; // collected data from data lines
@@ -62,12 +56,6 @@ CodeGeneratorJs.prototype = {
 	//
 	evaluate: function (parseTree, variables) {
 		var that = this,
-
-			/*
-			fnGetVarDefault = function (/ * sName * /) {
-				return 1; // during compile step, we just init all variables with 1
-			},
-			*/
 
 			fnDeclareVariable = function (sName, sValue) {
 				// during compile step, we just init all (not yet defined) variables with a value
@@ -430,11 +418,11 @@ CodeGeneratorJs.prototype = {
 					node.pv = sValue;
 					return node.pv;
 				},
-				letter: function (node) { // for defint...
+				letter: function (node) { // for defint, defreal, defstr
 					node.pv = node.value;
 					return node.pv;
 				},
-				range: function (node) { // for defint...
+				range: function (node) { // for defint, defreal, defstr
 					var sLeft = fnParseOneArg(node.left),
 						sRight = fnParseOneArg(node.right);
 
@@ -442,6 +430,19 @@ CodeGeneratorJs.prototype = {
 						throw new CodeGeneratorJs.ErrorObject("Decreasing range", node.value, node.pos, that.iLine);
 					}
 					node.pv = sLeft + " - " + sRight;
+					return node.pv;
+				},
+				linerange: function (node) { // for delete, list
+					//var aNodeArgs = fnParseArgs(node.args);
+					var sLeft = fnParseOneArg(node.left),
+						sRight = fnParseOneArg(node.right);
+
+					//if (sLeft && sRight) {
+					if (sLeft > sRight) {
+						throw new CodeGeneratorJs.ErrorObject("Decreasing line range", node.value, node.pos, that.iLine);
+					}
+					//}
+					node.pv = !sRight ? sLeft : sLeft + ", " + sRight;
 					return node.pv;
 				},
 				string: function (node) {
@@ -622,9 +623,10 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				"delete": function (node) {
-					var sName = Utils.bSupportReservedNames ? "o.delete" : 'o["delete"]';
+					var aNodeArgs = fnParseArgs(node.args),
+						sName = Utils.bSupportReservedNames ? "o.delete" : 'o["delete"]';
 
-					node.pv = sName + "();";
+					node.pv = sName + "(" + aNodeArgs.join(", ") + "); break;";
 					return node.pv;
 				},
 				end: function (node) {
@@ -840,6 +842,12 @@ CodeGeneratorJs.prototype = {
 						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput()";
 					}
 					node.pv = value;
+					return node.pv;
+				},
+				list: function (node) {
+					var aNodeArgs = fnParseArgs(node.args); // or: fnCommandWithGoto
+
+					node.pv = "o.list(" + aNodeArgs.join(", ") + "); break;";
 					return node.pv;
 				},
 				load: function (node) {

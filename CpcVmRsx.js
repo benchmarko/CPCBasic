@@ -64,8 +64,10 @@ CpcVmRsx.prototype = {
 	era: function (sName) {
 		sName = this.oVm.vmAdaptFilename(sName, "|ERA");
 
-		this.oVm.vmSetInputValues([sName]); // we misuse aInputValues
-		this.oVm.vmStop("eraseFile", 90);
+		//this.oVm.vmSetInputValues([sName]); // we misuse aInputValues
+		this.oVm.vmStop("eraseFile", 90, false, {
+			sName: sName
+		});
 	},
 
 	ren: function () {

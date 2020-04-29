@@ -31,7 +31,7 @@ function BasicParser(options) {
 }
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), q=line number range, r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
 	abs: "f n",
 	after: "c n n?",
@@ -67,7 +67,7 @@ BasicParser.mKeywords = {
 	defreal: "c r r*",
 	defstr: "c r r*",
 	deg: "c",
-	"delete": "c",
+	"delete": "c q?", // not checked
 	derr: "f",
 	di: "c",
 	dim: "c v *",
@@ -115,7 +115,7 @@ BasicParser.mKeywords = {
 	len: "f s",
 	let: "c",
 	line: "c", // line input (not checked)
-	list: "c l?",
+	list: "c q?", // not checked
 	load: "c s n?",
 	locate: "c #0? n n",
 	log: "f n",
@@ -444,6 +444,52 @@ BasicParser.prototype = {
 				return oValue;
 			},
 
+			fnGetLineRange = function () { // l1 or l1-l2 or l1- or -l2 or nothing
+				var oValue = oPreviousToken,
+					oRange, oLeft, oRight;
+
+				oValue.args = [];
+
+				if (oToken.type === "number") {
+					oLeft = oToken;
+					advance("number");
+				}
+
+				if (oToken.type === "-") {
+					oRange = oToken;
+					advance("-");
+				}
+
+				if (oToken.type === "number") {
+					oRight = oToken;
+					advance("number");
+				}
+
+				if (oRange) {
+					if (!oLeft && !oRight) {
+						throw new BasicParser.ErrorObject("Invalid range at", oRange.type, oRange.pos, that.iLine); //TTT
+					}
+					oRange.type = "linerange"; // change "-" => "linerange"
+					oRange.left = oLeft || { // insert dummy value if needed
+						type: "number",
+						value: 1,
+						pos: 0, //TTT
+						len: 0
+					};
+					oRange.right = oRight || { // insert dummy value if needed
+						type: "number",
+						value: 65535,
+						pos: 0, //TTT
+						len: 0
+					};
+					oValue.args.push(oRange);
+				} else if (oLeft) {
+					oValue.args.push(oLeft); // single line number
+				}
+
+				return oValue;
+			},
+
 			fnCheckRemainingTypes = function (aTypes) {
 				var sType;
 
@@ -528,6 +574,13 @@ BasicParser.prototype = {
 							if (oExpression.type !== "identifier") {
 								throw new BasicParser.ErrorObject("Variable expected at", oExpression.value, oExpression.pos, that.iLine);
 							}
+						/*
+						} else if (sType.substr(0, 1) === "q") { // line number range (list, delete)
+							if (oToken.type === "-") {
+								oExpression = expression(0); //
+							}
+							oExpression = expression(0); //TTT
+						*/
 						} else if (sType.substr(0, 1) === "r") { // character or range of characters (defint, defreal, defstr)
 							if (oToken.type !== "identifier") {
 								throw new BasicParser.ErrorObject("Letter expected at", oToken.value, oToken.pos, that.iLine);
@@ -881,6 +934,12 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		stmt("delete", function () {
+			var oValue = fnGetLineRange();
+
+			return oValue;
+		});
+
 		stmt("else", function () {
 			var oValue = oPreviousToken,
 				oString = {
@@ -1209,6 +1268,20 @@ BasicParser.prototype = {
 				oValue2.args = fnGetArgsInBrackets();
 			}
 			oValue.args.push(oValue2);
+
+			return oValue;
+		});
+
+		stmt("list", function () {
+			var oValue = fnGetLineRange(),
+				oStream;
+
+			if (oToken.type === ",") {
+				advance(",");
+			}
+
+			oStream = fnGetOptionalStream();
+			oValue.args.unshift(oStream); // set as first parameter
 
 			return oValue;
 		});

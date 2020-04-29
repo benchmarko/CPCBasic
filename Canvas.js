@@ -512,21 +512,13 @@ Canvas.prototype = {
 	},
 
 	testPixel: function (x, y) {
-		var //iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			//iLineHeight = this.aModeData[this.iMode].iLineHeight,
-			i, iPen;
+		var i, iPen;
 
 		x += this.xOrig;
 		y = this.iHeight - 1 - (y + this.yOrig);
 		if (x < this.xLeft || x > this.xRight || y < (this.iHeight - 1 - this.yTop) || y > (this.iHeight - 1 - this.yBottom)) {
 			return this.iGPaper; // not in graphics window => return graphics paper
 		}
-
-		//TTT: we can use it or not
-		/* eslint-disable no-bitwise */
-		//x &= ~(iLineWidth - 1); // match CPC pixel
-		//y &= ~(iLineHeight - 1);
-		/* eslint-enable no-bitwise */
 
 		i = x + this.iWidth * y;
 		iPen = this.dataset8[i];
@@ -542,7 +534,6 @@ Canvas.prototype = {
 			x, y, iGPen, i;
 
 		/* eslint-disable no-bitwise */
-
 		x = ((iAddr & 0x7ff) % 80) * 8;
 		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iLineHeight;
 
@@ -593,7 +584,6 @@ Canvas.prototype = {
 				iGPen = ((iByte << 2) & 0x08) | ((iByte >> 3) & 0x04) | ((iByte >> 2) & 0x02) | ((iByte >> 7) & 0x01); // b1,b5,b3,b7 (left pixel)
 				this.setSubPixels(x, y, iGPen, iGColMode);
 				iGPen = ((iByte << 3) & 0x08) | ((iByte >> 2) & 0x04) | ((iByte >> 1) & 0x02) | ((iByte >> 6) & 0x01); // b0,b4,b2,b6 (right pixel)
-				// (TTT: or shift byte left and do as for left pixel?)
 				this.setSubPixels(x + iLineWidth, y, iGPen, iGColMode);
 				this.setNeedUpdate(x, y, x + iLineWidth, y);
 			} else if (iMode === 1) {
@@ -612,7 +602,7 @@ Canvas.prototype = {
 					this.setSubPixels(x + i * iLineWidth, y, iGPen, iGColMode);
 				}
 				this.setNeedUpdate(x, y, x + iLineWidth * 7, y);
-			} else { // iMode === 3
+			} else { // iMode === 3 (not supported)
 			}
 		}
 		/* eslint-enable no-bitwise */
@@ -961,13 +951,11 @@ Canvas.prototype = {
 	},
 
 	setOrigin: function (xOrig, yOrig) {
-		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			iLineHeight = this.aModeData[this.iMode].iLineHeight;
+		var iLineWidth = this.aModeData[this.iMode].iLineWidth;
 
-		//TTT
 		/* eslint-disable no-bitwise */
 		xOrig &= ~(iLineWidth - 1);
-		// no? yOrig |= (iLineHeight - 1);
+		// not modifed: yOrig |= (iLineHeight - 1);
 		/* eslint-enable no-bitwise */
 
 		this.xOrig = xOrig; // must be integer
@@ -999,8 +987,6 @@ Canvas.prototype = {
 
 		// On the CPC this is set to byte positions (CPC Systembuch, p. 346)
 		// ORIGIN 0,0,13,563,399,0 gets origin 0,0,8,567,399 mod2+1,mod2
-		//xLeft -= xLeft % 8; // and F8 => "begin of CPC screen byte"
-		//xRight -= xRight % 8 - 7; // or 07 => "end of CPC screen byte"
 
 		/* eslint-disable no-bitwise */
 		xLeft &= ~(iLineWidth - 1);

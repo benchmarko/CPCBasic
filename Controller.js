@@ -282,12 +282,15 @@ Controller.prototype = {
 			sMsg;
 
 		if (oStop.sReason === "direct") {
+			oStop.oParas.sInput = "";
 			sMsg = "*Break*\r\n";
 			this.oVm.print(0, sMsg);
 		} else if (oStop.sReason !== "escape") { // first escape?
 			this.oVm.cursor(iStream, 1);
 			this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
-			this.oVm.vmStop("escape", 85);
+			this.oVm.vmStop("escape", 85, false, {
+				iStream: 0
+			});
 		} else { // second escape
 			this.oKeyboard.setKeyDownHandler(null);
 			this.oVm.cursor(iStream, 0);
@@ -332,6 +335,15 @@ Controller.prototype = {
 					sKey = "\x08\x10"; // use BS and DLE
 				} else {
 					sKey = "\x07"; // ignore BS, use BEL
+				}
+				break;
+			case "\xe0": // copy
+				sKey = this.oVm.copychr$(iStream);
+				if (sKey.length) {
+					sInput += sKey;
+					sKey = "\x09"; // TAB
+				} else {
+					sKey = "\x07"; // ignore (BEL)
 				}
 				break;
 			case "\xf0": // cursor up
@@ -411,18 +423,21 @@ Controller.prototype = {
 		var aLines1 = sScript1.split("\n"),
 			aLines2 = sScript2.split("\n"),
 			aResult = [],
-			iLine1, iLine2;
+			iLine1, sLine2, iLine2;
 
 		while (aLines1.length && aLines2.length) {
 			iLine1 = iLine1 || parseInt(aLines1[0], 10);
 			iLine2 = iLine2 || parseInt(aLines2[0], 10);
-			if (iLine1 < iLine2) {
+			if (iLine1 < iLine2) { // use line from script1
 				aResult.push(aLines1.shift());
 				iLine1 = 0;
-			} else {
-				aResult.push(aLines2.shift());
-				if (iLine1 === iLine2) {
-					aLines1.shift(); // overwrite line1
+			} else { // use line from script2
+				sLine2 = aLines2.shift();
+				if (String(iLine2) !== sLine2) { // line not empty?
+					aResult.push(sLine2);
+				}
+				if (iLine1 === iLine2) { // same line numbber in script1 and script2
+					aLines1.shift(); // ignore line from script1 (overwrite it)
 					iLine1 = 0;
 				}
 				iLine2 = 0;
@@ -430,6 +445,20 @@ Controller.prototype = {
 		}
 		aResult = aResult.concat(aLines1, aLines2); // put in remaining lines from one source
 		return aResult.join("\n");
+	},
+
+	// get line range from a script with sorted line numbers
+	fnGetLineRange: function (sScript, iFirstLine, iLastLine) {
+		var aLines = sScript ? sScript.split("\n") : [];
+
+		while (aLines.length && parseInt(aLines[0], 10) < iFirstLine) {
+			aLines.shift();
+		}
+
+		while (aLines.length && parseInt(aLines[aLines.length - 1], 10) > iLastLine) {
+			aLines.pop();
+		}
+		return aLines;
 	},
 
 	fnLoadContinue: function (sInput, sMeta) {
@@ -609,7 +638,40 @@ Controller.prototype = {
 		}
 	},
 
-	fnEraseFile: function (sName) {
+	fnDelete2: function (oParas) {
+		var sInputText = this.view.getAreaValue("inputText"),
+			aLines = this.fnGetLineRange(sInputText, oParas.iFirst, oParas.iLast),
+			i, sInput;
+
+		if (aLines.length) {
+			for (i = 0; i < aLines.length; i += 1) {
+				aLines[i] = parseInt(aLines[i], 10); // keep just the line numbers
+			}
+			sInput = aLines.join("\n");
+
+			sInput = this.fnMergeScripts(sInputText, sInput); // delete sInput lines
+			this.view.setAreaValue("inputText", sInput);
+		}
+
+		this.oVm.vmGotoLine(0); // reset current line
+		this.oVm.vmStop("end", 0, true);
+	},
+
+	fnList2: function (oParas) {
+		var sInput = this.view.getAreaValue("inputText"),
+			iStream = oParas.iStream,
+			aLines = this.fnGetLineRange(sInput, oParas.iFirst, oParas.iLast),
+			i;
+
+		for (i = 0; i < aLines.length; i += 1) {
+			this.oVm.print(iStream, aLines[i] + "\r\n");
+		}
+
+		this.oVm.vmGotoLine(0); // reset current line
+		this.oVm.vmStop("end", 0, true);
+	},
+
+	fnEraseFile2: function (sName) {
 		var oStorage = Utils.localStorage,
 			sStorageName = this.fnLocalStorageName(sName);
 
@@ -640,7 +702,7 @@ Controller.prototype = {
 		this.fnInvalidateScript();
 	},
 
-	fnRenum2: function (iNew, iOld, iStep, iKeep) {
+	fnRenum2: function (oParas) {
 		var oVm = this.oVm,
 			sInput = this.view.getAreaValue("inputText"),
 			oOutput, oError, iEndPos, sOutput;
@@ -653,7 +715,7 @@ Controller.prototype = {
 		}
 
 		this.oBasicFormatter.reset();
-		oOutput = this.oBasicFormatter.renumber(sInput, iNew, iOld, iStep, iKeep);
+		oOutput = this.oBasicFormatter.renumber(sInput, oParas.iNew, oParas.iOld, oParas.iStep, oParas.iKeep);
 
 		if (oOutput.error) {
 			oError = oOutput.error;
@@ -666,8 +728,50 @@ Controller.prototype = {
 			sOutput = oOutput.text;
 			this.view.setAreaValue("inputText", sOutput);
 		}
+		this.oVm.vmGotoLine(0); // reset current line
 		oVm.vmStop("end", 0, true);
 		return oOutput;
+	},
+
+	fnEditCallback: function () {
+		var oInput = this.oVm.vmGetStopObject().oParas,
+			sInput = oInput.sInput,
+			sInputText = this.view.getAreaValue("inputText");
+
+		sInput = this.fnMergeScripts(sInputText, sInput);
+		this.view.setAreaValue("inputText", sInput);
+		this.oVm.vmSetStartLine(0); //TTT or fnInvalidateScript?
+		this.oVm.vmGotoLine(0); // to be sure
+		this.view.setDisabled("continueButton", true);
+		this.oVm.cursor(oInput.iStream, 0);
+		this.oVm.vmStop("end", 90);
+		return true;
+	},
+
+	fnEdit2: function (iLine) {
+		var sInput = this.view.getAreaValue("inputText"),
+			aLines = this.fnGetLineRange(sInput, iLine, iLine),
+			oStop = this.oVm.vmGetStopObject(),
+			iStream = oStop.oParas.iStream,
+			sLine, oError;
+
+		if (aLines.length) {
+			sLine = aLines[0];
+			this.oVm.print(iStream, sLine);
+			this.oVm.cursor(iStream, 1);
+			this.oVm.vmStop("input", 45, true, { //TTT set new
+				iStream: 0,
+				sMessage: "",
+				fnInputCallback: this.fnEditCallback.bind(this),
+				sInput: sLine
+			});
+			this.oKeyboard.setKeyDownHandler(this.fnWaitForInputHandler);
+			this.fnWaitForInput();
+		} else {
+			oError = this.oVm.vmSetError(8, iLine); // "Line does not exist"
+			this.oVm.print(0, String(oError) + "\r\n");
+			this.oVm.vmStop("stop", 60, true); //TTT
+		}
 	},
 
 	fnParse2: function () {
@@ -727,11 +831,12 @@ Controller.prototype = {
 			oVm = this.oVm;
 
 		iLine = iLine || 0;
-
+		/*
 		if (iLine === 0) {
-			this.oVm.vmSetStartLine(0);
-			oVm.vmResetData();
+			//this.oVm.vmSetStartLine(0);
+			oVm.vmResetData(); // start from the beginning => also reset data
 		}
+		*/
 
 		if (!this.fnScript) {
 			oVm.vmSetVariables(this.oVariables);
@@ -751,7 +856,9 @@ Controller.prototype = {
 		if (this.fnScript) {
 			oVm.sOut = this.view.getAreaValue("resultText");
 			oVm.vmStop("", 0, true);
-			oVm.iLine = iLine;
+			//TTT oVm.iLine = iLine; //TTT
+			oVm.vmGotoLine(0); //TTT to load DATA lines
+			this.oVm.vmSetStartLine(iLine); // clear resets also startline
 
 			this.view.setDisabled("runButton", true);
 			this.view.setDisabled("stopButton", false);
@@ -763,10 +870,8 @@ Controller.prototype = {
 	},
 
 	fnParseRun2: function () {
-		var sInput = this.view.getAreaValue("inputText"),
-			oOutput;
+		var oOutput = this.fnParse2();
 
-		oOutput = this.fnParse2(sInput);
 		if (!oOutput.error) {
 			this.fnRun2();
 		}
@@ -804,8 +909,18 @@ Controller.prototype = {
 		sInput = sInput.trim();
 		if (sInput !== "") {
 			oInput.sInput = "";
-			if ((/^(\d)+ /).test(sInput)) { // start with number?
-				Utils.console.log("fnDirectInput: TODO: insert line :", sInput);
+			sInputText = this.view.getAreaValue("inputText");
+			if ((/^(\d)+/).test(sInput)) { // start with number?
+				if (Utils.debug > 0) {
+					Utils.console.debug("fnDirectInput: insert line=" + sInput);
+				}
+				sInput = this.fnMergeScripts(sInputText, sInput);
+				this.view.setAreaValue("inputText", sInput);
+
+				this.oVm.vmSetStartLine(0); //TTT or fnInvalidateScript?
+				this.oVm.vmGotoLine(0); // to be sure
+				this.view.setDisabled("continueButton", true);
+
 				this.oVm.cursor(oInput.iStream, 1);
 				return false; // continue direct input
 			}
@@ -814,12 +929,14 @@ Controller.prototype = {
 
 			// see: fnParse2()
 
-			this.oCodeGeneratorJs.reset();
-			sInputText = this.view.getAreaValue("inputText");
 			if (sInputText) { // do we have a program?
-				sInput += "\n" + sInputText;
+				this.oCodeGeneratorJs.reset();
+				oOutput = this.oCodeGeneratorJs.generate(sInput + "\n" + sInputText, this.oVariables, true); // compile both; allow direct command
 			}
-			oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables, true); // allow direct command
+			if (!oOutput || oOutput.error) {
+				this.oCodeGeneratorJs.reset();
+				oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables, true); // compile direct input only
+			}
 
 			if (oOutput.error) {
 				oError = oOutput.error;
@@ -901,7 +1018,7 @@ Controller.prototype = {
 		}
 		this.bTimeoutHandlerActive = false; // not running any more
 
-		if (sReason === "stop" || sReason === "end" || sReason === "error") {
+		if (sReason === "stop" || sReason === "end" || sReason === "error" || sReason === "parse" || sReason === "parseRun") {
 			this.fnStartDirectInput();
 		}
 	},
@@ -922,6 +1039,14 @@ Controller.prototype = {
 		case "break":
 			break;
 
+		case "delete":
+			this.fnDelete2(oStop.oParas);
+			break;
+
+		case "edit":
+			this.fnEdit2(oStop.oParas.iLine);
+			break;
+
 		case "end":
 			break;
 
@@ -929,8 +1054,9 @@ Controller.prototype = {
 			break;
 
 		case "eraseFile":
+			//this.fnEraseFile2(oVm.vmGetNextInput());
+			this.fnEraseFile2(oStop.oParas.sName);
 			oVm.vmStop("", 0, true);
-			this.fnEraseFile(oVm.vmGetNextInput());
 			break;
 
 		case "escape":
@@ -947,6 +1073,10 @@ Controller.prototype = {
 		case "input":
 			this.oKeyboard.setKeyDownHandler(this.fnWaitForInputHandler);
 			this.fnWaitForInput();
+			break;
+
+		case "list":
+			this.fnList2(oStop.oParas);
 			break;
 
 		case "waitKey":
@@ -971,7 +1101,8 @@ Controller.prototype = {
 			break;
 
 		case "renum":
-			this.fnRenum2(oVm.vmGetNextInput(), oVm.vmGetNextInput(), oVm.vmGetNextInput(), oVm.vmGetNextInput());
+			//this.fnRenum2(oVm.vmGetNextInput(), oVm.vmGetNextInput(), oVm.vmGetNextInput(), oVm.vmGetNextInput());
+			this.fnRenum2(oStop.oParas);
 			break;
 
 		case "reset":
@@ -979,8 +1110,8 @@ Controller.prototype = {
 			break;
 
 		case "run":
-			this.fnRun2();
-			this.oVm.vmSetStartLine(oVm.vmGetNextInput() || 0); // set start line number (after line 0)
+			this.fnRun2(oStop.oParas && oStop.oParas.iLine);
+			//this.oVm.vmSetStartLine(oVm.vmGetNextInput() || 0); // set start line number (after line 0)
 			break;
 
 		case "saveFile":
@@ -1028,18 +1159,33 @@ Controller.prototype = {
 
 
 	fnParse: function () {
+		this.oKeyboard.setKeyDownHandler(null);
 		this.oVm.vmStop("parse", 99);
 		this.startMainLoop();
 	},
 
 	fnRenum: function () {
+		var iStream = 0;
+
+		/*
 		this.oVm.vmSetInputValues([
 			10,
 			1,
 			10,
 			65535
 		]);
-		this.oVm.vmStop("renum", 99);
+		*/
+		this.oVm.vmStop("renum", 99, false, {
+			iNew: 10,
+			iOld: 1,
+			iStep: 10,
+			iKeep: 65535 // keep lines
+		});
+
+		if (this.oVm.pos(iStream) > 1) {
+			this.oVm.print(iStream, "\r\n");
+		}
+		this.oVm.print(iStream, "renum\r\n");
 		this.startMainLoop();
 	},
 
@@ -1077,6 +1223,12 @@ Controller.prototype = {
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
 		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop" || oStop.sReason === "direct" || oStop.sReason === "input") {
+			if (!oSavedStop.fnInputCallback) { // no keyboard callback? make sure no handler is set (especially for direct->continue)
+				this.oKeyboard.setKeyDownHandler(null);
+			}
+			if (oStop.sReason === "direct" || oStop.sReason === "escape") {
+				this.oVm.cursor(oStop.oParas.iStream, 0); // switch it off (for continue button)
+			}
 			Object.assign(oStop, oSavedStop); // fast hack
 			this.fnSetStopObject(this.oNoStop);
 		}
@@ -1125,12 +1277,6 @@ Controller.prototype = {
 			fnDetermineStaticVarType = function (sName) {
 				var sNameType;
 
-				/*
-				if (sName.indexOf("v.") === 0) {
-					sName = sName.substr(2); // remove preceding "v."
-				}
-				*/
-
 				sNameType = sName.charAt(0); // take first character to determine var type later
 
 				// explicit type specified?
@@ -1149,7 +1295,6 @@ Controller.prototype = {
 			value = new Function("o", value); // eslint-disable-line no-new-func
 			oVariables[sPar] = value;
 		} else {
-			//sType = this.oVm.vmDetermineVarType(sPar);
 			sVarType = fnDetermineStaticVarType(sPar);
 			sType = this.oVm.vmDetermineVarType(sVarType); // do we know dynamic type?
 			if (sType !== "$") { // not string? => convert to number
@@ -1158,7 +1303,7 @@ Controller.prototype = {
 				value = sValue;
 			}
 			try {
-				oVariables[sPar] = this.oVm.vmAssign(sVarType, value); //TTT
+				oVariables[sPar] = this.oVm.vmAssign(sVarType, value);
 				Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
 			} catch (e) {
 				Utils.console.warn(e);

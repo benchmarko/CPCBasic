@@ -122,7 +122,9 @@ CpcVm.prototype = {
 		// "break": 80 (break pressed)
 		// "escape": 85 (escape key, set in controller)
 		// "renum": 85 (RENUMber program)
+		// "delete": 90,
 		// "end": 90 (end of program)
+		// "list": 90,
 		// "loadFile": 90 (CHAIN, CHAIN MERGE, LOAD, MERGE, OPENIN, RUN)
 		// "saveFile": 90 (OPENOUT, SAVE)
 		// "reset": 90 (reset system)
@@ -1111,6 +1113,7 @@ CpcVm.prototype = {
 			this.error(17, "CONT"); // cannot continue
 		}
 		this.vmGotoLine(this.iStartLine, "CONT");
+		this.iStartLine = 0;
 	},
 
 	copychr$: function (iStream) {
@@ -1205,8 +1208,19 @@ CpcVm.prototype = {
 		this.bDeg = true;
 	},
 
-	"delete": function () { // complete program or line number range
-		this.vmNotImplemented("DELETE");
+	"delete": function (iFirst, iLast) { // varargs
+		if (iFirst !== undefined && iFirst !== null) {
+			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "DELETE");
+		}
+
+		if (iLast !== undefined) {
+			iLast = this.vmInRangeRound(iLast, 1, 65535, "DELETE");
+		}
+
+		this.vmStop("delete", 90, false, {
+			iFirst: iFirst || 1,
+			iLast: iLast || iFirst
+		});
 	},
 
 	derr: function () {
@@ -1239,7 +1253,9 @@ CpcVm.prototype = {
 	},
 
 	edit: function (iLine) {
-		this.vmNotImplemented("EDIT:", iLine);
+		this.vmStop("edit", 90, false, {
+			iLine: iLine
+		});
 	},
 
 	ei: function () {
@@ -1297,11 +1313,12 @@ CpcVm.prototype = {
 		iVolEnv = this.vmInRangeRound(iVolEnv, 1, 15, "ENV");
 
 		for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
-			/* eslint-disable no-bitwise */
 			if (arguments[i] !== null) {
 				oArg = {
 					steps: this.vmInRangeRound(arguments[i], 0, 127, "ENV"), // number of steps: 0..127
+					/* eslint-disable no-bitwise */
 					diff: this.vmInRangeRound(arguments[i + 1], -128, 127, "ENV") & 0x0f, // size (volume) of steps: moved to range 0..15
+					/* eslint-enable no-bitwise */
 					time: this.vmInRangeRound(arguments[i + 2], 0, 255, "ENV") // time per step: 0..255 (0=256)
 				};
 				if (!oArg.time) { // (0=256)
@@ -1313,7 +1330,6 @@ CpcVm.prototype = {
 					period: this.vmInRangeRound(arguments[i + 2], 0, 255, "ENV")
 				};
 			}
-			/* eslint-enable no-bitwise */
 			aArgs.push(oArg);
 		}
 		this.oSound.setVolEnv(iVolEnv, aArgs);
@@ -1735,8 +1751,22 @@ CpcVm.prototype = {
 		}
 	},
 
-	list: function () {
-		this.vmNotImplemented("LIST");
+	list: function (iStream, iFirst, iLast) { // varargs
+		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "LIST");
+
+		if (iFirst !== undefined && iFirst !== null) {
+			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "LIST");
+		}
+
+		if (iLast !== undefined) {
+			iLast = this.vmInRangeRound(iLast, 1, 65535, "LIST");
+		}
+
+		this.vmStop("list", 90, false, {
+			iStream: iStream,
+			iFirst: iFirst || 1,
+			iLast: iLast || iFirst
+		});
 	},
 
 	vmLoadCallback: function (sInput, sMeta) {
@@ -1907,7 +1937,8 @@ CpcVm.prototype = {
 	},
 
 	"new": function () {
-		this.vmNotImplemented("NEW");
+		this.clear();
+		this.delete(1, 65535); // delete program
 	},
 
 	// next
@@ -2044,13 +2075,6 @@ CpcVm.prototype = {
 			xRight = this.vmInRangeRound(xRight, -32768, 32767, "ORIGIN");
 			yTop = this.vmInRangeRound(yTop, -32768, 32767, "ORIGIN");
 			yBottom = this.vmInRangeRound(yBottom, -32768, 32767, "ORIGIN");
-			/*
-			if (yTop < yBottom) {
-				tmp = yTop;
-				yTop = yBottom;
-				yBottom = tmp;
-			}
-			*/
 			this.oCanvas.setGWindow(xLeft, xRight, yTop, yBottom);
 		}
 	},
@@ -2642,7 +2666,7 @@ CpcVm.prototype = {
 		return iRemain;
 	},
 
-	renum: function (iNew, iOld, iStep, iKeep) { // optional args: new number, old number, step, keep line (only for |renum)
+	renum: function (iNew, iOld, iStep, iKeep) { // varargs: new number, old number, step, keep line (only for |renum)
 		if (iNew !== null && iNew !== undefined) {
 			iNew = this.vmInRangeRound(iNew, 1, 65535, "RENUM");
 		}
@@ -2656,13 +2680,20 @@ CpcVm.prototype = {
 			iKeep = this.vmInRangeRound(iKeep, 1, 65535, "RENUM");
 		}
 
+		/*
 		this.vmSetInputValues([ // we misuse aInputValues
 			iNew || 10,
 			iOld || 1,
 			iStep || 10,
 			iKeep || 65535 // keep lines
 		]);
-		this.vmStop("renum", 85);
+		*/
+		this.vmStop("renum", 85, false, {
+			iNew: iNew || 10,
+			iOld: iOld || 1,
+			iStep: iStep || 10,
+			iKeep: iKeep || 65535 // keep lines
+		});
 	},
 
 	restore: function (iLine) {
@@ -2760,8 +2791,13 @@ CpcVm.prototype = {
 		var oInFile = this.oInFile;
 
 		if (sInput !== null) {
+			/*
 			this.vmSetInputValues([oInFile.iLine]); // we misuse aInputValues
 			this.vmStop("run", 90);
+			*/
+			this.vmStop("run", 90, false, {
+				iLine: oInFile.iLine
+			});
 		}
 		this.closein();
 	},
@@ -2778,9 +2814,14 @@ CpcVm.prototype = {
 			oInFile.sName = sName;
 			oInFile.fnFileCallback = this.fnRunHandler;
 			this.vmStop("loadFile", 90);
-		} else { // line number or no argument
+		} else { // line number or no argument = undefined
+			/*
 			this.vmSetInputValues([numOrString || 0]); // we misuse aInputValues
 			this.vmStop("run", 90); // number or undefined
+			*/
+			this.vmStop("run", 90, false, {
+				iLine: numOrString || 0
+			});
 		}
 	},
 
@@ -2849,28 +2890,28 @@ CpcVm.prototype = {
 		var oSoundData, i, oSqTimer;
 
 		iState = this.vmInRangeRound(iState, 1, 255, "SOUND");
-		iPeriod = this.vmInRangeRound(iPeriod, 0, 4095, "SOUND");
+		iPeriod = this.vmInRangeRound(iPeriod, 0, 4095, "SOUND ,");
 
 		if (iDuration !== undefined) {
-			iDuration = this.vmInRangeRound(iDuration, -32768, 32767, "SOUND");
+			iDuration = this.vmInRangeRound(iDuration, -32768, 32767, "SOUND ,,");
 		} else {
 			iDuration = 20;
 		}
 
 		if (iVolume !== undefined && iVolume !== null) {
-			iVolume = this.vmInRangeRound(iVolume, 0, 15, "SOUND");
+			iVolume = this.vmInRangeRound(iVolume, 0, 15, "SOUND ,,,");
 		} else {
 			iVolume = 12;
 		}
 
 		if (iVolEnv !== undefined && iVolEnv !== null) {
-			iVolEnv = this.vmInRangeRound(iVolEnv, 0, 15, "SOUND");
+			iVolEnv = this.vmInRangeRound(iVolEnv, 0, 15, "SOUND ,,,,");
 		}
 		if (iToneEnv !== undefined && iToneEnv !== null) {
-			iToneEnv = this.vmInRangeRound(iToneEnv, 0, 15, "SOUND");
+			iToneEnv = this.vmInRangeRound(iToneEnv, 0, 15, "SOUND ,,,,,");
 		}
 		if (iNoise !== undefined && iNoise !== null) {
-			iNoise = this.vmInRangeRound(iNoise, 0, 31, "SOUND");
+			iNoise = this.vmInRangeRound(iNoise, 0, 31, "SOUND ,,,,,,");
 		}
 		oSoundData = {
 			iState: iState,

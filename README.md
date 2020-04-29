@@ -64,9 +64,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *DELETE*, *EDIT*, *LIST*, *MASK*, *NEW*, *PRINT#8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, most AMDSOS commands
+- Unimplemented commands are ignored: *AUTO*, *CAT*, *MASK*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, most AMDSOS commands
 - Sound: More hardware volume envelopes
-- No direct input mode for BASIC commands, e.g. *LIST*, *RENUM*,...; no visible cursor
 - No complete check of the BASIC program
 - Incomplete type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
@@ -96,14 +95,16 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: *RENUM*]
 - [done: *SAVE* ASCII, *OPENOUT*, *PRINT #9*, *WRITE #9*]
 - [done: *CURSOR*, *CONT*]
-- [done: Edit and direct execution mode]
+- [done: Edit and direct input and execution mode; cursor]
+- [done: *DELETE*, *EDIT*, *LIST*, *NEW*]
 
 ## Extensions and Features
 
 - File save operations *SAVE*, *OPENOUT* write to Browser local storage; |ERA to erase a file.
 - Data can be loadad again with file load and merge commands like *LOAD*, *MERGE*, *OPENIN*. These also work on the predefined examples
-- *MODE 3*: High resolution with real 640x400 pixel and 16 colors; 8x8 pixel characters. Demo: [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
-- *|MODE,n*: Change mode without *CLS* (experimental)
+- *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character. This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
+Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
+- *|MODE,n*: Change mode without *CLS*, including mode 3 (experimental)
 - *|RENUM,...*: similar to *RENUM* but with 4th parameter to keep line numbers starting with that line
 - Computations with numbers are not limited to 16 bit
 - *PEEK&POKE* features:
@@ -152,9 +153,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Debugging
 
-- Use the URL parameter *tron=true* to compile with BASIC line number trace. The trace can be switched on and off in BASIC with *TRON* and *TROFF*. With trace on the correct line number is reported in case of an error.
+- Use the URL parameter *tron=true* to compile with BASIC line number trace. The trace can be switched on and off in BASIC with *TRON* and *TROFF*. A side effect of "trace on" in CPCBasic   is that the correct line number is reported in case of an error.
 - For debugging in a desktop browser, you will usually use the Browser Development Tools (F12).
-- You can also use a *Console log* window which is usually hidden. You can activate it with the URL parameters *showConsole=true* and *debug=2*:
+- You can also use a *Console log* window which is usually hidden. You can activate it with the URL parameters *showConsole=true* and *debug=2*. Example:
  [CPCBasic Debug](https://benchmarko.github.io/CPCBasic/cpcbasic.html?showConsole=true&debug=2).
  This is especially useful on mobile devices. Clear its content manually, if needed.
 - There is also an experimental parameter *bench=n* to time the *parsing step* n times.

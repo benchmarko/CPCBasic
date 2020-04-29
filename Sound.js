@@ -52,6 +52,13 @@ Sound.prototype = {
 		}
 
 		this.aVolEnv.length = 0;
+		this.setVolEnv(0, [ // set default ENV (should not be changed)
+			{
+				steps: 1,
+				diff: 0,
+				time: 200
+			}
+		]);
 		this.aToneEnv.length = 0;
 		this.iReleaseMask = 0;
 
@@ -274,7 +281,10 @@ Sound.prototype = {
 			iDuration = 0;
 		}
 
-		if (iVolEnv && this.aVolEnv[iVolEnv]) { // some volume envelope?
+		if (iVolEnv || !iDuration) { // some volume envelope or duration 0?
+			if (!this.aVolEnv[iVolEnv]) {
+				iVolEnv = 0; // envelope not defined => use default envelope 0
+			}
 			iDuration = this.applyVolEnv(this.aVolEnv[iVolEnv], oGain, fTime, iVolume, iDuration, iVolEnvRepeat);
 		}
 
