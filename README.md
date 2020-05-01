@@ -64,7 +64,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *CAT*, *MASK*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, most AMDSOS commands
+- Unimplemented commands are ignored: *AUTO*, *MASK*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, some AMDSOS commands
 - Sound: More hardware volume envelopes
 - No complete check of the BASIC program
 - Incomplete type checking
@@ -97,6 +97,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: *CURSOR*, *CONT*]
 - [done: Edit and direct input and execution mode; cursor]
 - [done: *DELETE*, *EDIT*, *LIST*, *NEW*]
+- [done: *CAT*, *|DIR*, *|ERA*, *|REN*]
 
 ## Extensions and Features
 

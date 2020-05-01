@@ -114,8 +114,12 @@ CpcVm.prototype = {
 		// "timer": 20 (timer expired)
 		// "key": 30  (wait for key)
 		// "frame": 40 (FRAME command: wait for frame fly)
-		// "sound": 43 (wait for sound queue) //TTT
+		// "sound": 43 (wait for sound queue)
 		// "input": 45 (wait for input: INPUT, LINE INPUT, RANDOMIZE without parameter)
+		// "fileCat": 45 (CAT)
+		// "fileDir": 45 (|DIR)
+		// "fileEra": 45 (|ERA)
+		// "fileRen": 45 (|REN)
 		// "error": 50 (BASIC error, ERROR command)
 		// "onError": 50 (ON ERROR GOTO active, hide error)
 		// "stop": 60 (STOP or END command)
@@ -292,6 +296,7 @@ CpcVm.prototype = {
 	},
 
 	vmResetFileHandling: function (oFile) {
+		/*
 		var oData = {
 			bOpen: false, // file open flag
 			sCommand: "", // command that started the file open (in: chain, chainMerge, load, merge, openin, run; out: save, openput)
@@ -302,8 +307,10 @@ CpcVm.prototype = {
 			fnFileCallback: null, // callback for stop reason "loadFile", "saveFile"
 			aFileData: [] // file contents for (LINE) INPUT #9; PRINT #9, WRITE #9
 		};
-
 		Object.assign(oFile, oData);
+		*/
+		oFile.bOpen = false;
+		oFile.sCommand = ""; // to be sure
 	},
 
 	vmResetData: function () {
@@ -731,10 +738,28 @@ CpcVm.prototype = {
 	},
 
 	vmAdaptFilename: function (sName, sErr) {
+		var iIndex;
+
 		this.vmAssertString(sName, sErr);
 		if (sName.indexOf("!") === 0) {
 			sName = sName.substr(1); // remove preceding "!"
 		}
+		iIndex = sName.indexOf(":");
+		if (iIndex >= 0) {
+			sName = sName.substr(iIndex + 1); // remove user and drive letter including ":"
+		}
+		sName = sName.toLowerCase();
+
+		if (!sName) {
+			this.error(32, "Bad filename: " + sName); //TTT
+		}
+
+		/*
+		if (sName.indexOf(".") < 0) { // no dot?
+			sName += "."; // append dot
+		}
+		*/
+
 		return sName;
 	},
 
@@ -743,9 +768,11 @@ CpcVm.prototype = {
 	},
 
 	vmTrace: function (iLine) {
+		var iStream = 0;
+
 		this.iTronLine = iLine;
 		if (this.bTron) {
-			this.print(0, "[" + iLine + "]");
+			this.print(iStream, "[" + iLine + "]");
 		}
 	},
 
@@ -981,7 +1008,25 @@ CpcVm.prototype = {
 	},
 
 	cat: function () {
-		this.vmNotImplemented("CAT");
+		var iStream = 0;
+
+		/*
+		var iStream = 0,
+			aDir = this.vmGetDirectoryEntries(),
+			i, sKey;
+
+		this.print(iStream, "\r\n");
+		for (i = 0; i < aDir.length; i += 1) {
+			sKey = aDir[i];
+			sKey = sKey.padStart(12, " ") + "   ";
+			this.print(iStream, sKey);
+		}
+		this.print(iStream, "\r\n");
+		*/
+		this.vmStop("fileCat", 45, false, {
+			iStream: iStream,
+			sCommand: "cat"
+		});
 	},
 
 	chain: function (sName, iLine) { // optional iLine
@@ -1079,10 +1124,14 @@ CpcVm.prototype = {
 		}
 	},
 
-	cls: function (iStream) {
+	cls: function (iStream) { // optional iStream
 		var oWin;
 
-		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "CLS");
+		if (iStream) {
+			iStream = this.vmInRangeRound(iStream, 0, 7, "CLS");
+		} else {
+			iStream = 0;
+		}
 		oWin = this.aWindow[iStream];
 		this.oCanvas.clearTextWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom, oWin.iPaper); // cls window
 		this.sOut = "";
@@ -1119,7 +1168,7 @@ CpcVm.prototype = {
 	copychr$: function (iStream) {
 		var oWin, iChar, sChar;
 
-		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "COPYCHR$");
+		iStream = this.vmInRangeRound(iStream, 0, 7, "COPYCHR$");
 		this.vmMoveCursor2AllowedPos(iStream);
 		oWin = this.aWindow[iStream];
 		this.vmDrawUndrawCursor(iStream); // undraw
@@ -1547,6 +1596,7 @@ CpcVm.prototype = {
 
 	vmInputCallback: function () {
 		var oInput = this.vmGetStopObject().oParas,
+			iStream = oInput.iStream,
 			sInput = oInput.sInput,
 			aInputValues = sInput.split(","),
 			aTypes = oInput.aTypes,
@@ -1571,12 +1621,12 @@ CpcVm.prototype = {
 			bInputOk = false;
 		}
 
-		this.cursor(oInput.iStream, 0);
+		this.cursor(iStream, 0);
 		if (!bInputOk) {
-			this.print(oInput.iStream, "?Redo from start\r\n");
+			this.print(iStream, "?Redo from start\r\n");
 			oInput.sInput = "";
-			this.print(oInput.iStream, oInput.sMessage);
-			this.cursor(oInput.iStream, 1);
+			this.print(iStream, oInput.sMessage);
+			this.cursor(iStream, 1);
 		} else {
 			this.vmSetInputValues(aInputValues);
 		}
@@ -1603,6 +1653,9 @@ CpcVm.prototype = {
 						aValue = aFileData[0].match(/^(\S+)(.*)/);
 						value = aValue[1];
 						aFileData[0] = aValue[2];
+						if (!aFileData[0].length) { // eslint-disable-line max-depth
+							aFileData.shift(); // remove empty line
+						}
 						value = this.vmVal(value); // convert to number (also binary, hex)
 						if (isNaN(value)) { // eslint-disable-line max-depth
 							this.error(13, "INPUT #9 " + value); // Type mismatch
@@ -1771,7 +1824,7 @@ CpcVm.prototype = {
 
 	vmLoadCallback: function (sInput, sMeta) {
 		var oInFile = this.oInFile,
-			aMeta, iAddress, iLength, i;
+			aMeta, iAddress, iLength, i, iByte;
 
 		if (sInput !== null) {
 			if (sMeta && Utils.stringStartsWith(sMeta, "B")) { // only for binary files
@@ -1781,7 +1834,8 @@ CpcVm.prototype = {
 				iLength = Number(aMeta[2]);
 
 				for (i = 0; i < iLength; i += 1) {
-					this.poke(iAddress + i, parseInt(sInput.substr(2 * i, 2), 16)); // ASCII hex data
+					iByte = parseInt(sInput.substr(2 * i, 2), 16); // ASCII hex data
+					this.poke((iAddress + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
 				}
 			}
 		}
@@ -2022,8 +2076,16 @@ CpcVm.prototype = {
 		var oInFile = this.oInFile;
 
 		if (sInput !== null) {
+			if (Utils.stringEndsWith(sInput, "\n")) {
+				sInput = sInput.substr(0, sInput.length - 1); //TTT remove last "\n"
+			}
 			oInFile.aFileData = sInput.split("\n");
-			oInFile.sState = "loaded";
+			/*
+			if (oInFile.aFileData.length && oInFile.aFileData[oInFile.aFileData.length - 1] === "") {
+				oInFile.aFileData.pop();
+			}
+			*/
+			//oInFile.sState = "loaded";
 		} else {
 			this.closein();
 		}
@@ -2049,18 +2111,16 @@ CpcVm.prototype = {
 	openout: function (sName) {
 		var oOutFile = this.oOutFile;
 
-		sName = this.vmAdaptFilename(sName, "OPENOUT");
-		if (!oOutFile.bOpen) {
-			if (sName) {
-				oOutFile.bOpen = true;
-				oOutFile.sCommand = "openout";
-				oOutFile.sName = sName;
-				oOutFile.aFileData.length = 0; // to be sure
-				oOutFile.sType = "A"; // ASCII
-			}
-		} else {
+		if (oOutFile.bOpen) {
 			this.error(27, "OPENOUT " + oOutFile.sName); // file already open
 		}
+		sName = this.vmAdaptFilename(sName, "OPENOUT");
+
+		oOutFile.bOpen = true;
+		oOutFile.sCommand = "openout";
+		oOutFile.sName = sName;
+		oOutFile.aFileData = []; // no data yet
+		oOutFile.sType = "A"; // ASCII
 	},
 
 	// or
@@ -2202,7 +2262,7 @@ CpcVm.prototype = {
 	pos: function (iStream) {
 		var iPos;
 
-		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "POS");
+		iStream = this.vmInRangeRound(iStream, 0, 9, "POS");
 		if (iStream < 8) {
 			this.vmMoveCursor2AllowedPos(iStream);
 			iPos = this.aWindow[iStream].iPos + 1;
@@ -2827,6 +2887,7 @@ CpcVm.prototype = {
 
 	save: function (sName, sType, iAddr, iLen, iEntry) { // varargs; parameter sType,... are optional
 		var oOutFile = this.oOutFile,
+			aFileData = [],
 			i;
 
 		sName = this.vmAdaptFilename(sName, "SAVE");
@@ -2852,7 +2913,7 @@ CpcVm.prototype = {
 					sType += "," + iEntry;
 				}
 				for (i = 0; i < iLen; i += 1) {
-					oOutFile.aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); // store binary data
+					aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); // store binary data
 				}
 			} else if (sType === "P") { // protected BASIC
 				// ...
@@ -2863,17 +2924,14 @@ CpcVm.prototype = {
 			sType = "T"; // new (default) type: tokenized BASIC
 		}
 
-		if (oOutFile.bOpen) {
-			// TODO: closeout?
-		}
-		if (sName) {
-			oOutFile.bOpen = true;
-			oOutFile.sCommand = "save";
-			oOutFile.sName = sName;
-			oOutFile.sType = sType;
-			oOutFile.fnFileCallback = this.fnCloseoutHandler; // we use closeout handler to reset out file handling
-			this.vmStop("saveFile", 90); // must stop directly after save
-		}
+		oOutFile.bOpen = true;
+		oOutFile.sCommand = "save";
+		oOutFile.sName = sName;
+		oOutFile.sType = sType;
+		oOutFile.aFileData = aFileData;
+		oOutFile.fnFileCallback = this.fnCloseoutHandler; // we use closeout handler to reset out file handling
+
+		this.vmStop("saveFile", 90); // must stop directly after save
 	},
 
 	sgn: function (n) {
@@ -3098,18 +3156,26 @@ CpcVm.prototype = {
 		return sStr;
 	},
 
-	tag: function (iStream) {
+	tag: function (iStream) { // optional iStream
 		var oWin;
 
-		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "TAG");
+		if (iStream) {
+			iStream = this.vmInRangeRound(iStream, 0, 7, "TAG");
+		} else {
+			iStream = 0;
+		}
 		oWin = this.aWindow[iStream];
 		oWin.bTag = true;
 	},
 
-	tagoff: function (iStream) {
+	tagoff: function (iStream) { // optional iStream
 		var oWin;
 
-		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "TAGOFF");
+		if (iStream) {
+			iStream = this.vmInRangeRound(iStream, 0, 7, "TAGOFF");
+		} else {
+			iStream = 0;
+		}
 		oWin = this.aWindow[iStream];
 		oWin.bTag = false;
 	},
@@ -3230,7 +3296,7 @@ CpcVm.prototype = {
 	},
 
 	vpos: function (iStream) {
-		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "VPOS");
+		iStream = this.vmInRangeRound(iStream, 0, 7, "VPOS");
 		this.vmMoveCursor2AllowedPos(iStream);
 		return this.aWindow[iStream].iVpos + 1;
 	},

@@ -33,189 +33,192 @@ function BasicParser(options) {
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
 // following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), q=line number range, r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
-	abs: "f n",
-	after: "c n n?",
-	afterGosub: "c n n?", // special, cannot check optional first n, and line number
-	and: "o",
-	asc: "f s",
-	atn: "f n",
-	auto: "c",
-	bin$: "f n n?",
-	border: "c n n?",
-	"break": "x",
-	call: "c n *",
-	cat: "c",
-	chain: "c s n?", // chain, chain merge
-	chainMerge: "c s *", // special
-	chr$: "f n",
-	cint: "f n",
-	clear: "c", // clear, clear input
-	clearInput: "c",
-	clg: "c n?",
-	closein: "c",
-	closeout: "c",
-	cls: "c #0?",
-	cont: "c",
-	copychr$: "f #",
-	cos: "f n",
-	creal: "f n",
-	cursor: "c #0? n0? n?",
-	data: "c *",
-	dec$: "f n s",
-	def: "c s *", // not checked
-	defint: "c r r*",
-	defreal: "c r r*",
-	defstr: "c r r*",
-	deg: "c",
-	"delete": "c q?", // not checked
-	derr: "f",
-	di: "c",
-	dim: "c v *",
-	draw: "c n n n0? n?",
-	drawr: "c n n n0? n?",
-	edit: "c n",
-	ei: "c",
-	"else": "c", // else belongs to "if", but can also be used as command
-	end: "c",
-	ent: "c n *",
-	env: "c n *",
-	eof: "f",
-	erase: "c v *",
-	erl: "f",
-	err: "f",
-	error: "c n",
-	every: "c n n?",
-	everyGosub: "c n n?", // special, cannot check optional first n, and line number
-	exp: "f n",
-	fill: "c n",
-	fix: "f n",
-	fn: "f", // can also be separate
-	"for": "c",
-	frame: "c",
-	fre: "f a",
-	gosub: "c l",
-	"goto": "c l",
-	graphics: "c", // graphics paper, graphics pen
-	graphicsPaper: "x n", // special
-	graphicsPen: "x n n?", // special
-	hex$: "f n n?",
-	himem: "f",
-	"if": "c",
-	ink: "c n n n?",
-	inkey: "f n",
-	inkey$: "f",
-	inp: "f n",
-	input: "c #0? *", // not checked
-	instr: "f a a a?", // cannot check "f n? s s"
-	"int": "f n",
-	joy: "f n",
-	key: "c n s", // key, key def
-	keyDef: "c n n n? n? n?",
-	left$: "f s n",
-	len: "f s",
-	let: "c",
-	line: "c", // line input (not checked)
-	list: "c q?", // not checked
-	load: "c s n?",
-	locate: "c #0? n n",
-	log: "f n",
-	log10: "f n",
-	lower$: "f s",
-	mask: "c n0? n?",
-	max: "f n *",
-	memory: "c n",
-	merge: "c s",
-	mid$: "f s n n?",
-	mid$Assign: "c s n n?", // mid$ as assign, not really a command because it has parenthesis
-	min: "f n *",
-	mod: "o",
-	mode: "c n",
-	move: "c n n n0? n?",
-	mover: "c n n n0? n?",
-	"new": "c",
-	next: "c v*",
-	not: "o",
-	on: "c", // on break cont, on break gosub, on break stop, on error goto, on <ex> gosub, on <ex> goto, on sq(n) gosub
-	onBreakGosub: "c l", // special
-	onErrorGoto: "c l", // special
-	onGosub: "c l l*", // special (n not checked)
-	onGoto: "c l l*", // special (n not checked)
-	onSqGosub: "c l", // special
-	openin: "c s",
-	openout: "c s",
-	or: "o",
-	origin: "c n n n? n? n? n?",
-	out: "c n n",
-	paper: "c #0? n",
-	peek: "f n",
-	pen: "c #0? n0 n?",
-	pi: "f",
-	plot: "c n n n0? n?",
-	plotr: "c n n n0? n?",
-	poke: "c n n",
-	pos: "f #",
-	print: "c #0? *", // print also with spc(), tab(), using
-	rad: "c",
-	randomize: "c n?",
-	read: "c v v*",
-	release: "c n",
-	rem: "c s?",
-	remain: "f n",
-	renum: "c n0? n0? n?",
-	restore: "c l?",
-	resume: "c l?", // resume, resume <line>
-	resumeNext: "c",
-	"return": "c",
-	right$: "f s n",
-	rnd: "f n?",
-	round: "f n n?",
-	run: "c a?", // cannot check "c s | l?"
-	save: "c s a? n? n? n?",
-	sgn: "f n",
-	sin: "f n",
-	sound: "c n n n? n0? n0? n0? n?",
-	space$: "f n",
-	spc: "x n", // print spc
-	speed: "c", // speed ink, speed key, speed write
-	speedInk: "c n n", // special
-	speedKey: "c n n", // special
-	speedWrite: "c n", // special
-	sq: "f n",
-	sqr: "f n",
-	step: "x", // for ... to ... step
-	stop: "c",
-	str$: "f n",
-	string$: "f n s",
-	swap: "x n n?", // window swap
-	symbol: "c n n *", // symbol, symbol after
-	symbolAfter: "c n", // special
-	tab: "x n", // print tab
-	tag: "c n?",
-	tagoff: "c n?",
-	tan: "f n",
-	test: "f n n",
-	testr: "f n n",
-	then: "x", // if...then
-	time: "f",
-	to: "x", // for...to
-	troff: "c",
-	tron: "c",
-	unt: "f n",
-	upper$: "f s",
-	using: "x", // print using
-	val: "f s",
-	vpos: "f #",
-	wait: "c n n n?",
-	wend: "c",
-	"while": "c n",
-	width: "c n",
-	window: "c #0? n n n n", // window, window swap
-	windowSwap: "c n n?", // special: with numbers (no streams)
-	write: "c #0? *", // not checked
-	xor: "o",
-	xpos: "f",
-	ypos: "f",
-	zone: "c n"
+	abs: "f n", // ABS(<numeric expression>)
+	after: "c", // => afterGosub
+	afterGosub: "c n n?", // AFTER <timer delay>[,<timer number>] GOSUB <line number> / (special, cannot check optional first n, and line number)
+	and: "o", // <argument> AND <argument>
+	asc: "f s", // ASC(<string expression>)
+	atn: "f n", // ATN(<numeric expression>)
+	auto: "c", //TODO: AUTO [<line number>][,<increment>]
+	bin$: "f n n?", // BIN$(<unsigned integer expression>[,<integer expression>])
+	border: "c n n?", // BORDER <color>[,<color>]
+	"break": "x", // see: ON BREAK...
+	call: "c n *", // CALL <address expression>[,<list of: parameter>]
+	cat: "c", // CAT
+	chain: "c s n?", // CHAIN <filename>[,<line number expression>]  or: => chainMerge
+	chainMerge: "c s *", // CHAIN MERGE <filename>[,<line number expression>][,DELETE <line number range>] / (special)
+	chr$: "f n", // CHR$(<integer expression>)
+	cint: "f n", // CINT(<numeric expression>)
+	clear: "c", // CLEAR  or: => clearInput
+	clearInput: "c", // CLEAR INPUT
+	clg: "c n?", // CLG[<ink>]
+	closein: "c", // CLOSEIN
+	closeout: "c", // CLOSEOUT
+	cls: "c #?", // CLS[#<stream expression>]
+	cont: "c", // CONT
+	copychr$: "f #", // COPYCHR$(#<stream expression>)
+	cos: "f n", // COS(<numeric expression>)
+	creal: "f n", // CREAL(<numeric expression>)
+	cursor: "c #0? n0? n?", // CURSOR [<system switch>][,<user switch>] (either parameter can be omitted but not both)
+	data: "c *", // DATA <list of: constant>
+	dec$: "f n s", // DEC$(<numeric expression>,<format template>)
+	def: "c s *", // DEF FN[<space>]<function name>[(<formal parameters>)]=<expression> / (not checked from this)
+	defint: "c r r*", // DEFINT <list of: letter range>
+	defreal: "c r r*", // DEFREAL <list of: letter range>
+	defstr: "c r r*", // DEFSTR <list of: letter range>
+	deg: "c", // DEG
+	"delete": "c q?", // DELETE [<line number range>] / (not checked from this)
+	derr: "f", // DERR
+	di: "c", // DI
+	dim: "c v *", // DIM <list of: subscripted variable>
+	draw: "c n n n0? n?", // DRAW <x coordinate>,<y coordinate>[,[<ink>][,<ink mode>]]
+	drawr: "c n n n0? n?", // DRAWR <x offset>,<y offset>[,[<ink>][,<ink mode>]]
+	edit: "c n", // EDIT <line number>
+	ei: "c", // EI
+	"else": "c", // see: IF (else belongs to "if", but can also be used as command)
+	end: "c", // END
+	ent: "c n *", // ENT <envelope number>[,<envelope section][,<envelope section>]... (up to 5) / section: <number of steps>,<step size>,<pause time>  or: =<tone period>,<pause time>
+	env: "c n *", // ENV <envelope number>[,<envelope section][,<envelope section>]... (up to 5) / section: <number of steps>,<step size>,<pause time>  or: =<hardware envelope>,<envelope period>
+	eof: "f", // EOF
+	erase: "c v *", // ERASE <list of: variable name>  (array names without indices or dimensions)
+	erl: "f", // ERL
+	err: "f", // ERR
+	error: "c n", // ERROR <integer expression>
+	every: "c", // => everyGosub
+	everyGosub: "c n n?", // EVERY <timer delay>[,<timer number>] GOSUB <line number>  / (special, cannot check optional first n, and line number)
+	exp: "f n", // EXP(<numeric expression>)
+	fill: "c n", // FILL <ink>
+	fix: "f n", // FIX(<numeric expression>)
+	fn: "f", // see DEF FN / (FN can also be separate from <function name>)
+	"for": "c", // FOR <simple variable>=<start> TO <end> [STEP <size>]
+	frame: "c", // FRAME
+	fre: "f a", // FRE(<numeric expression>)  or: FRE(<string expression>)
+	gosub: "c l", // GOSUB <line number>
+	"goto": "c l", // GOTO <line number>
+	graphics: "c", // => graphicsPaper or graphicsPen
+	graphicsPaper: "x n", // GRAPHICS PAPER <ink>  / (special)
+	graphicsPen: "x n n?", // GRAPHICS PEN <ink>[,<background mode>]  / (special)
+	hex$: "f n n?", // HEX$(<unsigned integer expression>[,<field width>])
+	himem: "f", // HIMEM
+	"if": "c", // IF <logical expression> THEN <option part> [ELSE <option part>]
+	ink: "c n n n?", // INK <ink>,<color>[,<color>]
+	inkey: "f n", // INKEY(<integer expression>)
+	inkey$: "f", // INKEY$
+	inp: "f n", // INP(<port number>)
+	input: "c #0? *", // INPUT[#<stream expression>,][;][<quoted string><separator>]<list of: variable>  / (special: not checked from this)
+	instr: "f a a a?", // INSTR([<start position>,]<searched string>,<searched for string>)  / (cannot check "f n? s s")
+	"int": "f n", // INT(<numeric expression>)
+	joy: "f n", // JOY(<integer expression>)
+	key: "c n s", // KEY <expansion token number>,<string expression>  / or: => keyDef
+	keyDef: "c n n n? n? n?", // KEY DEF <key number>,<repeat>[,<normal>[,<shifted>[,<control>]]]
+	left$: "f s n", // LEFT$(<string expression>,<required length>)
+	len: "f s", // LEN(<string expression>)
+	let: "c", // LET <variable>=<expression>
+	line: "c", // => lineInput / (not checked from this)
+	lineInput: "c #0? *", // INPUT INPUT[#<stream expression>,][;][<quoted string><separator>]<string variable> (not checked from this)
+	list: "c q?", // LIST <line number range>[,#<stream expression>] (not checked from this)
+	load: "c s n?", // LOAD <filename>[,<address expression>]
+	locate: "c #0? n n", // LOCATE [#<stream expression>,]<x coordinate>,<y coordinate>
+	log: "f n", // LOG(<numeric expression>)
+	log10: "f n", // LOG10(<numeric expression>)
+	lower$: "f s", // LOWER$(<string expression>)
+	mask: "c n0? n?", // MASK [<integer expression>][,<first point setting>]  / (either of the parameters may be omitted, but not both)
+	max: "f n *", // MAX(<list of: numeric expression>)
+	memory: "c n", // MEMORY <address expression>
+	merge: "c s", // MERGE <filename>
+	mid$: "f s n n?", // MID$(<string expression>,<start position>[,<sub-string length>])  / (start position=1..255, sub-string length=0..255)
+	mid$Assign: "c s n n?", // MID$(<string variable>,<insertion point>[,<new string length>])=<new string expression>  / (mid$ as assign, not really a command because it has parenthesis)
+	min: "f n *", // MIN(<list of: numeric expression>)
+	mod: "o", // <argument> MOD <argument>
+	mode: "c n", // MODE <integer expression>
+	move: "c n n n0? n?", // MOVE <x coordinate>,<y coordinate>[,[<ink>][,<ink mode>]]
+	mover: "c n n n0? n?", // MOVER <x offset>,<y offset>[,[<ink>][,<ink mode>]]
+	"new": "c", // NEW
+	next: "c v*", // NEXT [<list of: variable>]
+	not: "o", // NOT <argument>
+	on: "c", // => onBreakCont, on break gosub, on break stop, on error goto, on <ex> gosub, on <ex> goto, on sq(n) gosub
+	onBreakCont: "c", // ON BREAK CONT  / (special)
+	onBreakGosub: "c l", // ON BREAK GOSUB <line number>  / (special)
+	onBreakStop: "c", // ON BREAK STOP  / (special)
+	onErrorGoto: "c l", // ON ERROR GOTO <line number>  / (special)
+	onGosub: "c l l*", // ON <selector> GOSUB <list of: line number>  / (special; n not checked from this)
+	onGoto: "c l l*", // ON <selector> GOTO <list of: line number>  / (special; n not checked from this)
+	onSqGosub: "c l", // ON SQ(<channel>) GOSUB <line number>  / (special)
+	openin: "c s", // OPENIN <filename>
+	openout: "c s", // OPENOUT <filename>
+	or: "o", // <argument> OR <argument>
+	origin: "c n n n? n? n? n?", // ORIGIN <x>,<y>[,<left>,<right>,<top>,<bottom>]
+	out: "c n n", // OUT <port number>,<integer expression>
+	paper: "c #0? n", // PAPER[#<stream expression>,]<ink>
+	peek: "f n", // PEEK(<address expression>)
+	pen: "c #0? n0 n?", // PEN[#<stream expression>,][<ink>][,<background mode>]  / ink=0..15; background mode=0..1
+	pi: "f", // PI
+	plot: "c n n n0? n?", // PLOT <x coordinate>,<y coordinate>[,[<ink>][,<ink mode>]]
+	plotr: "c n n n0? n?", // PLOTR <x offset>,<y offset>[,[<ink>][,<ink mode>]]
+	poke: "c n n", // POKE <address expression>,<integer expression>
+	pos: "f #", // POS(#<stream expression>)
+	print: "c #0? *", // PRINT[#<stream expression>,][<list of: print items>] ... [;][SPC(<integer expression>)] ... [;][TAB(<integer expression>)] ... [;][USING <format template>][<separator expression>]
+	rad: "c", // RAD
+	randomize: "c n?", // RANDOMIZE [<numeric expression>]
+	read: "c v v*", // READ <list of: variable>
+	release: "c n", // RELEASE <sound channels>  / (sound channels=1..7)
+	rem: "c s?", // REM <rest of line>
+	remain: "f n", // REMAIN(<timer number>)  / (timer number=0..3)
+	renum: "c n0? n0? n?", // RENUM [<new line number>][,<old line number>][,<increment>]
+	restore: "c l?", // RESTORE [<line number>]
+	resume: "c l?", // RESUME [<line number>]  or: => resumeNext
+	resumeNext: "c", // RESUME NEXT
+	"return": "c", // RETURN
+	right$: "f s n", // RIGHT$(<string expression>,<required length>)
+	rnd: "f n?", // RND[(<numeric expression>)]
+	round: "f n n?", // ROUND(<numeric expression>[,<decimals>])
+	run: "c a?", // RUN <string expression>  or: RUN [<line number>]  / (cannot check "c s | l?")
+	save: "c s a? n? n? n?", // SAVE <filename>[,<file type>][,<binary parameters>]  // <binary parameters>=<start address>,<file tength>[,<entry point>]
+	sgn: "f n", // SGN(<numeric expression>)
+	sin: "f n", // SIN(<numeric expression>)
+	sound: "c n n n? n0? n0? n0? n?", // SOUND <channel status>,<tone period>[,<duration>[,<volume>[,<valume envelope>[,<tone envelope>[,<noise period>]]]]]
+	space$: "f n", // SPACE$(<integer expression>)
+	spc: "x n", // SPC(<integer expression)  / see: PRINT SPC
+	speed: "c", // => speedInk, speedKey, speedWrite
+	speedInk: "c n n", // SPEED INK <period1>,<period2>  / (special)
+	speedKey: "c n n", // SPEED KEY <start delay>,<repeat period>  / (special)
+	speedWrite: "c n", // SPEED WRITE <integer expression>  / (integer expression=0..1)
+	sq: "f n", // SQ(<channel>)  / (channel=1,2 or 4)
+	sqr: "f n", // SQR(<numeric expression>)
+	step: "x", // STEP <size> / see: FOR
+	stop: "c", // STOP
+	str$: "f n", // STR$(<numeric expression>)
+	string$: "f n a", // STRING$(<length>,<character specificier>) / character specificier=string character or number 0..255
+	swap: "x n n?", // => windowSwap
+	symbol: "c n n *", // SYMBOL <character number>,<list of: rows>   or => symbolAfter  / character number=0..255, list of 1..8 rows=0..255
+	symbolAfter: "c n", // SYMBOL AFTER <integer expression>  / integer expression=0..256 (special)
+	tab: "x n", // TAB(<integer expression)  / see: PRINT TAB
+	tag: "c #?", // TAG[#<stream expression>]
+	tagoff: "c #?", // TAGOFF[#<stream expression>]
+	tan: "f n", // TAN(<numeric expression>)
+	test: "f n n", // TEST(<x coordinate>,<y coordinate>)
+	testr: "f n n", // TESTR(<x offset>,<y offset>)
+	then: "x", // THEN <option part>  / see: IF
+	time: "f", // TIME
+	to: "x", // TO <end>  / see: FOR
+	troff: "c", // TROFF
+	tron: "c", // TRON
+	unt: "f n", // UNT(<address expression>)
+	upper$: "f s", // UPPER$(<string expression>)
+	using: "x", // USING <format template>[<separator expression>]  / see: PRINT
+	val: "f s", // VAL (<string expression>)
+	vpos: "f #", // VPOS(#<stream expression>)
+	wait: "c n n n?", // WAIT <port number>,<mask>[,<inversion>]
+	wend: "c", // WEND
+	"while": "c n", // WHILE <logical expression>
+	width: "c n", // WIDTH <integer expression>
+	window: "c #0? n n n n", // WINDOW[#<stream expression>,]<left>,<right>,<top>,<bottom>  / or: => windowSwap
+	windowSwap: "c n n?", // WINDOW SWAP <stream expression>,<stream expression>  / (special: with numbers, not streams)
+	write: "c #0? *", // WRITE [#<stream expression>,][<write list>]  / (not checked from this)
+	xor: "o", // <argument> XOR <argument>
+	xpos: "f", // XPOS
+	ypos: "f", // YPOS
+	zone: "c n" // ZONE <integer expression>  / integer expression=1..255
 };
 
 BasicParser.prototype = {
@@ -554,7 +557,7 @@ BasicParser.prototype = {
 							};
 						}
 					} else {
-						if (sType === "#") { // stream expected? (for functions)
+						if (sType.substr(0, 1) === "#") { // stream expected? (for functions)
 							advance("#");
 							oExpression = expression(0); // keep just number or expression without "#"
 						} else if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?

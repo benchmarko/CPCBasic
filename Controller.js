@@ -284,12 +284,12 @@ Controller.prototype = {
 		if (oStop.sReason === "direct") {
 			oStop.oParas.sInput = "";
 			sMsg = "*Break*\r\n";
-			this.oVm.print(0, sMsg);
+			this.oVm.print(iStream, sMsg);
 		} else if (oStop.sReason !== "escape") { // first escape?
 			this.oVm.cursor(iStream, 1);
 			this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
 			this.oVm.vmStop("escape", 85, false, {
-				iStream: 0
+				iStream: iStream
 			});
 		} else { // second escape
 			this.oKeyboard.setKeyDownHandler(null);
@@ -297,7 +297,7 @@ Controller.prototype = {
 			this.oVm.vmStop("stop", 0, true); // stop
 
 			sMsg = "Break in " + this.oVm.iLine + "\r\n";
-			this.oVm.print(0, sMsg);
+			this.oVm.print(iStream, sMsg);
 		}
 
 		this.startMainLoop();
@@ -461,6 +461,134 @@ Controller.prototype = {
 		return aLines;
 	},
 
+	fnGetDirectoryEntries: function (sMask) { // optional sMask
+		var oStorage = Utils.localStorage,
+			aDir = [],
+			oRegExp, i, sKey;
+
+		if (oStorage) {
+			if (sMask) {
+				//iDotIndex
+				sMask = sMask.replace(/([.+^$[\]\\(){}|-])/g, "\\$1");
+				sMask = sMask.replace(/\?/g, ".");
+				sMask = sMask.replace(/\*/g, ".*");
+				oRegExp = new RegExp("^" + sMask + "$");
+			}
+
+			for (i = 0; i < oStorage.length; i += 1) {
+				sKey = oStorage.key(i);
+				//if (Utils.stringEndsWith(sKey, "_D")) {
+				//sKey = sKey.substr(0, sKey.length - 2); // remove last 2 characters "_D"
+				if (!oRegExp || oRegExp.test(sKey)) {
+					aDir.push(sKey);
+				}
+				//}
+			}
+		}
+		/*
+		if (oStorage) {
+			this.print(iStream, "\r\n");
+			for (i = 0; i < oStorage.length; i += 1) {
+				sKey = oStorage.key(i);
+				if (Utils.stringEndsWith(sKey, "_D")) {
+					sKey = sKey.substr(0, sKey.length - 2); // remove last 2 characters "_D"
+					aParts = sKey.split(".");
+					sKey = aParts[0].padStart(8, " ") + "." + (aParts[1] || "").padStart(3, " ") + "   ";
+					this.print(iStream, sKey);
+				}
+			}
+		}
+		*/
+		return aDir;
+	},
+
+	fnFileCat: function (oParas) {
+		var iStream = oParas.iStream,
+			aDir = this.fnGetDirectoryEntries(),
+			i, sKey;
+
+		this.oVm.print(iStream, "\r\n");
+		// TODO: sort
+		for (i = 0; i < aDir.length; i += 1) {
+			sKey = aDir[i];
+			sKey = sKey.padStart(12, " ") + "   ";
+			this.oVm.print(iStream, sKey);
+		}
+		this.oVm.print(iStream, "\r\n");
+		this.oVm.vmStop("", 0, true);
+	},
+
+	fnFileDir: function (oParas) {
+		var iStream = oParas.iStream,
+			sFileMask = oParas.sFileMask,
+			aDir, i, sKey;
+
+		if (sFileMask) {
+			sFileMask =	this.fnLocalStorageName(sFileMask);
+		}
+		aDir = this.fnGetDirectoryEntries(sFileMask);
+		this.oVm.print(iStream, "\r\n");
+		for (i = 0; i < aDir.length; i += 1) {
+			sKey = aDir[i];
+			sKey = sKey.padStart(12, " ") + "   ";
+			this.oVm.print(iStream, sKey);
+		}
+		this.oVm.print(iStream, "\r\n");
+		this.oVm.vmStop("", 0, true);
+	},
+
+	fnFileEra: function (oParas) {
+		var iStream = oParas.iStream,
+			oStorage = Utils.localStorage,
+			sFileMask = oParas.sFileMask,
+			aDir, i, sName;
+
+		sFileMask =	this.fnLocalStorageName(sFileMask);
+		aDir = this.fnGetDirectoryEntries(sFileMask);
+
+		if (!aDir.length) {
+			this.oVm.print(iStream, sFileMask + " not found\r\n");
+		}
+
+		for (i = 0; i < aDir.length; i += 1) {
+			sName = aDir[i]; //this.fnLocalStorageName(aDir[i]);
+			if (oStorage) {
+				if (oStorage.getItem(sName) !== null) {
+					oStorage.removeItem(sName);
+					if (Utils.debug > 0) {
+						Utils.console.debug("fnEraseFile: sName=" + sName + ": removed from localStorage");
+					}
+				} else {
+					this.oVm.print(iStream, sName + " not found\r\n");
+					Utils.console.warn("fnEraseFile: file not found in localStorage:", sName);
+				}
+			}
+		}
+		this.oVm.vmStop("", 0, true);
+	},
+
+	fnFileRen: function (oParas) {
+		var iStream = oParas.iStream,
+			oStorage = Utils.localStorage,
+			sNew = oParas.sNew,
+			sOld = oParas.sOld,
+			sItem;
+
+		sNew = this.fnLocalStorageName(sNew);
+		sOld = this.fnLocalStorageName(sOld);
+
+		if (oStorage) {
+			sItem = oStorage.getItem(sOld);
+			if (sItem !== null) {
+				oStorage.setItem(sNew, sItem);
+				oStorage.removeItem(sOld);
+			} else {
+				this.oVm.print(iStream, sOld + " not found\r\n");
+			}
+		}
+		this.oVm.vmStop("", 0, true);
+	},
+
 	fnLoadContinue: function (sInput, sMeta) {
 		var oInFile = this.oVm.vmGetInFileObject(),
 			sCommand = oInFile.sCommand,
@@ -539,12 +667,13 @@ Controller.prototype = {
 			},
 			fnExampleError = function () {
 				var oVm = that.oVm,
+					iStream = 0,
 					oError;
 
 				Utils.console.log("Example", sUrl, "error");
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				oError = oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
-				oVm.print(0, String(oError) + "\r\n");
+				oVm.print(iStream, String(oError) + "\r\n");
 				that.fnLoadContinue(null);
 			};
 
@@ -579,66 +708,85 @@ Controller.prototype = {
 		}
 	},
 
-	fnLocalStorageName: function (sName, bMeta) {
-		return sName + (bMeta ? "_M" : "_D"); // modify name to not clash with localstorage methods/properites
+	fnLocalStorageName: function (sName) {
+		// modify name so we do not clash with localstorage methods/properites
+		if (sName.indexOf(".") < 0) { // no dot inside name?
+			sName += "."; // append dot
+		}
+		//return sName + (bMeta ? "_M" : "_D"); // modify name to not clash with localstorage methods/properites
+		return sName;
 	},
 
 	fnWaitForFile: function () {
 		var oInFile = this.oVm.vmGetInFileObject(),
-			sName = oInFile.sName,
 			oStorage = Utils.localStorage,
-			sStorageName = this.fnLocalStorageName(sName),
-			sInput, sMeta;
+			sName, sStorageName, sInput, iIndex, sMeta;
 
-		if (!oInFile.sState) {
-			oInFile.sState = "loading";
-			if (oStorage && (oStorage.getItem(sStorageName) !== null)) {
-				if (Utils.debug > 0) {
-					Utils.console.debug("DEBUG: fnWaitForFile: sName=" + sName + ": get from localStorage");
-				}
-				sInput = oStorage.getItem(sStorageName);
-				sMeta = oStorage.getItem(this.fnLocalStorageName(sName, true));
-				this.fnLoadContinue(sInput, sMeta);
-				oInFile.sState = "loaded";
-			} else { // load from example
-				this.fnLoadFile(sName);
+		if (!oInFile.bOpen) {
+			Utils.console.error("fnWaitForFile: File not open!");
+			return;
+		}
+
+		sName = oInFile.sName;
+		sStorageName = this.fnLocalStorageName(sName);
+
+		//oInFile.sState = "loading";
+		if (oStorage && (oStorage.getItem(sStorageName) !== null)) {
+			if (Utils.debug > 0) {
+				Utils.console.debug("fnWaitForFile: sName=" + sName + ": get from localStorage");
 			}
+			sInput = oStorage.getItem(sStorageName);
+			//sMeta = oStorage.getItem(this.fnLocalStorageName(sName, true));
+			iIndex = sInput.indexOf(";"); // metadata separator
+			if (iIndex >= 0) {
+				sMeta = sInput.substr(0, iIndex);
+				sInput = sInput.substr(iIndex + 1);
+			}
+			this.fnLoadContinue(sInput, sMeta || "");
+			//oInFile.sState = "loaded";
+		} else { // load from example
+			this.fnLoadFile(sName);
 		}
 	},
 
 	fnSaveFile: function () {
 		var oOutFile = this.oVm.vmGetOutFileObject(),
-			sName = oOutFile.sName,
 			oStorage = Utils.localStorage,
-			sStorageName = this.fnLocalStorageName(sName),
-			sFileData = oOutFile.aFileData.join("");
+			sName, sStorageName, sFileData;
 
-		if (!oOutFile.sState) {
-			oOutFile.sState = "saving"; // not really needed
-			if (oStorage) {
-				if (Utils.debug > 0) {
-					Utils.console.debug("DEBUG: fnSaveFile: sName=" + sName + ": put into localStorage");
-				}
-				if (sFileData === "") {
-					if (oOutFile.sType === "A" || oOutFile.sType === "P" || oOutFile.sType === "T") {
-						sFileData = this.view.getAreaValue("inputText");
-					}
-				}
-
-				if (oOutFile.fnFileCallback) {
-					try {
-						oOutFile.fnFileCallback(sFileData); // close file
-					} catch (e) {
-						Utils.console.warn(e);
-					}
-				}
-				oStorage.setItem(sStorageName, sFileData);
-				oStorage.setItem(this.fnLocalStorageName(sName, true), oOutFile.sType || "");
-			}
+		if (!oOutFile.bOpen) {
+			Utils.console.error("fnSaveFile: file not open!");
+			return;
 		}
+
+		sName = oOutFile.sName;
+		//oOutFile.sState = "saving"; // not really needed
+		if (oStorage) {
+			sStorageName = this.fnLocalStorageName(sName);
+			sFileData = oOutFile.aFileData.join("");
+			if (Utils.debug > 0) {
+				Utils.console.debug("DEBUG: fnSaveFile: sName=" + sName + ": put into localStorage");
+			}
+			if (sFileData === "") {
+				if (oOutFile.sType === "A" || oOutFile.sType === "P" || oOutFile.sType === "T") {
+					sFileData = this.view.getAreaValue("inputText");
+				}
+			}
+
+			if (oOutFile.fnFileCallback) {
+				try {
+					oOutFile.fnFileCallback(sFileData); // close file
+				} catch (e) {
+					Utils.console.warn(e);
+				}
+			}
+			oStorage.setItem(sStorageName, (oOutFile.sType || "") + ";" + sFileData);
+			//oStorage.setItem(this.fnLocalStorageName(sName, true), oOutFile.sType || "");
+		}
+		this.oVm.vmResetFileHandling(oOutFile); //TTT make sure it is closed
 	},
 
-	fnDelete2: function (oParas) {
+	fnDelete: function (oParas) {
 		var sInputText = this.view.getAreaValue("inputText"),
 			aLines = this.fnGetLineRange(sInputText, oParas.iFirst, oParas.iLast),
 			i, sInput;
@@ -657,7 +805,7 @@ Controller.prototype = {
 		this.oVm.vmStop("end", 0, true);
 	},
 
-	fnList2: function (oParas) {
+	fnList: function (oParas) {
 		var sInput = this.view.getAreaValue("inputText"),
 			iStream = oParas.iStream,
 			aLines = this.fnGetLineRange(sInput, oParas.iFirst, oParas.iLast),
@@ -669,24 +817,6 @@ Controller.prototype = {
 
 		this.oVm.vmGotoLine(0); // reset current line
 		this.oVm.vmStop("end", 0, true);
-	},
-
-	fnEraseFile2: function (sName) {
-		var oStorage = Utils.localStorage,
-			sStorageName = this.fnLocalStorageName(sName);
-
-		if (oStorage) {
-			if (oStorage.getItem(sStorageName) !== null) {
-				oStorage.removeItem(sStorageName);
-				oStorage.removeItem(this.fnLocalStorageName(sName, true));
-				if (Utils.debug > 0) {
-					Utils.console.debug("DEBUG: fnEraseFile: sName=" + sName + ": removed from localStorage");
-				}
-			} else {
-				this.oVm.print(0, sName + " not found\r\n");
-				Utils.console.warn("fnEraseFile: file not found in localStorage:", sName);
-			}
-		}
 	},
 
 	fnReset2: function () {
@@ -705,6 +835,7 @@ Controller.prototype = {
 	fnRenum2: function (oParas) {
 		var oVm = this.oVm,
 			sInput = this.view.getAreaValue("inputText"),
+			iStream = 0,
 			oOutput, oError, iEndPos, sOutput;
 
 		if (!this.oBasicFormatter) {
@@ -723,7 +854,7 @@ Controller.prototype = {
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
 			Utils.console.warn(sOutput);
-			this.oVm.print(0, sOutput + "\r\n"); // Error
+			this.oVm.print(iStream, sOutput + "\r\n"); // Error
 		} else {
 			sOutput = oOutput.text;
 			this.view.setAreaValue("inputText", sOutput);
@@ -748,7 +879,7 @@ Controller.prototype = {
 		return true;
 	},
 
-	fnEdit2: function (iLine) {
+	fnEdit: function (iLine) {
 		var sInput = this.view.getAreaValue("inputText"),
 			aLines = this.fnGetLineRange(sInput, iLine, iLine),
 			oStop = this.oVm.vmGetStopObject(),
@@ -760,7 +891,7 @@ Controller.prototype = {
 			this.oVm.print(iStream, sLine);
 			this.oVm.cursor(iStream, 1);
 			this.oVm.vmStop("input", 45, true, { //TTT set new
-				iStream: 0,
+				iStream: iStream,
 				sMessage: "",
 				fnInputCallback: this.fnEditCallback.bind(this),
 				sInput: sLine
@@ -769,7 +900,7 @@ Controller.prototype = {
 			this.fnWaitForInput();
 		} else {
 			oError = this.oVm.vmSetError(8, iLine); // "Line does not exist"
-			this.oVm.print(0, String(oError) + "\r\n");
+			this.oVm.print(iStream, String(oError) + "\r\n");
 			this.oVm.vmStop("stop", 60, true); //TTT
 		}
 	},
@@ -777,6 +908,7 @@ Controller.prototype = {
 	fnParse2: function () {
 		var sInput = this.view.getAreaValue("inputText"),
 			iBench = this.model.getProperty("bench"),
+			iStream = 0,
 			i, iTime, oOutput, oError, iEndPos, sOutput;
 
 		if (!this.oCodeGeneratorJs) {
@@ -811,7 +943,7 @@ Controller.prototype = {
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
 			oError.message = sOutput; // modifies message object
-			this.oVm.print(0, sOutput + "\r\n");
+			this.oVm.print(iStream, sOutput + "\r\n");
 		} else {
 			sOutput = oOutput.text;
 		}
@@ -828,15 +960,14 @@ Controller.prototype = {
 
 	fnRun2: function (iLine) {
 		var sScript = this.view.getAreaValue("outputText"),
+			iStream = 0,
 			oVm = this.oVm;
 
 		iLine = iLine || 0;
-		/*
-		if (iLine === 0) {
-			//this.oVm.vmSetStartLine(0);
-			oVm.vmResetData(); // start from the beginning => also reset data
+
+		if (this.oVm.vmGetOutFileObject().bOpen) { //TTT
+			this.fnSaveFile(); //TTT
 		}
-		*/
 
 		if (!this.fnScript) {
 			oVm.vmSetVariables(this.oVariables);
@@ -845,7 +976,7 @@ Controller.prototype = {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
 			} catch (e) {
 				Utils.console.error(e);
-				oVm.print(0, String(e) + "\r\n");
+				oVm.print(iStream, String(e) + "\r\n");
 				this.fnScript = null;
 			}
 		} else {
@@ -879,6 +1010,7 @@ Controller.prototype = {
 
 	fnRunPart1: function () {
 		var oVm = this.oVm,
+			iStream = 0,
 			oError;
 
 		try {
@@ -886,14 +1018,14 @@ Controller.prototype = {
 		} catch (e) {
 			if (e instanceof CpcVm.ErrorObject) {
 				if (!e.hidden) {
-					oVm.print(0, String(e) + "\r\n");
+					oVm.print(iStream, String(e) + "\r\n");
 					Utils.console.warn(e);
 				} else {
 					Utils.console.log(e);
 				}
 			} else {
 				oError = oVm.vmSetError(2, String(e)); // Syntax Error
-				oVm.print(0, String(oError) + "\r\n");
+				oVm.print(iStream, String(oError) + "\r\n");
 				Utils.console.error(e);
 			}
 		}
@@ -901,11 +1033,12 @@ Controller.prototype = {
 
 	fnDirectInput: function () {
 		var oInput = this.oVm.vmGetStopObject().oParas,
+			iStream = oInput.iStream,
 			sInput = oInput.sInput,
 			oVm = this.oVm,
 			sInputText, sMsg, oOutput, oError, sOutput, fnScript;
 
-		this.oVm.cursor(oInput.iStream, 0);
+		this.oVm.cursor(iStream, 0);
 		sInput = sInput.trim();
 		if (sInput !== "") {
 			oInput.sInput = "";
@@ -921,7 +1054,7 @@ Controller.prototype = {
 				this.oVm.vmGotoLine(0); // to be sure
 				this.view.setDisabled("continueButton", true);
 
-				this.oVm.cursor(oInput.iStream, 1);
+				this.oVm.cursor(iStream, 1);
 				return false; // continue direct input
 			}
 
@@ -942,7 +1075,7 @@ Controller.prototype = {
 				oError = oOutput.error;
 				sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + ")";
 				oError.message = sOutput;
-				this.oVm.print(0, sOutput + "\r\n");
+				this.oVm.print(iStream, sOutput + "\r\n");
 			} else {
 				sOutput = oOutput.text;
 			}
@@ -962,7 +1095,7 @@ Controller.prototype = {
 					this.fnScript = fnScript;
 				} catch (e) {
 					Utils.console.error(e);
-					oVm.print(0, String(e) + "\r\n");
+					oVm.print(iStream, String(e) + "\r\n");
 				}
 			}
 
@@ -974,9 +1107,9 @@ Controller.prototype = {
 			sMsg = "";
 		}
 		if (sMsg) {
-			this.oVm.print(oInput.iStream, sMsg);
+			this.oVm.print(iStream, sMsg);
 		}
-		this.oVm.cursor(oInput.iStream, 1);
+		this.oVm.cursor(iStream, 1);
 		return false;
 	},
 
@@ -985,11 +1118,13 @@ Controller.prototype = {
 			iStream = 0,
 			sMsg = "Ready\r\n";
 
+		this.oVm.tagoff(iStream);
 		if (this.oVm.pos(iStream) > 1) {
 			this.oVm.print(iStream, "\r\n");
 		}
 		this.oVm.print(iStream, sMsg);
 		this.oVm.cursor(iStream, 1);
+
 		oVm.vmStop("direct", 0, true, {
 			iStream: iStream,
 			sMessage: sMsg,
@@ -1040,11 +1175,11 @@ Controller.prototype = {
 			break;
 
 		case "delete":
-			this.fnDelete2(oStop.oParas);
+			this.fnDelete(oStop.oParas);
 			break;
 
 		case "edit":
-			this.fnEdit2(oStop.oParas.iLine);
+			this.fnEdit(oStop.oParas.iLine);
 			break;
 
 		case "end":
@@ -1053,16 +1188,26 @@ Controller.prototype = {
 		case "error":
 			break;
 
-		case "eraseFile":
-			//this.fnEraseFile2(oVm.vmGetNextInput());
-			this.fnEraseFile2(oStop.oParas.sName);
-			oVm.vmStop("", 0, true);
-			break;
-
 		case "escape":
 			if (!oVm.vmEscape()) {
 				oVm.vmStop("", 0, true); // continue
 			}
+			break;
+
+		case "fileCat":
+			this.fnFileCat(oStop.oParas);
+			break;
+
+		case "fileDir":
+			this.fnFileDir(oStop.oParas);
+			break;
+
+		case "fileEra":
+			this.fnFileEra(oStop.oParas);
+			break;
+
+		case "fileRen":
+			this.fnFileRen(oStop.oParas);
 			break;
 
 		case "frame":
@@ -1076,7 +1221,7 @@ Controller.prototype = {
 			break;
 
 		case "list":
-			this.fnList2(oStop.oParas);
+			this.fnList(oStop.oParas);
 			break;
 
 		case "waitKey":

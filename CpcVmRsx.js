@@ -41,8 +41,43 @@ CpcVmRsx.prototype = {
 		this.oVm.vmNotImplemented("|CPM");
 	},
 
-	dir: function () {
-		this.oVm.vmNotImplemented("|DIR");
+	fnGetVariableByAddress: function (iIndex) {
+		var v = this.oVm.v,
+			aV = Object.keys(v),
+			sKey = aV[iIndex];
+
+		return sKey ? v[sKey] : "";
+	},
+
+	dir: function (sFileMask) { // optional; string or addressOf number
+		var iStream = 0;
+
+		if (typeof sFileMask === "number") { // assuming addressOf
+			sFileMask = this.fnGetVariableByAddress(sFileMask);
+		} else if (typeof sFileMask !== "string") {
+			sFileMask = ""; // default
+		}
+		if (sFileMask) {
+			sFileMask = this.oVm.vmAdaptFilename(sFileMask, "|DIR");
+		}
+
+		this.oVm.vmStop("fileDir", 45, false, {
+			iStream: iStream,
+			sCommand: "|dir",
+			sFileMask: sFileMask
+		});
+
+		/*
+		aDir = oVm.vmGetDirectoryEntries(sFileMask);
+
+		oVm.print(iStream, "\r\n");
+		for (i = 0; i < aDir.length; i += 1) {
+			sKey = aDir[i];
+			sKey = sKey.padStart(12, " ") + "   ";
+			oVm.print(iStream, sKey);
+		}
+		oVm.print(iStream, "\r\n");
+		*/
 	},
 
 	disc: function () {
@@ -61,17 +96,49 @@ CpcVmRsx.prototype = {
 		this.oVm.vmNotImplemented("|DRIVE");
 	},
 
-	era: function (sName) {
-		sName = this.oVm.vmAdaptFilename(sName, "|ERA");
+	era: function (sFileMask) {
+		var iStream = 0;
 
-		//this.oVm.vmSetInputValues([sName]); // we misuse aInputValues
-		this.oVm.vmStop("eraseFile", 90, false, {
-			sName: sName
+		if (typeof sFileMask === "number") { // assuming addressOf
+			sFileMask = this.fnGetVariableByAddress(sFileMask);
+		}
+
+		sFileMask = this.oVm.vmAdaptFilename(sFileMask, "|ERA");
+
+		this.oVm.vmStop("fileEra", 45, false, {
+			iStream: iStream,
+			sCommand: "|era",
+			sFileMask: sFileMask
 		});
+
+		/*
+		sFileMask = this.oVm.vmAdaptFilename(sFileMask, "|ERA");
+		this.oVm.vmStop("eraseFile", 90, false, {
+			sName: sFileMask
+		});
+		*/
 	},
 
-	ren: function () {
-		this.oVm.vmNotImplemented("|REN");
+	ren: function (sNew, sOld) {
+		var iStream = 0;
+
+		if (typeof sNew === "number") { // assuming addressOf
+			sNew = this.fnGetVariableByAddress(sNew);
+		}
+		if (typeof sOld === "number") { // assuming addressOf
+			sOld = this.fnGetVariableByAddress(sOld);
+		}
+
+		sNew = this.oVm.vmAdaptFilename(sNew, "|REN");
+		sOld = this.oVm.vmAdaptFilename(sOld, "|REN");
+
+		this.oVm.vmStop("fileRen", 45, false, {
+			iStream: iStream,
+			sCommand: "|ren",
+			sNew: sNew,
+			sOld: sOld
+		});
+		//this.oVm.vmNotImplemented("|REN");
 	},
 
 	tape: function () {

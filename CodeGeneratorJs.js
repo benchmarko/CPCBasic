@@ -346,11 +346,11 @@ CodeGeneratorJs.prototype = {
 					}
 				},
 
-				fnCommandWithGoto: function (node) {
-					var aNodeArgs = fnParseArgs(node.args),
-						sCommand = node.type,
+				fnCommandWithGoto: function (node, aNodeArgs) { // optional aNodeArgs
+					var sCommand = node.type,
 						sLabel;
 
+					aNodeArgs = aNodeArgs || fnParseArgs(node.args);
 					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
 					that.iStopCount += 1;
 					node.pv = "o." + sCommand + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
@@ -365,7 +365,7 @@ CodeGeneratorJs.prototype = {
 					if (that.options.rsx.rsxIsAvailable(sRsxName)) { // RSX available?
 						sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
 						that.iStopCount += 1;
-						node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, renum,...)
+						node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, ren,...)
 					} else {
 						throw new CodeGeneratorJs.ErrorObject("Unknown RSX command", node.value, node.pos, that.iLine);
 					}
@@ -520,7 +520,7 @@ CodeGeneratorJs.prototype = {
 					}
 
 					if (bDirect) {
-						value += " o.goto(\"end\"); break;\ncase \"directEnd\":";
+						value += "\n o.goto(\"end\"); break;\ncase \"directEnd\":"; // put in next line because of possible "rem"
 					}
 
 					node.pv = value;
@@ -546,6 +546,10 @@ CodeGeneratorJs.prototype = {
 				},
 				chainMerge: function (node) {
 					that.bMergeFound = true;
+					node.pv = this.fnCommandWithGoto(node);
+					return node.pv;
+				},
+				clear: function (node) { // will also do e.g. closeout
 					node.pv = this.fnCommandWithGoto(node);
 					return node.pv;
 				},
@@ -1040,7 +1044,7 @@ CodeGeneratorJs.prototype = {
 							aNodeArgs = aNodeArgs.concat(aNodeArgs2);
 						}
 					}
-					node.pv = "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
+					node.pv = this.fnCommandWithGoto(node, aNodeArgs);
 					return node.pv;
 				},
 				sound: function (node) {
