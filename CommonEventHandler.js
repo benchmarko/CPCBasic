@@ -136,34 +136,34 @@ CommonEventHandler.prototype = {
 	},
 
 	onParseButtonClick: function () {
-		this.controller.fnParse();
+		this.controller.startParse();
 	},
 
 	onRenumButtonClick: function () {
-		this.controller.fnRenum();
+		this.controller.startRenum();
 	},
 
 	onRunButtonClick: function () {
 		var sInput = this.view.getAreaValue("outputText");
 
-		this.controller.fnRun(sInput);
+		this.controller.startRun(sInput);
 	},
 
 	onStopButtonClick: function () {
-		this.controller.fnStop();
+		this.controller.startBreak();
 	},
 
 	onContinueButtonClick: function (event) {
-		this.controller.fnContinue();
+		this.controller.startContinue();
 		this.onCpcCanvasClick(event);
 	},
 
 	onResetButtonClick: function () {
-		this.controller.fnReset();
+		this.controller.startReset();
 	},
 
 	onParseRunButtonClick: function (event) {
-		this.controller.fnParseRun();
+		this.controller.startParseRun();
 		this.onCpcCanvasClick(event);
 	},
 
@@ -172,10 +172,10 @@ CommonEventHandler.prototype = {
 	},
 
 	onOutputTextChange: function () {
-		this.controller.fnInvalidateScript();
+		this.controller.invalidateScript();
 	},
 
-	fnEncodeUriParam: function (params) {
+	encodeUriParam: function (params) {
 		var aParts = [],
 			sKey,
 			sValue;
@@ -191,7 +191,7 @@ CommonEventHandler.prototype = {
 
 	onReloadButtonClick: function () {
 		var oChanged = Utils.getChangedParameters(this.model.getAllProperties(), this.model.getAllInitialProperties()),
-			sParas = this.fnEncodeUriParam(oChanged);
+			sParas = this.encodeUriParam(oChanged);
 
 		sParas = sParas.replace(/%2[Ff]/g, "/"); // unescape %2F -> /
 		window.location.search = "?" + sParas;
@@ -205,7 +205,7 @@ CommonEventHandler.prototype = {
 			fnDatabaseLoaded = function (/* sFullUrl */) {
 				oDatabase.loaded = true;
 				Utils.console.log("fnDatabaseLoaded: database loaded: " + sDatabase + ": " + sUrl);
-				that.controller.fnSetExampleSelectOptions();
+				that.controller.setExampleSelectOptions();
 				if (oDatabase.error) {
 					Utils.console.error("fnDatabaseLoaded: database contains errors: " + sDatabase + ": " + sUrl);
 					that.view.setAreaValue("inputText", oDatabase.script);
@@ -217,7 +217,7 @@ CommonEventHandler.prototype = {
 			fnDatabaseError = function (/* sFullUrl */) {
 				oDatabase.loaded = false;
 				Utils.console.error("fnDatabaseError: database error: " + sDatabase + ": " + sUrl);
-				that.controller.fnSetExampleSelectOptions();
+				that.controller.setExampleSelectOptions();
 				that.onExampleSelectChange();
 				that.view.setAreaValue("inputText", "");
 				that.view.setAreaValue("resultText", "Cannot load database: " + sDatabase);
@@ -232,7 +232,7 @@ CommonEventHandler.prototype = {
 		}
 
 		if (oDatabase.loaded) {
-			this.controller.fnSetExampleSelectOptions();
+			this.controller.setExampleSelectOptions();
 			this.onExampleSelectChange();
 		} else {
 			this.view.setAreaValue("inputText", "#loading database " + sDatabase + "...");
@@ -258,9 +258,9 @@ CommonEventHandler.prototype = {
 				sInput = oExample.script;
 				that.view.setAreaValue("inputText", sInput);
 				that.view.setAreaValue("resultText", "");
-				that.controller.fnReset2();
+				that.controller.fnReset();
 				if (!oExample.type || oExample.type !== "data") {
-					that.controller.fnParseRun();
+					that.controller.startParseRun();
 				}
 			},
 			fnExampleError = function () {
@@ -309,12 +309,12 @@ CommonEventHandler.prototype = {
 	},
 
 	onVarTextChange: function () {
-		this.controller.fnChangeVariable();
+		this.controller.changeVariable();
 	},
 
 	onScreenshotButtonClick: function () {
 		var sExample = this.view.getSelectValue("exampleSelect"),
-			image = this.controller.fnScreenshot(),
+			image = this.controller.startScreenshot(),
 			link = document.getElementById("screenshotLink"),
 			sName = sExample + ".png";
 
@@ -324,12 +324,12 @@ CommonEventHandler.prototype = {
 	},
 
 	onEnterButtonClick: function () {
-		this.controller.fnEnter();
+		this.controller.startEnter();
 	},
 
 	onSoundButtonClick: function () {
 		this.model.setProperty("sound", !this.model.getProperty("sound"));
-		this.controller.fnSetSoundActive();
+		this.controller.setSoundActive();
 	},
 
 	onCpcCanvasClick: function (event) {

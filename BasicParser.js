@@ -31,7 +31,7 @@ function BasicParser(options) {
 }
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), q=line number range, r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
 	abs: "f n", // ABS(<numeric expression>)
 	after: "c", // => afterGosub
@@ -46,7 +46,7 @@ BasicParser.mKeywords = {
 	call: "c n *", // CALL <address expression>[,<list of: parameter>]
 	cat: "c", // CAT
 	chain: "c s n?", // CHAIN <filename>[,<line number expression>]  or: => chainMerge
-	chainMerge: "c s *", // CHAIN MERGE <filename>[,<line number expression>][,DELETE <line number range>] / (special)
+	chainMerge: "c s n? *", // CHAIN MERGE <filename>[,<line number expression>][,DELETE <line number range>] / (special)
 	chr$: "f n", // CHR$(<integer expression>)
 	cint: "f n", // CINT(<numeric expression>)
 	clear: "c", // CLEAR  or: => clearInput
@@ -577,13 +577,6 @@ BasicParser.prototype = {
 							if (oExpression.type !== "identifier") {
 								throw new BasicParser.ErrorObject("Variable expected at", oExpression.value, oExpression.pos, that.iLine);
 							}
-						/*
-						} else if (sType.substr(0, 1) === "q") { // line number range (list, delete)
-							if (oToken.type === "-") {
-								oExpression = expression(0); //
-							}
-							oExpression = expression(0); //TTT
-						*/
 						} else if (sType.substr(0, 1) === "r") { // character or range of characters (defint, defreal, defstr)
 							if (oToken.type !== "identifier") {
 								throw new BasicParser.ErrorObject("Letter expected at", oToken.value, oToken.pos, that.iLine);
@@ -893,13 +886,51 @@ BasicParser.prototype = {
 		});
 
 		stmt("chain", function () {
-			var sName = "chain";
+			var sName = "chain",
+				bNumber = false, // line number found
+				oValue, oValue2;
 
-			if (oToken.type === "merge") { // chain merge?
+			if (oToken.type !== "merge") { // son chain merge?
+				oValue = fnCreateCmdCall(sName);
+			} else { // chain merge with optional DELETE
 				advance("merge");
-				sName = "chainMerge"; // TODO: optional DELETE
+				oValue = oPreviousToken;
+				sName = "chainMerge";
+				oValue.type = sName;
+				oValue.args = [];
+
+				oValue2 = expression(0); // filename
+				oValue.args.push(oValue2);
+
+				if (oToken.type === ",") {
+					advance(",");
+
+					if (oToken.type === "number") {
+						oValue2 = expression(0); // line number
+						oValue.type = "linenumber";
+						oValue.args.push(oValue2);
+						bNumber = true;
+					}
+
+					if (oToken.type === ",") {
+						advance(",");
+						advance("delete");
+
+						if (!bNumber) {
+							oValue2 = { // insert dummy line
+								type: null,
+								value: null
+							};
+							oValue.args.push(oValue2);
+						}
+
+						oValue2 = fnGetLineRange();
+						oValue2 = oValue2.args[0]; // we only want the line range and not the delete token
+						oValue.args.push(oValue2);
+					}
+				}
 			}
-			return fnCreateCmdCall(sName);
+			return oValue;
 		});
 
 		stmt("clear", function () {

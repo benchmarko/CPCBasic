@@ -99,7 +99,7 @@ Sound.prototype = {
 	},
 
 	createSoundContext: function () {
-		var context = new (window.AudioContext || window.webkitAudioContext)(),
+		var context = new window.AudioContext(), // may produce exception if not available
 			aChannelMap2Cpc = [ // channel map for CPC: left, middle (center), right; so swap middle and right
 				0,
 				2,

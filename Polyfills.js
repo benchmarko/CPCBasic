@@ -4,14 +4,33 @@
 
 "use strict";
 
+// Old IE 9: window.console is only available when Dev Tools are open
+if (!Utils.console) {
+	Utils.console = {
+		log: function () { } // eslint-disable-line no-empty-function
+	};
+	Utils.console.info = Utils.console.log;
+	Utils.console.warn = Utils.console.log;
+	Utils.console.error = Utils.console.log;
+	Utils.console.debug = Utils.console.log;
+}
+
+// Old IE8 has no console.debug()
+if (!Utils.console.debug) {
+	Utils.console.debug = Utils.console.log;
+	Utils.console.debug("Polyfill: window.console.debug");
+}
+
 // Some polyfills for old browsers, e.g. IE 11 (which is not fully supported)
 if (!Math.sign) {
+	Utils.console.debug("Polyfill: Math.sign");
 	Math.sign = function (x) {
 		return ((x > 0) - (x < 0)) || +x; // eslint-disable-line no-implicit-coercion
 	};
 }
 
 if (!Object.assign) {
+	Utils.console.debug("Polyfill: Object.assign");
 	Object.assign = function (oTarget) { // varargs // Object.assign is ES6, not in IE
 		var oTo = oTarget,
 			i,
@@ -31,6 +50,7 @@ if (!Object.assign) {
 }
 
 if (!Object.keys) { // old IE8
+	Utils.console.debug("Polyfill: Object.keys");
 	// https://tokenposts.blogspot.com/2012/04/javascript-objectkeys-browser.html
 	Object.keys = function (o) {
 		var k = [],
@@ -49,6 +69,7 @@ if (!Object.keys) { // old IE8
 }
 
 if (!String.prototype.includes) {
+	Utils.console.debug("Polyfill: String.prototype.includes");
 	String.prototype.includes = function (search, start) { // eslint-disable-line no-extend-native
 		var bRet;
 
@@ -62,6 +83,7 @@ if (!String.prototype.includes) {
 }
 
 if (!String.prototype.padStart) {
+	Utils.console.debug("Polyfill: String.prototype.padStart");
 	String.prototype.padStart = function (iTargetLength, sPad) { // eslint-disable-line no-extend-native
 		var sRet = String(this);
 
@@ -79,6 +101,7 @@ if (!String.prototype.padStart) {
 }
 
 if (!String.prototype.repeat) {
+	Utils.console.debug("Polyfill: String.prototype.repeat");
 	String.prototype.repeat = function (iCount) { // eslint-disable-line no-extend-native
 		var sStr = String(this),
 			sOut = "",
@@ -92,51 +115,54 @@ if (!String.prototype.repeat) {
 }
 
 if (!String.prototype.trim) { // old IE8
+	Utils.console.debug("Polyfill: String.prototype.trim");
 	String.prototype.trim = function () { // eslint-disable-line no-extend-native
 		return this.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "");
 	};
 }
 
-// Old IE 9: window.console is only available when Dev Tools are open
-if (!Utils.console) {
-	Utils.console = {
-		log: function () { } // eslint-disable-line no-empty-function
-	};
-	Utils.console.info = Utils.console.log;
-	Utils.console.warn = Utils.console.log;
-	Utils.console.error = Utils.console.log;
-	Utils.console.debug = Utils.console.log;
-}
-
 // Old IE 9 has no ArrayBuffer
 if (!window.ArrayBuffer) {
+	Utils.console.debug("Polyfill: window.ArrayBuffer");
 	window.ArrayBuffer = Array;
 }
 
+
 // Older browsers, e.g. SliTaz tazweb browser, IE9
 // https://wiki.selfhtml.org/wiki/JavaScript/Window/requestAnimationFrame
-(function () {
-	var lastTime = 0;
+if (!window.requestAnimationFrame) {
+	window.requestAnimationFrame = window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+	window.cancelAnimationFrame = window.mozCancelAnimationFrame || window.webkitCancelAnimationFrame || window.msCancelAnimationFrame;
+	if (!window.requestAnimationFrame || !window.cancelAnimationFrame) {
+		(function () {
+			var lastTime = 0;
 
-	if (!window.requestAnimationFrame) {
-		window.requestAnimationFrame = function (callback /* , element */) {
-			var currTime = new Date().getTime(),
-				timeToCall = Math.max(0, 16 - (currTime - lastTime)),
-				id = window.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
+			Utils.console.debug("Polyfill: window.requestAnimationFrame, cancelAnimationFrame");
+			window.requestAnimationFrame = function (callback /* , element */) {
+				var currTime = new Date().getTime(),
+					timeToCall = Math.max(0, 16 - (currTime - lastTime)),
+					id = window.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
 
-			lastTime = currTime + timeToCall;
-			return id;
-		};
+				lastTime = currTime + timeToCall;
+				return id;
+			};
+			window.cancelAnimationFrame = function (id) {
+				clearTimeout(id);
+			};
+		}());
+	} else {
+		Utils.console.debug("Polyfill: window.requestAnimationFrame, cancelAnimationFrame: Using vendor specific method.");
 	}
-	if (!window.cancelAnimationFrame) {
-		window.cancelAnimationFrame = function (id) {
-			clearTimeout(id);
-		};
-	}
-}());
+}
+
+if (!window.AudioContext) {
+	window.AudioContext = window.webkitAudioContext || window.mozAudioContext;
+	(window.AudioContext ? Utils.console.debug : Utils.console.warn)("Polyfill: window.AudioContext: " + (window.AudioContext ? "ok" : "not ok"));
+}
 
 // For IE and Edge it is only available if page is hosted on web server, so we simulate it (do not use property "length" or method names as keys!)
 if (!Utils.localStorage) {
+	Utils.console.debug("Polyfill: window.localStorage");
 	(function () {
 		var Storage = function () {
 			this.clear();
@@ -187,9 +213,91 @@ if (!Utils.localStorage) {
 	}());
 }
 
+
+// old IE9 (and node.js?)
+// based on: https://github.com/mathiasbynens/base64/blob/master/base64.js
+// https://mths.be/base64 v0.1.0 by @mathias | MIT license
+if (!Utils.atob) {
+	Utils.console.debug("Polyfill: window.atob, btoa");
+	(function () {
+		var TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+			REGEX_SPACE_CHARACTERS = /[\t\n\f\r ]/g; // http://whatwg.org/html/common-microsyntaxes.html#space-character
+
+		/* eslint-disable no-bitwise */
+		Utils.atob = function (input) { // decode
+			var bitCounter = 0,
+				output = "",
+				position = 0,
+				bitStorage, buffer, length;
+
+			input = String(input).replace(REGEX_SPACE_CHARACTERS, "");
+			length = input.length;
+			if (length % 4 === 0) {
+				input = input.replace(/[=]=?$/, ""); // additional brackets to maks eslint happy
+				length = input.length;
+			}
+			if (length % 4 === 1 || (/[^+a-zA-Z0-9/]/).test(input)) { // http://whatwg.org/C#alphanumeric-ascii-characters
+				throw new TypeError("Polyfills:atob: Invalid character: the string to be decoded is not correctly encoded.");
+			}
+
+			while (position < length) {
+				buffer = TABLE.indexOf(input.charAt(position));
+				bitStorage = bitCounter % 4 ? bitStorage * 64 + buffer : buffer;
+
+				bitCounter += 1;
+				if ((bitCounter - 1) % 4) { // Unless this is the first of a group of 4 characters...
+					output += String.fromCharCode(0xFF & bitStorage >> (-2 * bitCounter & 6)); // ...convert the first 8 bits to a single ASCII character
+				}
+				position += 1;
+			}
+			return output;
+		};
+
+		Utils.btoa = function (input) { // encode
+			var output = "",
+				position = 0,
+				padding, length, a, b, c, buffer;
+
+			input = String(input);
+			if ((/[^\0-\xFF]/).test(input)) {
+				throw new TypeError("Polyfills:btoa: The string to be encoded contains characters outside of the Latin1 range.");
+			}
+			padding = input.length % 3;
+			length = input.length - padding; // Make sure any padding is handled outside of the loop
+
+			while (position < length) {
+				// Read three bytes, i.e. 24 bits.
+				a = input.charCodeAt(position) << 16;
+				position += 1;
+				b = input.charCodeAt(position) << 8;
+				position += 1;
+				c = input.charCodeAt(position);
+				position += 1;
+				buffer = a + b + c;
+				// Turn the 24 bits into four chunks of 6 bits each, and append the matching character for each of them to the output
+				output += TABLE.charAt(buffer >> 18 & 0x3F) + TABLE.charAt(buffer >> 12 & 0x3F) + TABLE.charAt(buffer >> 6 & 0x3F) + TABLE.charAt(buffer & 0x3F);
+			}
+
+			if (padding === 2) {
+				a = input.charCodeAt(position) << 8;
+				position += 1;
+				b = input.charCodeAt(position);
+				buffer = a + b;
+				output += TABLE.charAt(buffer >> 10) + TABLE.charAt((buffer >> 4) & 0x3F) + TABLE.charAt((buffer << 2) & 0x3F) + "=";
+			} else if (padding === 1) {
+				buffer = input.charCodeAt(position);
+				output += TABLE.charAt(buffer >> 2) + TABLE.charAt((buffer << 4) & 0x3F) + "==";
+			}
+			return output;
+		};
+		/* eslint-enable no-bitwise */
+	}());
+}
+
 // old IE8
 if (!Array.prototype.map) {
 	// based on: https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Array/map
+	Utils.console.debug("Polyfill: Array.prototype.map");
 	Array.prototype.map = function (callback, thisArg) { // eslint-disable-line no-extend-native,func-names
 		var aValues = [],
 			oObject = Object(this),
@@ -214,6 +322,7 @@ if (!Array.prototype.map) {
 if (!Function.prototype.bind) {
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind
 	// Does not work with `new funcA.bind(thisArg, args)`
+	Utils.console.debug("Polyfill: Function.prototype.bind");
 	(function () {
 		var ArrayPrototypeSlice = Array.prototype.slice; // since IE6
 
@@ -239,15 +348,18 @@ if (!Function.prototype.bind) {
 // old IE8
 
 if (!Event.prototype.preventDefault) {
+	Utils.console.debug("Polyfill: Event.prototype.preventDefault");
 	Event.prototype.preventDefault = function () {	}; // eslint-disable-line no-empty-function
 }
 
 
 if (!Event.prototype.stopPropagation) {
+	Utils.console.debug("Polyfill: Event.prototype.stopPropagation");
 	Event.prototype.stopPropagation = function () {	}; // eslint-disable-line no-empty-function
 }
 
 if (!Element.prototype.addEventListener) {
+	Utils.console.debug("Polyfill: Element.prototype.addEventListener");
 	Element.prototype.addEventListener = function (e, callback) {
 		e = "on" + e;
 		return this.attachEvent(e, callback);
@@ -255,6 +367,7 @@ if (!Element.prototype.addEventListener) {
 }
 
 if (!Element.prototype.removeEventListener) {
+	Utils.console.debug("Polyfill: Element.prototype.removeEventListener");
 	Element.prototype.removeEventListener = function (e, callback) {
 		e = "on" + e;
 		return this.detachEvent(e, callback);
@@ -262,6 +375,7 @@ if (!Element.prototype.removeEventListener) {
 }
 
 if (!document.addEventListener) {
+	Utils.console.debug("Polyfill: document.addEventListener, removeEventListener");
 	if (document.attachEvent) {
 		(function () {
 			var eventListeners = [];
@@ -344,9 +458,18 @@ if (!document.addEventListener) {
 
 // IE8
 if (!Date.now) {
+	Utils.console.debug("Polyfill: Date.now");
 	Date.now = function () {
 		return new Date().getTime();
 	};
+}
+
+if (!window.Uint8Array) { // in modern browsers we have it, but...
+	Utils.console.debug("Polyfill: Uint8Array; fallback only");
+	window.Uint8Array = function (oArrayBuffer) {
+		return oArrayBuffer; // we just return the ArrayBuffer as fallback; enough for our needs
+	};
+	// A more complex solution would be: https://github.com/inexorabletash/polyfill/blob/master/typedarray.js
 }
 
 // end

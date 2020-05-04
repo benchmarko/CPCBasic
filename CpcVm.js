@@ -113,9 +113,9 @@ CpcVm.prototype = {
 		// special stop reasons and priorities:
 		// "timer": 20 (timer expired)
 		// "key": 30  (wait for key)
-		// "frame": 40 (FRAME command: wait for frame fly)
-		// "sound": 43 (wait for sound queue)
-		// "input": 45 (wait for input: INPUT, LINE INPUT, RANDOMIZE without parameter)
+		// "waitFrame": 40 (FRAME command: wait for frame fly)
+		// "waitSound": 43 (wait for sound queue)
+		// "waitInput": 45 (wait for input: INPUT, LINE INPUT, RANDOMIZE without parameter)
 		// "fileCat": 45 (CAT)
 		// "fileDir": 45 (|DIR)
 		// "fileEra": 45 (|ERA)
@@ -125,12 +125,12 @@ CpcVm.prototype = {
 		// "stop": 60 (STOP or END command)
 		// "break": 80 (break pressed)
 		// "escape": 85 (escape key, set in controller)
-		// "renum": 85 (RENUMber program)
-		// "delete": 90,
+		// "renumLines": 85 (RENUMber program)
+		// "deleteLines": 90,
 		// "end": 90 (end of program)
 		// "list": 90,
-		// "loadFile": 90 (CHAIN, CHAIN MERGE, LOAD, MERGE, OPENIN, RUN)
-		// "saveFile": 90 (OPENOUT, SAVE)
+		// "fileLoad": 90 (CHAIN, CHAIN MERGE, LOAD, MERGE, OPENIN, RUN)
+		// "fileSave": 90 (OPENOUT, SAVE)
 		// "reset": 90 (reset system)
 		// "run": 90
 
@@ -138,8 +138,15 @@ CpcVm.prototype = {
 
 		this.oInFile = {}; // file handling
 		this.oOutFile = {}; // file handling
+		// "bOpen": File open flag
+		// "sCommand": Command that started the file open (in: chain, chainMerge, load, merge, openin, run; out: save, openput)
+		// "sName": File name
+		// "iAddress": // load address, save address
+		// "iLine": ?
+		// "fnFileCallback": Callback for stop reason "fileLoad", "fileSave"
+		// "aFileData": File contents for (LINE) INPUT #9; PRINT #9, WRITE #9
 
-		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "frame"
+		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "waitFrame"
 
 		this.aGosubStack = []; // stack of line numbers for gosub/return
 
@@ -178,7 +185,9 @@ CpcVm.prototype = {
 		this.iStartLine = 0; // line to start
 
 		this.iErrorGotoLine = 0;
+		this.iErrorResumeLine = 0;
 		this.iBreakGosubLine = 0;
+		this.bBreakResumeLine = 0; //TTT
 
 		this.aInputValues.length = 0;
 		this.vmResetFileHandling(this.oInFile);
@@ -228,7 +237,7 @@ CpcVm.prototype = {
 		this.oSound.reset();
 		this.aSoundData.length = 0;
 
-		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "frame"
+		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "waitFrame"
 	},
 
 	vmResetTimers: function () {
@@ -296,19 +305,6 @@ CpcVm.prototype = {
 	},
 
 	vmResetFileHandling: function (oFile) {
-		/*
-		var oData = {
-			bOpen: false, // file open flag
-			sCommand: "", // command that started the file open (in: chain, chainMerge, load, merge, openin, run; out: save, openput)
-			sState: "", // state: loading, loaded; saving, saved
-			sName: "", // file name
-			iAddress: null, // load address or save address
-			iLine: null,
-			fnFileCallback: null, // callback for stop reason "loadFile", "saveFile"
-			aFileData: [] // file contents for (LINE) INPUT #9; PRINT #9, WRITE #9
-		};
-		Object.assign(oFile, oData);
-		*/
 		oFile.bOpen = false;
 		oFile.sCommand = ""; // to be sure
 	},
@@ -357,7 +353,10 @@ CpcVm.prototype = {
 		var bStop = true;
 
 		if (this.iBreakGosubLine > 0) { // on break gosub n
-			this.gosub(this.iLine, this.iBreakGosubLine);
+			if (!this.iBreakResumeLine) { // do not nest break gosub
+				this.iBreakResumeLine = this.iLine;
+				this.gosub(this.iLine, this.iBreakGosubLine);
+			}
 			bStop = false;
 		} else if (this.iBreakGosubLine < 0) { // on break cont
 			bStop = false;
@@ -751,15 +750,8 @@ CpcVm.prototype = {
 		sName = sName.toLowerCase();
 
 		if (!sName) {
-			this.error(32, "Bad filename: " + sName); //TTT
+			this.error(32, "Bad filename: " + sName);
 		}
-
-		/*
-		if (sName.indexOf(".") < 0) { // no dot?
-			sName += "."; // append dot
-		}
-		*/
-
 		return sName;
 	},
 
@@ -1010,19 +1002,6 @@ CpcVm.prototype = {
 	cat: function () {
 		var iStream = 0;
 
-		/*
-		var iStream = 0,
-			aDir = this.vmGetDirectoryEntries(),
-			i, sKey;
-
-		this.print(iStream, "\r\n");
-		for (i = 0; i < aDir.length; i += 1) {
-			sKey = aDir[i];
-			sKey = sKey.padStart(12, " ") + "   ";
-			this.print(iStream, sKey);
-		}
-		this.print(iStream, "\r\n");
-		*/
 		this.vmStop("fileCat", 45, false, {
 			iStream: iStream,
 			sCommand: "cat"
@@ -1039,10 +1018,10 @@ CpcVm.prototype = {
 		oInFile.sName = sName;
 		oInFile.iLine = iLine;
 		oInFile.fnFileCallback = this.fnCloseinHandler;
-		this.vmStop("loadFile", 90);
+		this.vmStop("fileLoad", 90);
 	},
 
-	chainMerge: function (sName, iLine) { // optional iLine; TODO more parameters: delete number range
+	chainMerge: function (sName, iLine, iFirst, iLast) { // optional iLine, iStart, iEnd
 		var oInFile = this.oInFile;
 
 		sName = this.vmAdaptFilename(sName, "CHAIN MERGE");
@@ -1051,8 +1030,10 @@ CpcVm.prototype = {
 		oInFile.sCommand = "chainMerge";
 		oInFile.sName = sName;
 		oInFile.iLine = iLine;
+		oInFile.iFirst = iFirst;
+		oInFile.iLast = iLast;
 		oInFile.fnFileCallback = this.fnCloseinHandler;
-		this.vmStop("loadFile", 90);
+		this.vmStop("fileLoad", 90);
 	},
 
 	chr$: function (n) {
@@ -1069,6 +1050,7 @@ CpcVm.prototype = {
 		this.vmSetStartLine(0);
 		this.iErr = 0;
 		this.iBreakGosubLine = 0;
+		this.iBreakResumeLine = 0; //TTT
 		this.iErrorGotoLine = 0;
 		this.iErrorResumeLine = 0;
 		this.aGosubStack.length = 0;
@@ -1120,7 +1102,7 @@ CpcVm.prototype = {
 		if (oOutFile.bOpen) {
 			oOutFile.sCommand = "closeout";
 			oOutFile.fnFileCallback = this.fnCloseoutHandler;
-			this.vmStop("saveFile", 90); // must stop directly after closeout
+			this.vmStop("fileSave", 90); // must stop directly after closeout
 		}
 	},
 
@@ -1266,9 +1248,10 @@ CpcVm.prototype = {
 			iLast = this.vmInRangeRound(iLast, 1, 65535, "DELETE");
 		}
 
-		this.vmStop("delete", 90, false, {
+		this.vmStop("deleteLines", 90, false, {
 			iFirst: iFirst || 1,
-			iLast: iLast || iFirst
+			iLast: iLast || iFirst,
+			sCommand: "DELETE"
 		});
 	},
 
@@ -1302,7 +1285,7 @@ CpcVm.prototype = {
 	},
 
 	edit: function (iLine) {
-		this.vmStop("edit", 90, false, {
+		this.vmStop("editLine", 90, false, {
 			iLine: iLine
 		});
 	},
@@ -1495,7 +1478,7 @@ CpcVm.prototype = {
 	// for
 
 	frame: function () {
-		this.vmStop("frame", 40);
+		this.vmStop("waitFrame", 40);
 	},
 
 	fre: function (/* arg */) { // arg is number or string
@@ -1675,21 +1658,21 @@ CpcVm.prototype = {
 	},
 
 	input: function (iStream, sNoCRLF, sMsg) { // varargs
-		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "INPUT");
+		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "waitInput");
 		if (iStream < 8) {
 			this.print(iStream, sMsg);
-			this.vmStop("input", 45, false, {
+			this.vmStop("waitInput", 45, false, {
 				iStream: iStream,
 				sMessage: sMsg,
 				sNoCRLF: sNoCRLF,
 				fnInputCallback: this.vmInputCallback.bind(this),
 				aTypes: Array.prototype.slice.call(arguments, 3), // remaining arguments
-				sInput: ""
+				sInput: "",
+				iLine: this.iLine // to repeat in case of break
 			});
 			this.cursor(iStream, 1);
 		} else if (iStream === 8) {
-			this.vmSetInputValues([]); //does not make sense?
-			this.vmNotImplemented("INPUT #" + iStream);
+			this.vmSetInputValues(["I am the printer!"]);
 		} else if (iStream === 9) {
 			if (!this.oInFile.bOpen) {
 				this.error(31, "INPUT #" + iStream); // File not open
@@ -1784,16 +1767,16 @@ CpcVm.prototype = {
 			}
 
 			this.cursor(iStream, 1);
-			this.vmStop("input", 45, false, {
+			this.vmStop("waitInput", 45, false, {
 				iStream: iStream,
 				sMessage: sMsg,
 				sNoCRLF: sNoCRLF,
 				fnInputCallback: this.vmLineInputCallback.bind(this),
-				sInput: ""
+				sInput: "",
+				iLine: this.iLine // to repeat in case of break
 			});
 		} else if (iStream === 8) {
-			this.vmSetInputValues([]); //does not make sense?
-			this.vmNotImplemented("LINE INPUT # " + iStream);
+			this.vmSetInputValues(["I am the printer!"]);
 		} else if (iStream === 9) {
 			if (!this.oInFile.bOpen) {
 				this.error(31, "LINE INPUT #" + iStream); // File not open
@@ -1831,10 +1814,26 @@ CpcVm.prototype = {
 				aMeta = sMeta.split(",");
 
 				iAddress = oInFile.iAddress !== undefined ? oInFile.iAddress : Number(aMeta[1]);
-				iLength = Number(aMeta[2]);
+				iLength = Number(aMeta[2]); // we do not really need the length from metadata
+
+				/*
+				if (isNaN(iLength)) {
+					iLength = sInput.length / 2; // only valid for hex strings!
+				}
 
 				for (i = 0; i < iLength; i += 1) {
 					iByte = parseInt(sInput.substr(2 * i, 2), 16); // ASCII hex data
+					this.poke((iAddress + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
+				}
+				*/
+
+				// hmm
+				sInput = Utils.atob(sInput);
+				if (isNaN(iLength)) {
+					iLength = sInput.length; // only valid after atob()
+				}
+				for (i = 0; i < iLength; i += 1) {
+					iByte = sInput.charCodeAt(i);
 					this.poke((iAddress + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
 				}
 			}
@@ -1858,7 +1857,7 @@ CpcVm.prototype = {
 		oInFile.sName = sName;
 		oInFile.iAddress = iAddress;
 		oInFile.fnFileCallback = this.fnLoadHandler;
-		this.vmStop("loadFile", 90);
+		this.vmStop("fileLoad", 90);
 	},
 
 	vmLocate: function (iStream, iPos, iVpos) {
@@ -1934,7 +1933,7 @@ CpcVm.prototype = {
 		oInFile.sCommand = "merge";
 		oInFile.sName = sName;
 		oInFile.fnFileCallback = this.fnCloseinHandler;
-		this.vmStop("loadFile", 90);
+		this.vmStop("fileLoad", 90);
 	},
 
 	mid$: function (s, iStart, iLen) { // as function; iLen is optional
@@ -1992,7 +1991,10 @@ CpcVm.prototype = {
 
 	"new": function () {
 		this.clear();
-		this.delete(1, 65535); // delete program
+		//this["delete"](iFirst, iLast); // eslint-disable-line dot-notation  	// no dot notation for IE8
+		this.vmStop("new", 90, false, {
+			sCommand: "NEW"
+		});
 	},
 
 	// next
@@ -2001,14 +2003,17 @@ CpcVm.prototype = {
 
 	onBreakCont: function () {
 		this.iBreakGosubLine = -1;
+		this.iBreakResumeLine = 0;
 	},
 
 	onBreakGosub: function (iLine) {
 		this.iBreakGosubLine = iLine;
+		this.iBreakResumeLine = 0;
 	},
 
 	onBreakStop: function () {
 		this.iBreakGosubLine = 0;
+		this.iBreakResumeLine = 0;
 	},
 
 	onErrorGoto: function (iLine) {
@@ -2077,15 +2082,9 @@ CpcVm.prototype = {
 
 		if (sInput !== null) {
 			if (Utils.stringEndsWith(sInput, "\n")) {
-				sInput = sInput.substr(0, sInput.length - 1); //TTT remove last "\n"
+				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n"
 			}
 			oInFile.aFileData = sInput.split("\n");
-			/*
-			if (oInFile.aFileData.length && oInFile.aFileData[oInFile.aFileData.length - 1] === "") {
-				oInFile.aFileData.pop();
-			}
-			*/
-			//oInFile.sState = "loaded";
 		} else {
 			this.closein();
 		}
@@ -2101,7 +2100,7 @@ CpcVm.prototype = {
 				oInFile.sCommand = "openin";
 				oInFile.sName = sName;
 				oInFile.fnFileCallback = this.fnOpeninHandler;
-				this.vmStop("loadFile", 90);
+				this.vmStop("fileLoad", 90);
 			}
 		} else {
 			this.error(27, "OPENIN " + oInFile.sName); // file already open
@@ -2669,10 +2668,12 @@ CpcVm.prototype = {
 		if (n === undefined) { // no arguments? input...
 			sMsg = "Random number seed ? ";
 			this.print(iStream, sMsg);
-			this.vmStop("input", 45, false, {
+			this.vmStop("waitInput", 45, false, {
 				iStream: iStream,
 				sMessage: sMsg,
-				fnInputCallback: this.vmRandomizeCallback.bind(this)
+				fnInputCallback: this.vmRandomizeCallback.bind(this),
+				sInput: "",
+				iLine: this.iLine // to repeat in case of break
 			});
 		} else { // n can also be floating point, so compute a hash value of n
 			this.vmAssertNumber(n, "RANDOMIZE");
@@ -2740,15 +2741,7 @@ CpcVm.prototype = {
 			iKeep = this.vmInRangeRound(iKeep, 1, 65535, "RENUM");
 		}
 
-		/*
-		this.vmSetInputValues([ // we misuse aInputValues
-			iNew || 10,
-			iOld || 1,
-			iStep || 10,
-			iKeep || 65535 // keep lines
-		]);
-		*/
-		this.vmStop("renum", 85, false, {
+		this.vmStop("renumLines", 85, false, {
 			iNew: iNew || 10,
 			iOld: iOld || 1,
 			iStep: iStep || 10,
@@ -2809,6 +2802,9 @@ CpcVm.prototype = {
 		} else {
 			this.vmGotoLine(iLine, "return");
 		}
+		if (iLine === this.iBreakResumeLine) { // end of break handler?
+			this.iBreakResumeLine = 0; // can start another one
+		}
 		this.vmCheckTimerHandlers(); // if we are at end of a BASIC timer handler, delete handler flag
 		if (this.vmCheckSqTimerHandlers()) { // same for sq timers, timer reloaded?
 			this.fnCheckSqTimer(); // next one early
@@ -2851,10 +2847,6 @@ CpcVm.prototype = {
 		var oInFile = this.oInFile;
 
 		if (sInput !== null) {
-			/*
-			this.vmSetInputValues([oInFile.iLine]); // we misuse aInputValues
-			this.vmStop("run", 90);
-			*/
 			this.vmStop("run", 90, false, {
 				iLine: oInFile.iLine
 			});
@@ -2873,12 +2865,8 @@ CpcVm.prototype = {
 			oInFile.sCommand = "run";
 			oInFile.sName = sName;
 			oInFile.fnFileCallback = this.fnRunHandler;
-			this.vmStop("loadFile", 90);
+			this.vmStop("fileLoad", 90);
 		} else { // line number or no argument = undefined
-			/*
-			this.vmSetInputValues([numOrString || 0]); // we misuse aInputValues
-			this.vmStop("run", 90); // number or undefined
-			*/
 			this.vmStop("run", 90, false, {
 				iLine: numOrString || 0
 			});
@@ -2913,8 +2901,10 @@ CpcVm.prototype = {
 					sType += "," + iEntry;
 				}
 				for (i = 0; i < iLen; i += 1) {
-					aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); // store binary data
+					//aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); // store binary data
+					aFileData[i] = String.fromCharCode(this.peek(iAddr + i));
 				}
+				aFileData = [Utils.btoa(aFileData.join(""))]; //TTT
 			} else if (sType === "P") { // protected BASIC
 				// ...
 			} else {
@@ -2931,7 +2921,7 @@ CpcVm.prototype = {
 		oOutFile.aFileData = aFileData;
 		oOutFile.fnFileCallback = this.fnCloseoutHandler; // we use closeout handler to reset out file handling
 
-		this.vmStop("saveFile", 90); // must stop directly after save
+		this.vmStop("fileSave", 90); // must stop directly after save
 	},
 
 	sgn: function (n) {
@@ -2985,7 +2975,7 @@ CpcVm.prototype = {
 			this.oSound.sound(oSoundData);
 		} else {
 			this.aSoundData.push(oSoundData);
-			this.vmStop("sound", 43);
+			this.vmStop("waitSound", 43);
 			for (i = 0; i < 3; i += 1) {
 				if (iState & (1 << i)) { // eslint-disable-line no-bitwise
 					oSqTimer = this.aSqTimer[i];

@@ -67,7 +67,7 @@ Canvas.prototype = {
 			iPens: 4,
 			iLineWidth: 2,
 			iLineHeight: 2,
-			iCharWidth: 8 * 2, //  * 2, //TTT TEST
+			iCharWidth: 8 * 2,
 			iCharHeight: 16
 		},
 		{ // mode 2
@@ -117,12 +117,7 @@ Canvas.prototype = {
 		canvas.style.borderStyle = "solid";
 
 		dataset = new ArrayBuffer(iWidth * iHeight);
-		if (typeof Uint8Array !== "undefined") { // in modern browsers we have it
-			this.dataset8 = new Uint8Array(dataset); // array with pen values
-		} else {
-			Utils.console.warn("Canvas:init: Uint8Array not available. Using fallback.");
-			this.dataset8 = dataset; // fallback
-		}
+		this.dataset8 = new Uint8Array(dataset); // array with pen values (available in modern browsers)
 
 		this.bNeedUpdate = false;
 		this.oUpdateRect = {};
@@ -314,7 +309,9 @@ Canvas.prototype = {
 
 	setFocusOnCanvas: function () {
 		this.cpcAreaBox.style.background = "#463c3c";
-		this.canvas.focus();
+		if (this.canvas) {
+			this.canvas.focus();
+		}
 		this.bHasFocus = true;
 	},
 

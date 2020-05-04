@@ -826,8 +826,8 @@ Keyboard.prototype = {
 			this.putKeyInBuffer(sKey);
 		}
 
-		if (sKey === "Escape" && this.options.fnEscapeHandler) {
-			this.options.fnEscapeHandler(sKey, sPressedKey);
+		if (sKey === "Escape" && this.options.fnOnEscapeHandler) {
+			this.options.fnOnEscapeHandler(sKey, sPressedKey);
 		}
 
 		if (this.fnOnKeyDown) { // special handler?

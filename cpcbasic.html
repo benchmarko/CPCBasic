@@ -4,7 +4,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="cpcbasic.css" />
-<title id="title">CPC Basic v0.8.7</title>
+<title id="title">CPC Basic v0.8.8</title>
 </head>
 
 <body id="pageBody">
@@ -55,7 +55,6 @@
 			<div id="kbdNum" class="area">
 			</div>
 		</div>
-		</div>
 	</fieldset>
 	<fieldset class="flexBox clearLeft">
 		<legend>
@@ -74,8 +73,16 @@
 			<button id="inp2Button" class="legendButton" title="Alternative way of input">Input</button>
 		</legend>
 		<div id="inp2Area" class="area clearLeft displayNone">
-			<textarea id="inp2Text" placeholder="experimental" rows="1" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-			<button id="enterButton" title="Enter">Enter</button>
+			<div class="area">
+				<textarea id="inp2Text" placeholder="experimental" rows="1" cols="40" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+				<button id="enterButton" title="Enter">Enter</button>
+			</div>
+			<div class="area clearLeft">
+				<input type="file" id="fileInput" name="files[]" multiple />
+			</div>
+			<div class="area" id="dropZone">
+				Drop files here
+			</div>
 		</div>
 	</fieldset>
 	<fieldset class="flexBox">

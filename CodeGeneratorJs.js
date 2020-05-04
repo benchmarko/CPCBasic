@@ -433,15 +433,12 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				linerange: function (node) { // for delete, list
-					//var aNodeArgs = fnParseArgs(node.args);
 					var sLeft = fnParseOneArg(node.left),
 						sRight = fnParseOneArg(node.right);
 
-					//if (sLeft && sRight) {
 					if (sLeft > sRight) {
 						throw new CodeGeneratorJs.ErrorObject("Decreasing line range", node.value, node.pos, that.iLine);
 					}
-					//}
 					node.pv = !sRight ? sLeft : sLeft + ", " + sRight;
 					return node.pv;
 				},
@@ -812,7 +809,11 @@ CodeGeneratorJs.prototype = {
 						aVarTypes[i] = sVarType;
 					}
 
-					value = "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					value = "o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // also before input
+					sLabel = that.iLine + "s" + that.iStopCount;
+					that.iStopCount += 1;
+
+					value += "o.input(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput()";
 					}
@@ -841,7 +842,11 @@ CodeGeneratorJs.prototype = {
 						aVarTypes[i] = fnDetermineStaticVarType(aNodeArgs[i]);
 					}
 
-					value = "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
+					value = "o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // also before input
+					sLabel = that.iLine + "s" + that.iStopCount;
+					that.iStopCount += 1;
+
+					value += "o.lineInput(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput()";
 					}
@@ -953,13 +958,17 @@ CodeGeneratorJs.prototype = {
 					return this.fnCommandWithGoto(node);
 				},
 				randomize: function (node) {
-					var aNodeArgs, value;
+					var aNodeArgs, value, sLabel;
 
 					if (node.args.length) {
 						aNodeArgs = fnParseArgs(node.args);
 						value = "o." + node.type + "(" + aNodeArgs.join(", ") + ")";
 					} else {
-						value = this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput())";
+						sLabel = that.iLine + "s" + that.iStopCount;
+						that.iStopCount += 1;
+						value = "o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // also before input
+
+						value += this.fnCommandWithGoto(node) + " o.randomize(o.vmGetNextInput())";
 					}
 					node.pv = value;
 					return node.pv;
@@ -1040,7 +1049,8 @@ CodeGeneratorJs.prototype = {
 							aNodeArgs.push(sType);
 							bDevScopeArgsCollect = false;
 							oDevScopeArgs = null;
-							aNodeArgs2 = fnParseArgs(node.args.splice(2)); // remaining args
+							aNodeArgs2 = node.args.slice(2); // get remaining args
+							aNodeArgs2 = fnParseArgs(aNodeArgs2);
 							aNodeArgs = aNodeArgs.concat(aNodeArgs2);
 						}
 					}
@@ -1196,18 +1206,7 @@ CodeGeneratorJs.prototype = {
 					}
 				}
 
-				/*
-				if (Utils.debug > 1) {
-					Utils.console.debug("evaluate: line number reference counts:");
-					for (sNode in oLabels) {
-						if (oLabels[sNode]) {
-							Utils.console.debug("evaluate: line", sNode, "count", oLabels[sNode]);
-						}
-					}
-				}
-				*/
-
-				// optional: comment lines which are not referenced
+				// optimize: comment lines which are not referenced
 				if (!that.bMergeFound) {
 					sOutput = fnCommentUnusedCases(sOutput, that.oLabels);
 				}

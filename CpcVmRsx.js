@@ -66,18 +66,6 @@ CpcVmRsx.prototype = {
 			sCommand: "|dir",
 			sFileMask: sFileMask
 		});
-
-		/*
-		aDir = oVm.vmGetDirectoryEntries(sFileMask);
-
-		oVm.print(iStream, "\r\n");
-		for (i = 0; i < aDir.length; i += 1) {
-			sKey = aDir[i];
-			sKey = sKey.padStart(12, " ") + "   ";
-			oVm.print(iStream, sKey);
-		}
-		oVm.print(iStream, "\r\n");
-		*/
 	},
 
 	disc: function () {
@@ -110,13 +98,6 @@ CpcVmRsx.prototype = {
 			sCommand: "|era",
 			sFileMask: sFileMask
 		});
-
-		/*
-		sFileMask = this.oVm.vmAdaptFilename(sFileMask, "|ERA");
-		this.oVm.vmStop("eraseFile", 90, false, {
-			sName: sFileMask
-		});
-		*/
 	},
 
 	ren: function (sNew, sOld) {
@@ -138,7 +119,6 @@ CpcVmRsx.prototype = {
 			sNew: sNew,
 			sOld: sOld
 		});
-		//this.oVm.vmNotImplemented("|REN");
 	},
 
 	tape: function () {

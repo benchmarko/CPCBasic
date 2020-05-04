@@ -163,7 +163,10 @@ var Utils = {
 			console.warn("Utils.localStorage:", e); // eslint-disable-line no-console
 			return null;
 		}
-	}())
+	}()),
+
+	atob: window.atob ? window.atob.bind(window) : null, // we need bind: https://stackoverflow.com/questions/9677985/uncaught-typeerror-illegal-invocation-in-chrome
+	btoa: window.btoa ? window.btoa.bind(window) : null
 };
 
 if (typeof module !== "undefined" && module.exports) {

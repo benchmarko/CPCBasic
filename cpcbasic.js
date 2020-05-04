@@ -44,14 +44,14 @@ cpcBasic = {
 		if (typeof input !== "string") {
 			input = this.fnHereDoc(input);
 		}
-		return cpcBasic.controller.fnAddIndex(sDir, input);
+		return cpcBasic.controller.addIndex(sDir, input);
 	},
 
 	addItem: function (sKey, input) {
 		if (typeof input !== "string") {
 			input = this.fnHereDoc(input);
 		}
-		return cpcBasic.controller.fnAddItem(sKey, input);
+		return cpcBasic.controller.addItem(sKey, input);
 	},
 
 	// https://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
