@@ -669,7 +669,7 @@ CodeGeneratorJs.prototype = {
 
 				"for": function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						sVarName, sLabel, value, startValue, endValue, stepValue, bStartIsIntConst, bEndIsIntConst, bStepIsIntConst, sStepName, sEndName, sVarType, sType, sEndNameOrValue;
+						sVarName, sLabel, value, startValue, endValue, stepValue, startNode, endNode, stepNode, bStartIsIntConst, bEndIsIntConst, bStepIsIntConst, sStepName, sEndName, sVarType, sType, sEndNameOrValue;
 
 					sVarName = aNodeArgs[0];
 					sLabel = that.iLine + "f" + that.iForCount;
@@ -677,9 +677,21 @@ CodeGeneratorJs.prototype = {
 					that.oStack.forVarName.push(sVarName);
 					that.iForCount += 1;
 
+					/*
 					startValue = fnParseOneArg(node.left);
 					endValue = fnParseOneArg(node.right);
 					stepValue = fnParseOneArg(node.third);
+					*/
+					startValue = aNodeArgs[1];
+					endValue = aNodeArgs[2];
+					stepValue = aNodeArgs[3];
+					if (stepValue === "null") {
+						stepValue = 1;
+					}
+
+					startNode = node.args[1];
+					endNode = node.args[2];
+					stepNode = node.args[3];
 
 					// optimization for integer constants (check value and not type, because we also want to accept e.g. -<number>)
 					bStartIsIntConst = fnIsIntConst(startValue);
@@ -693,12 +705,12 @@ CodeGeneratorJs.prototype = {
 					}
 
 					if (!bStartIsIntConst) {
-						if (node.left.pt !== "I") {
+						if (startNode.pt !== "I") {
 							startValue = "o.vmAssign(\"" + sVarType + "\", " + startValue + ")"; // assign checks and rounds, if needed
 						}
 					}
 					if (!bEndIsIntConst) {
-						if (node.right.pt !== "I") {
+						if (endNode.pt !== "I") {
 							endValue = "o.vmAssign(\"" + sVarType + "\", " + endValue + ")";
 						}
 						sEndName = sVarName + "End";
@@ -706,7 +718,7 @@ CodeGeneratorJs.prototype = {
 						fnDeclareVariable(value, 0); // declare also end variable
 					}
 					if (!bStepIsIntConst) {
-						if (node.third.pt !== "I") {
+						if (stepNode.pt !== "I") {
 							stepValue = "o.vmAssign(\"" + sVarType + "\", " + stepValue + ")";
 						}
 						sStepName = sVarName + "Step";

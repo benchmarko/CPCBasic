@@ -15,8 +15,8 @@ cpcBasic.addItem("", function () { /*
 85 goto 82
 90 '
 100 mode m
-102 locate 1,25?"Mode";m;:locate 1,1
-105 cols=80/2^(2-min(m,2))
+102 cols=80/2^(2-min(m,2)):rows=50/((m=3)+2)
+105 locate 1,rows?"Mode";m;:locate 1,1
 106 f=0
 107 after 50*8 gosub 300
 110 while f=0

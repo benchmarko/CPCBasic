@@ -1,6 +1,6 @@
 {
   "name": "cpcbasic",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "description": "# CPCBasic - Run CPC BASIC in a Browser",
   "main": "cpcbasic.js",
   "directories": {
@@ -18,7 +18,7 @@
     "url": "git+https://github.com/benchmarko/CPCBasic.git"
   },
   "keywords": [
-    "Geocaching"
+    "CPC BASIC, Locomotive BASIC, Amstrad CPC, Schneider CPC, BASIC Compiler"
   ],
   "author": "Marco Vieth",
   "license": "MIT",

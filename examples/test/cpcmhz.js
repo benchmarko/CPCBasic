@@ -5,7 +5,7 @@
 cpcBasic.addItem("", function () { /*
 100 rem CPC MHz: Time measurement
 110 rem Marco Vieth
-120 mode 2:call &bd19
+120 mode 2:?"Measurement started.":call &bd19
 130 clear:dim r%(5)
 140 ms%=100:mxcpc%=90
 150 for i%=0 to 4

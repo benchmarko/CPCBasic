@@ -48,8 +48,9 @@ cpcBasic.addItem("", function () { /*
 316 goto 313
 319 '
 320 MODE m
-321 pens=4^(2-m mod 3)+abs(m=2)
-322 ORIGIN 425,200
+325 pens=4^(2-m mod 3)+abs(m=2):rows=50/((m=3)+2)
+326 locate 1,rows?"Mode";m;:locate 1,1
+327 ORIGIN 425,200
 340 FARB=1:P1=1
 345 '
 350 FOR N=1 TO W

@@ -755,6 +755,10 @@ Controller.prototype = {
 			sName = oInFile.sName;
 			sStorageName = this.fnLocalStorageName(sName);
 
+			if (Utils.debug > 0) {
+				Utils.console.debug("fnFileLoad: sName=" + sName + " oStorage=" + oStorage);
+			}
+
 			if (Utils.stringEndsWith(sStorageName, ".")) {
 				if (oStorage.getItem(sStorageName) === null) {
 					if (oStorage.getItem(sStorageName + "bas") !== null) {
@@ -1174,7 +1178,7 @@ Controller.prototype = {
 			this.oVm.print(iStream, "\r\n");
 		}
 		this.oVm.print(iStream, sMsg);
-		this.oVm.cursor(iStream, 1);
+		this.oVm.cursor(iStream, 1, 1);
 
 		oVm.vmStop("direct", 0, true, {
 			iStream: iStream,
@@ -1202,7 +1206,7 @@ Controller.prototype = {
 			this.setVarSelectOptions("varSelect", this.oVariables);
 			this.commonEventHandler.onVarSelectChange();
 		}
-		this.bTimeoutHandlerActive = false; // not running any more
+		//this.bTimeoutHandlerActive = false; // not running any more
 
 		if (sReason === "stop" || sReason === "end" || sReason === "error" || sReason === "parse" || sReason === "parseRun") {
 			this.startWithDirectInput();
@@ -1242,37 +1246,6 @@ Controller.prototype = {
 		this.oVm.vmStop("", 0, true); // continue
 	},
 
-	/*
-	mLoopFunctionsxxx: {
-		"break": this.fnBreak,
-		deleteLines: this.fnDeleteLines,
-		editLine: this.fnEditLine,
-		end: this.fnEnd,
-		error: this.fnError,
-		escape: this.fnEscape,
-		fileCat: this.fnFileCat,
-		fileDir: this.fnFileDir,
-		fileEra: this.fnFileEra,
-		fileLoad: this.fnFileLoad,
-		fileRen: this.fnFileRen,
-		fileSave: this.fnFileSave,
-		list: this.fnList,
-		"new": this.fnNew,
-		onError: this.fnOnError,
-		parse: this.fnParse,
-		parseRun: this.fnParseRun,
-		renumLines: this.fnRenumLines,
-		reset: this.fnReset,
-		run: this.fnRun,
-		stop: this.fnStop,
-		timer: this.fnTimer,
-		waitFrame: this.fnWaitFrame,
-		waitInput: this.fnWaitInput,
-		waitKey: this.fnWaitKey,
-		waitSound: this.fnWaitSound
-	},
-	*/
-
 	fnRunLoop: function () {
 		var oStop = this.oVm.vmGetStopObject(),
 			sHandler;
@@ -1284,166 +1257,20 @@ Controller.prototype = {
 
 		sHandler = "fn" + Utils.stringCapitalize(oStop.sReason);
 		if (sHandler in this) {
+			// Utils.console.debug("fnRunLoop: calling: ", sHandler);
 			this[sHandler](oStop.oParas);
+			// Utils.console.debug("fnRunLoop: back from : ", sHandler);
 		} else {
 			Utils.console.warn("runLoop: Unknown run mode:", oStop.sReason);
 		}
-		/*
-		if (oStop.sReason) {
-			if (this.mLoopFunctions[oStop.sReason]) {
-				this.mLoopFunctions[oStop.sReason](oStop.oParas);
-			} else {
-				Utils.console.warn("runLoop: Unknown run mode:", oStop.sReason);
-			}
-		}
-		*/
 
 		if (oStop.sReason && oStop.sReason !== "waitSound") {
+			this.bTimeoutHandlerActive = false; // not running any more
 			this.exitLoop();
 		} else {
 			setTimeout(this.fnRunLoopHandler, this.iNextLoopTimeOut);
 		}
 	},
-
-	/*
-	fnRunLoop_old1: function () { // eslint-disable-line complexity
-		var oVm = this.oVm,
-			oStop = oVm.vmGetStopObject();
-
-		this.iNextLoopTimeOut = 0;
-		if (!oStop.sReason && this.fnScript) {
-			this.fnRunPart1(); // could change sReason
-		}
-
-		switch (oStop.sReason) {
-		case "":
-			break;
-
-		case "break":
-			this.fnBreak(); //empty
-			break;
-
-		case "deleteLines":
-			this.fnDeleteLines(oStop.oParas);
-			break;
-
-		case "editLine":
-			this.fnEditLine(oStop.oParas);
-			break;
-
-		case "end":
-			this.fnEnd(); //empty
-			break;
-
-		case "error":
-			this.fnError(); //empty
-			break;
-
-		case "escape":
-			this.fnEscape(); //empty
-			//if (!oVm.vmEscape()) {
-			//	oVm.vmStop("", 0, true); // continue
-			//}
-			break;
-
-		case "fileCat":
-			this.fnFileCat(oStop.oParas);
-			break;
-
-		case "fileDir":
-			this.fnFileDir(oStop.oParas);
-			break;
-
-		case "fileEra":
-			this.fnFileEra(oStop.oParas);
-			break;
-
-		case "fileLoad":
-			this.fnFileLoad();
-			break;
-
-		case "fileRen":
-			this.fnFileRen(oStop.oParas);
-			break;
-
-		case "fileSave":
-			this.fnFileSave();
-			//oVm.vmStop("", 0, true); // continue
-			break;
-
-		case "list":
-			this.fnList(oStop.oParas);
-			break;
-
-		case "new":
-			this.fnNew(oStop.oParas);
-			break;
-
-		case "onError":
-			//oVm.vmStop("", 0, true); // continue
-			this.fnOnError();
-			break;
-
-		case "parse":
-			this.fnParse();
-			break;
-
-		case "parseRun":
-			this.fnParseRun();
-			break;
-
-		case "renumLines":
-			this.fnRenumLines(oStop.oParas);
-			break;
-
-		case "reset":
-			this.fnReset();
-			break;
-
-		case "run":
-			this.fnRun(oStop.oParas);
-			break;
-
-		case "stop":
-			this.fnStop(); // empty
-			break;
-
-		case "timer":
-			//oVm.vmStop("", 0, true); // continue
-			this.fnTimer();
-			break;
-
-		case "waitFrame":
-			//oVm.vmStop("", 0, true);
-			//this.iNextLoopTimeOut = oVm.vmGetTimeUntilFrame(); // wait until next frame
-			this.fnWaitFrame();
-			break;
-
-		case "waitInput":
-			this.fnWaitInput();
-			break;
-
-		case "waitKey":
-			this.fnWaitKey();
-			break;
-
-		case "waitSound":
-			this.fnWaitSound();
-			break;
-
-		default:
-			Utils.console.warn("fnRunLoop: Unknown run mode:", oStop.sReason);
-			break;
-		}
-
-		if (oStop.sReason && oStop.sReason !== "waitSound") {
-			this.exitLoop();
-		} else {
-			setTimeout(this.fnRunLoopHandler, this.iNextLoopTimeOut);
-		}
-	},
-	*/
-
 
 	startMainLoop: function () {
 		if (!this.bTimeoutHandlerActive) {
@@ -1658,8 +1485,6 @@ Controller.prototype = {
 				if (f.type === "text/plain") {
 					oReader.readAsText(f);
 				} else {
-					//reader.readAsArrayBuffer(f); // or old: reader.readAsBinaryString(f);
-					//reader.readAsBinaryString(f);
 					oReader.readAsDataURL(f);
 				}
 			}
@@ -1678,14 +1503,12 @@ Controller.prototype = {
 			default:
 				Utils.console.warn("An error occurred reading this file.");
 			}
-			fnReadNextFile(); //TTT
+			fnReadNextFile();
 		}
 
 		function fnOnLoad(evt) {
 			var sData = evt.target.result,
 				sName = escape(f.name),
-				//aFileData = [],
-				//dataset8, i,
 				sStorageName, sMeta, iIndex, sDecodedData, iLength;
 
 			sName = that.oVm.vmAdaptFilename(sName, "FILE");
@@ -1697,7 +1520,7 @@ Controller.prototype = {
 				iIndex = sData.indexOf(",");
 				sData = iIndex >= 0 ? sData.substr(iIndex + 1) : ""; // remove meta prefix
 
-				sDecodedData = window.atob(sData);
+				sDecodedData = Utils.atob(sData);
 				iLength = sDecodedData.length; // or use: f.size
 				if (oRegExpIsText.test(sDecodedData)) {
 					sMeta = "A,0," + iLength;
@@ -1705,15 +1528,6 @@ Controller.prototype = {
 				} else {
 					sMeta = "B,0," + iLength; // byte length (not base64 encoded)
 				}
-
-				/*
-				for readAsArrayBuffer():
-				dataset8 = new Uint8Array(r);
-				for (i = 0; i < dataset8.length; i += 1) {
-					aFileData[i] = dataset8[i].toString(16).toUpperCase().padStart(2, "0"); // store binary data
-				}
-				oStorage.setItem(sStorageName, "B;" + aFileData.join("")); //TTT
-				*/
 			}
 
 			oStorage.setItem(sStorageName, sMeta + ";" + sData);
@@ -1730,23 +1544,6 @@ Controller.prototype = {
 		oReader.onload = fnOnLoad;
 
 		fnReadNextFile();
-
-		/*
-		for (i = 0; i < aFiles.length; i += 1) {
-			f = aFiles[i];
-			sText = escape(f.name) + " " + (f.type || "n/a") + " " + f.size + " " + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : "n/a");
-			Utils.console.log(sText);
-
-			//reader.readAsDataURL(f);
-			if (f.type === "text/plain") {
-				oReader.readAsText(f);
-			} else {
-				//reader.readAsArrayBuffer(f); // or old: reader.readAsBinaryString(f);
-				//reader.readAsBinaryString(f);
-				oReader.readAsDataURL(f);
-			}
-		}
-		*/
 	},
 
 	fnHandleDragOver: function (evt) {
@@ -1761,7 +1558,6 @@ Controller.prototype = {
 		dropZone.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
 		dropZone.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
 
-		// and file input
 		document.getElementById("fileInput").addEventListener("change", this.fnHandleFileSelect.bind(this), false);
 	}
 };

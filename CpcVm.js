@@ -788,7 +788,7 @@ CpcVm.prototype = {
 			oTimer,	iIntervalMs;
 
 		iInterval = this.vmInRangeRound(iInterval, 0, 32767, sTypeUc); // more would be overflow
-		iTimer = this.vmInRangeRound(iTimer, 0, 3, sTypeUc);
+		iTimer = this.vmInRangeRound(iTimer || 0, 0, 3, sTypeUc);
 		oTimer = this.aTimer[iTimer];
 		iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
 
@@ -949,17 +949,18 @@ CpcVm.prototype = {
 				this.vmStop("waitKey", 30); // wait for key
 			}
 			break;
-		case 0xbb7b: // TXT Cursor Enable (ROM &1289); user switch
+		case 0xbb7b: // TXT Cursor Enable (ROM &1289); user switch (cursor enabled)
 			Utils.console.log("TODO: CALL", iAddr);
+			this.cursor(0, null, 1);
 			break;
 		case 0xbb7e: // TXT Cursor Disable (ROM &129A); user switch
-			Utils.console.log("TODO: CALL", iAddr);
+			this.cursor(0, null, 0);
 			break;
-		case 0xbb81: // TXT Cursor On (ROM &1279); system switch
-			Utils.console.log("TODO: CALL", iAddr);
+		case 0xbb81: // TXT Cursor On (ROM &1279); system switch (cursor on)
+			this.cursor(0, 1);
 			break;
 		case 0xbb84: // TXT Cursor Off (ROM &1281); system switch
-			Utils.console.log("TODO: CALL", iAddr);
+			this.cursor(0, 0);
 			break;
 		case 0xbb4e: // TXT Initialize (ROM &1078)
 			this.vmResetWindowData(true); // reset windows, including pen and paper
@@ -1050,7 +1051,7 @@ CpcVm.prototype = {
 		this.vmSetStartLine(0);
 		this.iErr = 0;
 		this.iBreakGosubLine = 0;
-		this.iBreakResumeLine = 0; //TTT
+		this.iBreakResumeLine = 0;
 		this.iErrorGotoLine = 0;
 		this.iErrorResumeLine = 0;
 		this.aGosubStack.length = 0;
@@ -1244,7 +1245,9 @@ CpcVm.prototype = {
 			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "DELETE");
 		}
 
-		if (iLast !== undefined) {
+		if (iLast === null) { // range with missing last?
+			iLast = 65535;
+		} else if (iLast !== undefined) {
 			iLast = this.vmInRangeRound(iLast, 1, 65535, "DELETE");
 		}
 
@@ -1794,7 +1797,9 @@ CpcVm.prototype = {
 			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "LIST");
 		}
 
-		if (iLast !== undefined) {
+		if (iLast === null) { // range with missing last?
+			iLast = 65535;
+		} else if (iLast !== undefined) {
 			iLast = this.vmInRangeRound(iLast, 1, 65535, "LIST");
 		}
 
@@ -1816,18 +1821,6 @@ CpcVm.prototype = {
 				iAddress = oInFile.iAddress !== undefined ? oInFile.iAddress : Number(aMeta[1]);
 				iLength = Number(aMeta[2]); // we do not really need the length from metadata
 
-				/*
-				if (isNaN(iLength)) {
-					iLength = sInput.length / 2; // only valid for hex strings!
-				}
-
-				for (i = 0; i < iLength; i += 1) {
-					iByte = parseInt(sInput.substr(2 * i, 2), 16); // ASCII hex data
-					this.poke((iAddress + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
-				}
-				*/
-
-				// hmm
 				sInput = Utils.atob(sInput);
 				if (isNaN(iLength)) {
 					iLength = sInput.length; // only valid after atob()
@@ -1991,7 +1984,6 @@ CpcVm.prototype = {
 
 	"new": function () {
 		this.clear();
-		//this["delete"](iFirst, iLast); // eslint-disable-line dot-notation  	// no dot notation for IE8
 		this.vmStop("new", 90, false, {
 			sCommand: "NEW"
 		});
@@ -2901,10 +2893,9 @@ CpcVm.prototype = {
 					sType += "," + iEntry;
 				}
 				for (i = 0; i < iLen; i += 1) {
-					//aFileData[i] = this.peek(iAddr + i).toString(16).toUpperCase().padStart(2, "0"); // store binary data
 					aFileData[i] = String.fromCharCode(this.peek(iAddr + i));
 				}
-				aFileData = [Utils.btoa(aFileData.join(""))]; //TTT
+				aFileData = [Utils.btoa(aFileData.join(""))];
 			} else if (sType === "P") { // protected BASIC
 				// ...
 			} else {

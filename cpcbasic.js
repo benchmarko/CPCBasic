@@ -87,11 +87,11 @@ cpcBasic = {
 		}
 	},
 
-	setDebugUtilsConsole: function () {
+	setDebugUtilsConsole: function (sCpcBasicLog) {
 		var oCurrentConsole = Utils.console,
 			oConsole = {
 				consoleLog: {
-					value: ""
+					value: sCpcBasicLog || "" // already something collected?
 				},
 				console: oCurrentConsole,
 				fnMapObjectProperties: function (arg) {
@@ -154,7 +154,7 @@ cpcBasic = {
 	fnDoStart: function () {
 		var that = this,
 			oStartConfig = this.config,
-			oInitialConfig,	iDebug;
+			sCpcBasicLog, oInitialConfig, iDebug;
 
 		Object.assign(oStartConfig, cpcBasicExternalConfig || {}); // merge external config from cpcconfig.js
 		oInitialConfig = Object.assign({}, oStartConfig); // save config
@@ -165,12 +165,15 @@ cpcBasic = {
 		iDebug = Number(this.model.getProperty("debug"));
 		Utils.debug = iDebug;
 
-		if (Utils.debug > 1) {
-			if (this.model.getProperty("showConsole")) { // console log window?
-				this.setDebugUtilsConsole("consoleText");
-				Utils.console.log("CPCBasic log started at", Utils.dateFormat(new Date()));
-				Utils.console.changeLog(document.getElementById("consoleText"));
-			}
+		if (Utils.console.cpcBasicLog) {
+			sCpcBasicLog = Utils.console.cpcBasicLog;
+			Utils.console.cpcBasicLog = null; // do not log any more to dummy console
+		}
+
+		if (Utils.debug > 1 && this.model.getProperty("showConsole")) { // console log window?
+			this.setDebugUtilsConsole(sCpcBasicLog);
+			Utils.console.log("CPCBasic log started at", Utils.dateFormat(new Date()));
+			Utils.console.changeLog(document.getElementById("consoleText"));
 		}
 
 		that.controller = new Controller(this.model, this.view);

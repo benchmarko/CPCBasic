@@ -39,7 +39,7 @@ BasicParser.mKeywords = {
 	and: "o", // <argument> AND <argument>
 	asc: "f s", // ASC(<string expression>)
 	atn: "f n", // ATN(<numeric expression>)
-	auto: "c", //TODO: AUTO [<line number>][,<increment>]
+	auto: "c", // TODO: AUTO [<line number>][,<increment>]
 	bin$: "f n n?", // BIN$(<unsigned integer expression>[,<integer expression>])
 	border: "c n n?", // BORDER <color>[,<color>]
 	"break": "x", // see: ON BREAK...
@@ -377,7 +377,7 @@ BasicParser.prototype = {
 
 				if (oToken.type !== "number" && bAllowDirect) {
 					bAllowDirect = false; // allow only once
-					oValue = { // insert dummy label
+					oValue = { // insert "direct" label
 						type: "label",
 						value: "direct",
 						len: 0
@@ -431,18 +431,22 @@ BasicParser.prototype = {
 				return x;
 			},
 
+			fnCreateDummyArg = function () {
+				return {
+					type: "null",
+					value: null,
+					len: 0
+				};
+			},
+
 			fnGetOptionalStream = function () {
 				var oValue;
 
 				if (oToken.type === "#") { // stream?
 					advance("#");
 					oValue = expression(0);
-				} else { // create number token
-					oValue = {
-						type: "number",
-						value: 0,
-						len: 0 // no space in source
-					};
+				} else { // create dummy
+					oValue = fnCreateDummyArg();
 				}
 				return oValue;
 			},
@@ -470,21 +474,11 @@ BasicParser.prototype = {
 
 				if (oRange) {
 					if (!oLeft && !oRight) {
-						throw new BasicParser.ErrorObject("Invalid range at", oRange.type, oRange.pos, that.iLine); //TTT
+						throw new BasicParser.ErrorObject("Invalid range at", oRange.type, oRange.pos, that.iLine);
 					}
 					oRange.type = "linerange"; // change "-" => "linerange"
-					oRange.left = oLeft || { // insert dummy value if needed
-						type: "number",
-						value: 1,
-						pos: 0, //TTT
-						len: 0
-					};
-					oRange.right = oRight || { // insert dummy value if needed
-						type: "number",
-						value: 65535,
-						pos: 0, //TTT
-						len: 0
-					};
+					oRange.left = oLeft || fnCreateDummyArg(); // insert dummy for left
+					oRange.right = oRight || fnCreateDummyArg(); // insert dummy for right (do not skip it)
 					oValue.args.push(oRange);
 				} else if (oLeft) {
 					oValue.args.push(oLeft); // single line number
@@ -549,23 +543,15 @@ BasicParser.prototype = {
 								advance(",");
 								bNeedMore = true;
 							}
-						} else { // insert default stream number 0
-							oExpression = {
-								type: "number",
-								value: 0,
-								len: 0
-							};
+						} else { // insert default stream parameter
+							oExpression = fnCreateDummyArg();
 						}
 					} else {
 						if (sType.substr(0, 1) === "#") { // stream expected? (for functions)
 							advance("#");
 							oExpression = expression(0); // keep just number or expression without "#"
 						} else if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
-							oExpression = {
-								type: "null",
-								value: null,
-								len: 0
-							};
+							oExpression = fnCreateDummyArg();
 						} else if (sType.substr(0, 1) === "l") {
 							oExpression = expression(0);
 							if (oExpression.type !== "number") { // maybe an expression and no plain number
@@ -873,11 +859,7 @@ BasicParser.prototype = {
 				aLine;
 
 			if (oValue.args.length < 2) { // add default timer 0
-				oValue.args.push({ // create
-					type: "number",
-					value: 0,
-					orig: ""
-				});
+				oValue.args.push(fnCreateDummyArg());
 			}
 			advance("gosub");
 			aLine = fnGetArgs("gosub"); // line number
@@ -890,7 +872,7 @@ BasicParser.prototype = {
 				bNumber = false, // line number found
 				oValue, oValue2;
 
-			if (oToken.type !== "merge") { // son chain merge?
+			if (oToken.type !== "merge") { // not chain merge?
 				oValue = fnCreateCmdCall(sName);
 			} else { // chain merge with optional DELETE
 				advance("merge");
@@ -907,7 +889,7 @@ BasicParser.prototype = {
 
 					if (oToken.type === "number") {
 						oValue2 = expression(0); // line number
-						oValue.type = "linenumber";
+						oValue2.type = "linenumber"; // number -> linenumber
 						oValue.args.push(oValue2);
 						bNumber = true;
 					}
@@ -917,10 +899,7 @@ BasicParser.prototype = {
 						advance("delete");
 
 						if (!bNumber) {
-							oValue2 = { // insert dummy line
-								type: null,
-								value: null
-							};
+							oValue2 = fnCreateDummyArg(); // insert dummy arg for line
 							oValue.args.push(oValue2);
 						}
 
@@ -1013,10 +992,7 @@ BasicParser.prototype = {
 				advance(",");
 				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
 					advance("=");
-					oExpression = { // insert null parameter
-						type: "null",
-						value: null
-					};
+					oExpression = fnCreateDummyArg(); // insert null parameter
 					oValue.args.push(oExpression);
 					iCount += 1;
 				}
@@ -1041,10 +1017,7 @@ BasicParser.prototype = {
 				advance(",");
 				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
 					advance("=");
-					oExpression = { // insert null parameter
-						type: "null",
-						value: null
-					};
+					oExpression = fnCreateDummyArg(); // insert null parameter
 					oValue.args.push(oExpression);
 					iCount += 1;
 				}
@@ -1061,11 +1034,7 @@ BasicParser.prototype = {
 				aLine;
 
 			if (oValue.args.length < 2) { // add default timer
-				oValue.args.push({ // create
-					type: "number",
-					value: 0,
-					orig: ""
-				});
+				oValue.args.push(fnCreateDummyArg());
 			}
 			advance("gosub");
 			aLine = fnGetArgs("gosub"); // line number
@@ -1086,20 +1055,16 @@ BasicParser.prototype = {
 				throw new BasicParser.ErrorObject("Expected simple identifier at", oToken.type, oToken.pos, that.iLine);
 			}
 			advance("=");
-			oValue.left = expression(0);
+			oValue.args.push(expression(0));
 
 			advance("to");
-			oValue.right = expression(0);
+			oValue.args.push(expression(0));
 
 			if (oToken.type === "step") {
 				advance("step");
-				oValue.third = expression(0);
+				oValue.args.push(expression(0));
 			} else {
-				oValue.third = { // created
-					type: "number",
-					value: "1",
-					len: 0
-				};
+				oValue.args.push(fnCreateDummyArg()); // created
 			}
 			return oValue;
 		});
@@ -1178,7 +1143,8 @@ BasicParser.prototype = {
 
 			oValue.args.push({ // create
 				type: "string",
-				value: (oToken.type === ";") ? ";" : ""
+				value: (oToken.type === ";") ? ";" : "",
+				len: 0
 			});
 			if (oToken.type === ";") { // no newline after input?
 				advance(";");
@@ -1262,7 +1228,8 @@ BasicParser.prototype = {
 
 			oValue.args.push({ // create
 				type: "string",
-				value: (oToken.type === ";") ? ";" : ""
+				value: (oToken.type === ";") ? ";" : "",
+				len: 0
 			});
 			if (oToken.type === ";") { // no newline after input?
 				advance(";");
@@ -1323,7 +1290,8 @@ BasicParser.prototype = {
 		stmt("mid$", function () { // mid$Assign
 			var oValue = { // create
 					type: "assign",
-					pos: oToken.pos
+					pos: oToken.pos,
+					len: 0
 				},
 				oMid, oRight;
 
@@ -1333,10 +1301,7 @@ BasicParser.prototype = {
 			}
 
 			if (oMid.args.length < 3) {
-				oMid.args.push({ // add dummy parameter for iLen
-					type: "null",
-					value: null
-				});
+				oMid.args.push(fnCreateDummyArg()); // add dummy parameter for iLen
 			}
 
 			oValue.left = Object.assign({}, oMid.args[0]); // set identifier also on left side

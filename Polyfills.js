@@ -4,10 +4,16 @@
 
 "use strict";
 
-// Old IE 9: window.console is only available when Dev Tools are open
+
+// IE: window.console is only available when Dev Tools are open
 if (!Utils.console) {
 	Utils.console = {
-		log: function () { } // eslint-disable-line no-empty-function
+		cpcBasicLog: "LOG:\n",
+		log: function () { // varargs
+			if (Utils.console.cpcBasicLog) {
+				Utils.console.cpcBasicLog += Array.prototype.slice.call(arguments).join(" ") + "\n";
+			}
+		}
 	};
 	Utils.console.info = Utils.console.log;
 	Utils.console.warn = Utils.console.log;
@@ -157,7 +163,11 @@ if (!window.requestAnimationFrame) {
 
 if (!window.AudioContext) {
 	window.AudioContext = window.webkitAudioContext || window.mozAudioContext;
-	(window.AudioContext ? Utils.console.debug : Utils.console.warn)("Polyfill: window.AudioContext: " + (window.AudioContext ? "ok" : "not ok"));
+	if (window.AudioContext) {
+		Utils.console.debug("Polyfill: window.AudioContext");
+	} else {
+		Utils.console.warn("Polyfill: window.AudioContext: not ok!");
+	}
 }
 
 // For IE and Edge it is only available if page is hosted on web server, so we simulate it (do not use property "length" or method names as keys!)
@@ -471,5 +481,7 @@ if (!window.Uint8Array) { // in modern browsers we have it, but...
 	};
 	// A more complex solution would be: https://github.com/inexorabletash/polyfill/blob/master/typedarray.js
 }
+
+Utils.console.debug("Polyfill: end of polyfills");
 
 // end

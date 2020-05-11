@@ -826,7 +826,7 @@ Keyboard.prototype = {
 			this.putKeyInBuffer(sKey);
 		}
 
-		if (sKey === "Escape" && this.options.fnOnEscapeHandler) {
+		if (iCpcKey === 66 && this.options.fnOnEscapeHandler) {	// or: sKey === "Escape" or "Esc" (on IE)
 			this.options.fnOnEscapeHandler(sKey, sPressedKey);
 		}
 
@@ -870,7 +870,7 @@ Keyboard.prototype = {
 		}
 
 		if (Utils.debug > 1) {
-			Utils.console.log("fnKeyboardKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " ", event);
+			Utils.console.log("fnKeyboardKeydown: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " loc=" + event.location + " ", event);
 		}
 
 		if (sPressedKey in this.oKey2CpcKey) {
@@ -895,6 +895,8 @@ Keyboard.prototype = {
 					sKey = event.shiftKey ? "°" : "DeadBackquote";
 				} else if (iKeyCode === 221) {
 					sKey = "DeadEqual" + (event.shiftKey ? "Shift" : "");
+				} else if (iKeyCode === 226) { // "|"
+					sKey = "|";
 				}
 			} else if (sKey.length === 2) {
 				if (sKey.charAt(0) === "^" || sKey.charAt(0) === "´" || sKey.charAt(0) === "`") { // IE, Edge? prefix key
@@ -921,7 +923,7 @@ Keyboard.prototype = {
 		}
 
 		if (Utils.debug > 1) {
-			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + event.key + "' " + event.key.charCodeAt(0) + " ", event);
+			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + event.key + "' " + event.key.charCodeAt(0) + " loc=" + event.location + " ", event);
 		}
 
 		if (sPressedKey in this.oKey2CpcKey) {
