@@ -23,6 +23,7 @@ CodeGeneratorJs.prototype = {
 		this.lexer = this.options.lexer;
 		this.parser = this.options.parser;
 
+		this.reJsKeywords = this.createJsKeywordRegex();
 		this.reset();
 	},
 
@@ -41,6 +42,10 @@ CodeGeneratorJs.prototype = {
 
 		this.oLabels = {}; // labels or line numbers
 		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
+
+		this.lexer.reset();
+		this.parser.reset();
+		return this;
 	},
 
 	resetCountsPerLine: function () {
@@ -49,6 +54,84 @@ CodeGeneratorJs.prototype = {
 		this.iStopCount = 0;
 		this.iForCount = 0; // stack needed
 		this.iWhileCount = 0; // stack needed
+	},
+
+	composeError: function () { // varargs
+		var aArgs = Array.prototype.slice.call(arguments); //Object.assign({}, arguments);
+
+		aArgs.unshift("CodeGeneratorJs");
+		aArgs.push(this.iLine);
+		return Utils.composeError.apply(null, aArgs);
+	},
+
+	// ECMA 3 JS Keywords which must be avoided in dot notation for properties when using IE8
+	aJsKeywords: [
+		"do",
+		"if",
+		"in",
+		"for",
+		"int",
+		"new",
+		"try",
+		"var",
+		"byte",
+		"case",
+		"char",
+		"else",
+		"enum",
+		"goto",
+		"long",
+		"null",
+		"this",
+		"true",
+		"void",
+		"with",
+		"break",
+		"catch",
+		"class",
+		"const",
+		"false",
+		"final",
+		"float",
+		"short",
+		"super",
+		"throw",
+		"while",
+		"delete",
+		"double",
+		"export",
+		"import",
+		"native",
+		"public",
+		"return",
+		"static",
+		"switch",
+		"throws",
+		"typeof",
+		"boolean",
+		"default",
+		"extends",
+		"finally",
+		"package",
+		"private",
+		"abstract",
+		"continue",
+		"debugger",
+		"function",
+		"volatile",
+		"interface",
+		"protected",
+		"transient",
+		"implements",
+		"instanceof",
+		"synchronized"
+	],
+
+	createJsKeywordRegex: function () {
+		var reJsKeywords;
+
+		reJsKeywords = new RegExp("^(" + this.aJsKeywords.join("|") + ")$");
+		return reJsKeywords;
 	},
 
 	//
@@ -72,6 +155,13 @@ CodeGeneratorJs.prototype = {
 			fnAdaptVariableName = function (sName, iArrayIndices) {
 				sName = sName.toLowerCase();
 				sName = sName.replace(/\./g, "_");
+
+				if (oDevScopeArgs || !Utils.bSupportReservedNames) { // avoid keywords as def fn parameters; and for IE8 avoid keywords in dot notation
+					if (that.reJsKeywords.test(sName)) { // IE8: avoid keywords in dot notation
+						sName = "_" + sName; // prepend underscore
+					}
+				}
+
 				if (Utils.stringEndsWith(sName, "!")) { // real number?
 					sName = sName.slice(0, -1) + "R"; // "!" => "R"
 				} else if (Utils.stringEndsWith(sName, "%")) { // integer number?
@@ -122,6 +212,9 @@ CodeGeneratorJs.prototype = {
 				}
 
 				sNameType = sName.charAt(0); // take first character to determine var type later
+				if (sNameType === "_") { // ignore underscore (do not clash with keywords)
+					sNameType = sName.charAt(1);
+				}
 
 				// explicit type specified?
 				if (sName.indexOf("I") >= 0) {
@@ -156,10 +249,10 @@ CodeGeneratorJs.prototype = {
 					if (fnIsInString(sTypes, oLeft.pt + oRight.pt)) {
 						node.pt = oLeft.pt === oRight.pt ? oLeft.pt : "R";
 					} else {
-						throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
+						throw that.composeError(Error(), "Type error", node.value, node.pos);
 					}
 				} else if (oLeft.pt && !fnIsInString(sTypes, oLeft.pt) || oRight.pt && !fnIsInString(sTypes, oRight.pt)) {
-					throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
+					throw that.composeError(Error(), "Type error", node.value, node.pos);
 				}
 			},
 
@@ -172,7 +265,7 @@ CodeGeneratorJs.prototype = {
 						if (fnIsInString("IR$", oLeft.pt)) { // I, R or $?
 							node.pt = oLeft.pt;
 						} else if (oLeft.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
+							throw that.composeError(Error(), "Type error", node.value, node.pos);
 						}
 					} else {
 						node.pv = a + " + " + oRight.pv;
@@ -199,7 +292,7 @@ CodeGeneratorJs.prototype = {
 						if (fnIsInString("IR", oLeft.pt)) { // I or R?
 							node.pt = oLeft.pt;
 						} else if (oLeft.pt) {
-							throw new CodeGeneratorJs.ErrorObject("Type error", node.value, node.pos, that.iLine);
+							throw that.composeError(Error(), "Type error", node.value, node.pos);
 						}
 					} else {
 						node.pv = a + " - " + oRight.pv;
@@ -296,7 +389,7 @@ CodeGeneratorJs.prototype = {
 				"@": function (node, oLeft) {
 					node.pv = 'o.addressOf("' + oLeft.pv + '")'; // address of
 					if (oLeft.type !== "identifier") {
-						throw new CodeGeneratorJs.ErrorObject("Identifier expected", node.value, node.pos, that.iLine);
+						throw that.composeError(Error(), "Identifier expected", node.value, node.pos);
 					}
 					node.pt = "I";
 					return node.pv;
@@ -341,7 +434,7 @@ CodeGeneratorJs.prototype = {
 							Utils.console.debug("fnAddReferenceLabel: line does not (yet) exist:", sLabel);
 						}
 						if (!that.bMergeFound) {
-							throw new CodeGeneratorJs.ErrorObject("Line does not exist", sLabel, node.pos, that.iLine);
+							throw that.composeError(Error(), "Line does not exist", sLabel, node.pos);
 						}
 					}
 				},
@@ -367,7 +460,7 @@ CodeGeneratorJs.prototype = {
 						that.iStopCount += 1;
 						node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, ren,...)
 					} else {
-						throw new CodeGeneratorJs.ErrorObject("Unknown RSX command", node.value, node.pos, that.iLine);
+						throw that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
 					}
 					return node.pv;
 				},
@@ -427,7 +520,7 @@ CodeGeneratorJs.prototype = {
 						sRight = fnParseOneArg(node.right);
 
 					if (sLeft > sRight) {
-						throw new CodeGeneratorJs.ErrorObject("Decreasing range", node.value, node.pos, that.iLine);
+						throw that.composeError(Error(), "Decreasing range", node.value, node.pos);
 					}
 					node.pv = sLeft + " - " + sRight;
 					return node.pv;
@@ -437,7 +530,7 @@ CodeGeneratorJs.prototype = {
 						sRight = fnParseOneArg(node.right);
 
 					if (sLeft > sRight) {
-						throw new CodeGeneratorJs.ErrorObject("Decreasing line range", node.value, node.pos, that.iLine);
+						throw that.composeError(Error(), "Decreasing line range", node.value, node.pos);
 					}
 					node.pv = !sRight ? sLeft : sLeft + ", " + sRight;
 					return node.pv;
@@ -458,7 +551,7 @@ CodeGeneratorJs.prototype = {
 					if (node.left.type === "identifier") {
 						sName = fnParseOneArg(node.left);
 					} else {
-						throw new CodeGeneratorJs.ErrorObject("Unexpected assing type", node.type, node.pos, that.iLine); // should not occur
+						throw that.composeError(Error(), "Unexpected assing type", node.type, node.pos); // should not occur
 					}
 
 					value = fnParseOneArg(node.right);
@@ -701,7 +794,7 @@ CodeGeneratorJs.prototype = {
 					sVarType = fnDetermineStaticVarType(sVarName);
 					sType = (sVarType.length > 1) ? sVarType.charAt(1) : "";
 					if (sType === "$") {
-						throw new CodeGeneratorJs.ErrorObject("String type in FOR at", node.type, node.pos, that.iLine);
+						throw that.composeError(Error(), "String type in FOR at", node.type, node.pos);
 					}
 
 					if (!bStartIsIntConst) {
@@ -902,11 +995,11 @@ CodeGeneratorJs.prototype = {
 							} else { // identifier arg
 								oErrorNode = node.args[i];
 							}
-							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT at", oErrorNode.type, oErrorNode.pos, that.iLine);
+							throw that.composeError(Error(), "Unexpected NEXT at", oErrorNode.type, oErrorNode.pos);
 						}
 						if (aNodeArgs[i] !== "" && aNodeArgs[i] !== sVarName) {
 							oErrorNode = node.args[i];
-							throw new CodeGeneratorJs.ErrorObject("Unexpected NEXT variable", oErrorNode.value, oErrorNode.pos, that.iLine);
+							throw that.composeError(Error(), "Unexpected NEXT variable", oErrorNode.value, oErrorNode.pos);
 						}
 						aNodeArgs[i] = "/* next(\"" + aNodeArgs[i] + "\") */ o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "e\":";
 					}
@@ -1096,7 +1189,7 @@ CodeGeneratorJs.prototype = {
 					var sLabel = that.oStack.whileLabel.pop();
 
 					if (sLabel === undefined) {
-						throw new CodeGeneratorJs.ErrorObject("Unexpected WEND at", node.type, node.pos, that.iLine);
+						throw that.composeError(Error(), "Unexpected WEND at", node.type, node.pos);
 					}
 					node.pv = "/* o.wend() */ o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "e\":";
 					return node.pv;
@@ -1179,15 +1272,15 @@ CodeGeneratorJs.prototype = {
 					if (oNode.type === "label") {
 						sLine = oNode.value;
 						if (sLine in oLabels2) {
-							throw new CodeGeneratorJs.ErrorObject("Duplicate line number", sLine, oNode.pos, that.iLine);
+							throw that.composeError(Error(), "Duplicate line number", sLine, oNode.pos);
 						}
 						iLine = Number(sLine);
 						if (!isNaN(iLine)) { // not for "direct"
 							if (iLine <= iLastLine) {
-								throw new CodeGeneratorJs.ErrorObject("Line number not increasing", sLine, oNode.pos, that.iLine);
+								throw that.composeError(Error(), "Line number not increasing", sLine, oNode.pos);
 							}
 							if (iLine < 1 || iLine > 65535) {
-								throw new CodeGeneratorJs.ErrorObject("Line number overflow", sLine, oNode.pos, that.iLine);
+								throw that.composeError(Error(), "Line number overflow", sLine, oNode.pos);
 							}
 							iLastLine = iLine;
 						}
@@ -1231,7 +1324,7 @@ CodeGeneratorJs.prototype = {
 		return fnEvaluate();
 	},
 
-	generate: function (input, variables, bAllowDirect) {
+	generate: function (sInput, oVariables, bAllowDirect) {
 		var fnCombineData = function (aData) {
 				var sData = "";
 
@@ -1247,9 +1340,9 @@ CodeGeneratorJs.prototype = {
 			aTokens, aParseTree, sOutput;
 
 		try {
-			aTokens = this.lexer.lex(input);
+			aTokens = this.lexer.lex(sInput);
 			aParseTree = this.parser.parse(aTokens, bAllowDirect);
-			sOutput = this.evaluate(aParseTree, variables);
+			sOutput = this.evaluate(aParseTree, oVariables);
 			oOut.text = "var v=o.v;\n";
 			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"
 				+ fnCombineData(this.aData)
@@ -1268,7 +1361,9 @@ CodeGeneratorJs.prototype = {
 	}
 };
 
+//CodeGeneratorJs.ErrorObject = Utils.ErrorObject;
 
+/*
 CodeGeneratorJs.ErrorObject = function (sMessage, value, iPos, iLine) {
 	this.message = sMessage;
 	this.value = value;
@@ -1277,6 +1372,7 @@ CodeGeneratorJs.ErrorObject = function (sMessage, value, iPos, iLine) {
 		this.line = iLine;
 	}
 };
+*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = CodeGeneratorJs;

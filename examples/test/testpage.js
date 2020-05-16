@@ -67,7 +67,7 @@ cpcBasic.addItem("", function () { /*
 650 a=+++++++++---9:if a<>-9 then error 33
 660 a=(1=0):if a<>0 then error 33
 670 a=(1>0)*(0<1):if a<>1 then error 33
-680 gosub 9040:cls
+680 gosub 9040
 690 '
 700 ?"ABS(positive number)"
 710 a=abs(+67.98):if a<>67.98 then error 33
@@ -165,7 +165,7 @@ cpcBasic.addItem("", function () { /*
 1630 erase a
 1640 if a<>10 then error 33
 1650 a=0:for i=0 to 4:a=a+a(i):next:if a<>0 then error 33
-1660 gosub 9040:cls
+1660 gosub 9040
 1670 '
 1680 ?"FOR with integer constants"
 1690 a$="":for i=+4 to 0 step -2:a$=a$+str$(i):next:if a$<>" 4 2 0" then error 33
@@ -177,7 +177,7 @@ cpcBasic.addItem("", function () { /*
 1750 gosub 9010:if a$<>" 0 -1 #" then error 33
 1760 ?"FOR up to 2*PI"
 1770 a=13/8*PI:for i=1 to 3:a=a+1/8*PI:next:if a>2*PI then ?"limit exceeded by";a-2*PI;"(TODO)" else ?"ok"
-1780 'gosub 9040:cls
+1780 'gosub 9040
 1790 '
 1800 ?"GOTO with leading zeros"
 1810 goto 1820
@@ -202,7 +202,7 @@ cpcBasic.addItem("", function () { /*
 2000 a=1:goto 2020
 2010 a=2:goto 2020
 2020 if a<>2 then error 33
-2030 gosub 9040:cls
+2030 gosub 9040
 2040 '
 2050 ?"PRINT in FOR loop"
 2060 for i=1 to 5:print i;:next i:print"#";
@@ -223,7 +223,7 @@ cpcBasic.addItem("", function () { /*
 2210 ?"#";
 2220 gosub 9010:if a$<>"a<>3: 1 (not three) a<>3: 2 (not three) a= 3 (three) #" then error 33
 2230 '
-2240 gosub 9040:cls
+2240 gosub 9040
 2250 ?"PRINT numbers separated by space"
 2260 print 1 2 3;:?"#";
 2270 gosub 9010: 'if a$<>" 1  2  3 #" then error 33: 'not ok! On real CPC one number: " 123 #"
@@ -266,7 +266,7 @@ cpcBasic.addItem("", function () { /*
 2640 ?"PRINT number without separator"
 2650 ?&x102;"#";
 2660 gosub 9010:if a$<>" 2  2 #" then error 33
-2670 gosub 9040:cls
+2670 gosub 9040
 2680 '
 2690 ?"PRINT USING number format"
 2700 print using "##.##";8.575;:?"#";
@@ -281,7 +281,7 @@ cpcBasic.addItem("", function () { /*
 2790 gosub 9010:if a$<>"ab#" then error 33
 2800 print using "&";"a1";"b2";:?"#";
 2810 gosub 9010:if a$<>"a1b2#" then error 33
-2820 'gosub 9040:cls
+2820 'gosub 9040
 2830 '
 2840 ?"ROUND"
 2850 a=round(PI):if a<>3 then error 33
@@ -292,7 +292,7 @@ cpcBasic.addItem("", function () { /*
 2900 a=round(1234.5678,-2):if a<>1200 then error 33
 2910 a=round(8.575,2):if a<>8.58 then error 33
 2920 '
-2930 gosub 9040:cls
+2930 gosub 9040
 2940 ?"DATA and RESTORE"
 2950 restore 2960: read s$,t$: if s$+t$<>"1" then error 33
 2960 data 1,
@@ -364,7 +364,7 @@ cpcBasic.addItem("", function () { /*
 3620 '
 3630 |ERA,"testdat2"
 3640 '
-3650 gosub 9040:cls
+3650 gosub 9040
 3660 '
 3670 ?"SYMBOL AFTER"
 3680 a=240:h=himem+(256-a)*8
@@ -386,15 +386,16 @@ cpcBasic.addItem("", function () { /*
 3840 a=val("&ff"):if a<>&ff then error 33
 3850 '
 3860 gosub 9040
-3870 mode 1:border 2
+3865 '
 3880 print "stairs"
+3882 for i=1 to 24:print string$(i*2, "O"):next
 3890 move 0,350
 3900 for n=1 to 8
 3910 drawr 50,0
 3920 drawr 0,-50
 3930 next
 3940 move 348,0
-3950 fill 3
+3950 fill 1
 3960 '
 3970 print "test finished: ok"
 3980 end
@@ -403,6 +404,8 @@ cpcBasic.addItem("", function () { /*
 9010 a$="":i=1:while i<=80 and right$(a$,1)<>"#":locate i,vpos(#0):a$=a$+copychr$(#0):i=i+1:wend:?:return
 9020 '
 9030 'wait some time or for key press
-9040 t!=time+6*50:a$="":while time<t! and a$="":a$=inkey$:wend:return
-9050 '
+9040 t!=time+6*50:a$="":while time<t! and a$="":a$=inkey$:wend
+9050 ?:?string$(10, "-"):?
+9060 return
+9070 '
 */ });

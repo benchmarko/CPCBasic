@@ -232,6 +232,14 @@ BasicParser.prototype = {
 		this.iLine = 0; // for error messages
 	},
 
+	composeError: function () { // varargs
+		var aArgs = Array.prototype.slice.call(arguments);
+
+		aArgs.unshift("BasicParser");
+		aArgs.push(this.iLine);
+		return Utils.composeError.apply(null, aArgs);
+	},
+
 	// http://crockford.com/javascript/tdop/tdop.html (old: http://javascript.crockford.com/tdop/tdop.html)
 	// http://crockford.com/javascript/tdop/parse.js
 	// Operator precedence parsing
@@ -270,7 +278,7 @@ BasicParser.prototype = {
 
 				oPreviousToken = oToken;
 				if (id && oToken.type !== id) {
-					throw new BasicParser.ErrorObject("Expected", id, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Token expected", id, oToken.pos);
 				}
 				if (iIndex >= aTokens.length) {
 					oToken = oSymbols["(end)"];
@@ -283,7 +291,7 @@ BasicParser.prototype = {
 				}
 				oSym = oSymbols[oToken.type];
 				if (!oSym) {
-					throw new BasicParser.ErrorObject("Unknown token", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Unknown token", oToken.type, oToken.pos);
 				}
 				return oToken;
 			},
@@ -299,9 +307,9 @@ BasicParser.prototype = {
 				advance();
 				if (!s.nud) {
 					if (t.type === "(end)") {
-						throw new BasicParser.ErrorObject("Unexpected end of file", "", t.pos, that.iLine);
+						throw that.composeError(Error(), "Unexpected end of file", "", t.pos);
 					} else {
-						throw new BasicParser.ErrorObject("Unexpected token", t.type, t.pos, that.iLine);
+						throw that.composeError(Error(), "Unexpected token", t.type, t.pos);
 					}
 				}
 				left = s.nud(t); // process literals, variables, and prefix operators
@@ -310,7 +318,7 @@ BasicParser.prototype = {
 					s = oSymbols[t.type];
 					advance();
 					if (!s.led) {
-						throw new BasicParser.ErrorObject("Unexpected token", t.type, t.pos, that.iLine); //TTT how to get this error?
+						throw that.composeError(Error(), "Unexpected token", t.type, t.pos); //TTT how to get this error?
 					}
 					left = s.led(left); // ...the led method is invoked on the following token (infix and suffix operators), can be recursive
 				}
@@ -321,7 +329,7 @@ BasicParser.prototype = {
 				var oValue, oLeft;
 
 				if (oToken.type !== "identifier") {
-					throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 				}
 				oLeft = expression(90); // take it (can also be an array) and stop
 				oValue = oToken;
@@ -349,7 +357,7 @@ BasicParser.prototype = {
 				}
 
 				if (oValue.type !== "assign" && oValue.type !== "fcall" && oValue.type !== "def" && oValue.type !== "(" && oValue.type !== "[") {
-					throw new BasicParser.ErrorObject("Bad expression statement", t.value, t.pos, that.iLine);
+					throw that.composeError(Error(), "Bad expression statement", t.value, t.pos);
 				}
 				return oValue;
 			},
@@ -474,7 +482,7 @@ BasicParser.prototype = {
 
 				if (oRange) {
 					if (!oLeft && !oRight) {
-						throw new BasicParser.ErrorObject("Invalid range at", oRange.type, oRange.pos, that.iLine);
+						throw that.composeError(Error(), "Invalid range at", oRange.type, oRange.pos);
 					}
 					oRange.type = "linerange"; // change "-" => "linerange"
 					oRange.left = oLeft || fnCreateDummyArg(); // insert dummy for left
@@ -495,7 +503,7 @@ BasicParser.prototype = {
 						sType = aTypes.shift();
 					} while (sType && (Utils.stringEndsWith(sType, "*") || Utils.stringEndsWith(sType, "?")));
 					if (sType && !Utils.stringEndsWith(sType, "?")) {
-						throw new BasicParser.ErrorObject("Expected parameter " + sType + " for arguments after", oPreviousToken.value, oToken.pos, that.iLine);
+						throw that.composeError(Error(), "Expected parameter " + sType + " for arguments after", oPreviousToken.value, oToken.pos);
 					}
 				}
 			},
@@ -532,7 +540,7 @@ BasicParser.prototype = {
 					if (aTypes && sType.slice(-1) !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
 						if (!sType) {
-							throw new BasicParser.ErrorObject("Expected end of arguments", oPreviousToken.type, oPreviousToken.pos, that.iLine);
+							throw that.composeError(Error(), "Expected end of arguments", oPreviousToken.type, oPreviousToken.pos);
 						}
 					}
 					if (sType === "#0?") { // optional stream?
@@ -555,17 +563,17 @@ BasicParser.prototype = {
 						} else if (sType.substr(0, 1) === "l") {
 							oExpression = expression(0);
 							if (oExpression.type !== "number") { // maybe an expression and no plain number
-								throw new BasicParser.ErrorObject("Line number expected at", oExpression.value, oExpression.pos, that.iLine);
+								throw that.composeError(Error(), "Line number expected at", oExpression.value, oExpression.pos);
 							}
 							oExpression.type = "linenumber"; // change type: number => linenumber
 						} else if (sType.substr(0, 1) === "v") { // variable (identifier)
 							oExpression = expression(0);
 							if (oExpression.type !== "identifier") {
-								throw new BasicParser.ErrorObject("Variable expected at", oExpression.value, oExpression.pos, that.iLine);
+								throw that.composeError(Error(), "Variable expected at", oExpression.value, oExpression.pos);
 							}
 						} else if (sType.substr(0, 1) === "r") { // character or range of characters (defint, defreal, defstr)
 							if (oToken.type !== "identifier") {
-								throw new BasicParser.ErrorObject("Letter expected at", oToken.value, oToken.pos, that.iLine);
+								throw that.composeError(Error(), "Letter expected at", oToken.value, oToken.pos);
 							}
 							oExpression = expression(0);
 							if (fnIsSingleLetterIdentifier(oExpression)) { // ok
@@ -575,12 +583,12 @@ BasicParser.prototype = {
 								oExpression.left.type = "letter"; // change type: identifier -> letter
 								oExpression.right.type = "letter"; // change type: identifier -> letter
 							} else {
-								throw new BasicParser.ErrorObject("Letter or range expected at", oExpression.value, oExpression.pos, that.iLine);
+								throw that.composeError(Error(), "Letter or range expected at", oExpression.value, oExpression.pos);
 							}
 						} else {
 							oExpression = expression(0);
 							if (oExpression.type === "#") { // got stream?
-								throw new BasicParser.ErrorObject("Unexpected stream at", oExpression.value, oExpression.pos, that.iLine);
+								throw that.composeError(Error(), "Unexpected stream at", oExpression.value, oExpression.pos);
 							}
 						}
 						if (oToken.type === sSeparator) {
@@ -619,7 +627,7 @@ BasicParser.prototype = {
 				advance("(");
 				aArgs = fnGetArgs(null, ")");
 				if (oToken.type !== ")") {
-					throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
 				}
 				advance(")");
 				return aArgs;
@@ -631,7 +639,7 @@ BasicParser.prototype = {
 				advance("[");
 				aArgs = fnGetArgs(null, "]");
 				if (oToken.type !== "]") {
-					throw new BasicParser.ErrorObject("Expected closing brackets for argument list after", oPreviousToken.value, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected closing brackets for argument list after", oPreviousToken.value, oToken.pos);
 				}
 				advance("]");
 				return aArgs;
@@ -660,7 +668,7 @@ BasicParser.prototype = {
 					advance("(");
 					oValue.args = fnGetArgs(oValue.type, ")");
 					if (oToken.type !== ")") {
-						throw new BasicParser.ErrorObject("Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos, that.iLine);
+						throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
 					}
 					advance(")");
 				} else { // no parenthesis?
@@ -826,7 +834,7 @@ BasicParser.prototype = {
 				oValue.left = oToken;
 				advance();
 			} else {
-				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 			}
 
 			if (oToken.type !== "(") { // FN xxx name without ()?
@@ -931,12 +939,12 @@ BasicParser.prototype = {
 					oToken.value = "FN" + oToken.value;
 					oValue.left = oToken;
 				} else {
-					throw new BasicParser.ErrorObject("Invalid DEF at", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Invalid DEF at", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "identifier" && Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) { // fn<identifier>
 				oValue.left = oToken;
 			} else {
-				throw new BasicParser.ErrorObject("Invalid DEF at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Invalid DEF at", oToken.type, oToken.pos);
 			}
 			advance();
 
@@ -964,7 +972,7 @@ BasicParser.prototype = {
 			oValue.type = "rem"; // create a comment form else
 			oValue.args = [];
 
-			Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line", that.iLine);
+			Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line");
 
 			// TTT TODO: data line as separate statement is taken
 			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
@@ -1047,12 +1055,12 @@ BasicParser.prototype = {
 				oName;
 
 			if (oToken.type !== "identifier") {
-				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 			}
 			oName = expression(90); // take simple identifier, nothing more
 			oValue.args = [oName];
 			if (oName.type !== "identifier") {
-				throw new BasicParser.ErrorObject("Expected simple identifier at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected simple identifier at", oToken.type, oToken.pos);
 			}
 			advance("=");
 			oValue.args.push(expression(0));
@@ -1077,7 +1085,7 @@ BasicParser.prototype = {
 				advance(oToken.type);
 				oValue = fnCreateCmdCall(sName);
 			} else {
-				throw new BasicParser.ErrorObject("Expected PEN or PAPER at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected PEN or PAPER at", oToken.type, oToken.pos);
 			}
 			return oValue;
 		});
@@ -1099,7 +1107,7 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.right = statements("else");
 					if (oValue.right.length && oValue.right[0].type !== "rem") {
-						Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos + ", line", that.iLine);
+						Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos + ", line");
 					}
 					oValue.right.unshift(oValue2);
 				} else {
@@ -1114,7 +1122,7 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.third = statements("else");
 					if (oValue.third.length) {
-						Utils.console.warn("IF: Unreachable code after ELSE at pos", oToken2.pos + ", line", that.iLine);
+						Utils.console.warn("IF: Unreachable code after ELSE at pos", oToken2.pos + ", line");
 					}
 					oValue.third.unshift(oValue2);
 				} else if (oToken.type === "if") {
@@ -1159,7 +1167,7 @@ BasicParser.prototype = {
 				} else if (oToken.type === ",") {
 					advance(",");
 				} else {
-					throw new BasicParser.ErrorObject("Expected ; or , at", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
 				}
 			}
 
@@ -1174,7 +1182,7 @@ BasicParser.prototype = {
 
 			do {
 				if (oToken.type !== "identifier") {
-					throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 				}
 				oValue2 = oToken; // identifier
 				advance();
@@ -1202,7 +1210,7 @@ BasicParser.prototype = {
 			var oValue = oPreviousToken;
 
 			if (oToken.type !== "identifier") {
-				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 			}
 			oValue.left = expression(90); // take it (can also be an array) and stop
 			advance("="); // equal as assignment
@@ -1244,7 +1252,7 @@ BasicParser.prototype = {
 				} else if (oToken.type === ",") {
 					advance();
 				} else {
-					throw new BasicParser.ErrorObject("Expected ; or , at", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
 				}
 			}
 
@@ -1259,7 +1267,7 @@ BasicParser.prototype = {
 
 
 			if (oToken.type !== "identifier") {
-				throw new BasicParser.ErrorObject("Expected identifier at", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 			}
 			oValue2 = oToken;
 			advance();
@@ -1297,7 +1305,7 @@ BasicParser.prototype = {
 
 			oMid = fnCreateFuncCall("mid$Assign");
 			if (oMid.args[0].type !== "identifier") {
-				throw new BasicParser.ErrorObject("Expected identifier at", oMid.args[0].type, oMid.args[0].pos, that.iLine);
+				throw that.composeError(Error(), "Expected identifier at", oMid.args[0].type, oMid.args[0].pos);
 			}
 
 			if (oMid.args.length < 3) {
@@ -1334,7 +1342,7 @@ BasicParser.prototype = {
 					advance("stop");
 					oValue.type = "onBreakStop";
 				} else {
-					throw new BasicParser.ErrorObject("Expected GOSUB, CONT or STOP", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected GOSUB, CONT or STOP", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "error") { // on error goto
 				advance("error");
@@ -1343,7 +1351,7 @@ BasicParser.prototype = {
 					oValue.type = "onErrorGoto";
 					oValue.args = fnGetArgs(oValue.type);
 				} else {
-					throw new BasicParser.ErrorObject("Expected GOTO", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected GOTO", oToken.type, oToken.pos);
 				}
 			} else if (oToken.type === "sq") { // on sq(n) gosub
 				oLeft = expression(0);
@@ -1354,7 +1362,7 @@ BasicParser.prototype = {
 					oValue.args = fnGetArgs(oValue.type);
 					oValue.args.unshift(oLeft);
 				} else {
-					throw new BasicParser.ErrorObject("Expected GOSUB", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected GOSUB", oToken.type, oToken.pos);
 				}
 			} else {
 				oLeft = expression(0);
@@ -1369,7 +1377,7 @@ BasicParser.prototype = {
 					oValue.args = fnGetArgs(oValue.type);
 					oValue.args.unshift(oLeft);
 				} else {
-					throw new BasicParser.ErrorObject("Expected GOTO or GOSUB", oToken.type, oToken.pos, that.iLine);
+					throw that.composeError(Error(), "Expected GOTO or GOSUB", oToken.type, oToken.pos);
 				}
 			}
 			return oValue;
@@ -1476,7 +1484,7 @@ BasicParser.prototype = {
 				advance("write");
 				break;
 			default:
-				throw new BasicParser.ErrorObject("Expected INK, KEY or WRITE", oToken.type, oToken.pos, that.iLine);
+				throw that.composeError(Error(), "Expected INK, KEY or WRITE", oToken.type, oToken.pos);
 			}
 			return fnCreateCmdCall(sName);
 		});
@@ -1512,7 +1520,18 @@ BasicParser.prototype = {
 	}
 };
 
+//BasicParser.ErrorObject = Utils.createErrorType("BasicParser.ErrorObject");
 
+/*
+BasicParser.ErrorObject = function () {
+	Utils.ErrorObject.apply(this, arguments);
+};
+BasicParser.ErrorObject.prototype = Object.create(Utils.ErrorObject.prototype);
+BasicParser.ErrorObject.prototype.constructor = BasicParser.ErrorObject;
+BasicParser.ErrorObject.prototype.name = "BasicParser.ErrorObject";
+*/
+
+/*
 BasicParser.ErrorObject = function (sMessage, value, iPos, iLine) {
 	this.message = sMessage;
 	this.value = value;
@@ -1521,6 +1540,7 @@ BasicParser.ErrorObject = function (sMessage, value, iPos, iLine) {
 		this.line = iLine;
 	}
 };
+*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = BasicParser;

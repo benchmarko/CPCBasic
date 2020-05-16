@@ -28,6 +28,16 @@ BasicLexer.prototype = {
 	},
 
 	reset: function () {
+		this.iLine = 0; // for error messages
+		this.bTakeNumberAsLine = true;
+	},
+
+	composeError: function () { // varargs
+		var aArgs = Array.prototype.slice.call(arguments); //Object.assign({}, arguments);
+
+		aArgs.unshift("BasicLexer");
+		aArgs.push(this.iLine);
+		return Utils.composeError.apply(null, aArgs);
 	},
 
 	lex: function (input) { // eslint-disable-line complexity
@@ -183,6 +193,11 @@ BasicLexer.prototype = {
 					}
 					addToken(sChar, sChar, iStartPos); // ","
 					sChar = advance();
+
+					if (sChar === "\r") { // IE8 has "/r/n" newlines
+						sChar = advance();
+					}
+
 					if (isNewLine(sChar)) { // data ending with "," (empty argument) => append dummy token
 						sToken = "";
 						addToken("string", sToken, iStartPos);
@@ -198,6 +213,8 @@ BasicLexer.prototype = {
 			} else if (isNewLine(sChar)) {
 				addToken("(eol)", 0, iStartPos);
 				sChar = advance();
+				this.bTakeNumberAsLine = true;
+				//this.iLine += 1; //TTT
 			} else if (isComment(sChar)) {
 				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
@@ -222,9 +239,13 @@ BasicLexer.prototype = {
 				sToken = sToken.trim(); // remove trailing spaces
 				iNumber = parseFloat(sToken);
 				if (!isFinite(sToken)) {
-					throw new BasicLexer.ErrorObject("Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
+					throw this.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
 				}
 				addToken("number", iNumber, iStartPos, sToken);
+				if (this.bTakeNumberAsLine) {
+					this.bTakeNumberAsLine = false;
+					this.iLine = iNumber; // save just for error message
+				}
 			} else if (isDot(sChar)) { // number starting with dot (similar code to normal number) // TODO: .( *\d+)+[eE] *[+-]? *\d[\d ]*
 				sToken = sChar;
 				sChar = advance();
@@ -237,7 +258,7 @@ BasicLexer.prototype = {
 				}
 				iNumber = parseFloat(sToken);
 				if (!isFinite(iNumber)) {
-					throw new BasicLexer.ErrorObject("Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
+					throw this.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
 				}
 				addToken("number", iNumber, iStartPos, sToken);
 			} else if (isHexOrBin(sChar)) {
@@ -254,7 +275,7 @@ BasicLexer.prototype = {
 						sToken += advanceWhile(isHex2);
 						addToken("hexnumber", sToken, iStartPos);
 					} else {
-						throw new BasicLexer.ErrorObject("Number expected", sToken, iStartPos);
+						throw this.composeError(Error(), "Number expected", sToken, iStartPos);
 					}
 				}
 			} else if (isQuotes(sChar)) {
@@ -303,7 +324,7 @@ BasicLexer.prototype = {
 				sToken = advanceWhile(isComparison2);
 				addToken(sToken, sToken, iStartPos); // like operator
 			} else {
-				throw new BasicLexer.ErrorObject("Unrecognized token", sChar, iStartPos);
+				throw this.composeError(Error(), "Unrecognized token", sChar, iStartPos);
 			}
 		}
 		addToken("(end)", 0, iIndex);
@@ -311,12 +332,52 @@ BasicLexer.prototype = {
 	}
 };
 
+//BasicLexer.ErrorObject = Utils.createErrorType("BasicLexer.ErrorObject");
 
+/*
+BasicLexer.ErrorObject = function (oWrappedErr) {
+	this.wrapped = oWrappedErr;
+	this.wrapped.name = "BasicLexer.ErrorObject";
+};
+*/
+
+// BasicLexer.ErrorObject = function () {
+// 	Error.apply(this, arguments);
+// };
+
+//BasicLexer.ErrorObject.prototype = Object.create(Error.prototype);
+//BasicLexer.ErrorObject.prototype.constructor = BasicLexer.ErrorObject;
+//BasicLexer.ErrorObject.prototype.name = "BasicLexer.ErrorObject";
+
+/*
+BasicLexer.ErrorObject = function (message, param1, param2) {
+	var err = new Error(message);
+	//Object.setPrototypeOf(err, BasicLexer.ErrorObject.prototype); //TTT DO NOT USE
+	err.param1 = param1;
+	err.param2 = param2;
+	return err;
+};
+BasicLexer.ErrorObject.prototype = Object.create(Error.prototype);
+BasicLexer.ErrorObject.prototype.constructor = BasicLexer.ErrorObject;
+BasicLexer.ErrorObject.prototype.name = "BasicLexer.ErrorObject";
+*7
+
+/*
+BasicLexer.ErrorObject = function () {
+	Utils.ErrorObject.apply(this, arguments);
+};
+BasicLexer.ErrorObject.prototype = Object.create(Utils.ErrorObject.prototype);
+BasicLexer.ErrorObject.prototype.constructor = BasicLexer.ErrorObject;
+BasicLexer.ErrorObject.prototype.name = "BasicLexer.ErrorObject";
+*/
+
+/*
 BasicLexer.ErrorObject = function (message, value, pos) {
 	this.message = message;
 	this.value = value;
 	this.pos = pos;
 };
+*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = BasicLexer;

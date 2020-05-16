@@ -110,6 +110,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Fractions (Bruchrechnen)"
 	},
 	{
+    	"key": "math/funcarea",
+		"title": "Functional Area"
+	},
+	{
     	"key": "math/funcspec",
 		"title": "Functional Spectrum"
 	},

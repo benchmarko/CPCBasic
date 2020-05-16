@@ -31,8 +31,16 @@ BasicFormatter.prototype = {
 		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
 	},
 
+	composeError: function () { // varargs
+		var aArgs = Array.prototype.slice.call(arguments); //Object.assign({}, arguments);
+
+		aArgs.unshift("BasicFormatter");
+		return Utils.composeError.apply(null, aArgs);
+	},
+
 	fnRenumber: function (sInput, aParseTree, iNew, iOld, iStep, iKeep) {
-		var oLines = {}, // line numbers
+		var that = this,
+			oLines = {}, // line numbers
 			aRefs = [], // references
 			oChanges = {},
 			//bMergeFound = false, //TODO
@@ -50,13 +58,13 @@ BasicFormatter.prototype = {
 						sLine = oNode.value;
 						iLine = Number(oNode.value);
 						if (sLine in oLines) {
-							throw new BasicFormatter.ErrorObject("Duplicate line number", sLine, oNode.pos);
+							throw that.composeError(Error(), "Duplicate line number", sLine, oNode.pos);
 						}
 						if (iLine <= iLastLine) {
-							throw new BasicFormatter.ErrorObject("Line number not increasing", sLine, oNode.pos);
+							throw that.composeError(Error(), "Line number not increasing", sLine, oNode.pos);
 						}
 						if (iLine < 1 || iLine > 65535) {
-							throw new BasicFormatter.ErrorObject("Line number overflow", sLine, oNode.pos);
+							throw that.composeError(Error(), "Line number overflow", sLine, oNode.pos);
 						}
 						oLines[oNode.value] = {
 							value: iLine,
@@ -80,7 +88,7 @@ BasicFormatter.prototype = {
 								len: String(oNode.orig || oNode.value).length
 							});
 						} else {
-							throw new BasicFormatter.ErrorObject("Line does not exist", oNode.value, oNode.pos);
+							throw that.composeError(Error(), "Line does not exist", oNode.value, oNode.pos);
 						}
 					}
 					if (oNode.left) {
@@ -105,7 +113,7 @@ BasicFormatter.prototype = {
 					oLine = oLines[aKeys[i]];
 					if (oLine.value >= iOld && oLine.value < iKeep) {
 						if (iNew > 65535) {
-							throw new BasicFormatter.ErrorObject("Line number overflow", oLine.value, oLine.pos);
+							throw that.composeError(Error(), "Line number overflow", oLine.value, oLine.pos);
 						}
 						oLine.newLine = iNew;
 						oChanges[oLine.pos] = oLine;
@@ -187,12 +195,13 @@ BasicFormatter.prototype = {
 	}
 };
 
-
+/*
 BasicFormatter.ErrorObject = function (message, value, pos) {
 	this.message = message;
 	this.value = value;
 	this.pos = pos;
 };
+*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = BasicFormatter;

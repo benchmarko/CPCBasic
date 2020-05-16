@@ -38,7 +38,7 @@ Controller.prototype = {
 		this.fnOnEscapeHandler = this.fnOnEscape.bind(this);
 		this.fnDirectInputHandler = this.fnDirectInput.bind(this);
 
-		this.oCodeGeneratorJs = null;
+		//this.oCodeGeneratorJs = null;
 
 		this.fnScript = null;
 
@@ -95,6 +95,13 @@ Controller.prototype = {
 		});
 		this.oVm.vmReset();
 		this.oNoStop = Object.assign({}, this.oVm.vmGetStopObject());
+
+		this.oCodeGeneratorJs = new CodeGeneratorJs({
+			lexer: new BasicLexer(),
+			parser: new BasicParser(),
+			tron: this.model.getProperty("tron"),
+			rsx: this.oVm.rsx // just to check the names
+		});
 
 		this.initDatabases();
 		if (oModel.getProperty("sound")) { // activate sound needs user action
@@ -687,14 +694,13 @@ Controller.prototype = {
 				that.loadFileContinue(sInput);
 			},
 			fnExampleError = function () {
-				var oVm = that.oVm,
-					iStream = 0,
-					oError;
+				var oError;
 
 				Utils.console.log("Example", sUrl, "error");
 				that.model.setProperty("example", oInFile.sMemorizedExample);
-				oError = oVm.vmSetError(32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
-				oVm.print(iStream, String(oError) + "\r\n");
+				oError = that.oVm.vmComposeError(Error(), 32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
+				that.outputError(oError, true);
+				//oVm.print(iStream, (oError.shortMessage || oError.message) + "\r\n");
 				that.loadFileContinue(null);
 			};
 
@@ -729,10 +735,51 @@ Controller.prototype = {
 		}
 	},
 
-	fnLocalStorageName: function (sName) {
+	computeChecksum: function (sData) {
+		var iSum = 0,
+			i;
+
+		for (i = 0; i < sData.length; i += 1) {
+			iSum += sData.charCodeAt(i);
+		}
+		return iSum;
+	},
+
+	parseAmsdosHeader: function (sData) {
+		var oHeader = null,
+			iComputed, iSum;
+
+		// http://www.cpcwiki.eu/index.php/AMSDOS_Header
+		if (sData.length >= 0x80) {
+			iComputed = this.computeChecksum(sData.substr(0, 66));
+			iSum = sData.charCodeAt(67) + sData.charCodeAt(68) * 256;
+			if (iComputed === iSum) {
+				oHeader = {
+					iType: sData.charCodeAt(18),
+					iStart: sData.charCodeAt(21) + sData.charCodeAt(22) * 256,
+					iPseudoLen: sData.charCodeAt(24) + sData.charCodeAt(25) * 256,
+					iEntry: sData.charCodeAt(26) + sData.charCodeAt(27) * 256,
+					iLength: sData.charCodeAt(64) + sData.charCodeAt(65) * 256 + sData.charCodeAt(66) * 65536
+				};
+				if (oHeader.iType === 0) {
+					oHeader.sType = "T";
+				} else if (oHeader.iType === 1) {
+					oHeader.sType = "P";
+				} else if (oHeader.iType === 2) {
+					oHeader.sType = "B";
+				} else {
+					oHeader.sType = "A"; //TTT
+				}
+			}
+		}
+		return oHeader;
+	},
+
+
+	fnLocalStorageName: function (sName, sDefaultExtension) {
 		// modify name so we do not clash with localstorage methods/properites
 		if (sName.indexOf(".") < 0) { // no dot inside name?
-			sName += "."; // append dot
+			sName += "." + (sDefaultExtension || ""); // append dot or default extension
 		}
 		return sName;
 	},
@@ -754,11 +801,18 @@ Controller.prototype = {
 
 			sName = oInFile.sName;
 			sStorageName = this.fnLocalStorageName(sName);
+			if (oStorage.getItem(sStorageName) === null && sName !== sStorageName) {
+				sStorageName = this.fnLocalStorageName(sName, "bas");
+				if (oStorage.getItem(sStorageName) === null) {
+					sStorageName = this.fnLocalStorageName(sName, "bin");
+				}
+			}
 
 			if (Utils.debug > 0) {
 				Utils.console.debug("fnFileLoad: sName=" + sName + " oStorage=" + oStorage);
 			}
 
+			/*
 			if (Utils.stringEndsWith(sStorageName, ".")) {
 				if (oStorage.getItem(sStorageName) === null) {
 					if (oStorage.getItem(sStorageName + "bas") !== null) {
@@ -768,6 +822,7 @@ Controller.prototype = {
 					}
 				}
 			}
+			*/
 
 			if (oStorage.getItem(sStorageName) !== null) {
 				if (Utils.debug > 0) {
@@ -792,18 +847,29 @@ Controller.prototype = {
 	fnFileSave: function () {
 		var oOutFile = this.oVm.vmGetOutFileObject(),
 			oStorage = Utils.localStorage,
-			sName, sStorageName, sFileData;
+			sDefaultExtension = "",
+			sName, sMeta, sType, sStorageName, sFileData;
 
 		if (oOutFile.bOpen) {
+			sMeta = oOutFile.sType;
+			sType = sMeta.charAt(0);
 			sName = oOutFile.sName;
-			sStorageName = this.fnLocalStorageName(sName);
+
+			if (sType === "P" || sType === "T") {
+				sDefaultExtension = "bas";
+			} else if (sType === "B") {
+				sDefaultExtension = "bin";
+			}
+			sStorageName = this.fnLocalStorageName(sName, sDefaultExtension);
+
 			sFileData = oOutFile.aFileData.join("");
 			if (Utils.debug > 0) {
 				Utils.console.debug("DEBUG: fnFileSave: sName=" + sName + ": put into localStorage");
 			}
 			if (sFileData === "") {
-				if (oOutFile.sType === "A" || oOutFile.sType === "P" || oOutFile.sType === "T") {
+				if (sType === "A" || sType === "P" || sType === "T") { // TODO: only "A" supported, not "P" or "T"
 					sFileData = this.view.getAreaValue("inputText");
+					sMeta = "A"; // currently we support type "A" only
 				}
 			}
 
@@ -814,7 +880,12 @@ Controller.prototype = {
 					Utils.console.warn(e);
 				}
 			}
-			oStorage.setItem(sStorageName, (oOutFile.sType || "") + ";" + sFileData);
+
+			if (sMeta.indexOf(",") < 0) { // no start and length?
+				sMeta += ",0," + sFileData.length;
+			}
+
+			oStorage.setItem(sStorageName, sMeta + ";" + sFileData);
 			this.oVm.vmResetFileHandling(oOutFile); //TTT make sure it is closed
 		} else {
 			Utils.console.error("fnFileSave: file not open!");
@@ -825,15 +896,15 @@ Controller.prototype = {
 	fnDeleteLines: function (oParas) {
 		var sInputText = this.view.getAreaValue("inputText"),
 			aLines = this.fnGetLineRange(sInputText, oParas.iFirst, oParas.iLast),
-			iStream = 0,
 			iLine, i, oError, sInput;
 
 		if (aLines.length) {
 			for (i = 0; i < aLines.length; i += 1) {
 				iLine = parseInt(aLines[i], 10);
 				if (isNaN(iLine)) {
-					oError = this.oVm.vmSetError(21, oParas.sCommand); // "Direct command found"
-					this.oVm.print(iStream, String(oError) + "\r\n");
+					oError = this.oVm.vmComposeError(Error(), 21, oParas.sCommand); // "Direct command found"
+					this.outputError(oError, true);
+					//this.oVm.print(iStream, (oError.shortMessage || oError.message) + "\r\n");
 					break;
 				}
 				aLines[i] = iLine; // keep just the line numbers
@@ -876,18 +947,34 @@ Controller.prototype = {
 		this.oVariables = {};
 		oVm.vmResetVariables();
 		oVm.vmReset();
-		//oVm.vmStop("reset", 0); // keep reset, but with priority 0, so that "compile only" still works
 		oVm.vmStop("end", 0, true); // set "end" with priority 0, so that "compile only" still works
 		oVm.sOut = "";
 		this.view.setAreaValue("outputText", "");
 		this.invalidateScript();
 	},
 
+	outputError: function (oError, bNoSelection) {
+		var iStream = 0,
+			sShortError = oError.shortMessage || oError.message,
+			iEndPos;
+
+		if (!bNoSelection) {
+			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
+			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
+		}
+
+		/*
+		sOutput = oError.message + ": '" + oError.value + "' " + (oError.line ? "in " + oError.line : "(pos " + oError.pos + "-" + iEndPos + ")");
+		oError.message = sOutput; // modifies message object!
+		*/
+		this.oVm.print(iStream, sShortError + "\r\n");
+		return sShortError;
+	},
+
 	fnRenumLines: function (oParas) {
 		var oVm = this.oVm,
 			sInput = this.view.getAreaValue("inputText"),
-			iStream = 0,
-			oOutput, oError, iEndPos, sOutput;
+			oOutput;
 
 		if (!this.oBasicFormatter) {
 			this.oBasicFormatter = new BasicFormatter({
@@ -900,15 +987,18 @@ Controller.prototype = {
 		oOutput = this.oBasicFormatter.renumber(sInput, oParas.iNew, oParas.iOld, oParas.iStep, oParas.iKeep);
 
 		if (oOutput.error) {
-			oError = oOutput.error;
+			this.outputError(oOutput.error);
+			/*
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
-			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
+			sOutput = (oError.message) + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
 			Utils.console.warn(sOutput);
 			this.oVm.print(iStream, sOutput + "\r\n"); // Error
+			*/
+			Utils.console.warn(oOutput.error);
+			//sOutput = oOutput.error.shortMessage || oOutput.error.message;
 		} else {
-			sOutput = oOutput.text;
-			this.view.setAreaValue("inputText", sOutput);
+			this.view.setAreaValue("inputText", oOutput.text);
 		}
 		this.oVm.vmGotoLine(0); // reset current line
 		oVm.vmStop("end", 0, true);
@@ -950,7 +1040,7 @@ Controller.prototype = {
 			//this.oKeyboard.setKeyDownHandler(this.fnWaitInputHandler);
 			this.fnWaitInput();
 		} else {
-			oError = this.oVm.vmSetError(8, iLine); // "Line does not exist"
+			oError = this.oVm.vmComposeError(Error(), 8, iLine); // "Line does not exist"
 			this.oVm.print(iStream, String(oError) + "\r\n");
 			this.oVm.vmStop("stop", 60, true); //TTT
 		}
@@ -959,9 +1049,9 @@ Controller.prototype = {
 	fnParse: function () {
 		var sInput = this.view.getAreaValue("inputText"),
 			iBench = this.model.getProperty("bench"),
-			iStream = 0,
-			i, iTime, oOutput, oError, iEndPos, sOutput;
+			i, iTime, oOutput, sOutput;
 
+		/*
 		if (!this.oCodeGeneratorJs) {
 			this.oCodeGeneratorJs = new CodeGeneratorJs({
 				lexer: new BasicLexer(),
@@ -970,6 +1060,7 @@ Controller.prototype = {
 				rsx: this.oVm.rsx // just to check the names
 			});
 		}
+		*/
 
 		this.oVariables = {};
 		if (!iBench) {
@@ -989,12 +1080,7 @@ Controller.prototype = {
 		}
 
 		if (oOutput.error) {
-			oError = oOutput.error;
-			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
-			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
-			sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
-			oError.message = sOutput; // modifies message object
-			this.oVm.print(iStream, sOutput + "\r\n");
+			sOutput = this.outputError(oOutput.error);
 		} else {
 			sOutput = oOutput.text;
 		}
@@ -1011,7 +1097,6 @@ Controller.prototype = {
 
 	fnRun: function (oParas) {
 		var sScript = this.view.getAreaValue("outputText"),
-			iStream = 0,
 			iLine = oParas && oParas.iLine || 0,
 			oVm = this.oVm;
 
@@ -1031,19 +1116,19 @@ Controller.prototype = {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
 			} catch (e) {
 				Utils.console.error(e);
-				oVm.print(iStream, String(e) + "\r\n");
+				this.outputError(e, true);
+				//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 				this.fnScript = null;
 			}
 		} else {
-			oVm.clear(); // we do a clear as well here //TTT
+			oVm.clear(); // we do a clear as well here
 		}
 		oVm.vmReset4Run();
 
 		if (this.fnScript) {
 			oVm.sOut = this.view.getAreaValue("resultText");
 			oVm.vmStop("", 0, true);
-			//TTT oVm.iLine = iLine; //TTT
-			oVm.vmGotoLine(0); //TTT to load DATA lines
+			oVm.vmGotoLine(0); // to load DATA lines
 			this.oVm.vmSetStartLine(iLine); // clear resets also startline
 
 			this.view.setDisabled("runButton", true);
@@ -1064,24 +1149,22 @@ Controller.prototype = {
 	},
 
 	fnRunPart1: function () {
-		var oVm = this.oVm,
-			iStream = 0,
-			oError;
-
 		try {
-			this.fnScript(oVm);
+			this.fnScript(this.oVm);
 		} catch (e) {
-			if (e instanceof CpcVm.ErrorObject) {
+			if (e.name === "CpcVm") {
 				if (!e.hidden) {
-					oVm.print(iStream, String(e) + "\r\n");
 					Utils.console.warn(e);
+					this.outputError(e, true);
+					//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 				} else {
-					Utils.console.log(e);
+					Utils.console.log(e.message);
 				}
 			} else {
-				oError = oVm.vmSetError(2, String(e)); // Syntax Error
-				oVm.print(iStream, String(oError) + "\r\n");
 				Utils.console.error(e);
+				this.oVm.vmComposeError(e, 2, String(e)); // Syntax Error
+				this.outputError(e, true);
+				//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 			}
 		}
 	},
@@ -1091,12 +1174,12 @@ Controller.prototype = {
 			iStream = oInput.iStream,
 			sInput = oInput.sInput,
 			oVm = this.oVm,
-			sInputText, sMsg, oOutput, oError, sOutput, fnScript;
+			sInputText, sMsg, oOutput, sOutput, fnScript;
 
-		this.oVm.cursor(iStream, 0);
 		sInput = sInput.trim();
 		if (sInput !== "") {
 			oInput.sInput = "";
+			this.oVm.cursor(iStream, 0);
 			sInputText = this.view.getAreaValue("inputText");
 			if ((/^(\d)+/).test(sInput)) { // start with number?
 				if (Utils.debug > 0) {
@@ -1110,27 +1193,33 @@ Controller.prototype = {
 				this.view.setDisabled("continueButton", true);
 
 				this.oVm.cursor(iStream, 1);
+				this.updateResultText(); //TTT
 				return false; // continue direct input
 			}
 
 			Utils.console.log("fnDirectInput: execute:", sInput);
 
-			// see: fnParse()
-
 			if (sInputText) { // do we have a program?
-				this.oCodeGeneratorJs.reset();
-				oOutput = this.oCodeGeneratorJs.generate(sInput + "\n" + sInputText, this.oVariables, true); // compile both; allow direct command
+				oOutput = this.oCodeGeneratorJs.reset().generate(sInput + "\n" + sInputText, this.oVariables, true); // compile both; allow direct command
+				if (oOutput.error) {
+					if (oOutput.error.pos >= sInput.length + 1) { // error not in direct?
+						oOutput.error.pos -= (sInput.length + 1);
+						oOutput.error.message = "[prg] " + oOutput.error.message;
+						if (oOutput.error.shortMessage) {
+							oOutput.error.shortMessage = "[prg] " + oOutput.error.shortMessage;
+						}
+						sOutput = this.outputError(oOutput.error, true);
+						oOutput = null;
+					}
+				}
 			}
-			if (!oOutput || oOutput.error) {
-				this.oCodeGeneratorJs.reset();
-				oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables, true); // compile direct input only
+
+			if (!oOutput) {
+				oOutput = this.oCodeGeneratorJs.reset().generate(sInput, this.oVariables, true); // compile direct input only
 			}
 
 			if (oOutput.error) {
-				oError = oOutput.error;
-				sOutput = oError.message + ": '" + oError.value + "' (pos " + oError.pos + ")";
-				oError.message = sOutput;
-				this.oVm.print(iStream, sOutput + "\r\n");
+				sOutput = this.outputError(oOutput.error, true);
 			} else {
 				sOutput = oOutput.text;
 			}
@@ -1150,21 +1239,29 @@ Controller.prototype = {
 					this.fnScript = fnScript;
 				} catch (e) {
 					Utils.console.error(e);
-					oVm.print(iStream, String(e) + "\r\n");
+					this.outputError(e, true);
+					//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 				}
 			}
 
 			if (!oOutput.error) {
+				this.updateResultText(); //TTT
 				return true;
 			}
 			sMsg = oInput.sMessage;
-		} else {
+			this.oVm.print(iStream, sMsg);
+			this.oVm.cursor(iStream, 1);
+		}
+		/*
+		 else {
 			sMsg = "";
 		}
 		if (sMsg) {
 			this.oVm.print(iStream, sMsg);
 		}
 		this.oVm.cursor(iStream, 1);
+		*/
+		this.updateResultText(); //TTT
 		return false;
 	},
 
@@ -1187,17 +1284,23 @@ Controller.prototype = {
 			fnInputCallback: this.fnDirectInputHandler,
 			sInput: ""
 		});
-		//this.oKeyboard.setKeyDownHandler(this.fnWaitInputHandler);
 		this.fnWaitInput();
 	},
 
+	updateResultText: function () {
+		this.view.setAreaValue("resultText", this.oVm.sOut);
+		this.view.setAreaScrollTop("resultText"); // scroll to bottom
+	},
+
 	exitLoop: function () {
-		var oVm = this.oVm,
-			oStop = oVm.vmGetStopObject(),
+		var oStop = this.oVm.vmGetStopObject(),
 			sReason = oStop.sReason;
 
+		/*
 		this.view.setAreaValue("resultText", oVm.sOut);
 		this.view.setAreaScrollTop("resultText"); // scroll to bottom
+		*/
+		this.updateResultText();
 
 		this.view.setDisabled("runButton", sReason === "reset");
 		this.view.setDisabled("stopButton", sReason !== "waitInput" && sReason !== "waitKey" && sReason !== "fileLoad" && sReason !== "fileSave");
@@ -1206,8 +1309,6 @@ Controller.prototype = {
 			this.setVarSelectOptions("varSelect", this.oVariables);
 			this.commonEventHandler.onVarSelectChange();
 		}
-		//this.bTimeoutHandlerActive = false; // not running any more
-
 		if (sReason === "stop" || sReason === "end" || sReason === "error" || sReason === "parse" || sReason === "parseRun") {
 			this.startWithDirectInput();
 		}
@@ -1400,6 +1501,9 @@ Controller.prototype = {
 				var sNameType;
 
 				sNameType = sName.charAt(0); // take first character to determine var type later
+				if (sNameType === "_") { // ignore underscore (do not clash with keywords)
+					sNameType = sName.charAt(1);
+				}
 
 				// explicit type specified?
 				if (sName.indexOf("I") >= 0) {
@@ -1461,8 +1565,6 @@ Controller.prototype = {
 		soundButton.innerText = sText;
 	},
 
-	//TEST...
-
 	// https://stackoverflow.com/questions/10261989/html5-javascript-drag-and-drop-file-from-external-window-windows-explorer
 	// https://www.w3.org/TR/file-upload/#dfn-filereader
 	fnHandleFileSelect: function (event) {
@@ -1470,12 +1572,14 @@ Controller.prototype = {
 			iFile = 0,
 			oStorage = Utils.localStorage,
 			that = this,
-			oRegExpIsText = new RegExp(/^(\d+ [\t\n\r\x20-\xff]*|[\t\r\n\x20-\x7e]*)$/), // starting with (line) number, or 7 bit ASCII characters without control codes
+			oRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x20-\x7e]*$/), // starting with (line) number, or 7 bit ASCII characters without control codes
+			aImported = [],
 			f, oReader;
 
 
 		function fnReadNextFile() {
-			var sText;
+			var iStream = 0,
+				sText;
 
 			if (iFile < aFiles.length) {
 				f = aFiles[iFile];
@@ -1487,6 +1591,8 @@ Controller.prototype = {
 				} else {
 					oReader.readAsDataURL(f);
 				}
+			} else {
+				that.oVm.print(iStream, (aImported.length ? aImported.join(", ") : "No files") + " imported.\r\n");
 			}
 		}
 
@@ -1509,7 +1615,7 @@ Controller.prototype = {
 		function fnOnLoad(evt) {
 			var sData = evt.target.result,
 				sName = escape(f.name),
-				sStorageName, sMeta, iIndex, sDecodedData, iLength;
+				sStorageName, sMeta, iIndex, sDecodedData, iLength, oHeader;
 
 			sName = that.oVm.vmAdaptFilename(sName, "FILE");
 			sStorageName = that.fnLocalStorageName(sName);
@@ -1522,7 +1628,15 @@ Controller.prototype = {
 
 				sDecodedData = Utils.atob(sData);
 				iLength = sDecodedData.length; // or use: f.size
-				if (oRegExpIsText.test(sDecodedData)) {
+
+				oHeader = that.parseAmsdosHeader(sDecodedData);
+				if (oHeader) {
+					sMeta = oHeader.sType + "," + oHeader.iStart + "," + oHeader.iLength + "," + oHeader.iEntry;
+					sData = sDecodedData.substr(0x80); // remove header
+					if (oHeader.sType !== "A") {
+						sData = Utils.btoa(sData); // encode data without header
+					}
+				} else if (oRegExpIsText.test(sDecodedData)) {
 					sMeta = "A,0," + iLength;
 					sData = sDecodedData;
 				} else {
@@ -1531,7 +1645,9 @@ Controller.prototype = {
 			}
 
 			oStorage.setItem(sStorageName, sMeta + ";" + sData);
-			Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " stored");
+			Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
+			aImported.push(sStorageName);
+			//that.oVm.print(iStream, sStorageName + " imported\r\n");
 
 			fnReadNextFile();
 		}

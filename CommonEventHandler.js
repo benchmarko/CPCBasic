@@ -171,6 +171,22 @@ CommonEventHandler.prototype = {
 		window.open("https://github.com/benchmarko/CPCBasic/#readme");
 	},
 
+	onInputTextClick: function () {
+		// nothing
+	},
+
+	onOutputTextClick: function () {
+		// nothing
+	},
+
+	onResultTextClick: function () {
+		// nothing
+	},
+
+	onVarTextClick: function () {
+		// nothing
+	},
+
 	onOutputTextChange: function () {
 		this.controller.invalidateScript();
 	},

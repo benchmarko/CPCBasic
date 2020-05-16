@@ -367,13 +367,13 @@ CpcVm.prototype = {
 
 	vmAssertNumber: function (n, sErr) {
 		if (typeof n !== "number") {
-			this.error(13, sErr + " " + n); // Type mismatch
+			throw this.vmComposeError(Error(), 13, sErr + " " + n); // Type mismatch
 		}
 	},
 
 	vmAssertString: function (s, sErr) {
 		if (typeof s !== "string") {
-			this.error(13, sErr + " " + s); // Type mismatch
+			throw this.vmComposeError(Error(), 13, sErr + " " + s); // Type mismatch
 		}
 	},
 
@@ -396,7 +396,7 @@ CpcVm.prototype = {
 		n = this.vmRound(n, sErr);
 		if (n < iMin || n > iMax) {
 			Utils.console.warn("vmInRangeRound: number not in range:", iMin + "<=" + n + "<=" + iMax);
-			this.error(n < -32768 || n > 32767 ? 6 : 5, sErr + " " + n); // 6=Overflow, 5=Improper argument
+			throw this.vmComposeError(Error(), n < -32768 || n > 32767 ? 6 : 5, sErr + " " + n); // 6=Overflow, 5=Improper argument
 		}
 		return n;
 	},
@@ -411,7 +411,7 @@ CpcVm.prototype = {
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
 
 		if (sType !== "I" && sType !== "R") { // not integer or real?
-			this.error(13, "type " + sType); // "Type mismatch"
+			throw this.vmComposeError(Error(), 13, "type " + sType); // "Type mismatch"
 		}
 	},
 
@@ -426,7 +426,7 @@ CpcVm.prototype = {
 		} else if (sType === "$") { // string
 			if (typeof value !== "string") {
 				Utils.console.warn("vmAssign: expected string but got:", value);
-				this.error(13, "type " + sType + "=" + value); // "Type mismatch"
+				throw this.vmComposeError(Error(), 13, "type " + sType + "=" + value); // "Type mismatch"
 			}
 		}
 		return value;
@@ -699,11 +699,11 @@ CpcVm.prototype = {
 				sPad = (iPadLen > 0) ? sPadChar.repeat(iPadLen) : "";
 				sStr = arg + sPad; // string left aligned
 			} else { // no string format
-				this.error(13, "USING format " + sFormat); // "Type mismatch"
+				throw this.vmComposeError(Error(), 13, "USING format " + sFormat); // "Type mismatch"
 			}
 		} else { // number (not fully implemented)
 			if (sFormat === "&" || sFormat === "!" || re1.test(sFormat)) { // string format for number?
-				this.error(13, "USING format " + sFormat); // "Type mismatch"
+				throw this.vmComposeError(Error(), 13, "USING format " + sFormat); // "Type mismatch"
 			}
 			if (sFormat.indexOf(".") < 0) { // no decimal point?
 				arg = Number(arg).toFixed(0);
@@ -750,7 +750,7 @@ CpcVm.prototype = {
 		sName = sName.toLowerCase();
 
 		if (!sName) {
-			this.error(32, "Bad filename: " + sName);
+			throw this.vmComposeError(Error(), 32, "Bad filename: " + sName);
 		}
 		return sName;
 	},
@@ -865,7 +865,7 @@ CpcVm.prototype = {
 
 		iPos = aVarNames.indexOf(sVar);
 		if (iPos === -1) {
-			this.error(5, "@" + sVar); // Improper argument
+			throw this.vmComposeError(Error(), 5, "@" + sVar); // Improper argument
 		}
 		return iPos;
 	},
@@ -888,7 +888,7 @@ CpcVm.prototype = {
 	asc: function (s) {
 		this.vmAssertString(s, "ASC");
 		if (!s.length) {
-			this.error(5, "ASC"); // Improper argument
+			throw this.vmComposeError(Error(), 5, "ASC"); // Improper argument
 		}
 		return this.vmGetCpcCharCode(s.charCodeAt(0));
 	},
@@ -1101,25 +1101,32 @@ CpcVm.prototype = {
 		var oOutFile = this.oOutFile;
 
 		if (oOutFile.bOpen) {
-			oOutFile.sCommand = "closeout";
-			oOutFile.fnFileCallback = this.fnCloseoutHandler;
-			this.vmStop("fileSave", 90); // must stop directly after closeout
+			if (oOutFile.sCommand !== "openout") {
+				Utils.console.warn("closeout: command=", oOutFile.sCommand); // should not occure
+			}
+			if (!oOutFile.aFileData.length) { // openout without data?
+				this.vmCloseoutCallback(); // close directly
+			} else { // data to save
+				oOutFile.sCommand = "closeout";
+				oOutFile.fnFileCallback = this.fnCloseoutHandler;
+				this.vmStop("fileSave", 90); // must stop directly after closeout
+			}
 		}
 	},
 
 	cls: function (iStream) { // optional iStream
 		var oWin;
 
-		if (iStream) {
-			iStream = this.vmInRangeRound(iStream, 0, 7, "CLS");
-		} else {
-			iStream = 0;
-		}
+		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "CLS");
 		oWin = this.aWindow[iStream];
+
 		this.oCanvas.clearTextWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom, oWin.iPaper); // cls window
-		this.sOut = "";
 		oWin.iPos = 0;
 		oWin.iVpos = 0;
+
+		if (!iStream) {
+			this.sOut = ""; // clear also console, if stream===0
+		}
 	},
 
 	commaTab: function (iStream) { // special function used for comma in print (ROM &F25C), called delayed by print
@@ -1142,7 +1149,7 @@ CpcVm.prototype = {
 
 	cont: function () {
 		if (!this.iStartLine) {
-			this.error(17, "CONT"); // cannot continue
+			throw this.vmComposeError(Error(), 17, "CONT"); // cannot continue
 		}
 		this.vmGotoLine(this.iStartLine, "CONT");
 		this.iStartLine = 0;
@@ -1337,7 +1344,7 @@ CpcVm.prototype = {
 			this.oSound.setToneEnv(iToneEnv, aArgs);
 		} else { // 0
 			Utils.console.warn("ENT: iToneEnv", iToneEnv);
-			this.error(5, "ENT " + iToneEnv); // Improper argument
+			throw this.vmComposeError(Error(), 5, "ENT " + iToneEnv); // Improper argument
 		}
 	},
 
@@ -1403,7 +1410,7 @@ CpcVm.prototype = {
 				this.v[sName] = this.fnGetVarDefault(sName); // reset variable
 			} else {
 				Utils.console.warn("Array variable not found:", arguments[i]);
-				this.error(5, "ERASE " + arguments[i]); // Improper argument
+				throw this.vmComposeError(Error(), 5, "ERASE " + arguments[i]); // Improper argument
 			}
 		}
 	},
@@ -1418,7 +1425,7 @@ CpcVm.prototype = {
 		return this.iErr;
 	},
 
-	vmSetError: function (iErr, sErrInfo) {
+	vmComposeError: function (oError, iErr, sErrInfo) {
 		var sError, sErrorWithInfo, sLine,
 			bHidden = false; // hide errors wich are catched
 
@@ -1446,15 +1453,22 @@ CpcVm.prototype = {
 			this.vmStop("error", 50);
 		}
 		Utils.console.log("BASIC error(" + iErr + "):", sErrorWithInfo + (bHidden ? " (hidden: " + bHidden + ")" : ""));
-		return new CpcVm.ErrorObject(sError, sErrInfo, sLine, bHidden);
+		//return new CpcVm.ErrorObject({}, sError, sErrInfo, undefined, sLine, bHidden);
+		return Utils.composeError("CpcVm", oError, sError, sErrInfo, undefined, sLine, bHidden);
 	},
 
-	error: function (iErr, sErrInfo) {
-		var oError;
+	/*
+	composeError: function (oError, value, pos) {
+		oError.name = "CpcVm.ErrorObject";
+		oError.value = value;
+		oError.pos = pos;
+		return oError;
+	},
+	*/
 
+	error: function (iErr, sErrInfo) {
 		iErr = this.vmInRangeRound(iErr, 0, 255, "ERROR"); // could trigger another error
-		oError = this.vmSetError(iErr, sErrInfo);
-		throw oError;
+		throw this.vmComposeError(Error(), iErr, sErrInfo);
 	},
 
 	everyGosub: function (iInterval, iTimer, iLine) {
@@ -1644,14 +1658,14 @@ CpcVm.prototype = {
 						}
 						value = this.vmVal(value); // convert to number (also binary, hex)
 						if (isNaN(value)) { // eslint-disable-line max-depth
-							this.error(13, "INPUT #9 " + value); // Type mismatch
+							throw this.vmComposeError(Error(), 13, "INPUT #9 " + value); // Type mismatch
 						}
 					} else { // empty line
 						aFileData.shift(); // remove empty line
 					}
 				}
 				if (value === "") {
-					this.error(24, "INPUT #9"); // EOF met
+					throw this.vmComposeError(Error(), 24, "INPUT #9"); // EOF met
 				}
 			}
 
@@ -1678,9 +1692,9 @@ CpcVm.prototype = {
 			this.vmSetInputValues(["I am the printer!"]);
 		} else if (iStream === 9) {
 			if (!this.oInFile.bOpen) {
-				this.error(31, "INPUT #" + iStream); // File not open
+				throw this.vmComposeError(Error(), 31, "INPUT #" + iStream); // File not open
 			} else if (this.eof()) {
-				this.error(24, "INPUT #" + iStream); // EOF met
+				throw this.vmComposeError(Error(), 24, "INPUT #" + iStream); // EOF met
 			}
 			this.vmInputFromFile(Array.prototype.slice.call(arguments, 3)); // remaining arguments
 		}
@@ -1766,7 +1780,7 @@ CpcVm.prototype = {
 			this.print(iStream, sMsg);
 			if (sType !== "$") { // not string?
 				this.print(iStream, "\r\n");
-				this.error(13, "LINE INPUT " + sType); // Type mismatch
+				throw this.vmComposeError(Error(), 13, "LINE INPUT " + sType); // Type mismatch
 			}
 
 			this.cursor(iStream, 1);
@@ -1782,9 +1796,9 @@ CpcVm.prototype = {
 			this.vmSetInputValues(["I am the printer!"]);
 		} else if (iStream === 9) {
 			if (!this.oInFile.bOpen) {
-				this.error(31, "LINE INPUT #" + iStream); // File not open
+				throw this.vmComposeError(Error(), 31, "LINE INPUT #" + iStream); // File not open
 			} else if (this.eof()) {
-				this.error(24, "LINE INPUT #" + iStream); // EOF met
+				throw this.vmComposeError(Error(), 24, "LINE INPUT #" + iStream); // EOF met
 			}
 			this.vmSetInputValues(this.oInFile.aFileData.splice(0, arguments.length - 3)); // always 1 element
 		}
@@ -1912,7 +1926,7 @@ CpcVm.prototype = {
 		n = this.vmInRangeRound(n, -32768, 65535, "MEMORY");
 
 		if (n < this.iMinHimem || n > this.iMinCharHimem) {
-			this.error(7, "MEMORY " + n); // Memory full
+			throw this.vmComposeError(Error(), 7, "MEMORY " + n); // Memory full
 		}
 		this.iHimem = n;
 	},
@@ -1968,7 +1982,7 @@ CpcVm.prototype = {
 		iMode = this.vmInRangeRound(iMode, 0, 3, "MODE");
 		this.iMode = iMode;
 		this.vmResetWindowData(false); // do not reset pen and paper
-		this.sOut = "";
+		this.sOut = ""; // clear console
 		this.oCanvas.setMode(iMode); // does not clear canvas
 
 		this.oCanvas.clearFullWindow(); // always with paper 0 (SCR MODE CLEAR)
@@ -2011,7 +2025,8 @@ CpcVm.prototype = {
 	onErrorGoto: function (iLine) {
 		this.iErrorGotoLine = iLine;
 		if (!iLine && this.iErrorResumeLine) { // line=0 but an error to resume?
-			throw this.vmSetError(this.iErr, "ON ERROR GOTO without RESUME from " + this.iErl);
+			//throw this.vmComposeError(this.iErr, "ON ERROR GOTO without RESUME from " + this.iErl);
+			throw this.vmComposeError(Error(), this.iErr, "ON ERROR GOTO without RESUME from " + this.iErl);
 		}
 	},
 
@@ -2060,7 +2075,7 @@ CpcVm.prototype = {
 
 		iChannel = this.vmInRangeRound(iChannel, 1, 4, "ON SQ GOSUB");
 		if (iChannel === 3) {
-			this.error(5, "ON SQ GOSUB " + iChannel); // Improper argument
+			throw this.vmComposeError(Error(), 5, "ON SQ GOSUB " + iChannel); // Improper argument
 		}
 		iChannel = this.fnChannel2ChannelIndex(iChannel);
 		oSqTimer = this.aSqTimer[iChannel];
@@ -2095,7 +2110,7 @@ CpcVm.prototype = {
 				this.vmStop("fileLoad", 90);
 			}
 		} else {
-			this.error(27, "OPENIN " + oInFile.sName); // file already open
+			throw this.vmComposeError(Error(), 27, "OPENIN " + oInFile.sName); // file already open
 		}
 	},
 
@@ -2103,7 +2118,7 @@ CpcVm.prototype = {
 		var oOutFile = this.oOutFile;
 
 		if (oOutFile.bOpen) {
-			this.error(27, "OPENOUT " + oOutFile.sName); // file already open
+			throw this.vmComposeError(Error(), 27, "OPENOUT " + oOutFile.sName); // file already open
 		}
 		sName = this.vmAdaptFilename(sName, "OPENOUT");
 
@@ -2565,7 +2580,7 @@ CpcVm.prototype = {
 			this.vmNotImplemented("PRINT # " + iStream);
 		} else if (iStream === 9) {
 			if (!this.oOutFile.bOpen) {
-				this.error(31, "PRINT #" + iStream); // File not open
+				throw this.vmComposeError(Error(), 31, "PRINT #" + iStream); // File not open
 			}
 			this.oOutFile.iStream = iStream;
 		}
@@ -2588,6 +2603,7 @@ CpcVm.prototype = {
 				} else {
 					sBuf = this.vmPrintCharsOrControls(sStr, iStream, sBuf);
 				}
+				this.sOut += sStr; // console
 			} else { // iStream === 9
 				oWin.iPos += sStr.length;
 				if (sStr === "\r\n") { // for now we replace CRLF by LF
@@ -2600,7 +2616,6 @@ CpcVm.prototype = {
 				}
 				sBuf += sStr;
 			}
-			this.sOut += sStr; // console
 		}
 
 		if (iStream < 8) {
@@ -2693,7 +2708,7 @@ CpcVm.prototype = {
 			}
 			item = this.vmAssign(sVarType, item); // maybe rounding for type I
 		} else {
-			this.error(4, "READ"); // DATA exhausted
+			throw this.vmComposeError(Error(), 4, "READ"); // DATA exhausted
 		}
 		return item;
 	},
@@ -2775,13 +2790,13 @@ CpcVm.prototype = {
 			this.vmGotoLine(iLine, "resume");
 			this.iErrorResumeLine = 0;
 		} else {
-			this.error(20, iLine); // Unexpected RESUME
+			throw this.vmComposeError(Error(), 20, iLine); // Unexpected RESUME
 		}
 	},
 
 	resumeNext: function () {
 		if (!this.iErrorGotoLine) {
-			this.error(20, "RESUME NEXT"); // Unexpected RESUME
+			throw this.vmComposeError(Error(), 20, "RESUME NEXT"); // Unexpected RESUME
 		}
 		this.vmNotImplemented("RESUME NEXT");
 	},
@@ -2790,7 +2805,7 @@ CpcVm.prototype = {
 		var iLine = this.aGosubStack.pop();
 
 		if (iLine === undefined) {
-			this.error(3); // Unexpected Return [in <line>]
+			throw this.vmComposeError(Error(), 3, ""); // Unexpected Return [in <line>]
 		} else {
 			this.vmGotoLine(iLine, "return");
 		}
@@ -2873,7 +2888,7 @@ CpcVm.prototype = {
 		sName = this.vmAdaptFilename(sName, "SAVE");
 		if (sType !== undefined) {
 			sType = String(sType).toUpperCase();
-			if (sType === "A") { // ascii
+			if (sType === "A" && iAddr === undefined) { // ascii
 				// ...
 			} else if (sType === "B") { // binary
 				iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "SAVE");
@@ -2896,10 +2911,10 @@ CpcVm.prototype = {
 					aFileData[i] = String.fromCharCode(this.peek(iAddr + i));
 				}
 				aFileData = [Utils.btoa(aFileData.join(""))];
-			} else if (sType === "P") { // protected BASIC
+			} else if (sType === "P" && iAddr === undefined) { // protected BASIC
 				// ...
 			} else {
-				this.error(2, "SAVE " + sType); // Syntax Error
+				throw this.vmComposeError(Error(), 2, "SAVE " + sType); // Syntax Error
 			}
 		} else {
 			sType = "T"; // new (default) type: tokenized BASIC
@@ -3022,7 +3037,7 @@ CpcVm.prototype = {
 
 		iChannel = this.vmInRangeRound(iChannel, 1, 4, "SQ");
 		if (iChannel === 3) {
-			this.error(5, "ON SQ GOSUB " + iChannel); // Improper argument
+			throw this.vmComposeError(Error(), 5, "ON SQ GOSUB " + iChannel); // Improper argument
 		}
 		iChannel = this.fnChannel2ChannelIndex(iChannel);
 		iSq = this.oSound.sq(iChannel);
@@ -3088,7 +3103,7 @@ CpcVm.prototype = {
 
 		if (this.iMinCustomChar < 256) { // symbol after <256 set?
 			if (this.iMinCharHimem !== this.iHimem) { // himem changed?
-				this.error(5, "SYMBOL AFTER " + iChar); // Improper argument
+				throw this.vmComposeError(Error(), 5, "SYMBOL AFTER " + iChar); // Improper argument
 			}
 		} else {
 			this.iMaxCharHimem = this.iHimem; // no characters defined => use current himem
@@ -3096,7 +3111,7 @@ CpcVm.prototype = {
 
 		iMinCharHimem = this.iMaxCharHimem - (256 - iChar) * 8;
 		if (iMinCharHimem < this.iMinHimem) {
-			this.error(7, "SYMBOL AFTER " + iMinCharHimem); // Memory full
+			throw this.vmComposeError(Error(), 7, "SYMBOL AFTER " + iMinCharHimem); // Memory full
 		}
 		this.iHimem = iMinCharHimem;
 
@@ -3211,15 +3226,32 @@ CpcVm.prototype = {
 	},
 
 	using: function (sFormat) { // varargs
-		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/,
+		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/g,
 			s = "",
-			aFormat, sFrmt, iFormat, i, sArg;
+			aFormat = [],
+			iIndex,	oMatch,	sFrmt, iFormat, i, arg;
 
 		this.vmAssertString(sFormat, "USING");
-		aFormat = sFormat.split(reFormat);
+
+		// We simulate sFormat.split(reFormat) here since it does not work with IE8
+		iIndex = 0;
+		while ((oMatch = reFormat.exec(sFormat)) !== null) {
+			/*
+			if (oMatch.index > iIndex) { // non-format characters at the beginning?
+				s += sFormat.substring(iIndex, oMatch.index);
+			}
+			*/
+			aFormat.push(sFormat.substring(iIndex, oMatch.index)); // non-format characters at the beginning
+			aFormat.push(oMatch[0]);
+			iIndex = oMatch.index + oMatch[0].length;
+		}
+		if (iIndex < sFormat.length) { // non-format characters at the end
+			aFormat.push(sFormat.substr(iIndex));
+		}
+
 		if (aFormat.length < 2) {
 			Utils.console.warn("USING: empty or invalid format:", sFormat);
-			this.error(5, "USING format " + sFormat); // Improper argument
+			throw this.vmComposeError(Error(), 5, "USING format " + sFormat); // Improper argument
 		}
 
 		iFormat = 0;
@@ -3231,10 +3263,10 @@ CpcVm.prototype = {
 				s += sFrmt;
 			}
 			if (iFormat < aFormat.length) {
-				sArg = arguments[i];
+				arg = arguments[i];
 				sFrmt = aFormat[iFormat]; // format characters
 				iFormat += 1;
-				s += this.vmUsingFormat1(sFrmt, sArg);
+				s += this.vmUsingFormat1(sFrmt, arg);
 			}
 			if (iFormat < aFormat.length) {
 				sFrmt = aFormat[iFormat]; // following non-format characters
@@ -3244,6 +3276,43 @@ CpcVm.prototype = {
 		}
 		return s;
 	},
+
+	/*
+	using_ok: function (sFormat) { // varargs
+		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/,
+			s = "",
+			aFormat, sFrmt, iFormat, i, arg;
+
+		this.vmAssertString(sFormat, "USING");
+		aFormat = sFormat.split(reFormat);
+		if (aFormat.length < 2) {
+			Utils.console.warn("USING: empty or invalid format:", sFormat);
+			throw this.vmComposeError(Error(), 5, "USING format " + sFormat); // Improper argument
+		}
+
+		iFormat = 0;
+		for (i = 1; i < arguments.length; i += 1) { // start with 1
+			iFormat %= aFormat.length;
+			if (iFormat === 0) {
+				sFrmt = aFormat[iFormat]; // non-format characters at the beginning of the format string
+				iFormat += 1;
+				s += sFrmt;
+			}
+			if (iFormat < aFormat.length) {
+				arg = arguments[i];
+				sFrmt = aFormat[iFormat]; // format characters
+				iFormat += 1;
+				s += this.vmUsingFormat1(sFrmt, arg);
+			}
+			if (iFormat < aFormat.length) {
+				sFrmt = aFormat[iFormat]; // following non-format characters
+				iFormat += 1;
+				s += sFrmt;
+			}
+		}
+		return s;
+	},
+	*/
 
 	vmVal: function (s) {
 		var iNum = 0;
@@ -3364,17 +3433,17 @@ CpcVm.prototype = {
 				this.vmPrintCharsOrControls("\r\n", iStream);
 				this.vmDrawUndrawCursor(iStream); // draw
 			}
+			this.sOut += sStr + "\n"; // console
 		} else if (iStream === 8) {
 			this.vmNotImplemented("WRITE #" + iStream);
 		} else if (iStream === 9) {
 			this.oOutFile.iStream = iStream;
 			if (!this.oOutFile.bOpen) {
-				this.error(31, "WRITE #" + iStream); // File not open
+				throw this.vmComposeError(Error(), 31, "WRITE #" + iStream); // File not open
 			}
 			this.oOutFile.aFileData.push(sStr + "\n"); // real CPC would use CRLF, we use LF
 			// currently we print data also to console...
 		}
-		this.sOut += sStr + "\n"; // console
 	},
 
 	// xor
@@ -3391,21 +3460,75 @@ CpcVm.prototype = {
 		n = this.vmInRangeRound(n, 1, 255, "ZONE");
 		this.iZone = n;
 	}
+
+	//ErrorObject: Utils.createErrorType("CpcVm.prototype.ErrorObject")
+
+	// ErrorObject: Utils.createErrorType2("CpcVm.prototype.ErrorObject", function () {
+	// 	this.setValues.apply(this, arguments);
+	// 	//Utils.ErrorObject.apply(this, arguments);
+	// 	return this;
+	// })
+
+	//ErrorObject: Error
+
+	// ErrorObject: function ErrorObject() {
+	// 	Error.captureStackTrace(this, ErrorObject);
+	// }
 };
 
+//CpcVm.ErrorObject = Error; //Utils.ErrorObject;
 
+/*
+CpcVm.ErrorObject = function (oWrappedErr) {
+	Object.assign(oWrappedErr, this);
+	//this.wrapped = oWrappedErr;
+	oWrappedErr.name = "CpcVm.ErrorObject";
+	oWrappedErr.bla = "bla2";
+	return oWrappedErr;
+};
+*/
+
+
+// CpcVm.ErrorObject = Utils.createErrorType("CpcVm.ErrorObject", function (/* message */) {
+// 	// this.message = "Message: " + message;
+// });
+
+/*
+CpcVm.ErrorObject = function () {
+	Utils.ErrorObject.apply(this, arguments);
+};
+CpcVm.ErrorObject.prototype = Object.create(Utils.ErrorObject.prototype);
+CpcVm.ErrorObject.prototype.constructor = CpcVm.ErrorObject;
+CpcVm.ErrorObject.prototype.name = "CpcVm.ErrorObject";
+*/
+
+/*
 CpcVm.ErrorObject = function (message, value, pos, hidden) {
 	this.message = message;
 	this.value = value;
 	this.pos = pos;
 	this.hidden = hidden;
+
+	// if (Error.hasOwnProperty("captureStackTrace")) { // V8
+	// 	Error.captureStackTrace(this, CpcVm.ErrorObject);
+	// } else {
+	// 	this.stack = (new Error(message)).stack;
+	// }
 };
 
-CpcVm.ErrorObject.prototype = {
-	toString: function () {
-		return this.message + " in " + this.pos + ((this.value !== undefined) ? ": " + this.value : "");
-	}
+CpcVm.ErrorObject.prototype = Object.create(Error.prototype); // not for IE8
+CpcVm.ErrorObject.prototype.constructor = CpcVm.ErrorObject;
+CpcVm.ErrorObject.prototype.name = "CpcVm.ErrorObject";
+CpcVm.ErrorObject.prototype.toString = function () {
+	return this.message + " in " + this.pos + ((this.value !== undefined) ? ": " + this.value : "");
 };
+
+// CpcVm.ErrorObject.prototype = {
+// 	toString: function () {
+// 		return this.message + " in " + this.pos + ((this.value !== undefined) ? ": " + this.value : "");
+// 	}
+// };
+*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = CpcVm;
