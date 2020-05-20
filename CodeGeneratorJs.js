@@ -770,11 +770,6 @@ CodeGeneratorJs.prototype = {
 					that.oStack.forVarName.push(sVarName);
 					that.iForCount += 1;
 
-					/*
-					startValue = fnParseOneArg(node.left);
-					endValue = fnParseOneArg(node.right);
-					stepValue = fnParseOneArg(node.third);
-					*/
 					startValue = aNodeArgs[1];
 					endValue = aNodeArgs[2];
 					stepValue = aNodeArgs[3];
@@ -1343,8 +1338,9 @@ CodeGeneratorJs.prototype = {
 			aTokens = this.lexer.lex(sInput);
 			aParseTree = this.parser.parse(aTokens, bAllowDirect);
 			sOutput = this.evaluate(aParseTree, oVariables);
-			oOut.text = "var v=o.v;\n";
-			oOut.text += "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"
+			oOut.text = '"use strict"\n'
+				+ "var v=o.v;\n"
+				+ "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"
 				+ fnCombineData(this.aData)
 				+ " o.goto(o.iStartLine ? o.iStartLine : \"start\"); break;\ncase \"start\":\n"
 				+ sOutput
@@ -1361,18 +1357,6 @@ CodeGeneratorJs.prototype = {
 	}
 };
 
-//CodeGeneratorJs.ErrorObject = Utils.ErrorObject;
-
-/*
-CodeGeneratorJs.ErrorObject = function (sMessage, value, iPos, iLine) {
-	this.message = sMessage;
-	this.value = value;
-	this.pos = iPos;
-	if (iLine) {
-		this.line = iLine;
-	}
-};
-*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = CodeGeneratorJs;

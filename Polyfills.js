@@ -75,47 +75,6 @@ if (!Array.prototype.map) { // IE8
 	};
 }
 
-
-/*
-if (!window.Element) { // IE7 (not supported)
-	// https://stackoverflow.com/questions/597268/element-prototype-in-ie7
-	Utils.console.debug("Polyfill: window.Element");
-	window.Element = function () {
-		// empty
-	};
-	var __createElement = document.createElement;
-
-	document.createElement = function (tagName) {
-		var element = __createElement(tagName),
-			key;
-
-		if (element === null) {
-			return null;
-		}
-		for (key in Element.prototype) {
-			element[key] = Element.prototype[key];
-		}
-		return element;
-	};
-
-	var __getElementById = document.getElementById;
-
-	document.getElementById = function (id)	{
-		var element = __getElementById(id),
-			key;
-
-		if (element === null) {
-			return null;
-		}
-		for (key in Element.prototype) {
-			element[key] = Element.prototype[key];
-		}
-		return element;
-	};
-}
-*/
-
-
 if (!Element.prototype.addEventListener) { // IE8
 	Utils.console.debug("Polyfill: Element.prototype.addEventListener");
 	Element.prototype.addEventListener = function (e, callback) {

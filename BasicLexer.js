@@ -13,9 +13,7 @@ if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
 
-// based on an idea of:
-// https://www.codeproject.com/Articles/345888/How-to-write-a-simple-interpreter-in-JavaScript
-//
+// based on an idea of: https://www.codeproject.com/Articles/345888/How-to-write-a-simple-interpreter-in-JavaScript
 
 function BasicLexer(options) {
 	this.init(options);
@@ -33,7 +31,7 @@ BasicLexer.prototype = {
 	},
 
 	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments); //Object.assign({}, arguments);
+		var aArgs = Array.prototype.slice.call(arguments);
 
 		aArgs.unshift("BasicLexer");
 		aArgs.push(this.iLine);
@@ -214,7 +212,6 @@ BasicLexer.prototype = {
 				addToken("(eol)", 0, iStartPos);
 				sChar = advance();
 				this.bTakeNumberAsLine = true;
-				//this.iLine += 1; //TTT
 			} else if (isComment(sChar)) {
 				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
@@ -332,52 +329,6 @@ BasicLexer.prototype = {
 	}
 };
 
-//BasicLexer.ErrorObject = Utils.createErrorType("BasicLexer.ErrorObject");
-
-/*
-BasicLexer.ErrorObject = function (oWrappedErr) {
-	this.wrapped = oWrappedErr;
-	this.wrapped.name = "BasicLexer.ErrorObject";
-};
-*/
-
-// BasicLexer.ErrorObject = function () {
-// 	Error.apply(this, arguments);
-// };
-
-//BasicLexer.ErrorObject.prototype = Object.create(Error.prototype);
-//BasicLexer.ErrorObject.prototype.constructor = BasicLexer.ErrorObject;
-//BasicLexer.ErrorObject.prototype.name = "BasicLexer.ErrorObject";
-
-/*
-BasicLexer.ErrorObject = function (message, param1, param2) {
-	var err = new Error(message);
-	//Object.setPrototypeOf(err, BasicLexer.ErrorObject.prototype); //TTT DO NOT USE
-	err.param1 = param1;
-	err.param2 = param2;
-	return err;
-};
-BasicLexer.ErrorObject.prototype = Object.create(Error.prototype);
-BasicLexer.ErrorObject.prototype.constructor = BasicLexer.ErrorObject;
-BasicLexer.ErrorObject.prototype.name = "BasicLexer.ErrorObject";
-*7
-
-/*
-BasicLexer.ErrorObject = function () {
-	Utils.ErrorObject.apply(this, arguments);
-};
-BasicLexer.ErrorObject.prototype = Object.create(Utils.ErrorObject.prototype);
-BasicLexer.ErrorObject.prototype.constructor = BasicLexer.ErrorObject;
-BasicLexer.ErrorObject.prototype.name = "BasicLexer.ErrorObject";
-*/
-
-/*
-BasicLexer.ErrorObject = function (message, value, pos) {
-	this.message = message;
-	this.value = value;
-	this.pos = pos;
-};
-*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = BasicLexer;

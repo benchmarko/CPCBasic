@@ -301,7 +301,7 @@ Controller.prototype = {
 		} else if (oStop.sReason !== "escape") { // first escape?
 			this.oVm.cursor(iStream, 1);
 			this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
-			this.setStopObject(oStop); //TTT
+			this.setStopObject(oStop);
 			this.oVm.vmStop("escape", 85, false, {
 				iStream: iStream
 			});
@@ -316,11 +316,7 @@ Controller.prototype = {
 
 			if (!this.oVm.vmEscape()) {
 				this.oVm.vmStop("", 0, true); // continue program, in break handler?
-				this.setStopObject(this.oNoStop); //TTT
-				//oSavedStop = this.getStopObject();
-				//Object.assign(oStop, oSavedStop); // fast hack
-
-				//this.startContinue();
+				this.setStopObject(this.oNoStop);
 			} else {
 				this.oVm.vmStop("stop", 0, true); // stop
 				sMsg = "Break in " + this.oVm.iLine + "\r\n";
@@ -656,7 +652,7 @@ Controller.prototype = {
 				this.invalidateScript();
 				this.oVm.vmStop("end", 90);
 				break;
-			case "chain": // run through...
+			case "chain": //TODO: run through... : if we have a line number, make sure it is not optimized away when compiling!
 			case "run":
 				this.view.setAreaValue("inputText", sInput);
 				this.view.setAreaValue("resultText", "");
@@ -731,7 +727,7 @@ Controller.prototype = {
 		} else { // keep original sExample in this error case
 			sUrl = sExample;
 			Utils.console.warn("loadExample: Unknown file:", sExample);
-			fnExampleError(); //TTT
+			fnExampleError();
 		}
 	},
 
@@ -811,18 +807,6 @@ Controller.prototype = {
 			if (Utils.debug > 0) {
 				Utils.console.debug("fnFileLoad: sName=" + sName + " oStorage=" + oStorage);
 			}
-
-			/*
-			if (Utils.stringEndsWith(sStorageName, ".")) {
-				if (oStorage.getItem(sStorageName) === null) {
-					if (oStorage.getItem(sStorageName + "bas") !== null) {
-						sStorageName += "bas";
-					} else if (oStorage.getItem(sStorageName + "bin") !== null) {
-						sStorageName += "bin";
-					}
-				}
-			}
-			*/
 
 			if (oStorage.getItem(sStorageName) !== null) {
 				if (Utils.debug > 0) {
@@ -963,10 +947,6 @@ Controller.prototype = {
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 		}
 
-		/*
-		sOutput = oError.message + ": '" + oError.value + "' " + (oError.line ? "in " + oError.line : "(pos " + oError.pos + "-" + iEndPos + ")");
-		oError.message = sOutput; // modifies message object!
-		*/
 		this.oVm.print(iStream, sShortError + "\r\n");
 		return sShortError;
 	},
@@ -987,16 +967,8 @@ Controller.prototype = {
 		oOutput = this.oBasicFormatter.renumber(sInput, oParas.iNew, oParas.iOld, oParas.iStep, oParas.iKeep);
 
 		if (oOutput.error) {
-			this.outputError(oOutput.error);
-			/*
-			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
-			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
-			sOutput = (oError.message) + ": '" + oError.value + "' (pos " + oError.pos + "-" + iEndPos + ")";
-			Utils.console.warn(sOutput);
-			this.oVm.print(iStream, sOutput + "\r\n"); // Error
-			*/
 			Utils.console.warn(oOutput.error);
-			//sOutput = oOutput.error.shortMessage || oOutput.error.message;
+			this.outputError(oOutput.error);
 		} else {
 			this.view.setAreaValue("inputText", oOutput.text);
 		}
@@ -1031,18 +1003,17 @@ Controller.prototype = {
 			sLine = aLines[0];
 			this.oVm.print(iStream, sLine);
 			this.oVm.cursor(iStream, 1);
-			this.oVm.vmStop("waitInput", 45, true, { //TTT set new
+			this.oVm.vmStop("waitInput", 45, true, {
 				iStream: iStream,
 				sMessage: "",
 				fnInputCallback: this.fnEditLineCallback.bind(this),
 				sInput: sLine
 			});
-			//this.oKeyboard.setKeyDownHandler(this.fnWaitInputHandler);
 			this.fnWaitInput();
 		} else {
 			oError = this.oVm.vmComposeError(Error(), 8, iLine); // "Line does not exist"
 			this.oVm.print(iStream, String(oError) + "\r\n");
-			this.oVm.vmStop("stop", 60, true); //TTT
+			this.oVm.vmStop("stop", 60, true);
 		}
 	},
 
@@ -1050,17 +1021,6 @@ Controller.prototype = {
 		var sInput = this.view.getAreaValue("inputText"),
 			iBench = this.model.getProperty("bench"),
 			i, iTime, oOutput, sOutput;
-
-		/*
-		if (!this.oCodeGeneratorJs) {
-			this.oCodeGeneratorJs = new CodeGeneratorJs({
-				lexer: new BasicLexer(),
-				parser: new BasicParser(),
-				tron: this.model.getProperty("tron"),
-				rsx: this.oVm.rsx // just to check the names
-			});
-		}
-		*/
 
 		this.oVariables = {};
 		if (!iBench) {
@@ -1095,6 +1055,22 @@ Controller.prototype = {
 		return oOutput;
 	},
 
+	selectJsError: function (sScript, e) {
+		var iPos = 0,
+			iLine = 0,
+			iErrLine = e.lineNumber - 3; // for some reason line 0 is 3
+
+		while (iPos < sScript.length && iLine < iErrLine) {
+			iPos = sScript.indexOf("\n", iPos) + 1;
+			iLine += 1;
+		}
+		iPos += e.columnNumber;
+
+		Utils.console.warn("Info: JS Error occurred at line", e.lineNumber, "column", e.columnNumber, "pos", iPos);
+
+		this.view.setAreaSelection("outputText", iPos, iPos + 1);
+	},
+
 	fnRun: function (oParas) {
 		var sScript = this.view.getAreaValue("outputText"),
 			iLine = oParas && oParas.iLine || 0,
@@ -1105,7 +1081,7 @@ Controller.prototype = {
 			oVm.vmResetData(); // start from the beginning => also reset data! (or put it in line 0 in the script)
 		}
 
-		if (this.oVm.vmGetOutFileObject().bOpen) { //TTT
+		if (this.oVm.vmGetOutFileObject().bOpen) {
 			this.fnFileSave(); //TTT
 		}
 
@@ -1116,8 +1092,11 @@ Controller.prototype = {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
 			} catch (e) {
 				Utils.console.error(e);
+				if (e.lineNumber || e.columnNumber) { // only available on Firefox
+					this.selectJsError(sScript, e);
+				}
+				e.shortMessage = "JS " + String(e);
 				this.outputError(e, true);
-				//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 				this.fnScript = null;
 			}
 		} else {
@@ -1156,15 +1135,16 @@ Controller.prototype = {
 				if (!e.hidden) {
 					Utils.console.warn(e);
 					this.outputError(e, true);
-					//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 				} else {
 					Utils.console.log(e.message);
 				}
 			} else {
 				Utils.console.error(e);
-				this.oVm.vmComposeError(e, 2, String(e)); // Syntax Error
+				if (e.lineNumber || e.columnNumber) { // only available on Firefox
+					this.selectJsError(this.view.getAreaValue("outputText"), e);
+				}
+				this.oVm.vmComposeError(e, 2, "JS " + String(e)); // generate Syntax Error, set also err and erl and set stop
 				this.outputError(e, true);
-				//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 			}
 		}
 	},
@@ -1177,8 +1157,8 @@ Controller.prototype = {
 			sInputText, sMsg, oOutput, sOutput, fnScript;
 
 		sInput = sInput.trim();
+		oInput.sInput = "";
 		if (sInput !== "") {
-			oInput.sInput = "";
 			this.oVm.cursor(iStream, 0);
 			sInputText = this.view.getAreaValue("inputText");
 			if ((/^(\d)+/).test(sInput)) { // start with number?
@@ -1252,15 +1232,6 @@ Controller.prototype = {
 			this.oVm.print(iStream, sMsg);
 			this.oVm.cursor(iStream, 1);
 		}
-		/*
-		 else {
-			sMsg = "";
-		}
-		if (sMsg) {
-			this.oVm.print(iStream, sMsg);
-		}
-		this.oVm.cursor(iStream, 1);
-		*/
 		this.updateResultText(); //TTT
 		return false;
 	},
@@ -1296,10 +1267,6 @@ Controller.prototype = {
 		var oStop = this.oVm.vmGetStopObject(),
 			sReason = oStop.sReason;
 
-		/*
-		this.view.setAreaValue("resultText", oVm.sOut);
-		this.view.setAreaScrollTop("resultText"); // scroll to bottom
-		*/
 		this.updateResultText();
 
 		this.view.setDisabled("runButton", sReason === "reset");
@@ -1316,6 +1283,10 @@ Controller.prototype = {
 
 	fnBreak: function () {
 		// empty
+	},
+
+	fnDirect: function () {
+		// TTT: break in direct mode?
 	},
 
 	fnEnd: function () {
@@ -1363,6 +1334,7 @@ Controller.prototype = {
 			// Utils.console.debug("fnRunLoop: back from : ", sHandler);
 		} else {
 			Utils.console.warn("runLoop: Unknown run mode:", oStop.sReason);
+			this.oVm.vmStop("error", 55); //TTT
 		}
 
 		if (oStop.sReason && oStop.sReason !== "waitSound") {

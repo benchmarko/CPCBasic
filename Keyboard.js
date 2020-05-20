@@ -593,7 +593,7 @@ Keyboard.prototype = {
 		this.oKey2CpcKey = this.initKey2CpcKeyMap();
 		this.bCodeStringsRemoved = false;
 
-		cpcArea = document.getElementById("cpcArea"); //TTT put in view?
+		cpcArea = document.getElementById("cpcArea");
 		cpcArea.addEventListener("keydown", this.onCpcAreaKeydown.bind(this), false);
 		cpcArea.addEventListener("keyup", this.oncpcAreaKeyup.bind(this), false);
 
@@ -856,10 +856,25 @@ Keyboard.prototype = {
 		}
 	},
 
+	keyIdentifier2Char: function (sIdentifier, bShiftKey) {
+		var sChar = "";
+
+		if ((/^U\+/i).test(sIdentifier || "")) { // unicode string?
+			sChar = String.fromCharCode(parseInt(sIdentifier.substr(2), 16));
+			if (sChar === "\0") { // ignore
+				sChar = "";
+			}
+			sChar = bShiftKey ? sChar.toUpperCase() : sChar.toLowerCase(); // do we get keys in sUnicode always in uppercase?
+		} else {
+			sChar = sIdentifier; // take it, could be "Enter"
+		}
+		return sChar;
+	},
+
 	fnKeyboardKeydown: function (event) { // eslint-disable-line complexity
 		var iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
-			sKey = event.key,
+			sKey = event.key || this.keyIdentifier2Char(event.keyIdentifier, event.shiftKey) || "", // SliTaz web browser has not key but keyIdentifier
 			iCpcKey;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
@@ -915,7 +930,7 @@ Keyboard.prototype = {
 	fnKeyboardKeyup: function (event) {
 		var iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
-			sKey = event.key,
+			sKey = event.key || this.keyIdentifier2Char(event.keyIdentifier, event.shiftKey) || "", // SliTaz web browser has not key but keyIdentifier
 			iCpcKey;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
@@ -923,7 +938,7 @@ Keyboard.prototype = {
 		}
 
 		if (Utils.debug > 1) {
-			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + event.key + "' " + event.key.charCodeAt(0) + " loc=" + event.location + " ", event);
+			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " loc=" + event.location + " ", event);
 		}
 
 		if (sPressedKey in this.oKey2CpcKey) {

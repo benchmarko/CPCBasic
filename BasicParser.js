@@ -974,7 +974,7 @@ BasicParser.prototype = {
 
 			Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line");
 
-			// TTT TODO: data line as separate statement is taken
+			// TODO: data line as separate statement is taken
 			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
 				if (oToken.value) {
 					oString.value += " " + oToken.value;
@@ -1520,27 +1520,6 @@ BasicParser.prototype = {
 	}
 };
 
-//BasicParser.ErrorObject = Utils.createErrorType("BasicParser.ErrorObject");
-
-/*
-BasicParser.ErrorObject = function () {
-	Utils.ErrorObject.apply(this, arguments);
-};
-BasicParser.ErrorObject.prototype = Object.create(Utils.ErrorObject.prototype);
-BasicParser.ErrorObject.prototype.constructor = BasicParser.ErrorObject;
-BasicParser.ErrorObject.prototype.name = "BasicParser.ErrorObject";
-*/
-
-/*
-BasicParser.ErrorObject = function (sMessage, value, iPos, iLine) {
-	this.message = sMessage;
-	this.value = value;
-	this.pos = iPos;
-	if (iLine) {
-		this.line = iLine;
-	}
-};
-*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = BasicParser;

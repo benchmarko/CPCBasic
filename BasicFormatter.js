@@ -32,7 +32,7 @@ BasicFormatter.prototype = {
 	},
 
 	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments); //Object.assign({}, arguments);
+		var aArgs = Array.prototype.slice.call(arguments);
 
 		aArgs.unshift("BasicFormatter");
 		return Utils.composeError.apply(null, aArgs);
@@ -168,7 +168,7 @@ BasicFormatter.prototype = {
 		try {
 			aTokens = this.lexer.lex(sInput);
 			aParseTree = this.parser.parse(aTokens);
-			sOutput = sInput; //TTT this.doFormat(aParseTree);
+			sOutput = sInput; // this.doFormat(aParseTree);
 			oOut.text = sOutput;
 		} catch (e) {
 			oOut.error = e;
@@ -195,13 +195,6 @@ BasicFormatter.prototype = {
 	}
 };
 
-/*
-BasicFormatter.ErrorObject = function (message, value, pos) {
-	this.message = message;
-	this.value = value;
-	this.pos = pos;
-};
-*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = BasicFormatter;

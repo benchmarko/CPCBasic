@@ -72,7 +72,7 @@ Model.prototype = {
 			sKey = oExample.key;
 
 		if (!this.examples[selectedDatabase][sKey]) {
-			if (Utils.debug) {
+			if (Utils.debug > 1) {
 				Utils.console.debug("setExample: creating new example:", sKey);
 			}
 		}

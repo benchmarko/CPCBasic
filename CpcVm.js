@@ -187,7 +187,7 @@ CpcVm.prototype = {
 		this.iErrorGotoLine = 0;
 		this.iErrorResumeLine = 0;
 		this.iBreakGosubLine = 0;
-		this.bBreakResumeLine = 0; //TTT
+		this.iBreakResumeLine = 0;
 
 		this.aInputValues.length = 0;
 		this.vmResetFileHandling(this.oInFile);
@@ -1453,18 +1453,8 @@ CpcVm.prototype = {
 			this.vmStop("error", 50);
 		}
 		Utils.console.log("BASIC error(" + iErr + "):", sErrorWithInfo + (bHidden ? " (hidden: " + bHidden + ")" : ""));
-		//return new CpcVm.ErrorObject({}, sError, sErrInfo, undefined, sLine, bHidden);
 		return Utils.composeError("CpcVm", oError, sError, sErrInfo, undefined, sLine, bHidden);
 	},
-
-	/*
-	composeError: function (oError, value, pos) {
-		oError.name = "CpcVm.ErrorObject";
-		oError.value = value;
-		oError.pos = pos;
-		return oError;
-	},
-	*/
 
 	error: function (iErr, sErrInfo) {
 		iErr = this.vmInRangeRound(iErr, 0, 255, "ERROR"); // could trigger another error
@@ -3236,11 +3226,6 @@ CpcVm.prototype = {
 		// We simulate sFormat.split(reFormat) here since it does not work with IE8
 		iIndex = 0;
 		while ((oMatch = reFormat.exec(sFormat)) !== null) {
-			/*
-			if (oMatch.index > iIndex) { // non-format characters at the beginning?
-				s += sFormat.substring(iIndex, oMatch.index);
-			}
-			*/
 			aFormat.push(sFormat.substring(iIndex, oMatch.index)); // non-format characters at the beginning
 			aFormat.push(oMatch[0]);
 			iIndex = oMatch.index + oMatch[0].length;
@@ -3276,43 +3261,6 @@ CpcVm.prototype = {
 		}
 		return s;
 	},
-
-	/*
-	using_ok: function (sFormat) { // varargs
-		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/,
-			s = "",
-			aFormat, sFrmt, iFormat, i, arg;
-
-		this.vmAssertString(sFormat, "USING");
-		aFormat = sFormat.split(reFormat);
-		if (aFormat.length < 2) {
-			Utils.console.warn("USING: empty or invalid format:", sFormat);
-			throw this.vmComposeError(Error(), 5, "USING format " + sFormat); // Improper argument
-		}
-
-		iFormat = 0;
-		for (i = 1; i < arguments.length; i += 1) { // start with 1
-			iFormat %= aFormat.length;
-			if (iFormat === 0) {
-				sFrmt = aFormat[iFormat]; // non-format characters at the beginning of the format string
-				iFormat += 1;
-				s += sFrmt;
-			}
-			if (iFormat < aFormat.length) {
-				arg = arguments[i];
-				sFrmt = aFormat[iFormat]; // format characters
-				iFormat += 1;
-				s += this.vmUsingFormat1(sFrmt, arg);
-			}
-			if (iFormat < aFormat.length) {
-				sFrmt = aFormat[iFormat]; // following non-format characters
-				iFormat += 1;
-				s += sFrmt;
-			}
-		}
-		return s;
-	},
-	*/
 
 	vmVal: function (s) {
 		var iNum = 0;
@@ -3460,75 +3408,8 @@ CpcVm.prototype = {
 		n = this.vmInRangeRound(n, 1, 255, "ZONE");
 		this.iZone = n;
 	}
-
-	//ErrorObject: Utils.createErrorType("CpcVm.prototype.ErrorObject")
-
-	// ErrorObject: Utils.createErrorType2("CpcVm.prototype.ErrorObject", function () {
-	// 	this.setValues.apply(this, arguments);
-	// 	//Utils.ErrorObject.apply(this, arguments);
-	// 	return this;
-	// })
-
-	//ErrorObject: Error
-
-	// ErrorObject: function ErrorObject() {
-	// 	Error.captureStackTrace(this, ErrorObject);
-	// }
 };
 
-//CpcVm.ErrorObject = Error; //Utils.ErrorObject;
-
-/*
-CpcVm.ErrorObject = function (oWrappedErr) {
-	Object.assign(oWrappedErr, this);
-	//this.wrapped = oWrappedErr;
-	oWrappedErr.name = "CpcVm.ErrorObject";
-	oWrappedErr.bla = "bla2";
-	return oWrappedErr;
-};
-*/
-
-
-// CpcVm.ErrorObject = Utils.createErrorType("CpcVm.ErrorObject", function (/* message */) {
-// 	// this.message = "Message: " + message;
-// });
-
-/*
-CpcVm.ErrorObject = function () {
-	Utils.ErrorObject.apply(this, arguments);
-};
-CpcVm.ErrorObject.prototype = Object.create(Utils.ErrorObject.prototype);
-CpcVm.ErrorObject.prototype.constructor = CpcVm.ErrorObject;
-CpcVm.ErrorObject.prototype.name = "CpcVm.ErrorObject";
-*/
-
-/*
-CpcVm.ErrorObject = function (message, value, pos, hidden) {
-	this.message = message;
-	this.value = value;
-	this.pos = pos;
-	this.hidden = hidden;
-
-	// if (Error.hasOwnProperty("captureStackTrace")) { // V8
-	// 	Error.captureStackTrace(this, CpcVm.ErrorObject);
-	// } else {
-	// 	this.stack = (new Error(message)).stack;
-	// }
-};
-
-CpcVm.ErrorObject.prototype = Object.create(Error.prototype); // not for IE8
-CpcVm.ErrorObject.prototype.constructor = CpcVm.ErrorObject;
-CpcVm.ErrorObject.prototype.name = "CpcVm.ErrorObject";
-CpcVm.ErrorObject.prototype.toString = function () {
-	return this.message + " in " + this.pos + ((this.value !== undefined) ? ": " + this.value : "");
-};
-
-// CpcVm.ErrorObject.prototype = {
-// 	toString: function () {
-// 		return this.message + " in " + this.pos + ((this.value !== undefined) ? ": " + this.value : "");
-// 	}
-// };
-*/
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = CpcVm;

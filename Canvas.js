@@ -3,7 +3,7 @@
 // https://benchmarko.github.io/CPCBasic/
 //
 /* globals Utils */
-/* globals ArrayBuffer Uint8Array */
+/* globals ArrayBuffer Uint8Array Uint32Array */
 
 "use strict";
 
@@ -88,11 +88,12 @@ Canvas.prototype = {
 
 	init: function (options) {
 		var iBorderWidth = 4,
-			iWidth, iHeight, canvas, ctx, dataset;
+			iWidth, iHeight, canvas, ctx;
 
 		this.options = Object.assign({}, options);
 
-		this.fnUpdateCancasHandler = this.updateCanvas.bind(this);
+		this.fnUpdateCanvasHandler = this.updateCanvas.bind(this);
+		this.fnUpdateCanvas2Handler = this.updateCanvas2.bind(this);
 
 		this.cpcAreaBox = document.getElementById("cpcAreaBox");
 
@@ -116,8 +117,7 @@ Canvas.prototype = {
 		canvas.style.borderWidth = iBorderWidth + "px";
 		canvas.style.borderStyle = "solid";
 
-		dataset = new ArrayBuffer(iWidth * iHeight);
-		this.dataset8 = new Uint8Array(dataset); // array with pen values (available in modern browsers)
+		this.dataset8 = new Uint8Array(new ArrayBuffer(iWidth * iHeight)); // array with pen values
 
 		this.bNeedUpdate = false;
 		this.oUpdateRect = {};
@@ -127,7 +127,7 @@ Canvas.prototype = {
 
 		this.aCurrentInks = [];
 		this.aSpeedInk = [];
-		this.reset();
+		this.aPen2ColorMap = [];
 
 		this.animationTimeout = null;
 		this.animationFrame = null;
@@ -135,10 +135,30 @@ Canvas.prototype = {
 		if (this.canvas.getContext) {
 			ctx = this.canvas.getContext("2d");
 			this.imageData = ctx.getImageData(0, 0, iWidth, iHeight);
+
+			if (typeof Uint32Array !== "undefined" && this.imageData.data.buffer) {	// imageData.data.buffer not available on IE10
+				this.fnCopy2Canvas = this.copy2Canvas32bit;
+				this.bLittleEndian = this.isLittleEndian();
+				this.aPen2Color32 = new Uint32Array(new ArrayBuffer(this.aModeData[3].iPens * 4));
+				this.aData32 = new Uint32Array(this.imageData.data.buffer);
+				/*
+				} else { // workaround for !this.imageData.data.buffer does not work...
+					var buf = new ArrayBuffer(this.imageData.data.length);
+					this.aData32 = new Uint32Array(buf);
+					this.imageData.data.set(new Uint8ClampedArray(buf)); // must be always set after pixel manipulation
+				}
+				*/
+				Utils.console.log("Canvas: using optimized copy2Canvas32bit, littleEndian:", this.bLittleEndian);
+			} else {
+				this.fnCopy2Canvas = this.copy2Canvas8bit;
+				this.setAlpha(255);
+				Utils.console.log("Canvas: using copy2Canvas8bit");
+			}
 		} else {
-			Utils.console.error("Error: canvas.getContext is not supported.");
+			Utils.console.warn("Error: canvas.getContext is not supported.");
 			this.imageData = null;
 		}
+		this.reset();
 	},
 
 	reset: function () {
@@ -164,6 +184,12 @@ Canvas.prototype = {
 		this.oCustomCharset = {}; // symbol
 	},
 
+	isLittleEndian: function () {
+		var b = new Uint8Array([255, 0, 0, 0]); // eslint-disable-line array-element-newline
+
+		return ((new Uint32Array(b, b.buffer))[0] === 255);
+	},
+
 	extractColorValues: function (sColor) { // from "#rrggbb"
 		return [
 			parseInt(sColor.substring(1, 3), 16),
@@ -181,6 +207,16 @@ Canvas.prototype = {
 		}
 
 		return aColorValues;
+	},
+
+	setAlpha: function (iAlpha) {
+		var buf8 = this.imageData.data,
+			iLength = this.dataset8.length, // or: this.iWidth * this.iHeight
+			i;
+
+		for (i = 0; i < iLength; i += 1) {
+			buf8[i * 4 + 3] = iAlpha; // alpha
+		}
 	},
 
 	initUpdateRect: function () {
@@ -210,13 +246,33 @@ Canvas.prototype = {
 		this.bNeedUpdate = true;
 	},
 
+	updateCanvas2: function () {
+		this.animationFrame = requestAnimationFrame(this.fnUpdateCanvasHandler);
+		if (this.bNeedUpdate) { // could be improved: update only updateRect
+			this.bNeedUpdate = false;
+			this.initUpdateRect();
+			// we always do a full this.updateCanvas...
+			this.fnCopy2Canvas();
+		}
+	},
+
 	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
+	// https://stackoverflow.com/questions/19764018/controlling-fps-with-requestanimationframe
+	updateCanvas: function () {
+		var iFps = 15;
+
+		this.animationTimeout = setTimeout(this.fnUpdateCanvas2Handler, 1000 / iFps);
+	},
+
+	/*
+	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
+	// https://stackoverflow.com/questions/19764018/controlling-fps-with-requestanimationframe
 	updateCanvas: function () {
 		var iFps = 15,
 			that = this;
 
 		this.animationTimeout = setTimeout(function () {
-			that.animationFrame = requestAnimationFrame(that.fnUpdateCancasHandler);
+			that.animationFrame = requestAnimationFrame(that.fnUpdateCanvasHandler);
 			if (that.bNeedUpdate) { // could be improved: update only updateRect
 				that.bNeedUpdate = false;
 				that.initUpdateRect();
@@ -224,6 +280,8 @@ Canvas.prototype = {
 			}
 		}, 1000 / iFps);
 	},
+	*/
+
 
 	startUpdateCanvas: function () {
 		if (this.animationFrame === null && this.canvas.offsetParent !== null && this.imageData) { // animation off and canvas visible in DOM?
@@ -242,14 +300,13 @@ Canvas.prototype = {
 
 	copy2Canvas8bit: function () {
 		var ctx = this.canvas.getContext("2d"),
-			iWidth = this.iWidth,
-			iHeight = this.iHeight,
 			buf8 = this.imageData.data, // use Uint8ClampedArray from canvas
-			aCurrentInksInSet = this.aCurrentInks[this.iInkSet],
-			aColorValues = this.aColorValues,
 			dataset8 = this.dataset8,
-			x, y, i, aColor;
+			iLength = dataset8.length, // or: this.iWidth * this.iHeight
+			aPen2ColorMap = this.aPen2ColorMap,
+			i, j, aColor;
 
+		/*
 		for (y = 0; y < iHeight; y += 1) {
 			for (x = 0; x < iWidth; x += 1) {
 				i = y * iWidth + x;
@@ -261,7 +318,75 @@ Canvas.prototype = {
 				buf8[i + 3] = 255; // a
 			}
 		}
+		*/
+
+		/*
+		for (i = 0; i < 16; i += 1) {
+			aPen2ColorMap[i] = aColorValues[aCurrentInksInSet[i]];
+		}
+		*/
+
+		for (i = 0; i < iLength; i += 1) {
+			aColor = aPen2ColorMap[dataset8[i]];
+			j = i * 4;
+			buf8[j] = aColor[0]; // r
+			buf8[j + 1] = aColor[1]; // g
+			buf8[j + 2] = aColor[2]; // b
+			// alpha already set to 255
+		}
 		ctx.putImageData(this.imageData, 0, 0);
+	},
+
+	copy2Canvas32bit: function () {
+		var ctx = this.canvas.getContext("2d"),
+			dataset8 = this.dataset8,
+			aData32 = this.aData32, //aData32 = new Uint32Array(this.imageData.data.buffer),
+			aPen2Color32 = this.aPen2Color32,
+			/*
+			aPenP2Color = new ArrayBuffer(16 * 4),
+			aPen2Color32 = new Uint32Array(aPenP2Color),
+			*/
+			i;
+
+		/*
+		for (i = 0; i < 16; i += 1) {
+			aPen2ColorMap = aColorValues[aCurrentInksInSet[i]];
+			if (this.bLittleEndian) {
+				aPen2Color32[i] = aPen2ColorMap[0] + aPen2ColorMap[1] * 256 + aPen2ColorMap[2] * 65536 + 255 * 65536 * 256;
+			} else {
+				aPen2Color32[i] = aPen2ColorMap[2] + aPen2ColorMap[1] * 256 + aPen2ColorMap[0] * 65536 + 255 * 65536 * 256; // TODO: do we need this?
+			}
+		}
+		*/
+
+		for (i = 0; i < aData32.length; i += 1) {
+			aData32[i] = aPen2Color32[dataset8[i]];
+		}
+
+		ctx.putImageData(this.imageData, 0, 0);
+	},
+
+	updateColorMap: function () {
+		var aColorValues = this.aColorValues,
+			aCurrentInksInSet = this.aCurrentInks[this.iInkSet],
+			aPen2ColorMap = this.aPen2ColorMap,
+			aPen2Color32 = this.aPen2Color32,
+			aColor, i;
+
+		for (i = 0; i < 16; i += 1) {
+			aPen2ColorMap[i] = aColorValues[aCurrentInksInSet[i]];
+		}
+
+		if (aPen2Color32) {
+			for (i = 0; i < 16; i += 1) {
+				aColor = aPen2ColorMap[i];
+				if (this.bLittleEndian) {
+					aPen2Color32[i] = aColor[0] + aColor[1] * 256 + aColor[2] * 65536 + 255 * 65536 * 256;
+				} else {
+					aPen2Color32[i] = aColor[2] + aColor[1] * 256 + aColor[0] * 65536 + 255 * 65536 * 256; // TODO: do we need this?
+				}
+			}
+		}
 	},
 
 	updateSpeedInk: function () {
@@ -275,12 +400,12 @@ Canvas.prototype = {
 			this.iInkSet = iNewInkSet;
 			this.iSpeedInkCount = this.aSpeedInk[iNewInkSet];
 
-			if (!this.bNeedUpdate) { // update not needed, yet => check for blinking inks which pens are visible in the current mode
-				for (i = 0; i < iPens; i += 1) {
-					if (this.aCurrentInks[iNewInkSet][i] !== this.aCurrentInks[iCurrentInkSet][i]) {
-						this.bNeedUpdate = true;
-						break;
-					}
+			// check for blinking inks which pens are visible in the current mode
+			for (i = 0; i < iPens; i += 1) {
+				if (this.aCurrentInks[iNewInkSet][i] !== this.aCurrentInks[iCurrentInkSet][i]) {
+					this.updateColorMap(); // need ink update
+					this.bNeedUpdate = true; // we also need update
+					break;
 				}
 			}
 
@@ -304,6 +429,7 @@ Canvas.prototype = {
 	setDefaultInks: function () {
 		this.aCurrentInks[0] = this.aDefaultInks[0].slice(); // copy ink set 0 array
 		this.aCurrentInks[1] = this.aDefaultInks[1].slice(); // copy ink set 1 array
+		this.updateColorMap();
 		this.setGPen(this.iGPen);
 	},
 
@@ -742,6 +868,7 @@ Canvas.prototype = {
 			bNeedInkUpdate = true;
 		}
 		if (bNeedInkUpdate) {
+			this.updateColorMap();
 			this.setNeedUpdate(0, 0, this.iHeight, this.iWidth); // we need to notify that an update is needed
 		}
 		return bNeedInkUpdate;
@@ -844,7 +971,7 @@ Canvas.prototype = {
 
 		aCharData = this.readCharData(x, y, iPen);
 		iChar = this.findMatchingChar(aCharData);
-		if (iChar < 0 || iChar === 32) { // no match? => check inverse with paper TTT =32?
+		if (iChar < 0 || iChar === 32) { // no match? => check inverse with paper, char=32?
 			aCharData = this.readCharData(x, y, iPaper);
 			for (i = 0; i < aCharData.length; i += 1) {
 				aCharData[i] ^= 0xff; // eslint-disable-line no-bitwise
