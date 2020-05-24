@@ -258,6 +258,7 @@ CommonEventHandler.prototype = {
 	},
 
 
+	/*
 	onExampleSelectChange: function () {
 		var that = this,
 			sExample = this.view.getSelectValue("exampleSelect"),
@@ -300,6 +301,41 @@ CommonEventHandler.prototype = {
 			this.view.setAreaValue("inputText", "");
 			this.model.setProperty("example", "");
 		}
+	},
+	*/
+
+	onExampleSelectChange: function () {
+		var oController = this.controller,
+			oVm = oController.oVm,
+			oInFile = oVm.vmGetInFileObject(),
+			sExample, oExample;
+
+		oVm.closein();
+
+		oInFile.bOpen = true;
+
+		sExample = this.view.getSelectValue("exampleSelect");
+		oExample = this.model.getExample(sExample);
+		if (oExample && oExample.meta && oExample.meta.charAt(0) === "D") { // data only?
+			oInFile.sCommand = "load";
+		} else {
+			oInFile.sCommand = "run";
+		}
+
+		/*
+		this.model.setProperty("example", sExample); // maybe with path
+
+		iLastSlash = sExample.lastIndexOf("/");
+		if (iLastSlash >= 0) {
+			sExample = sExample.substr(iLastSlash + 1); // keep just the name
+		}
+		*/
+
+
+		oInFile.sName = "/" + sExample; // load absolute
+		oInFile.fnFileCallback = null;
+		oVm.vmStop("fileLoad", 90);
+		oController.startMainLoop();
 	},
 
 	onVarSelectChange: function () {

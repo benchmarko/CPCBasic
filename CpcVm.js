@@ -608,7 +608,8 @@ CpcVm.prototype = {
 		return this.oStop.sReason === "";
 	},
 
-	fnCreateNDimArray: function (length) {
+	/*
+	fnCreateNDimArray_ok1: function (length) {
 		var arr = new Array(length || 0),
 			initVal = this.initVal,
 			i, aArgs;
@@ -623,15 +624,40 @@ CpcVm.prototype = {
 			aArgs = Array.prototype.slice.call(arguments, 1);
 			while (i) {
 				i -= 1;
-				arr[length - 1 - i] = this.fnCreateNDimArray.apply(this, aArgs);
+				arr[length - 1 - i] = this.fnCreateNDimArray.apply(this, aArgs); // recursive
 			}
 		}
 		return arr;
 	},
+	*/
 
-	fnGetVarDefault: function (sName) {
-		var iArrayIndices = sName.split("A").length - 1,
-			bIsString = sName.includes("$"),
+	fnCreateNDimArray: function (aDims, initVal) {
+		var aRet,
+			fnCreateRec = function (iIndex) {
+				var iLen, aArr, i;
+
+				iLen = aDims[iIndex];
+				iIndex += 1;
+				aArr = new Array(iLen);
+				if (iIndex < aDims.length) { // more dimensions?
+					for (i = 0; i < iLen; i += 1) {
+						aArr[i] = fnCreateRec(iIndex); // recursive call
+					}
+				} else { // one dimension
+					for (i = 0; i < iLen; i += 1) {
+						aArr[i] = initVal;
+					}
+				}
+				return aArr;
+			};
+
+		aRet = fnCreateRec(0);
+		return aRet;
+	},
+
+	fnGetVarDefault: function (sVarName) {
+		var iArrayIndices = sVarName.split("A").length - 1,
+			bIsString = sVarName.includes("$"),
 			value, aArgs, aValue, i;
 
 		value = bIsString ? "" : 0;
@@ -644,8 +670,9 @@ CpcVm.prototype = {
 			for (i = 0; i < iArrayIndices; i += 1) {
 				aArgs.push(11);
 			}
-			this.initVal = value; //TTT fast hack
-			aValue = this.fnCreateNDimArray.apply(this, aArgs);
+			//this.initVal = value; //TTT fast hack
+			//aValue = this.fnCreateNDimArray.apply(this, aArgs);
+			aValue = this.fnCreateNDimArray(aArgs, value);
 			value = aValue;
 		}
 		return value;
@@ -769,32 +796,30 @@ CpcVm.prototype = {
 	},
 
 	vmDrawMovePlot: function (sType, x, y, iGPen, iGColMode) {
-		var sTypeUc = sType.toUpperCase();
-
-		x = this.vmInRangeRound(x, -32768, 32767, sTypeUc);
-		y = this.vmInRangeRound(y, -32768, 32767, sTypeUc);
+		x = this.vmInRangeRound(x, -32768, 32767, sType);
+		y = this.vmInRangeRound(y, -32768, 32767, sType);
 		if (iGPen !== undefined && iGPen !== null) {
-			this.graphicsPen(iGPen);
+			iGPen = this.vmInRangeRound(iGPen, 0, 15, sType);
+			this.oCanvas.setGPen(iGPen);
 		}
 		if (iGColMode !== undefined) {
-			iGColMode = this.vmInRangeRound(iGColMode, 0, 3, sTypeUc);
+			iGColMode = this.vmInRangeRound(iGColMode, 0, 3, sType);
 			this.oCanvas.setGColMode(iGColMode);
 		}
-		this.oCanvas[sType](x, y); // draw, drawr, move, mover, plot, plotr
+		this.oCanvas[sType.toLowerCase()](x, y); // draw, drawr, move, mover, plot, plotr
 	},
 
 	vmAfterEveryGosub: function (sType, iInterval, iTimer, iLine) {
-		var sTypeUc = sType.toUpperCase(),
-			oTimer,	iIntervalMs;
+		var oTimer,	iIntervalMs;
 
-		iInterval = this.vmInRangeRound(iInterval, 0, 32767, sTypeUc); // more would be overflow
-		iTimer = this.vmInRangeRound(iTimer || 0, 0, 3, sTypeUc);
+		iInterval = this.vmInRangeRound(iInterval, 0, 32767, sType); // more would be overflow
+		iTimer = this.vmInRangeRound(iTimer || 0, 0, 3, sType);
 		oTimer = this.aTimer[iTimer];
 		iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
 
 		oTimer.iIntervalMs = iIntervalMs;
 		oTimer.iLine = iLine;
-		oTimer.bRepeat = (sType === "every");
+		oTimer.bRepeat = (sType === "EVERY");
 		oTimer.bActive = true;
 		oTimer.iNextTimeMs = Date.now() + iIntervalMs;
 	},
@@ -871,7 +896,7 @@ CpcVm.prototype = {
 	},
 
 	afterGosub: function (iInterval, iTimer, iLine) {
-		this.vmAfterEveryGosub("after", iInterval, iTimer, iLine);
+		this.vmAfterEveryGosub("AFTER", iInterval, iTimer, iLine);
 	},
 
 	// and
@@ -1275,23 +1300,26 @@ CpcVm.prototype = {
 
 	dim: function (sStringType) { // varargs
 		var aArgs = [],
-			bIsString = (sStringType === "$"), // includes("$"),
+			bIsString = (sStringType === "$"),
 			varDefault = (bIsString) ? "" : 0,
-			i;
+			i, iSize, aValue;
 
 		for (i = 1; i < arguments.length; i += 1) {
-			aArgs.push(arguments[i] + 1); // for basic we have sizes +1
+			iSize = this.vmInRangeRound(arguments[i], 0, 32767, "DIM") + 1; // for basic we have sizes +1
+			aArgs.push(iSize);
 		}
-		this.initVal = varDefault; // TODO fast hack
-		return this.fnCreateNDimArray.apply(this, aArgs);
+		//this.initVal = varDefault; // TODO fast hack
+		//return this.fnCreateNDimArray.apply(this, aArgs);
+		aValue = this.fnCreateNDimArray(aArgs, varDefault);
+		return aValue;
 	},
 
 	draw: function (x, y, iGPen, iGColMode) {
-		this.vmDrawMovePlot("draw", x, y, iGPen, iGColMode);
+		this.vmDrawMovePlot("DRAW", x, y, iGPen, iGColMode);
 	},
 
 	drawr: function (x, y, iGPen, iGColMode) {
-		this.vmDrawMovePlot("drawr", x, y, iGPen, iGColMode);
+		this.vmDrawMovePlot("DRAWR", x, y, iGPen, iGColMode);
 	},
 
 	edit: function (iLine) {
@@ -1462,7 +1490,7 @@ CpcVm.prototype = {
 	},
 
 	everyGosub: function (iInterval, iTimer, iLine) {
-		this.vmAfterEveryGosub("every", iInterval, iTimer, iLine);
+		this.vmAfterEveryGosub("EVERY", iInterval, iTimer, iLine);
 	},
 
 	exp: function (n) {
@@ -1979,11 +2007,11 @@ CpcVm.prototype = {
 	},
 
 	move: function (x, y, iGPen, iGColMode) {
-		this.vmDrawMovePlot("move", x, y, iGPen, iGColMode);
+		this.vmDrawMovePlot("MOVE", x, y, iGPen, iGColMode);
 	},
 
 	mover: function (x, y, iGPen, iGColMode) {
-		this.vmDrawMovePlot("mover", x, y, iGPen, iGColMode);
+		this.vmDrawMovePlot("MOVER", x, y, iGPen, iGColMode);
 	},
 
 	"new": function () {
@@ -2015,7 +2043,6 @@ CpcVm.prototype = {
 	onErrorGoto: function (iLine) {
 		this.iErrorGotoLine = iLine;
 		if (!iLine && this.iErrorResumeLine) { // line=0 but an error to resume?
-			//throw this.vmComposeError(this.iErr, "ON ERROR GOTO without RESUME from " + this.iErl);
 			throw this.vmComposeError(Error(), this.iErr, "ON ERROR GOTO without RESUME from " + this.iErl);
 		}
 	},
@@ -2205,18 +2232,17 @@ CpcVm.prototype = {
 	},
 
 	pen: function (iStream, iPen, iTransparent) {
-		var sPen = "PEN",
-			oWin;
+		var oWin;
 
 		if (iPen !== null) {
-			iStream = this.vmInRangeRound(iStream || 0, 0, 7, sPen);
+			iStream = this.vmInRangeRound(iStream || 0, 0, 7, "PEN");
 			oWin = this.aWindow[iStream];
-			iPen = this.vmInRangeRound(iPen, 0, 15, sPen);
+			iPen = this.vmInRangeRound(iPen, 0, 15, "PEN");
 			oWin.iPen = iPen;
 		}
 
 		if (iTransparent !== null && iTransparent !== undefined) {
-			iTransparent = this.vmInRangeRound(iTransparent, 0, 1, sPen);
+			iTransparent = this.vmInRangeRound(iTransparent, 0, 1, "PEN");
 			this.vmSetTransparentMode(iStream, iTransparent);
 		}
 	},
@@ -2226,11 +2252,11 @@ CpcVm.prototype = {
 	},
 
 	plot: function (x, y, iGPen, iGColMode) { // 2, up to 4 parameters
-		this.vmDrawMovePlot("plot", x, y, iGPen, iGColMode);
+		this.vmDrawMovePlot("PLOT", x, y, iGPen, iGColMode);
 	},
 
 	plotr: function (x, y, iGPen, iGColMode) {
-		this.vmDrawMovePlot("plotr", x, y, iGPen, iGColMode);
+		this.vmDrawMovePlot("PLOTR", x, y, iGPen, iGColMode);
 	},
 
 	poke: function (iAddr, iByte) {
@@ -2282,6 +2308,7 @@ CpcVm.prototype = {
 		if (x > (iRight - iLeft)) {
 			y += 1;
 			x = 0;
+			this.sOut += "\n";
 		}
 
 		if (x < 0) {

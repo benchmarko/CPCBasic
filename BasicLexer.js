@@ -39,7 +39,8 @@ BasicLexer.prototype = {
 	},
 
 	lex: function (input) { // eslint-disable-line complexity
-		var isComment = function (c) { // isApostrophe
+		var that = this,
+			isComment = function (c) { // isApostrophe
 				return (/[']/).test(c);
 			},
 			isOperator = function (c) {
@@ -164,7 +165,8 @@ BasicLexer.prototype = {
 						sChar = "";
 						sToken = advanceWhile(isNotQuotes);
 						if (!isQuotes(sChar)) {
-							Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
+							//Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
+							Utils.console.log(that.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
 						}
 						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 						sToken = hexEscape(sToken);
@@ -279,7 +281,8 @@ BasicLexer.prototype = {
 				sChar = "";
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
+					//Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
+					Utils.console.log(this.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 				sToken = hexEscape(sToken);

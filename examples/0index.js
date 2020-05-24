@@ -118,6 +118,11 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Functional Spectrum"
 	},
 	{
+    	"key": "math/ninedig2",
+		"title": "Nine Digits 2 (Tokenized)",
+		"meta": "T,368,1126,0"
+	},
+	{
     	"key": "math/regress",
 		"title": "Regression (Ausgleich)"
 	},
@@ -172,7 +177,7 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
     	"key": "test/testdat1",
 		"title": "testdat1 - Test data for Test Page",
-		"type": "data"
+		"meta": "D"
 	},
     {
 		"key": "test/testpage",

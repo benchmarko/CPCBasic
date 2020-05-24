@@ -73,7 +73,7 @@ BasicParser.mKeywords = {
 	dim: "c v *", // DIM <list of: subscripted variable>
 	draw: "c n n n0? n?", // DRAW <x coordinate>,<y coordinate>[,[<ink>][,<ink mode>]]
 	drawr: "c n n n0? n?", // DRAWR <x offset>,<y offset>[,[<ink>][,<ink mode>]]
-	edit: "c n", // EDIT <line number>
+	edit: "c l", // EDIT <line number>
 	ei: "c", // EI
 	"else": "c", // see: IF (else belongs to "if", but can also be used as command)
 	end: "c", // END
@@ -972,7 +972,8 @@ BasicParser.prototype = {
 			oValue.type = "rem"; // create a comment form else
 			oValue.args = [];
 
-			Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line");
+			//Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line");
+			Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oToken.type, oToken.pos).message);
 
 			// TODO: data line as separate statement is taken
 			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
@@ -1107,7 +1108,8 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.right = statements("else");
 					if (oValue.right.length && oValue.right[0].type !== "rem") {
-						Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos + ", line");
+						//Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos + ", line");
+						Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
 					}
 					oValue.right.unshift(oValue2);
 				} else {
@@ -1122,7 +1124,8 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.third = statements("else");
 					if (oValue.third.length) {
-						Utils.console.warn("IF: Unreachable code after ELSE at pos", oToken2.pos + ", line");
+						//Utils.console.warn("IF: Unreachable code after ELSE at pos", oToken2.pos + ", line");
+						Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
 					}
 					oValue.third.unshift(oValue2);
 				} else if (oToken.type === "if") {
@@ -1438,7 +1441,7 @@ BasicParser.prototype = {
 				}
 			}
 
-			bTrailingSemicolon = (oPreviousToken.type === ";");
+			bTrailingSemicolon = (oPreviousToken.type === ";" || oPreviousToken.type === "commaTab");
 			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
 				oValue.args.push({ // create
 					type: "string",

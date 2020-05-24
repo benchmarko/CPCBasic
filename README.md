@@ -70,6 +70,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Incomplete type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
   `defint a: a=1: a%=2: ?a,a%`
+- Array access: Array indices are not rounded, and there is no range check.
 - *ON ERROR GOTO* and *RESUME* without line number do not fully work because this would require to single step every instruction
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
@@ -101,7 +102,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Extensions and Features
 
-- File save operations *SAVE*, *OPENOUT* write to Browser local storage; |ERA to erase a file.
+- File operations work on Browser local storage memory. Also examples visible in the selection field can be loaded with *LOAD*, *MERGE*, *OPENIN*, if in the same "subdirectory" as the selected example.
+- Use Drag & Drop on the canvas or on the input drop zone to import files.
+  File types can be normal ASCII, tokenized BASIC or binary. An AMSDOS header is detected.
 - Data can be loadad again with file load and merge commands like *LOAD*, *MERGE*, *OPENIN*. These also work on the predefined examples
 - *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character. This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
 Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
@@ -150,7 +153,7 @@ Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.githu
 - Use URL parameter "tron=true" to activate line tracing mode with *TRON* and *TROFF*
 - Use *OPENIN* and *INPUT#9* to load data from a file in the current "directory" or from Browser local storage
 - If the program is complete (that means, no *MERGE* or *CHAIN MERGE* inside), line number destinations are checked for existence. For example, if the *line number* in *GOTO line* does not exist, the compilation fails.
-- Most commands and functions are checked for number of arguments but not for argument types.
+- The commands and functions are checked for number of arguments but not always for argument types.
 
 ## Debugging
 

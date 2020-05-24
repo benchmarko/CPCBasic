@@ -3,11 +3,11 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
-/* globals CommonEventHandler cpcBasicCharset  */
+/* globals cpcBasicCharset */
 
 "use strict";
 
-var Utils, BasicFormatter, BasicLexer, BasicParser, Canvas, CodeGeneratorJs, CpcVm, Keyboard, Sound;
+var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorJs, CommonEventHandler, CpcVm, Keyboard, Sound;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -15,8 +15,10 @@ if (typeof require !== "undefined") {
 	BasicFormatter = require("./BasicFormatter.js");
 	BasicLexer = require("./BasicLexer.js");
 	BasicParser = require("./BasicParser.js");
+	BasicTokenizer = require("./BasicTokenizer.js");
 	Canvas = require("./Canvas.js");
 	CodeGeneratorJs = require("./CodeGeneratorJs.js");
+	CommonEventHandler = require("./CommonEventHandler.js");
 	CpcVm = require("./CpcVm.js");
 	Keyboard = require("./Keyboard.js");
 	Sound = require("./Sound.js");
@@ -102,6 +104,8 @@ Controller.prototype = {
 			tron: this.model.getProperty("tron"),
 			rsx: this.oVm.rsx // just to check the names
 		});
+
+		this.BasicTokenizer = new BasicTokenizer(); // for tokenized BASIC
 
 		this.initDatabases();
 		if (oModel.getProperty("sound")) { // activate sound needs user action
@@ -487,11 +491,15 @@ Controller.prototype = {
 	},
 
 	// get line range from a script with sorted line numbers
-	fnGetLineRange: function (sScript, iFirstLine, iLastLine) {
+	fnGetLinesInRange: function (sScript, iFirstLine, iLastLine) {
 		var aLines = sScript ? sScript.split("\n") : [];
 
 		while (aLines.length && parseInt(aLines[0], 10) < iFirstLine) {
 			aLines.shift();
+		}
+
+		if (aLines.length && aLines[aLines.length - 1] === "") { // trailing empty line?
+			aLines.pop(); // remove
 		}
 
 		while (aLines.length && parseInt(aLines[aLines.length - 1], 10) > iLastLine) {
@@ -618,6 +626,12 @@ Controller.prototype = {
 			iStartLine = 0;
 
 		this.oVm.vmStop("", 0, true);
+
+		sMeta = sMeta || "";
+		if (sMeta.charAt(0) === "T") { // tokenized basic?
+			sInput = this.BasicTokenizer.decode(Utils.atob(sInput));
+		}
+
 		if (oInFile.fnFileCallback) {
 			try {
 				oInFile.fnFileCallback(sInput, sMeta);
@@ -687,7 +701,7 @@ Controller.prototype = {
 				oExample = that.model.getExample(sExample);
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
-				that.loadFileContinue(sInput);
+				that.loadFileContinue(sInput, oExample.meta);
 			},
 			fnExampleError = function () {
 				var oError;
@@ -702,12 +716,18 @@ Controller.prototype = {
 
 		sName = oInFile.sName;
 		sKey = this.model.getProperty("example");
-		oInFile.sMemorizedExample = sKey;
-		iLastSlash = sKey.lastIndexOf("/");
-		if (iLastSlash >= 0) {
-			sPath = sKey.substr(0, iLastSlash); // take path from selected example
-			sName = sPath + "/" + sName;
-			sName = sName.replace(/\w+\/\.\.\//, ""); // simplify 2 dots (go back) in path: "dir/.."" => ""
+
+		if (sName.charAt(0) === "/") { // absolute path?
+			sName = sName.substr(1); // remove "/"
+			oInFile.sMemorizedExample = sName; // change!
+		} else {
+			oInFile.sMemorizedExample = sKey;
+			iLastSlash = sKey.lastIndexOf("/");
+			if (iLastSlash >= 0) {
+				sPath = sKey.substr(0, iLastSlash); // take path from selected example
+				sName = sPath + "/" + sName;
+				sName = sName.replace(/\w+\/\.\.\//, ""); // simplify 2 dots (go back) in path: "dir/.."" => ""
+			}
 		}
 		sExample = sName;
 
@@ -879,7 +899,7 @@ Controller.prototype = {
 
 	fnDeleteLines: function (oParas) {
 		var sInputText = this.view.getAreaValue("inputText"),
-			aLines = this.fnGetLineRange(sInputText, oParas.iFirst, oParas.iLast),
+			aLines = this.fnGetLinesInRange(sInputText, oParas.iFirst, oParas.iLast),
 			iLine, i, oError, sInput;
 
 		if (aLines.length) {
@@ -914,7 +934,7 @@ Controller.prototype = {
 	fnList: function (oParas) {
 		var sInput = this.view.getAreaValue("inputText"),
 			iStream = oParas.iStream,
-			aLines = this.fnGetLineRange(sInput, oParas.iFirst, oParas.iLast),
+			aLines = this.fnGetLinesInRange(sInput, oParas.iFirst, oParas.iLast),
 			i;
 
 		for (i = 0; i < aLines.length; i += 1) {
@@ -996,7 +1016,7 @@ Controller.prototype = {
 		var sInput = this.view.getAreaValue("inputText"),
 			iStream = oParas.iStream,
 			iLine = oParas.iLine,
-			aLines = this.fnGetLineRange(sInput, iLine, iLine),
+			aLines = this.fnGetLinesInRange(sInput, iLine, iLine),
 			sLine, oError;
 
 		if (aLines.length) {
@@ -1161,7 +1181,7 @@ Controller.prototype = {
 		if (sInput !== "") {
 			this.oVm.cursor(iStream, 0);
 			sInputText = this.view.getAreaValue("inputText");
-			if ((/^(\d)+/).test(sInput)) { // start with number?
+			if ((/^\d+($| )/).test(sInput)) { // start with number?
 				if (Utils.debug > 0) {
 					Utils.console.debug("fnDirectInput: insert line=" + sInput);
 				}
@@ -1645,6 +1665,9 @@ Controller.prototype = {
 
 		dropZone.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
 		dropZone.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
+
+		this.oCanvas.canvas.addEventListener("dragover", this.fnHandleDragOver.bind(this), false); //TTT fast hack
+		this.oCanvas.canvas.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
 
 		document.getElementById("fileInput").addEventListener("change", this.fnHandleFileSelect.bind(this), false);
 	}

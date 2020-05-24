@@ -2,10 +2,15 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
-/* globals Utils */
-/* globals ArrayBuffer Uint8Array Uint32Array */
+/* globals ArrayBuffer, Uint8Array, Uint32Array */
 
 "use strict";
+
+var Utils;
+
+if (typeof require !== "undefined") {
+	Utils = require("./Utils.js"); // eslint-disable-line global-require
+}
 
 function Canvas(options) {
 	this.init(options);
@@ -141,13 +146,6 @@ Canvas.prototype = {
 				this.bLittleEndian = this.isLittleEndian();
 				this.aPen2Color32 = new Uint32Array(new ArrayBuffer(this.aModeData[3].iPens * 4));
 				this.aData32 = new Uint32Array(this.imageData.data.buffer);
-				/*
-				} else { // workaround for !this.imageData.data.buffer does not work...
-					var buf = new ArrayBuffer(this.imageData.data.length);
-					this.aData32 = new Uint32Array(buf);
-					this.imageData.data.set(new Uint8ClampedArray(buf)); // must be always set after pixel manipulation
-				}
-				*/
 				Utils.console.log("Canvas: using optimized copy2Canvas32bit, littleEndian:", this.bLittleEndian);
 			} else {
 				this.fnCopy2Canvas = this.copy2Canvas8bit;
@@ -251,7 +249,7 @@ Canvas.prototype = {
 		if (this.bNeedUpdate) { // could be improved: update only updateRect
 			this.bNeedUpdate = false;
 			this.initUpdateRect();
-			// we always do a full this.updateCanvas...
+			// we always do a full updateCanvas...
 			this.fnCopy2Canvas();
 		}
 	},
@@ -263,25 +261,6 @@ Canvas.prototype = {
 
 		this.animationTimeout = setTimeout(this.fnUpdateCanvas2Handler, 1000 / iFps);
 	},
-
-	/*
-	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
-	// https://stackoverflow.com/questions/19764018/controlling-fps-with-requestanimationframe
-	updateCanvas: function () {
-		var iFps = 15,
-			that = this;
-
-		this.animationTimeout = setTimeout(function () {
-			that.animationFrame = requestAnimationFrame(that.fnUpdateCanvasHandler);
-			if (that.bNeedUpdate) { // could be improved: update only updateRect
-				that.bNeedUpdate = false;
-				that.initUpdateRect();
-				that.copy2Canvas8bit(); // full update
-			}
-		}, 1000 / iFps);
-	},
-	*/
-
 
 	startUpdateCanvas: function () {
 		if (this.animationFrame === null && this.canvas.offsetParent !== null && this.imageData) { // animation off and canvas visible in DOM?
@@ -306,26 +285,6 @@ Canvas.prototype = {
 			aPen2ColorMap = this.aPen2ColorMap,
 			i, j, aColor;
 
-		/*
-		for (y = 0; y < iHeight; y += 1) {
-			for (x = 0; x < iWidth; x += 1) {
-				i = y * iWidth + x;
-				aColor = aColorValues[aCurrentInksInSet[dataset8[i]]];
-				i *= 4;
-				buf8[i] = aColor[0]; // r
-				buf8[i + 1] = aColor[1]; // g
-				buf8[i + 2] = aColor[2]; // b
-				buf8[i + 3] = 255; // a
-			}
-		}
-		*/
-
-		/*
-		for (i = 0; i < 16; i += 1) {
-			aPen2ColorMap[i] = aColorValues[aCurrentInksInSet[i]];
-		}
-		*/
-
 		for (i = 0; i < iLength; i += 1) {
 			aColor = aPen2ColorMap[dataset8[i]];
 			j = i * 4;
@@ -340,24 +299,9 @@ Canvas.prototype = {
 	copy2Canvas32bit: function () {
 		var ctx = this.canvas.getContext("2d"),
 			dataset8 = this.dataset8,
-			aData32 = this.aData32, //aData32 = new Uint32Array(this.imageData.data.buffer),
+			aData32 = this.aData32,
 			aPen2Color32 = this.aPen2Color32,
-			/*
-			aPenP2Color = new ArrayBuffer(16 * 4),
-			aPen2Color32 = new Uint32Array(aPenP2Color),
-			*/
 			i;
-
-		/*
-		for (i = 0; i < 16; i += 1) {
-			aPen2ColorMap = aColorValues[aCurrentInksInSet[i]];
-			if (this.bLittleEndian) {
-				aPen2Color32[i] = aPen2ColorMap[0] + aPen2ColorMap[1] * 256 + aPen2ColorMap[2] * 65536 + 255 * 65536 * 256;
-			} else {
-				aPen2Color32[i] = aPen2ColorMap[2] + aPen2ColorMap[1] * 256 + aPen2ColorMap[0] * 65536 + 255 * 65536 * 256; // TODO: do we need this?
-			}
-		}
-		*/
 
 		for (i = 0; i < aData32.length; i += 1) {
 			aData32[i] = aPen2Color32[dataset8[i]];
