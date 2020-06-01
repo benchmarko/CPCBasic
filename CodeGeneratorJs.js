@@ -595,7 +595,7 @@ CodeGeneratorJs.prototype = {
 					aNodeArgs = fnParseArgs(node.args);
 
 					if (that.options.tron) {
-						value += " o.vmTrace(" + that.iLine + ");";
+						value += " o.vmTrace(\"" + that.iLine + "\");";
 					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						value2 = aNodeArgs[i];

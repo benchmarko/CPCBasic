@@ -608,29 +608,6 @@ CpcVm.prototype = {
 		return this.oStop.sReason === "";
 	},
 
-	/*
-	fnCreateNDimArray_ok1: function (length) {
-		var arr = new Array(length || 0),
-			initVal = this.initVal,
-			i, aArgs;
-
-		length = length || 0;
-		for (i = 0; i < length; i += 1) {
-			arr[i] = initVal;
-		}
-
-		i = length;
-		if (arguments.length > 1) {
-			aArgs = Array.prototype.slice.call(arguments, 1);
-			while (i) {
-				i -= 1;
-				arr[length - 1 - i] = this.fnCreateNDimArray.apply(this, aArgs); // recursive
-			}
-		}
-		return arr;
-	},
-	*/
-
 	fnCreateNDimArray: function (aDims, initVal) {
 		var aRet,
 			fnCreateRec = function (iIndex) {
@@ -670,8 +647,6 @@ CpcVm.prototype = {
 			for (i = 0; i < iArrayIndices; i += 1) {
 				aArgs.push(11);
 			}
-			//this.initVal = value; //TTT fast hack
-			//aValue = this.fnCreateNDimArray.apply(this, aArgs);
 			aValue = this.fnCreateNDimArray(aArgs, value);
 			value = aValue;
 		}
@@ -1308,8 +1283,6 @@ CpcVm.prototype = {
 			iSize = this.vmInRangeRound(arguments[i], 0, 32767, "DIM") + 1; // for basic we have sizes +1
 			aArgs.push(iSize);
 		}
-		//this.initVal = varDefault; // TODO fast hack
-		//return this.fnCreateNDimArray.apply(this, aArgs);
 		aValue = this.fnCreateNDimArray(aArgs, varDefault);
 		return aValue;
 	},
@@ -1671,6 +1644,7 @@ CpcVm.prototype = {
 						aValue = aFileData[0].match(/^(\S+)(.*)/);
 						value = aValue[1];
 						aFileData[0] = aValue[2];
+						aFileData[0] = aFileData[0].replace(/^\s+/, ""); // remove preceding whitespace
 						if (!aFileData[0].length) { // eslint-disable-line max-depth
 							aFileData.shift(); // remove empty line
 						}
@@ -1853,7 +1827,7 @@ CpcVm.prototype = {
 				iAddress = oInFile.iAddress !== undefined ? oInFile.iAddress : Number(aMeta[1]);
 				iLength = Number(aMeta[2]); // we do not really need the length from metadata
 
-				sInput = Utils.atob(sInput);
+				//sInput = Utils.atob(sInput); // already done
 				if (isNaN(iLength)) {
 					iLength = sInput.length; // only valid after atob()
 				}
@@ -2105,6 +2079,7 @@ CpcVm.prototype = {
 		var oInFile = this.oInFile;
 
 		if (sInput !== null) {
+			sInput = sInput.replace(/\r\n/g, "\n"); // remove CR (maybe from ASCII file in "binary" form)
 			if (Utils.stringEndsWith(sInput, "\n")) {
 				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n"
 			}

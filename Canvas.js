@@ -63,31 +63,31 @@ Canvas.prototype = {
 	aModeData: [
 		{ // mode 0
 			iPens: 16, // number of pens
-			iLineWidth: 4, // pixel width
-			iLineHeight: 2, // pixel height
-			iCharWidth: 8 * 4, // width of a char (pixel width * 8)
-			iCharHeight: 16 // height of a char (pixel height * 8)
+			iPixelWidth: 4, // pixel width
+			iPixelHeight: 2 // pixel height
+			// iCharWidth: 8 * 4, // width of a char (pixel width * 8)
+			// iCharHeight: 16 // height of a char (pixel height * 8)
 		},
 		{ // mode 1
 			iPens: 4,
-			iLineWidth: 2,
-			iLineHeight: 2,
-			iCharWidth: 8 * 2,
-			iCharHeight: 16
+			iPixelWidth: 2,
+			iPixelHeight: 2
+			// iCharWidth: 8 * 2,
+			// iCharHeight: 16
 		},
 		{ // mode 2
 			iPens: 2,
-			iLineWidth: 1,
-			iLineHeight: 2,
-			iCharWidth: 8,
-			iCharHeight: 16
+			iPixelWidth: 1,
+			iPixelHeight: 2
+			// iCharWidth: 8,
+			// iCharHeight: 16
 		},
 		{ // mode 3
 			iPens: 16, // mode 3 not available on a real CPC
-			iLineWidth: 1,
-			iLineHeight: 1,
-			iCharWidth: 8,
-			iCharHeight: 8
+			iPixelWidth: 1,
+			iPixelHeight: 1
+			// iCharWidth: 8,
+			// iCharHeight: 8
 		}
 	],
 
@@ -160,7 +160,8 @@ Canvas.prototype = {
 	},
 
 	reset: function () {
-		this.iMode = 1;
+		//this.iMode = 1;
+		this.changeMode(1);
 		this.iGPen = null; // force update
 		this.iGPaper = null;
 		this.iInkSet = 0;
@@ -218,29 +219,9 @@ Canvas.prototype = {
 	},
 
 	initUpdateRect: function () {
-		var oUpdateRect = this.oUpdateRect;
-
-		oUpdateRect.xLeft = 0;
-		oUpdateRect.yTop = 0;
-		oUpdateRect.xRight = -1;
-		oUpdateRect.yBottom = -1;
 	},
 
-	setNeedUpdate: function (xLeft, yTop, xRight, yBottom) { // oUpdateRect not used yet
-		var oUpdateRect = this.oUpdateRect;
-
-		if (xLeft < oUpdateRect.xLeft) {
-			oUpdateRect.xLeft = xLeft;
-		}
-		if (yTop < oUpdateRect.yTop) {
-			oUpdateRect.yTop = yTop;
-		}
-		if (xRight > oUpdateRect.xRight) {
-			oUpdateRect.xRight = xRight;
-		}
-		if (yBottom > oUpdateRect.yBottom) {
-			oUpdateRect.yBottom = yBottom;
-		}
+	setNeedUpdate: function () {
 		this.bNeedUpdate = true;
 	},
 
@@ -334,7 +315,7 @@ Canvas.prototype = {
 	},
 
 	updateSpeedInk: function () {
-		var iPens = this.aModeData[this.iMode].iPens,
+		var iPens = this.oModeData.iPens,
 			iCurrentInkSet, iNewInkSet, i;
 
 		this.iSpeedInkCount -= 1;
@@ -419,11 +400,11 @@ Canvas.prototype = {
 	},
 
 	fillTextBox: function (iLeft, iTop, iWidth, iHeight, iPen) {
-		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight;
+		var iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8;
 
 		this.fillMyRect(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, iHeight * iCharHeight, iPen);
-		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, (iLeft + iWidth) * iCharWidth, (iTop + iHeight) * iCharHeight);
+		this.setNeedUpdate();
 	},
 
 	moveMyRectDown: function (x, y, iWidth, iHeight, x2, y2) { // for scrolling up (overlap)
@@ -455,29 +436,25 @@ Canvas.prototype = {
 	},
 
 	invertChar: function (x, y, iPen, iPaper) {
-		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight,
-			iScaleWidth = iCharWidth / 8,
-			iScaleHeight = iCharHeight / 8,
+		var iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iPenXorPaper = iPen ^ iPaper, // eslint-disable-line no-bitwise
 			iGColMode = 0,
 			row, col, iTestPen;
 
 		for (row = 0; row < 8; row += 1) {
 			for (col = 0; col < 8; col += 1) {
-				iTestPen = this.testSubPixel(x + col * iScaleWidth, y + row * iScaleHeight);
+				iTestPen = this.testSubPixel(x + col * iPixelWidth, y + row * iPixelHeight);
 				iTestPen ^= iPenXorPaper; // eslint-disable-line no-bitwise
-				this.setSubPixels(x + col * iScaleWidth, y + row * iScaleHeight, iTestPen, iGColMode);
+				this.setSubPixels(x + col * iPixelWidth, y + row * iPixelHeight, iTestPen, iGColMode);
 			}
 		}
 	},
 
 	setChar: function (iChar, x, y, iPen, iPaper, bTransparent, iGColMode, bTextAtGraphics) {
 		var aCharData = this.oCustomCharset[iChar] || this.aCharset[iChar],
-			iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight,
-			iScaleWidth = iCharWidth / 8,
-			iScaleHeight = iCharHeight / 8,
+			iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iBit, iPenOrPaper,
 			iCharData, row, col;
 
@@ -488,9 +465,9 @@ Canvas.prototype = {
 				if (!(bTransparent && !iBit)) { // do not set background pixel in transparent mode
 					iPenOrPaper = (iBit) ? iPen : iPaper;
 					if (bTextAtGraphics) {
-						this.setPixel(x + col * iScaleWidth, y - row * iScaleHeight, iPenOrPaper, iGColMode);
+						this.setPixel(x + col * iPixelWidth, y - row * iPixelHeight, iPenOrPaper, iGColMode);
 					} else { // text mode
-						this.setSubPixels(x + col * iScaleWidth, y + row * iScaleHeight, iPenOrPaper, iGColMode); // iColMode always 0 in text mode
+						this.setSubPixels(x + col * iPixelWidth, y + row * iPixelHeight, iPenOrPaper, iGColMode); // iColMode always 0 in text mode
 					}
 				}
 			}
@@ -499,16 +476,14 @@ Canvas.prototype = {
 
 	readCharData: function (x, y, iExpectedPen) {
 		var aCharData = [],
-			iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight,
-			iScaleWidth = iCharWidth / 8,
-			iScaleHeight = iCharHeight / 8,
+			iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iPen, iCharData, row, col;
 
 		for (row = 0; row < 8; row += 1) {
 			iCharData = 0;
 			for (col = 0; col < 8; col += 1) {
-				iPen = this.testSubPixel(x + col * iScaleWidth, y + row * iScaleHeight);
+				iPen = this.testSubPixel(x + col * iPixelWidth, y + row * iPixelHeight);
 				if (iPen === iExpectedPen) {
 					iCharData |= (0x80 >> col); // eslint-disable-line no-bitwise
 				}
@@ -519,18 +494,18 @@ Canvas.prototype = {
 	},
 
 	setSubPixels: function (x, y, iGPen, iGColMode) {
-		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+		var iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iWidth = this.iWidth,
 			row, col, i;
 
 		/* eslint-disable no-bitwise */
-		x &= ~(iLineWidth - 1); // match CPC pixel
-		y &= ~(iLineHeight - 1);
+		x &= ~(iPixelWidth - 1); // match CPC pixel
+		y &= ~(iPixelHeight - 1);
 
-		for (row = 0; row < iLineHeight; row += 1) {
+		for (row = 0; row < iPixelHeight; row += 1) {
 			i = x + iWidth * (y + row);
-			for (col = 0; col < iLineWidth; col += 1) {
+			for (col = 0; col < iPixelWidth; col += 1) {
 				switch (iGColMode) {
 				case 0: // normal
 					this.dataset8[i] = iGPen;
@@ -595,31 +570,31 @@ Canvas.prototype = {
 
 	getByte: function (iAddr) {
 		var iMode = this.iMode,
-			iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iByte = null, // null=cannot read
 			x, y, iGPen, i;
 
 		/* eslint-disable no-bitwise */
 		x = ((iAddr & 0x7ff) % 80) * 8;
-		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iLineHeight;
+		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iPixelHeight;
 
 		if (y < this.iHeight) { // only if in visible range
 			if (iMode === 0) {
 				iGPen = this.dataset8[x + this.iWidth * y];
 				iByte = ((iGPen >> 2) & 0x02) | ((iGPen << 3) & 0x20) | ((iGPen << 2) & 0x08) | ((iGPen << 7) & 0x80); // b1,b5,b3,b7 (left pixel)
 
-				iGPen = this.dataset8[x + iLineWidth + this.iWidth * y];
+				iGPen = this.dataset8[x + iPixelWidth + this.iWidth * y];
 				iByte |= ((iGPen >> 3) & 0x01) | ((iGPen << 2) & 0x10) | ((iGPen << 1) & 0x04) | ((iGPen << 6) & 0x40); // b0,b4,b2,b6 (right pixel)
 			} else if (iMode === 1) {
 				iByte = 0;
 				iGPen = this.dataset8[x + this.iWidth * y];
 				iByte |= ((iGPen & 0x02) << 2) | ((iGPen & 0x01) << 7); // b3,b7 (left pixel 1)
-				iGPen = this.dataset8[x + iLineWidth + this.iWidth * y];
+				iGPen = this.dataset8[x + iPixelWidth + this.iWidth * y];
 				iByte |= ((iGPen & 0x02) << 1) | ((iGPen & 0x01) << 6); // b2,b6 (pixel 2)
-				iGPen = this.dataset8[x + iLineWidth * 2 + this.iWidth * y];
+				iGPen = this.dataset8[x + iPixelWidth * 2 + this.iWidth * y];
 				iByte |= ((iGPen & 0x02) << 0) | ((iGPen & 0x01) << 5); // b1,b5 (pixel 3)
-				iGPen = this.dataset8[x + iLineWidth * 3 + this.iWidth * y];
+				iGPen = this.dataset8[x + iPixelWidth * 3 + this.iWidth * y];
 				iByte |= ((iGPen & 0x02) >> 1) | ((iGPen & 0x01) << 4); // b0,b4 (right pixel 4)
 			} else if (iMode === 2) {
 				iByte = 0;
@@ -637,38 +612,38 @@ Canvas.prototype = {
 
 	setByte: function (iAddr, iByte) {
 		var iMode = this.iMode,
-			iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iGColMode = 0, // always 0
 			x, y, iGPen, i;
 
 		/* eslint-disable no-bitwise */
 		x = ((iAddr & 0x7ff) % 80) * 8;
-		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iLineHeight;
+		y = (((iAddr & 0x3800) / 0x800) + (((iAddr & 0x7ff) / 80) | 0) * 8) * iPixelHeight;
 
 		if (y < this.iHeight) { // only if in visible range
 			if (iMode === 0) {
 				iGPen = ((iByte << 2) & 0x08) | ((iByte >> 3) & 0x04) | ((iByte >> 2) & 0x02) | ((iByte >> 7) & 0x01); // b1,b5,b3,b7 (left pixel)
 				this.setSubPixels(x, y, iGPen, iGColMode);
 				iGPen = ((iByte << 3) & 0x08) | ((iByte >> 2) & 0x04) | ((iByte >> 1) & 0x02) | ((iByte >> 6) & 0x01); // b0,b4,b2,b6 (right pixel)
-				this.setSubPixels(x + iLineWidth, y, iGPen, iGColMode);
-				this.setNeedUpdate(x, y, x + iLineWidth, y);
+				this.setSubPixels(x + iPixelWidth, y, iGPen, iGColMode);
+				this.setNeedUpdate();
 			} else if (iMode === 1) {
 				iGPen = ((iByte >> 2) & 0x02) | ((iByte >> 7) & 0x01); // b3,b7 (left pixel 1)
 				this.setSubPixels(x, y, iGPen, iGColMode);
 				iGPen = ((iByte >> 1) & 0x02) | ((iByte >> 6) & 0x01); // b2,b6 (pixel 2)
-				this.setSubPixels(x + iLineWidth, y, iGPen, iGColMode);
+				this.setSubPixels(x + iPixelWidth, y, iGPen, iGColMode);
 				iGPen = ((iByte >> 0) & 0x02) | ((iByte >> 5) & 0x01); // b1,b5 (pixel 3)
-				this.setSubPixels(x + iLineWidth * 2, y, iGPen, iGColMode);
+				this.setSubPixels(x + iPixelWidth * 2, y, iGPen, iGColMode);
 				iGPen = ((iByte << 1) & 0x02) | ((iByte >> 4) & 0x01); // b0,b4 (right pixel 4)
-				this.setSubPixels(x + iLineWidth * 3, y, iGPen, iGColMode);
-				this.setNeedUpdate(x, y, x + iLineWidth * 3, y);
+				this.setSubPixels(x + iPixelWidth * 3, y, iGPen, iGColMode);
+				this.setNeedUpdate();
 			} else if (iMode === 2) {
 				for (i = 0; i <= 7; i += 1) {
 					iGPen = (iByte >> (7 - i)) & 0x01;
-					this.setSubPixels(x + i * iLineWidth, y, iGPen, iGColMode);
+					this.setSubPixels(x + i * iPixelWidth, y, iGPen, iGColMode);
 				}
-				this.setNeedUpdate(x, y, x + iLineWidth * 7, y);
+				this.setNeedUpdate();
 			} else { // iMode === 3 (not supported)
 			}
 		}
@@ -677,8 +652,8 @@ Canvas.prototype = {
 
 	// https://de.wikipedia.org/wiki/Bresenham-Algorithmus
 	drawBresenhamLine: function (xstart, ystart, xend, yend) {
-		var iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+		var iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			iGPen = this.iGPen,
 			iGColMode = this.iGColMode,
 			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
@@ -692,23 +667,23 @@ Canvas.prototype = {
 
 		/* eslint-disable no-bitwise */
 		if (xend >= xstart) { // line from left to right
-			xend |= (iLineWidth - 1); // match CPC pixel
+			xend |= (iPixelWidth - 1); // match CPC pixel
 		} else { // line from right to left
-			xstart |= (iLineWidth - 1);
+			xstart |= (iPixelWidth - 1);
 		}
 
 		if (yend >= ystart) { // line from bottom to top
-			yend |= (iLineHeight - 1);
+			yend |= (iPixelHeight - 1);
 		} else { // line from top to bottom
-			ystart |= (iLineHeight - 1);
+			ystart |= (iPixelHeight - 1);
 		}
 
-		dx = ((xend - xstart) / iLineWidth) | 0;
-		dy = ((yend - ystart) / iLineHeight) | 0;
+		dx = ((xend - xstart) / iPixelWidth) | 0;
+		dy = ((yend - ystart) / iPixelHeight) | 0;
 		/* eslint-enable no-bitwise */
 
-		incx = Math.sign(dx) * iLineWidth;
-		incy = Math.sign(dy) * iLineHeight;
+		incx = Math.sign(dx) * iPixelWidth;
+		incy = Math.sign(dy) * iPixelHeight;
 		if (dx < 0) {
 			dx = -dx;
 		}
@@ -757,7 +732,7 @@ Canvas.prototype = {
 
 		this.move(x, y); // destination, round values
 		this.drawBresenhamLine(xStart, yStart, this.xPos, this.yPos);
-		this.setNeedUpdate(xStart, yStart, this.xPos, this.yPos);
+		this.setNeedUpdate();
 	},
 
 	drawr: function (x, y) {
@@ -780,7 +755,7 @@ Canvas.prototype = {
 	plot: function (x, y) {
 		this.move(x, y);
 		this.setPixel(this.xPos, this.yPos, this.iGPen, this.iGColMode); // use rounded values from move
-		this.setNeedUpdate(this.xPos, this.yPos, this.xPos, this.yPos);
+		this.setNeedUpdate();
 	},
 
 	plotr: function (x, y) {
@@ -813,7 +788,7 @@ Canvas.prototype = {
 		}
 		if (bNeedInkUpdate) {
 			this.updateColorMap();
-			this.setNeedUpdate(0, 0, this.iHeight, this.iWidth); // we need to notify that an update is needed
+			this.setNeedUpdate(); // we need to notify that an update is needed
 		}
 		return bNeedInkUpdate;
 	},
@@ -827,12 +802,12 @@ Canvas.prototype = {
 	},
 
 	setGPen: function (iGPen) {
-		iGPen %= this.aModeData[this.iMode].iPens; // limit pens
+		iGPen %= this.oModeData.iPens; // limit pens
 		this.iGPen = iGPen;
 	},
 
 	setGPaper: function (iGPaper) {
-		iGPaper %= this.aModeData[this.iMode].iPens; // limit pens
+		iGPaper %= this.oModeData.iPens; // limit pens
 		this.iGPaper = iGPaper;
 	},
 
@@ -841,44 +816,45 @@ Canvas.prototype = {
 	},
 
 	printGChar: function (iChar) {
+		var iCharWidth = this.oModeData.iPixelWidth * 8;
+
 		if (iChar >= this.aCharset.length) {
 			Utils.console.warn("printGChar: Ignoring char with code", iChar);
 			return;
 		}
 
 		this.setChar(iChar, this.xPos, this.yPos, this.iGPen, this.iGPaper, this.bGTransparent, this.iGColMode, true);
-		this.xPos += this.aModeData[this.iMode].iCharWidth;
-		this.setNeedUpdate(this.xPos, this.yPos, this.xPos + this.aModeData[this.iMode].iCharWidth, this.yPos + this.aModeData[this.iMode].iCharHeight);
+		this.xPos += iCharWidth;
+		this.setNeedUpdate();
 	},
 
 	printChar: function (iChar, x, y, iPen, iPaper, bTransparent) {
-		var oModeData = this.aModeData[this.iMode];
+		var iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8,
+			iPens = this.oModeData.iPens;
 
 		if (iChar >= this.aCharset.length) {
 			Utils.console.warn("printChar: Ignoring char with code", iChar);
 			return;
 		}
 
-		iPen %= oModeData.iPens;
-		iPaper %= oModeData.iPens; // also pens
+		iPen %= iPens;
+		iPaper %= iPens; // also pens
 
-		x *= oModeData.iCharWidth;
-		y *= oModeData.iCharHeight;
-
-		this.setChar(iChar, x, y, iPen, iPaper, bTransparent, 0, false);
-		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
+		this.setChar(iChar, x * iCharWidth, y * iCharHeight, iPen, iPaper, bTransparent, 0, false);
+		this.setNeedUpdate();
 	},
 
 	drawCursor: function (x, y, iPen, iPaper) {
-		var oModeData = this.aModeData[this.iMode];
+		var iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8,
+			iPens = this.oModeData.iPens;
 
-		iPen %= oModeData.iPens;
-		iPaper %= oModeData.iPens; // also pens
+		iPen %= iPens;
+		iPaper %= iPens; // also pens
 
-		x *= oModeData.iCharWidth;
-		y *= oModeData.iCharHeight;
-		this.invertChar(x, y, iPen, iPaper);
-		this.setNeedUpdate(x, this.iHeight - 1 - y, x + oModeData.iCharWidth, this.iHeight - 1 - (y + oModeData.iCharHeight));
+		this.invertChar(x * iCharWidth, y * iCharHeight, iPen, iPaper);
+		this.setNeedUpdate();
 	},
 
 	findMatchingChar: function (aCharData) {
@@ -904,14 +880,16 @@ Canvas.prototype = {
 	},
 
 	readChar: function (x, y, iPen, iPaper) {
-		var oModeData = this.aModeData[this.iMode],
+		var iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8,
+			iPens = this.oModeData.iPens,
 			iChar, iChar2, aCharData, i;
 
-		iPen %= oModeData.iPens;
-		iPaper %= oModeData.iPens; // also pens
+		iPen %= iPens;
+		iPaper %= iPens; // also pens
 
-		x *= oModeData.iCharWidth;
-		y *= oModeData.iCharHeight;
+		x *= iCharWidth;
+		y *= iCharHeight;
 
 		aCharData = this.readCharData(x, y, iPen);
 		iChar = this.findMatchingChar(aCharData);
@@ -938,8 +916,8 @@ Canvas.prototype = {
 			xPos = this.xPos,
 			yPos = this.yPos,
 			iGPen = this.iGPen,
-			iLineWidth = this.aModeData[this.iMode].iLineWidth,
-			iLineHeight = this.aModeData[this.iMode].iLineHeight,
+			iPixelWidth = this.oModeData.iPixelWidth,
+			iPixelHeight = this.oModeData.iPixelHeight,
 			aPixels = [],
 			oPixel, x1, y1, bSpanLeft, bSpanRight, p1, p2, p3,
 			fnIsStopPen = function (p) {
@@ -949,7 +927,7 @@ Canvas.prototype = {
 				return (x < that.xLeft || x > that.xRight || y < (that.iHeight - 1 - that.yTop) || y > (that.iHeight - 1 - that.yBottom));
 			};
 
-		iFill %= this.aModeData[this.iMode].iPens; // limit pens
+		iFill %= this.oModeData.iPens; // limit pens
 
 		// apply origin
 		xPos += this.xOrig;
@@ -969,10 +947,10 @@ Canvas.prototype = {
 			y1 = oPixel.y;
 			p1 = this.testSubPixel(oPixel.x, y1);
 			while (y1 >= (that.iHeight - 1 - that.yTop) && !fnIsStopPen(p1)) {
-				y1 -= iLineHeight;
+				y1 -= iPixelHeight;
 				p1 = this.testSubPixel(oPixel.x, y1);
 			}
-			y1 += iLineHeight;
+			y1 += iPixelHeight;
 
 			bSpanLeft = false;
 			bSpanRight = false;
@@ -980,7 +958,7 @@ Canvas.prototype = {
 			while (y1 <= (that.iHeight - 1 - that.yBottom) && !fnIsStopPen(p1)) {
 				this.setSubPixels(oPixel.x, y1, iFill, 0);
 
-				x1 = oPixel.x - iLineWidth;
+				x1 = oPixel.x - iPixelWidth;
 				p2 = this.testSubPixel(x1, y1);
 				if (!bSpanLeft && x1 >= this.xLeft && !fnIsStopPen(p2)) {
 					aPixels.push({
@@ -992,7 +970,7 @@ Canvas.prototype = {
 					bSpanLeft = false;
 				}
 
-				x1 = oPixel.x + iLineWidth;
+				x1 = oPixel.x + iPixelWidth;
 				p3 = this.testSubPixel(x1, y1);
 				if (!bSpanRight && x1 <= this.xRight && !fnIsStopPen(p3)) {
 					aPixels.push({
@@ -1003,7 +981,7 @@ Canvas.prototype = {
 				} else if (bSpanRight && ((x1 > this.xRight) || fnIsStopPen(p3))) {
 					bSpanRight = false;
 				}
-				y1 += iLineHeight;
+				y1 += iPixelHeight;
 				p1 = this.testSubPixel(oPixel.x, y1);
 			}
 		}
@@ -1019,11 +997,11 @@ Canvas.prototype = {
 	},
 
 	setOrigin: function (xOrig, yOrig) {
-		var iLineWidth = this.aModeData[this.iMode].iLineWidth;
+		var iPixelWidth = this.oModeData.iPixelWidth;
 
 		/* eslint-disable no-bitwise */
-		xOrig &= ~(iLineWidth - 1);
-		// not modifed: yOrig |= (iLineHeight - 1);
+		xOrig &= ~(iPixelWidth - 1);
+		// not modifed: yOrig |= (iPixelHeight - 1);
 		/* eslint-enable no-bitwise */
 
 		this.xOrig = xOrig; // must be integer
@@ -1032,8 +1010,8 @@ Canvas.prototype = {
 	},
 
 	setGWindow: function (xLeft, xRight, yTop, yBottom) {
-		var iLineWidth = 8, // force byte boundaries: always 8 x/byte
-			iLineHeight = this.aModeData[this.iMode].iLineHeight, // usually 2, anly for mode 3 we have 1
+		var iPixelWidth = 8, // force byte boundaries: always 8 x/byte
+			iPixelHeight = this.oModeData.iPixelHeight, // usually 2, anly for mode 3 we have 1
 			tmp;
 
 		xLeft = this.fnPutInRange(xLeft, 0, this.iWidth - 1);
@@ -1057,11 +1035,11 @@ Canvas.prototype = {
 		// ORIGIN 0,0,13,563,399,0 gets origin 0,0,8,567,399 mod2+1,mod2
 
 		/* eslint-disable no-bitwise */
-		xLeft &= ~(iLineWidth - 1);
-		xRight |= (iLineWidth - 1);
+		xLeft &= ~(iPixelWidth - 1);
+		xRight |= (iPixelWidth - 1);
 
-		yTop |= (iLineHeight - 1); // we know: top is larger than bottom
-		yBottom &= ~(iLineHeight - 1);
+		yTop |= (iPixelHeight - 1); // we know: top is larger than bottom
+		yBottom &= ~(iPixelHeight - 1);
 		/* eslint-enable no-bitwise */
 
 		this.xLeft = xLeft;
@@ -1086,19 +1064,19 @@ Canvas.prototype = {
 	clearGraphicsWindow: function () { // clear graphics window with graphics paper
 		this.fillMyRect(this.xLeft, this.iHeight - 1 - this.yTop, this.xRight + 1 - this.xLeft, this.yTop + 1 - this.yBottom, this.iGPaper); // +1 or not?
 		this.move(0, 0);
-		this.setNeedUpdate(this.xLeft, this.yBottom, this.xRight - this.xLeft, this.yTop - this.yBottom);
+		this.setNeedUpdate();
 	},
 
 	clearFullWindow: function () { // clear full window with paper 0 (SCR MODE CLEAR)
 		var iPaper = 0;
 
 		this.fillMyRect(0, 0, this.iWidth, this.iHeight, iPaper);
-		this.setNeedUpdate(0, 0, this.iWidth, this.iHeight);
+		this.setNeedUpdate();
 	},
 
 	windowScrollUp: function (iLeft, iRight, iTop, iBottom, iPen) {
-		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight,
+		var iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8,
 			iWidth = iRight + 1 - iLeft,
 			iHeight = iBottom + 1 - iTop;
 
@@ -1106,12 +1084,12 @@ Canvas.prototype = {
 			this.moveMyRectDown(iLeft * iCharWidth, (iTop + 1) * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, iTop * iCharHeight);
 		}
 		this.fillTextBox(iLeft, iBottom, iWidth, 1, iPen);
-		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
+		this.setNeedUpdate();
 	},
 
 	windowScrollDown: function (iLeft, iRight, iTop, iBottom, iPen) {
-		var iCharWidth = this.aModeData[this.iMode].iCharWidth,
-			iCharHeight = this.aModeData[this.iMode].iCharHeight,
+		var iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8,
 			iWidth = iRight + 1 - iLeft,
 			iHeight = iBottom + 1 - iTop;
 
@@ -1119,7 +1097,7 @@ Canvas.prototype = {
 			this.moveMyRectUp(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, (iTop + 1) * iCharHeight);
 		}
 		this.fillTextBox(iLeft, iTop, iWidth, 1, iPen);
-		this.setNeedUpdate(iLeft * iCharWidth, iTop * iCharHeight, iRight * iCharWidth, iBottom * iCharHeight);
+		this.setNeedUpdate();
 	},
 
 	setSpeedInk: function (iTime1, iTime2) { // default: 10,10
@@ -1128,11 +1106,20 @@ Canvas.prototype = {
 	},
 
 	changeMode: function (iMode) {
+		var oModeData = this.aModeData[iMode];
+
 		this.iMode = iMode;
+		this.oModeData = oModeData;
+
+		/*
+		this.iCurrPixelWidth = oModeData.iPixelWidth;
+		this.iCurrPixelHeight = oModeData.iPixelHeight;
+		this.iCurrPens = oModeData.iPens;
+		*/
 	},
 
 	setMode: function (iMode) { // set mode without clear screen
-		this.iMode = iMode;
+		this.changeMode(iMode);
 		this.setOrigin(0, 0);
 		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0);
 		this.setGColMode(0);

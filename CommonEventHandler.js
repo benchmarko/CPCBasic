@@ -257,53 +257,6 @@ CommonEventHandler.prototype = {
 		}
 	},
 
-
-	/*
-	onExampleSelectChange: function () {
-		var that = this,
-			sExample = this.view.getSelectValue("exampleSelect"),
-			sUrl, oExample, sDatabaseDir,
-
-			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
-				var sInput;
-
-				if (!bSuppressLog) {
-					Utils.console.log("Example", sUrl, "loaded");
-				}
-
-				oExample = that.model.getExample(sExample);
-				sInput = oExample.script;
-				that.view.setAreaValue("inputText", sInput);
-				that.view.setAreaValue("resultText", "");
-				that.controller.fnReset();
-				if (!oExample.type || oExample.type !== "data") {
-					that.controller.startParseRun();
-				}
-			},
-			fnExampleError = function () {
-				Utils.console.log("Example", sUrl, " error");
-				that.view.setAreaValue("inputText", "");
-				that.view.setAreaValue("resultText", "Cannot load example: " + sExample);
-			};
-
-		this.model.setProperty("example", sExample);
-		this.view.setSelectTitleFromSelectedOption("exampleSelect");
-		oExample = this.model.getExample(sExample); // already loaded
-		if (oExample && oExample.loaded) {
-			fnExampleLoaded("", true);
-		} else if (sExample && oExample) { // need to load
-			this.view.setAreaValue("inputText", "#loading " + sExample + "...");
-			this.view.setAreaValue("resultText", "waiting...");
-			sDatabaseDir = this.model.getDatabase().src;
-			sUrl = sDatabaseDir + "/" + sExample + ".js";
-			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
-		} else {
-			this.view.setAreaValue("inputText", "");
-			this.model.setProperty("example", "");
-		}
-	},
-	*/
-
 	onExampleSelectChange: function () {
 		var oController = this.controller,
 			oVm = oController.oVm,
@@ -321,16 +274,6 @@ CommonEventHandler.prototype = {
 		} else {
 			oInFile.sCommand = "run";
 		}
-
-		/*
-		this.model.setProperty("example", sExample); // maybe with path
-
-		iLastSlash = sExample.lastIndexOf("/");
-		if (iLastSlash >= 0) {
-			sExample = sExample.substr(iLastSlash + 1); // keep just the name
-		}
-		*/
-
 
 		oInFile.sName = "/" + sExample; // load absolute
 		oInFile.fnFileCallback = null;

@@ -630,6 +630,8 @@ Controller.prototype = {
 		sMeta = sMeta || "";
 		if (sMeta.charAt(0) === "T") { // tokenized basic?
 			sInput = this.BasicTokenizer.decode(Utils.atob(sInput));
+		} else if (sMeta.charAt(0) === "B") { // binary?
+			sInput = Utils.atob(sInput);
 		}
 
 		if (oInFile.fnFileCallback) {
@@ -639,7 +641,7 @@ Controller.prototype = {
 				Utils.console.warn(e);
 			}
 		}
-		if (sInput) {
+		if (sInput !== null) {
 			switch (sCommand) {
 			case "openin":
 				break;
@@ -710,7 +712,6 @@ Controller.prototype = {
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				oError = that.oVm.vmComposeError(Error(), 32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
 				that.outputError(oError, true);
-				//oVm.print(iStream, (oError.shortMessage || oError.message) + "\r\n");
 				that.loadFileContinue(null);
 			};
 

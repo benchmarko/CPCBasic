@@ -82,15 +82,6 @@ BasicTokenizer.prototype = {
 				if (!exponent) { // exponent zero? => 0
 					sOut = "0";
 				} else { // beware: JavaScript has no unsigned int except for ">>> 0"
-					//mantissa = value < (1 << 31) ? value : -value; // eslint-disable-line no-bitwise
-					/*
-					if (value >= 0) {
-						mantissa = value + 0x80000000;
-					} else { // already negative
-						mantissa = value;
-					}
-					*/
-
 					mantissa = value >= 0 ? value + 0x80000000 : value;
 					exponent -= 0x81; // 2-complement: 2^-127 .. 2^128
 					sOut = mantissa * Math.pow(2, exponent - 31);
@@ -112,7 +103,6 @@ BasicTokenizer.prototype = {
 					sOut;
 
 				while (sData.charCodeAt(iPos) <= 0x7f) { // last character b7=1 (>= 0x80)
-					//sOut += sData.charAt(iPos);
 					iPos += 1;
 				}
 				sOut = sData.substring(that.iPos, iPos) + String.fromCharCode(sData.charCodeAt(iPos) & 0x7f); // eslint-disable-line no-bitwise
