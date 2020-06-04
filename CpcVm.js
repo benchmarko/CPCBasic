@@ -98,12 +98,13 @@ CpcVm.prototype = {
 		this.oCanvas = this.options.canvas;
 		this.oKeyboard = this.options.keyboard;
 		this.oSound = this.options.sound;
+		this.oVariables = this.options.variables;
 
 		this.rsx = new CpcVmRsx(this);
 
 		this.oRandom = new Random();
 
-		this.vmSetVariables({});
+		//this.vmSetVariables({});
 
 		this.oStop = {
 			sReason: "", // stop reason
@@ -223,8 +224,8 @@ CpcVm.prototype = {
 
 		this.iZone = 13; // print tab zone value
 
-		this.oVarTypes = {}; // variable types
-		this.defreal("a-z");
+		//this.oVarTypes = {}; // variable types
+		this.defreal("a-z"); // init var types
 
 		this.iMode = null;
 		this.vmResetWindowData(true); // reset all, including pen and paper
@@ -331,19 +332,29 @@ CpcVm.prototype = {
 		this.cursor(iStream, 0);
 	},
 
+	/*
 	vmResetVariables: function () {
-		var aVariables = Object.keys(this.v),
-			i, sName;
+		this.oVariables.initAllVariables();
 
-		for (i = 0; i < aVariables.length; i += 1) {
-			sName = aVariables[i];
-			this.v[sName] = this.fnGetVarDefault(sName);
-		}
+		// var aVariables = Object.keys(this.oVariables),
+		// 	i, sName;
+
+		// for (i = 0; i < aVariables.length; i += 1) {
+		// 	sName = aVariables[i];
+		// 	this.oVariables[sName] = this.fnGetVarDefault(sName);
+		// }
+	},
+	*/
+
+	vmGetAllVariables: function () { // called from JS program
+		return this.oVariables.getAllVariables();
 	},
 
+	/*
 	vmSetVariables: function (oVariables) {
-		this.v = oVariables; // collection of BASIC variables
+		this.oVariables = oVariables; // collection of BASIC variables
 	},
+	*/
 
 	vmSetStartLine: function (iLine) {
 		this.iStartLine = iLine;
@@ -401,14 +412,15 @@ CpcVm.prototype = {
 		return n;
 	},
 
-	vmDetermineVarType: function (sVarType) { // used in controller
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+	vmDetermineVarType: function (sVarType) { // also used in controller
+		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVariables.getVarType(sVarType.charAt(0));
 
+		//var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
 		return sType;
 	},
 
 	vmAssertNumberType: function (sVarType) {
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+		var sType = this.vmDetermineVarType(sVarType);
 
 		if (sType !== "I" && sType !== "R") { // not integer or real?
 			throw this.vmComposeError(Error(), 13, "type " + sType); // "Type mismatch"
@@ -417,7 +429,7 @@ CpcVm.prototype = {
 
 	// format a value for assignment to a variable with type determined from sVarType
 	vmAssign: function (sVarType, value) {
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+		var sType = this.vmDetermineVarType(sVarType);
 
 		if (sType === "R") { // real
 			this.vmAssertNumber(value, "=");
@@ -667,7 +679,8 @@ CpcVm.prototype = {
 		}
 		for (i = iFirst; i <= iLast; i += 1) {
 			sVarChar = String.fromCharCode(i);
-			this.oVarTypes[sVarChar] = sType;
+			//this.oVarTypes[sVarChar] = sType;
+			this.oVariables.setVarType(sVarChar, sType);
 		}
 	},
 
@@ -742,6 +755,7 @@ CpcVm.prototype = {
 		var iIndex;
 
 		this.vmAssertString(sName, sErr);
+		sName = sName.replace(/ /g, ""); // remove spaces
 		if (sName.indexOf("!") === 0) {
 			sName = sName.substr(1); // remove preceding "!"
 		}
@@ -851,8 +865,7 @@ CpcVm.prototype = {
 	},
 
 	addressOf: function (sVar) { // addressOf operator
-		var aVarNames = Object.keys(this.v),
-			iPos;
+		var iPos;
 
 		// not really implemented
 		sVar = sVar.replace("v.", "");
@@ -863,8 +876,8 @@ CpcVm.prototype = {
 			sVar = sVar.substr(0, iPos); // remove indices
 		}
 
-		iPos = aVarNames.indexOf(sVar);
-		if (iPos === -1) {
+		iPos = this.oVariables.getVariableIndex(sVar); //aVarNames.indexOf(sVar);
+		if (iPos < 0) {
 			throw this.vmComposeError(Error(), 5, "@" + sVar); // Improper argument
 		}
 		return iPos;
@@ -929,7 +942,8 @@ CpcVm.prototype = {
 		this.paper(iStream, iTmp);
 	},
 
-	call: function (iAddr) { // varargs (adr + parameters)
+	call: function (iAddr) { // eslint-disable-line complexity
+		// varargs (adr + parameters)
 		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "CALL");
 		if (iAddr < 0) { // 2nd complement of 16 bit address?
 			iAddr += 65536;
@@ -944,13 +958,18 @@ CpcVm.prototype = {
 			this.oKeyboard.resetExpansionTokens();
 			// TODO: reset also speed key
 			break;
+		case 0xbb06: // KM Wait Char (ROM &1A3C)
+			// since we do not return a character, we do the same as call &bb18
+			if (this.inkey$() === "") { // no key?
+				this.vmStop("waitKey", 30); // wait for key
+			}
+			break;
 		case 0xbb18: // KM Wait Key (ROM &1B56)
 			if (this.inkey$() === "") { // no key?
 				this.vmStop("waitKey", 30); // wait for key
 			}
 			break;
 		case 0xbb7b: // TXT Cursor Enable (ROM &1289); user switch (cursor enabled)
-			Utils.console.log("TODO: CALL", iAddr);
 			this.cursor(0, null, 1);
 			break;
 		case 0xbb7e: // TXT Cursor Disable (ROM &129A); user switch
@@ -995,7 +1014,9 @@ CpcVm.prototype = {
 			this.frame();
 			break;
 		default:
-			Utils.console.log("Ignored: CALL", iAddr);
+			if (Utils.debug > 0) {
+				Utils.console.debug("Ignored: CALL", iAddr);
+			}
 			break;
 		}
 	},
@@ -1055,7 +1076,8 @@ CpcVm.prototype = {
 		this.iErrorGotoLine = 0;
 		this.iErrorResumeLine = 0;
 		this.aGosubStack.length = 0;
-		this.vmResetVariables();
+		//this.vmResetVariables();
+		this.oVariables.initAllVariables();
 		this.defreal("a-z");
 		this.restore(); // restore data line index
 		this.rad();
@@ -1392,14 +1414,16 @@ CpcVm.prototype = {
 		var aNames;
 
 		sName += "A";
-		if (sName in this.v) { // one dim array variable?
+		if (this.oVariables.variableExist(sName)) { // one dim array variable?
 			return sName;
 		}
 
-		aNames = Object.keys(this.v).filter(function (sVar) {
-			return (sVar.indexOf(sName) === 0) ? sVar : null;
+		// find multi-dim array variable
+		aNames = this.oVariables.getAllVariableNames();
+		aNames = aNames.filter(function (sVar) {
+			return (sVar.indexOf(sName) === 0) ? sVar : null; // find aray varA
 		});
-		return aNames[0];
+		return aNames[0]; // we should find exactly one
 	},
 
 	erase: function () { // varargs
@@ -1408,7 +1432,7 @@ CpcVm.prototype = {
 		for (i = 0; i < arguments.length; i += 1) {
 			sName = this.vmFindArrayVariable(arguments[i]);
 			if (sName) {
-				this.v[sName] = this.fnGetVarDefault(sName); // reset variable
+				this.oVariables.initVariable(sName);
 			} else {
 				Utils.console.warn("Array variable not found:", arguments[i]);
 				throw this.vmComposeError(Error(), 5, "ERASE " + arguments[i]); // Improper argument
@@ -1569,7 +1593,6 @@ CpcVm.prototype = {
 		if (iPort < 0) { // 2nd complement of 16 bit address?
 			iPort += 65536;
 		}
-		// this.vmNotImplemented("INP");
 		return iByte;
 	},
 
@@ -1598,10 +1621,10 @@ CpcVm.prototype = {
 		if (aInputValues.length === aTypes.length) {
 			for (i = 0; i < aTypes.length; i += 1) {
 				sVarType = aTypes[i];
-				sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+				sType = this.vmDetermineVarType(sVarType);
 				value = aInputValues[i];
-				if (sType !== "$") { // no string?
-					value = this.vmVal(value); // convert to number (also binary, hex)
+				if (sType !== "$") { // not a string?
+					value = this.vmVal(value); // convert to number (also binary, hex), empty string gets 0
 					if (isNaN(value)) {
 						bInputOk = false;
 					}
@@ -1631,7 +1654,7 @@ CpcVm.prototype = {
 
 		for (i = 0; i < aTypes.length; i += 1) {
 			sVarType = aTypes[i];
-			sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+			sType = this.vmDetermineVarType(sVarType);
 
 			if (sType === "$") { // string?
 				value = aFileData.shift(); // get complete (remaining) line
@@ -1765,7 +1788,7 @@ CpcVm.prototype = {
 	},
 
 	lineInput: function (iStream, sNoCRLF, sMsg, sVarType) { // sVarType must be string variable
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
+		var sType = this.vmDetermineVarType(sVarType);
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "LINE INPUT");
 		if (iStream < 8) {
@@ -2027,7 +2050,7 @@ CpcVm.prototype = {
 		n = this.vmInRangeRound(n, 0, 255, "ON GOSUB");
 		if (!n || (n + 2) > arguments.length) { // out of range? => continue with line after onGosub
 			if (Utils.debug > 0) {
-				Utils.console.debug("DEBUG: onGosub: out of range: n=" + n + " in " + this.iLine);
+				Utils.console.debug("onGosub: out of range: n=" + n + " in " + this.iLine);
 			}
 			iLine = retLabel;
 		} else {
@@ -2043,7 +2066,7 @@ CpcVm.prototype = {
 		n = this.vmInRangeRound(n, 0, 255, "ON GOTO");
 		if (!n || (n + 2) > arguments.length) { // out of range? => continue with line after onGoto
 			if (Utils.debug > 0) {
-				Utils.console.debug("DEBUG: onGoto: out of range: n=" + n + " in " + this.iLine);
+				Utils.console.debug("onGoto: out of range: n=" + n + " in " + this.iLine);
 			}
 			iLine = retLabel;
 		} else {
@@ -2314,7 +2337,7 @@ CpcVm.prototype = {
 
 		if (!oWin.bTextEnabled) {
 			if (Utils.debug > 0) {
-				Utils.console.debug("DEBUG: vmPrintChars: text output disabled:", sStr);
+				Utils.console.debug("vmPrintChars: text output disabled:", sStr);
 			}
 			return;
 		}
@@ -2688,7 +2711,7 @@ CpcVm.prototype = {
 	},
 
 	read: function (sVarType) {
-		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)],
+		var sType = this.vmDetermineVarType(sVarType),
 			item = 0;
 
 		if (this.iData < this.aData.length) {
@@ -3277,7 +3300,7 @@ CpcVm.prototype = {
 		} else if (Utils.stringStartsWith(s, "&")) { // hex &
 			s = s.slice(1);
 			iNum = parseInt(s, 16);
-		} else {
+		} else if (s !== "") { // not empty string?
 			iNum = parseFloat(s);
 		}
 		return iNum;

@@ -1198,7 +1198,7 @@ Keyboard.prototype = {
 			iCpcKey, sPressedKey, oAscii;
 
 		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: onVirtualKeyboardKeydown: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
+			Utils.console.debug("onVirtualKeyboardKeydown: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
 		}
 
 		if (sCpcKey !== null) {
@@ -1248,7 +1248,7 @@ Keyboard.prototype = {
 		var node = event.target || event.srcElement;
 
 		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: onVirtualKeyboardKeyup: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
+			Utils.console.debug("onVirtualKeyboardKeyup: event", String(event), "type:", event.type, "title:", node.title, "cpcKey:", node.getAttribute("data-key"));
 		}
 
 		this.fnVirtualKeyboardKeyupOrKeyout(event);
@@ -1264,7 +1264,7 @@ Keyboard.prototype = {
 		var node = event.target || event.srcElement;
 
 		if (Utils.debug > 1) {
-			Utils.console.log("DEBUG: onVirtualKeyboardKeyout: event=", event);
+			Utils.console.debug("onVirtualKeyboardKeyout: event=", event);
 		}
 		this.fnVirtualKeyboardKeyupOrKeyout(event);
 		if (this.sPointerOutEvent) {

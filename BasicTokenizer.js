@@ -148,7 +148,7 @@ BasicTokenizer.prototype = {
 			},
 
 			mTokens = {
-				0x00: "", // end of tokenised line marker
+				0x00: "", // marker for "end of tokenised line"
 				0x01: ":", // ":" statement seperator
 				0x02: function () { // integer variable definition (defined with "%" suffix)
 					return fnVar() + "%";
@@ -165,8 +165,8 @@ BasicTokenizer.prototype = {
 				0x08: "var?", // ??
 				0x09: "var?", // ??
 				0x0a: "var?", // ??
-				0x0b: fnVar, // 'TTT: i", // integer variable definition (no suffix)
-				0x0c: fnVar, // 'TTT: s' // string variable definition (no suffix)
+				0x0b: fnVar, // integer variable definition (no suffix)
+				0x0c: fnVar, // string variable definition (no suffix)
 				0x0d: fnVar, // floating point or no type (no suffix)
 				0x0e: "0", // number constant "0"
 				0x0f: "1", // number constant "1"
@@ -179,18 +179,19 @@ BasicTokenizer.prototype = {
 				0x16: "8", // number constant "8"
 				0x17: "9", // number constant "9"
 				0x18: "10", // number constant "10"
-				0x19: fnNum8Dec, // '!C", // 8-bit integer decimal value
-				0x1a: fnNum16Dec, // '!v' 16-bit integer decimal value
-				0x1b: fnNum16Bin, // '&X!v", // 16-bit integer binary value (with "&X" prefix)
-				0x1c: fnNum16Hex, // '&!v", // 16-bit integer hexadecimal value (with "&H" or "&" prefix)
-				0x1d: fnNum16Dec, // '!v", // 16-bit BASIC program line memory address pointer (should not occur)
-				0x1e: fnNum16Dec, // '!v", // 16-bit integer BASIC line number
-				0x1f: fnNumFp, // 'floating point value",
-				0x20: " ", // " " (space) symbol
-				0x21: "!", // ASCII "!" symbol
-				0x22: fnQuotedString, // '"' //quoted string value
-				// 0x23-0x7b  ASCII printable symbols
-				0x7c: fnRsx, // '|", // "|" symbol; prefix for RSX commands
+				0x19: fnNum8Dec, // 8-bit integer decimal value
+				0x1a: fnNum16Dec, // 16-bit integer decimal value
+				0x1b: fnNum16Bin, // 16-bit integer binary value (with "&X" prefix)
+				0x1c: fnNum16Hex, // 16-bit integer hexadecimal value (with "&H" or "&" prefix)
+				0x1d: fnNum16Dec, // 16-bit BASIC program line memory address pointer (should not occur)
+				0x1e: fnNum16Dec, // 16-bit integer BASIC line number
+				0x1f: fnNumFp, // floating point value
+				//0x20: " ", // " " (space) symbol
+				//0x21: "!", // "!" symbol
+				// 0x20-0x21 ASCII printable symbols
+				0x22: fnQuotedString, // '"' quoted string value
+				// 0x23-0x7b ASCII printable symbols
+				0x7c: fnRsx, // "|" symbol; prefix for RSX commands
 				0x80: "AFTER",
 				0x81: "AUTO",
 				0x82: "BORDER",
@@ -307,22 +308,22 @@ BasicTokenizer.prototype = {
 				0xed: "USING",
 				0xee: ">", // (greater than)
 				0xef: "=", // (equal)
-				0xf0: ">=", // > =,: (greater or equal)
+				0xf0: ">=", // (greater or equal)
 				0xf1: "<", // (less than)
-				0xf2: "<>", // < > (not equal)
+				0xf2: "<>", // (not equal)
 				0xf3: "<=", // =<, <=, < = (less than or equal)
 				0xf4: "+", // (addition)
 				0xf5: "-", // (subtraction or unary minus)
 				0xf6: "*", // (multiplication)
 				0xf7: "/", // (division)
 				0xf8: "^", // (x to the power of y)
-				0xf9: "\\", // '(integer division)
+				0xf9: "\\", // (integer division)
 				0xfa: "AND",
 				0xfb: "MOD",
 				0xfc: "OR",
 				0xfd: "XOR",
 				0xfe: "NOT"
-				// 0xff: "!C", //  (prefix for additional keywords)
+				// 0xff: (prefix for additional keywords)
 			},
 
 			mTokensFF = {
@@ -415,7 +416,8 @@ BasicTokenizer.prototype = {
 						}
 					}
 
-					bSpace = ((iToken >= 0x0b && iToken <= 0x1f) || (iToken === 0x7c)); // constant 0..9; variable, or RSX?
+					//bSpace = ((iToken >= 0x0b && iToken <= 0x1f) || (iToken === 0x7c)); // constant 0..9; variable, or RSX?
+					bSpace = ((iToken >= 0x02 && iToken <= 0x1f) || (iToken === 0x7c)); // constant 0..9; variable, or RSX?
 
 					if (iToken === 0xff) { // extended token?
 						iToken = fnNum8Dec(); // get it
@@ -430,11 +432,12 @@ BasicTokenizer.prototype = {
 						}
 
 						if ((/[a-zA-Z0-9.]$/).test(tstr)) { // last character char, number, dot?
-							bSpace = 1; // maybe need space next time...
+							bSpace = true; // maybe need space next time...
 						}
 
 						if (bOldSpace) {
-							if ((/^[a-zA-Z$%!]+$/).test(tstr) || (iToken >= 0x0b && iToken <= 0x1f)) {
+							//if ((/^[a-zA-Z$%!]+$/).test(tstr) || (iToken >= 0x0b && iToken <= 0x1f)) {
+							if ((/^[a-zA-Z$%!]+$/).test(tstr) || (iToken >= 0x02 && iToken <= 0x1f)) {
 								tstr = " " + tstr;
 							}
 						}

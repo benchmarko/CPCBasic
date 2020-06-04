@@ -137,16 +137,24 @@ CodeGeneratorJs.prototype = {
 	//
 	// evaluate
 	//
-	evaluate: function (parseTree, variables) {
+	evaluate: function (parseTree, oVariables) {
 		var that = this,
 
-			fnDeclareVariable = function (sName, sValue) {
+			fnDeclareVariable = function (sName, value) { //TTT
+				// var bIsString = sName.includes("$");
+
 				// during compile step, we just init all (not yet defined) variables with a value
-				sValue = sValue || 0;
-				if (!(sName in variables)) { // variable not yet defined?
-					variables[sName] = sValue;
+				// we need to set the correct type (needed for direct mode without variable reset)
+				/*
+				if (value === undefined) {
+					value = bIsString ? "" : 0;
 				}
-				return 1; // during compile step, we just init all variables with 1
+				*/
+				if (!oVariables.variableExist(sName)) { // variable not yet defined?
+					//oVariables[sName] = value;
+					//oVariables.setVariable(sName, value);
+					oVariables.initVariable(sName);
+				}
 			},
 
 			oDevScopeArgs = null,
@@ -204,6 +212,7 @@ CodeGeneratorJs.prototype = {
 				return aNodeArgs;
 			},
 
+			/*
 			fnDetermineStaticVarType = function (sName) {
 				var sNameType;
 
@@ -225,6 +234,10 @@ CodeGeneratorJs.prototype = {
 					sNameType += "$";
 				}
 				return sNameType;
+			},
+			*/
+			fnDetermineStaticVarType = function (sName) {
+				return oVariables.determineStaticVarType(sName);
 			},
 
 			fnIsIntConst = function (a) {
@@ -1339,7 +1352,7 @@ CodeGeneratorJs.prototype = {
 			aParseTree = this.parser.parse(aTokens, bAllowDirect);
 			sOutput = this.evaluate(aParseTree, oVariables);
 			oOut.text = '"use strict"\n'
-				+ "var v=o.v;\n"
+				+ "var v=o.vmGetAllVariables();\n"
 				+ "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"
 				+ fnCombineData(this.aData)
 				+ " o.goto(o.iStartLine ? o.iStartLine : \"start\"); break;\ncase \"start\":\n"

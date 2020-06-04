@@ -3,11 +3,11 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
-/* globals cpcBasicCharset */
+/* globals cpcBasicCharset Uint8Array */
 
 "use strict";
 
-var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorJs, CommonEventHandler, CpcVm, Keyboard, Sound;
+var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorJs, CommonEventHandler, CpcVm, Keyboard, Sound, Variables, ZipFile;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -22,6 +22,8 @@ if (typeof require !== "undefined") {
 	CpcVm = require("./CpcVm.js");
 	Keyboard = require("./Keyboard.js");
 	Sound = require("./Sound.js");
+	Variables = require("./Variables.js");
+	ZipFile = require("./ZipFile.js");
 	/* eslint-enable global-require */
 }
 
@@ -47,9 +49,7 @@ Controller.prototype = {
 		this.bTimeoutHandlerActive = false;
 		this.iNextLoopTimeOut = 0; // next timeout for the main loop
 
-		this.oSavedStop = {}; // backup of stop object
-
-		this.oVariables = {};
+		this.oVariables = new Variables();
 
 		this.model = oModel;
 		this.view = oView;
@@ -93,10 +93,14 @@ Controller.prototype = {
 			canvas: this.oCanvas,
 			keyboard: this.oKeyboard,
 			sound: this.oSound,
+			variables: this.oVariables,
 			tron: oModel.getProperty("tron")
 		});
 		this.oVm.vmReset();
+
 		this.oNoStop = Object.assign({}, this.oVm.vmGetStopObject());
+		this.oSavedStop = {}; // backup of stop object
+		this.setStopObject(this.oNoStop);
 
 		this.oCodeGeneratorJs = new CodeGeneratorJs({
 			lexer: new BasicLexer(),
@@ -240,8 +244,9 @@ Controller.prototype = {
 
 	setVarSelectOptions: function (sSelect, oVariables) {
 		var iMaxVarLength = 35,
+			aVarNames = oVariables.getAllVariableNames(),
 			aItems = [],
-			oItem, sKey, sValue, sTitle, sStrippedTitle,
+			i, oItem, sKey, sValue, sTitle, sStrippedTitle,
 			fnSortByStringProperties = function (a, b) { // can be used without "this" context
 				var x = a.value,
 					y = b.value;
@@ -254,21 +259,20 @@ Controller.prototype = {
 				return 0;
 			};
 
-		for (sKey in oVariables) {
-			if (oVariables.hasOwnProperty(sKey)) {
-				sValue = oVariables[sKey];
-				sTitle = sKey + "=" + sValue;
-				sStrippedTitle = sTitle.substr(0, iMaxVarLength); // limit length
-				if (sTitle !== sStrippedTitle) {
-					sStrippedTitle += " ...";
-				}
-				oItem = {
-					value: sKey,
-					title: sStrippedTitle
-				};
-				oItem.text = oItem.title;
-				aItems.push(oItem);
+		for (i = 0; i < aVarNames.length; i += 1) {
+			sKey = aVarNames[i];
+			sValue = oVariables.getVariable(sKey);
+			sTitle = sKey + "=" + sValue;
+			sStrippedTitle = sTitle.substr(0, iMaxVarLength); // limit length
+			if (sTitle !== sStrippedTitle) {
+				sStrippedTitle += " ...";
 			}
+			oItem = {
+				value: sKey,
+				title: sStrippedTitle
+			};
+			oItem.text = oItem.title;
+			aItems.push(oItem);
 		}
 		aItems = aItems.sort(fnSortByStringProperties);
 		this.view.setSelectOptions(sSelect, aItems);
@@ -632,6 +636,9 @@ Controller.prototype = {
 			sInput = this.BasicTokenizer.decode(Utils.atob(sInput));
 		} else if (sMeta.charAt(0) === "B") { // binary?
 			sInput = Utils.atob(sInput);
+		} else if (sMeta.charAt(0) === "A") { // ASCII?
+			// remove EOF character(s) (0x1a) from the end of file
+			sInput = sInput.replace(/\x1a+$/, ""); // eslint-disable-line no-control-regex
 		}
 
 		if (oInFile.fnFileCallback) {
@@ -733,7 +740,7 @@ Controller.prototype = {
 		sExample = sName;
 
 		if (Utils.debug > 0) {
-			Utils.console.debug("DEBUG: loadExample: sName=" + sName + " (current=" + sKey + ")");
+			Utils.console.debug("loadExample: sName=" + sName + " (current=" + sKey + ")");
 		}
 
 		oExample = this.model.getExample(sExample); // already loaded
@@ -869,7 +876,7 @@ Controller.prototype = {
 
 			sFileData = oOutFile.aFileData.join("");
 			if (Utils.debug > 0) {
-				Utils.console.debug("DEBUG: fnFileSave: sName=" + sName + ": put into localStorage");
+				Utils.console.debug("fnFileSave: sName=" + sName + ": put into localStorage");
 			}
 			if (sFileData === "") {
 				if (sType === "A" || sType === "P" || sType === "T") { // TODO: only "A" supported, not "P" or "T"
@@ -927,9 +934,11 @@ Controller.prototype = {
 
 	fnNew: function (/* oParas */) {
 		this.view.setAreaValue("inputText", "");
+		this.oVariables.removeAllVariables();
 
 		this.oVm.vmGotoLine(0); // reset current line
 		this.oVm.vmStop("end", 0, true);
+		this.invalidateScript();
 	},
 
 	fnList: function (oParas) {
@@ -949,8 +958,9 @@ Controller.prototype = {
 	fnReset: function () {
 		var oVm = this.oVm;
 
-		this.oVariables = {};
-		oVm.vmResetVariables();
+		//this.oVariables = {};
+		this.oVariables.removeAllVariables();
+		//oVm.vmResetVariables(); this.oVariables.initAllVariables();
 		oVm.vmReset();
 		oVm.vmStop("end", 0, true); // set "end" with priority 0, so that "compile only" still works
 		oVm.sOut = "";
@@ -1043,7 +1053,8 @@ Controller.prototype = {
 			iBench = this.model.getProperty("bench"),
 			i, iTime, oOutput, sOutput;
 
-		this.oVariables = {};
+		//this.oVariables = {};
+		this.oVariables.removeAllVariables();
 		if (!iBench) {
 			this.oCodeGeneratorJs.reset();
 			oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
@@ -1107,7 +1118,7 @@ Controller.prototype = {
 		}
 
 		if (!this.fnScript) {
-			oVm.vmSetVariables(this.oVariables);
+			//oVm.vmSetVariables(this.oVariables);
 			oVm.clear(); // init variables
 			try {
 				this.fnScript = new Function("o", sScript); // eslint-disable-line no-new-func
@@ -1231,7 +1242,7 @@ Controller.prototype = {
 			this.view.setAreaValue("outputText", sOutput);
 
 			if (!oOutput.error) {
-				oVm.vmSetVariables(this.oVariables);
+				//oVm.vmSetVariables(this.oVariables);
 				this.oVm.vmSetStartLine(this.oVm.iLine); // fast hack
 				this.oVm.vmGotoLine("direct");
 
@@ -1293,10 +1304,16 @@ Controller.prototype = {
 		this.view.setDisabled("runButton", sReason === "reset");
 		this.view.setDisabled("stopButton", sReason !== "waitInput" && sReason !== "waitKey" && sReason !== "fileLoad" && sReason !== "fileSave");
 		this.view.setDisabled("continueButton", sReason === "end" || sReason === "waitInput" || sReason === "waitKey" || sReason === "fileLoad" || sReason === "fileSave" || sReason === "parse" || sReason === "renumLines" || sReason === "reset");
+
+		/*
 		if (this.oVariables) {
 			this.setVarSelectOptions("varSelect", this.oVariables);
 			this.commonEventHandler.onVarSelectChange();
 		}
+		*/
+		this.setVarSelectOptions("varSelect", this.oVariables);
+		this.commonEventHandler.onVarSelectChange();
+
 		if (sReason === "stop" || sReason === "end" || sReason === "error" || sReason === "parse" || sReason === "parseRun") {
 			this.startWithDirectInput();
 		}
@@ -1487,8 +1504,9 @@ Controller.prototype = {
 		var sPar = this.view.getSelectValue("varSelect"),
 			sValue = this.view.getSelectValue("varText"),
 			oVariables = this.oVariables,
-			sVarType, sType, value,
+			sVarType, sType, value, value2;
 
+		/*
 			// similar to that function in BasicParser
 			fnDetermineStaticVarType = function (sName) {
 				var sNameType;
@@ -1508,21 +1526,29 @@ Controller.prototype = {
 				}
 				return sNameType;
 			};
+		*/
 
-		if (typeof oVariables[sPar] === "function") { // TODO
+		value = oVariables.getVariable(sPar);
+		//if (typeof oVariables[sPar] === "function") { // TODO
+		if (typeof value === "function") { // TODO
 			value = sValue;
 			value = new Function("o", value); // eslint-disable-line no-new-func
-			oVariables[sPar] = value;
+			//oVariables[sPar] = value;
+			oVariables.setVariable(sPar, value);
 		} else {
-			sVarType = fnDetermineStaticVarType(sPar);
+			sVarType = this.oVariables.determineStaticVarType(sPar);
 			sType = this.oVm.vmDetermineVarType(sVarType); // do we know dynamic type?
+
 			if (sType !== "$") { // not string? => convert to number
 				value = parseFloat(sValue);
 			} else {
 				value = sValue;
 			}
+
 			try {
-				oVariables[sPar] = this.oVm.vmAssign(sVarType, value);
+				//oVariables[sPar] = this.oVm.vmAssign(sVarType, value);
+				value2 = this.oVm.vmAssign(sVarType, value);
+				oVariables.setVariable(sPar, value2);
 				Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
 			} catch (e) {
 				Utils.console.warn(e);
@@ -1581,6 +1607,8 @@ Controller.prototype = {
 				Utils.console.log(sText);
 				if (f.type === "text/plain") {
 					oReader.readAsText(f);
+				} else if (f.type === "application/x-zip-compressed") { //TODO
+					oReader.readAsArrayBuffer(f);
 				} else {
 					oReader.readAsDataURL(f);
 				}
@@ -1605,6 +1633,87 @@ Controller.prototype = {
 			fnReadNextFile();
 		}
 
+		function fnLoad2(sData, sName, sType) {
+			var //sData = evt.target.result,
+				//sName = escape(f.name),
+				sStorageName, sMeta, iIndex, sDecodedData, iLength, oHeader;
+
+			sName = that.oVm.vmAdaptFilename(sName, "FILE");
+			sStorageName = that.fnLocalStorageName(sName);
+
+			if (sType === "text/plain") {
+				sMeta = "A,0," + sData.length;
+			} else {
+				if (sType === "application/x-zip-compressed") {
+					sDecodedData = sData; // already decoded
+					sData = Utils.btoa(sData); // encode data
+				} else {
+					iIndex = sData.indexOf(",");
+					sData = iIndex >= 0 ? sData.substr(iIndex + 1) : ""; // remove meta prefix
+					sDecodedData = Utils.atob(sData);
+				}
+				iLength = sDecodedData.length; // or use: f.size
+
+				oHeader = that.parseAmsdosHeader(sDecodedData);
+				if (oHeader) {
+					sMeta = oHeader.sType + "," + oHeader.iStart + "," + oHeader.iLength + "," + oHeader.iEntry;
+					sData = sDecodedData.substr(0x80); // remove header
+					if (oHeader.sType !== "A") {
+						sData = Utils.btoa(sData); // encode data without header
+					}
+				} else if (oRegExpIsText.test(sDecodedData)) {
+					sMeta = "A,0," + iLength;
+					sData = sDecodedData;
+				} else {
+					sMeta = "B,0," + iLength; // byte length (not base64 encoded)
+				}
+			}
+
+			oStorage.setItem(sStorageName, sMeta + ";" + sData);
+			Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
+			aImported.push(sStorageName);
+
+			//fnReadNextFile();
+		}
+
+		function fnOnLoad(evt) {
+			var sData = evt.target.result,
+				sName = escape(f.name),
+				sType = f.type,
+				oZip, aEntries, i;
+
+			if (sType === "application/x-zip-compressed") {
+				try {
+					oZip = new ZipFile(new Uint8Array(sData), sName); // rather aData
+				} catch (e) {
+					Utils.console.error(e);
+					that.outputError(e, true);
+				}
+				if (oZip) {
+					aEntries = Object.keys(oZip.oEntryTable);
+					for (i = 0; i < aEntries.length; i += 1) {
+						sName = aEntries[i];
+						try {
+							sData = oZip.oEntryTable[sName].read("utf"); // or: "raw"
+						} catch (e) {
+							Utils.console.error(e);
+							that.outputError(e, true);
+							sData = null;
+						}
+						if (sData) {
+							//sType = "";
+							fnLoad2(sData, sName, sType);
+						}
+					}
+				}
+			} else {
+				fnLoad2(sData, sName, sType);
+			}
+
+			fnReadNextFile();
+		}
+
+		/*
 		function fnOnLoad(evt) {
 			var sData = evt.target.result,
 				sName = escape(f.name),
@@ -1615,6 +1724,11 @@ Controller.prototype = {
 
 			if (f.type === "text/plain") {
 				sMeta = "A,0," + sData.length;
+			} else if (f.type === "application/x-zip-compressed") { //TODO
+				var zip = new ZipFile(new Uint8Array(sData)); // rather aData
+				var aEntries = Object.keys(zip.entryTable);
+				var data1 = zip.entryTable[aEntries[0]].read("raw");
+				data1 = data1;
 			} else {
 				iIndex = sData.indexOf(",");
 				sData = iIndex >= 0 ? sData.substr(iIndex + 1) : ""; // remove meta prefix
@@ -1644,6 +1758,7 @@ Controller.prototype = {
 
 			fnReadNextFile();
 		}
+		*/
 
 		event.stopPropagation();
 		event.preventDefault();

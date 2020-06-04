@@ -104,12 +104,12 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - File operations work on Browser local storage memory. Also examples visible in the selection field can be loaded with *LOAD*, *MERGE*, *OPENIN*, if in the same "subdirectory" as the selected example.
 - Use Drag & Drop on the canvas or on the input drop zone to import files.
-  File types can be normal ASCII, tokenized BASIC or binary. An AMSDOS header is detected.
+  File types can be normal ASCII, tokenized BASIC or binary. An AMSDOS header is detected. ZIP files can also be imported.
 - Data can be loadad again with file load and merge commands like *LOAD*, *MERGE*, *OPENIN*. These also work on the predefined examples
 - *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character. This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
 Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
 - *|MODE,n*: Change mode without *CLS*, including mode 3 (experimental)
-- *|RENUM,...*: similar to *RENUM* but with 4th parameter to keep line numbers starting with that line
+- *|RENUM,...*: similar to *RENUM* but with a 4th parameter to keep line numbers starting with this line
 - Computations with numbers are not limited to 16 bit
 - *PEEK&POKE* features:
   - Access screen memory in address range &C000-&FFFF or &4000-&7FFF
@@ -121,13 +121,14 @@ Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.githu
 
 - *CALL &BB00*: KM Initialize (KM Reset and reset also CPC key extensions)
 - *CALL &BB03*: KM Reset (clear input and reset expansion tokens)
+- *CALL &BB06*: KM Wait Char (CPCBasic: same as *Call &BB18*)
 - *CALL &BB18*: KM Wait Key
 - *CALL &BB7B*: TXT Cursor Enable
 - *CALL &BB7E*: TXT Cursor Disable
 - *CALL &BB81*: TXT Cursor On
 - *CALL &BB84*: TXT Cursor Off
 - *CALL &BB4E*: TXT Initialize (initialize window parameter, delete custom chars)
-- *CALL &BB9C*: TXT Inverse (same as print chr$(24); )
+- *CALL &BB9C*: TXT Inverse (same as *PRINT CHR$(24)*)
 - *CALL &BBDE,n1,n2,...*: GRA Set Pen (set *GRAPHICS PEN* depending on number of arguments)
 - *CALL &BBFF*: SCR Initialize (set *MODE* 1, reset inks, clear screen)
 - *CALL &BC06,nn*: SCR SET BASE (really &BC08; set screen start high byte: &00, &40, &80 or &C0)

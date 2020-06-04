@@ -20,6 +20,7 @@ Model.prototype = {
 		this.initialConfig = initialConfig || {};
 		this.databases = {};
 		this.examples = {}; // loaded examples per database
+		//this.oVariables = {};
 		// this.initVariables();
 	},
 	getProperty: function (sProperty) {
@@ -79,6 +80,57 @@ Model.prototype = {
 		this.examples[selectedDatabase][sKey] = oExample;
 		return this;
 	}
+
+	/* TODO */
+	/*
+	getAllVariables: function () {
+		return this.oVariables;
+	},
+
+	fnCreateNDimArray: function (aDims, initVal) {
+		var aRet,
+			fnCreateRec = function (iIndex) {
+				var iLen, aArr, i;
+
+				iLen = aDims[iIndex];
+				iIndex += 1;
+				aArr = new Array(iLen);
+				if (iIndex < aDims.length) { // more dimensions?
+					for (i = 0; i < iLen; i += 1) {
+						aArr[i] = fnCreateRec(iIndex); // recursive call
+					}
+				} else { // one dimension
+					for (i = 0; i < iLen; i += 1) {
+						aArr[i] = initVal;
+					}
+				}
+				return aArr;
+			};
+
+		aRet = fnCreateRec(0);
+		return aRet;
+	},
+	getVarDefault: function (sVarName) { //TTT
+		var iArrayIndices = sVarName.split("A").length - 1,
+			bIsString = sVarName.includes("$"),
+			value, aArgs, aValue, i;
+
+		value = bIsString ? "" : 0;
+		if (iArrayIndices) {
+			// on CPC up to 3 dimensions 0..10 without dim
+			if (iArrayIndices > 3) {
+				iArrayIndices = 3;
+			}
+			aArgs = [];
+			for (i = 0; i < iArrayIndices; i += 1) {
+				aArgs.push(11);
+			}
+			aValue = this.fnCreateNDimArray(aArgs, value);
+			value = aValue;
+		}
+		return value;
+	}
+	*/
 };
 
 if (typeof module !== "undefined" && module.exports) {

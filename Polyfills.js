@@ -415,23 +415,23 @@ if (!Utils.localStorage) {
 
 		Storage.prototype = {
 			clear: function () {
-				var item;
+				var key;
 
-				for (item in this) {
-					if (this.hasOwnProperty(item)) {
-						delete this.item;
+				for (key in this) {
+					if (this.hasOwnProperty(key)) {
+						delete this[key];
 					}
 				}
 				this.length = 0;
 			},
 			key: function (index) {
 				var i = 0,
-					item;
+					key;
 
-				for (item in this) {
-					if (this.hasOwnProperty(item) && item !== "length") {
+				for (key in this) {
+					if (this.hasOwnProperty(key) && key !== "length") {
 						if (i === index) {
-							return item;
+							return key;
 						}
 						i += 1;
 					}

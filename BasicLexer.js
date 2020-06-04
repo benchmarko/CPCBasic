@@ -113,7 +113,11 @@ BasicLexer.prototype = {
 			},
 			aTokens = [],
 			iIndex = 0,
-			sToken, sChar, iStartPos, iNumber,
+			sToken, sChar, iStartPos,
+
+			testChar = function (iAdd) {
+				return input.charAt(iIndex + iAdd);
+			},
 
 			advance = function () {
 				iIndex += 1;
@@ -146,6 +150,48 @@ BasicLexer.prototype = {
 				return str.replace(/[\x00-\x1f]/g, function (sChar2) { // eslint-disable-line no-control-regex
 					return "\\x" + ("00" + sChar2.charCodeAt().toString(16)).slice(-2);
 				});
+			},
+			fnParseNumber = function (bStartsWithDot) { // special handling for number
+				var iNumber, sChar1, sChar2;
+
+				sToken = "";
+				if (bStartsWithDot) {
+					sToken += sChar;
+					sChar = advance();
+				}
+				sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces! (how to differentiate e5 and e.g. err?)
+				if (sChar === "." && !bStartsWithDot) {
+					sToken += sChar;
+					sChar = advance();
+					if (isDigit(sChar)) { // digits after dot?
+						sToken += advanceWhile(isDigit);
+					}
+				}
+				if (sChar === "e" || sChar === "E") { // we also try to check: [eE][+-]?\d+; because "E" could be ERR, ELSE,...
+					sChar1 = testChar(1);
+					sChar2 = testChar(2);
+					if (isDigit(sChar1) || (isSign(sChar1) && isDigit(sChar2))) { // so it is a number
+						sToken += sChar; // take "E"
+						sChar = advance();
+						if (isSign(sChar)) {
+							sToken += sChar; // take sign "+" or "-"
+							sChar = advance();
+						}
+						if (isDigit(sChar)) {
+							sToken += advanceWhile(isDigit);
+						}
+					}
+				}
+				sToken = sToken.trim(); // remove trailing spaces
+				iNumber = parseFloat(sToken);
+				if (!isFinite(sToken)) {
+					throw that.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
+				}
+				addToken("number", iNumber, iStartPos, sToken);
+				if (that.bTakeNumberAsLine) {
+					that.bTakeNumberAsLine = false;
+					that.iLine = iNumber; // save just for error message
+				}
 			},
 			fnParseCompleteLineForRem = function () { // special handling for line comment
 				if (sChar === " ") {
@@ -225,6 +271,8 @@ BasicLexer.prototype = {
 				addToken(sChar, sChar, iStartPos);
 				sChar = advance();
 			} else if (isDigit(sChar)) {
+				fnParseNumber(false);
+				/*
 				sToken = advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces! (how to differentiate e5 and e.g. err?)
 				if (sChar === ".") {
 					sToken += advanceWhile(isDigit);
@@ -245,7 +293,10 @@ BasicLexer.prototype = {
 					this.bTakeNumberAsLine = false;
 					this.iLine = iNumber; // save just for error message
 				}
+				*/
 			} else if (isDot(sChar)) { // number starting with dot (similar code to normal number) // TODO: .( *\d+)+[eE] *[+-]? *\d[\d ]*
+				fnParseNumber(true);
+				/*
 				sToken = sChar;
 				sChar = advance();
 				sToken += advanceWhile(isDigit);
@@ -260,6 +311,7 @@ BasicLexer.prototype = {
 					throw this.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
 				}
 				addToken("number", iNumber, iStartPos, sToken);
+				*/
 			} else if (isHexOrBin(sChar)) {
 				sToken = sChar;
 				sChar = advance();
