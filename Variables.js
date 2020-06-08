@@ -33,14 +33,6 @@ Variables.prototype = {
 		return this;
 	},
 
-	/*
-	setAllVariables: function (oVariables, oVarTypes) { // do we need this?
-		this.oVariables = oVariables;
-		this.oVarTypes = oVarTypes || {};
-		return this;
-	},
-	*/
-
 	getAllVariables: function () {
 		return this.oVariables;
 	},
@@ -79,13 +71,6 @@ Variables.prototype = {
 			sName = sName.substr(2); // remove preceding "v."
 		}
 
-		/*
-		iPos = sName.indexOf("[");
-		if (iPos) {
-			sName = sName.substr(0, iPos); // remove indices
-		}
-		*/
-
 		sNameType = sName.charAt(0); // take first character to determine var type later
 		if (sNameType === "_") { // ignore underscore (do not clash with keywords)
 			sNameType = sName.charAt(1);
@@ -108,7 +93,6 @@ Variables.prototype = {
 			sFirst, value, aArgs, aValue, i;
 
 		if (!bIsString) { // check dynamic varType...
-			//sVarType = this.determineStaticVarType(sVarName);
 			sFirst = sVarName.charAt(0);
 			if (sFirst === "_") { // ignore underscore (do not clash with keywords)
 				sFirst = sFirst.charAt(1);
@@ -165,6 +149,13 @@ Variables.prototype = {
 	setVariable: function (sName, value) {
 		this.oVariables[sName] = value;
 		return this;
+	},
+
+	getVariableByIndex: function (iIndex) { // needed for RSX: @var
+		var aVariables = this.getAllVariableNames(),
+			sName = aVariables[iIndex];
+
+		return this.oVariables[sName];
 	},
 
 	variableExist: function (sName) {

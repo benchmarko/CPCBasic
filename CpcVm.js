@@ -104,8 +104,6 @@ CpcVm.prototype = {
 
 		this.oRandom = new Random();
 
-		//this.vmSetVariables({});
-
 		this.oStop = {
 			sReason: "", // stop reason
 			iPriority: 0, // stop priority (higher number means higher priority which can overwrite lower priority)
@@ -224,7 +222,6 @@ CpcVm.prototype = {
 
 		this.iZone = 13; // print tab zone value
 
-		//this.oVarTypes = {}; // variable types
 		this.defreal("a-z"); // init var types
 
 		this.iMode = null;
@@ -332,29 +329,9 @@ CpcVm.prototype = {
 		this.cursor(iStream, 0);
 	},
 
-	/*
-	vmResetVariables: function () {
-		this.oVariables.initAllVariables();
-
-		// var aVariables = Object.keys(this.oVariables),
-		// 	i, sName;
-
-		// for (i = 0; i < aVariables.length; i += 1) {
-		// 	sName = aVariables[i];
-		// 	this.oVariables[sName] = this.fnGetVarDefault(sName);
-		// }
-	},
-	*/
-
 	vmGetAllVariables: function () { // called from JS program
 		return this.oVariables.getAllVariables();
 	},
-
-	/*
-	vmSetVariables: function (oVariables) {
-		this.oVariables = oVariables; // collection of BASIC variables
-	},
-	*/
 
 	vmSetStartLine: function (iLine) {
 		this.iStartLine = iLine;
@@ -415,7 +392,6 @@ CpcVm.prototype = {
 	vmDetermineVarType: function (sVarType) { // also used in controller
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVariables.getVarType(sVarType.charAt(0));
 
-		//var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVarTypes[sVarType.charAt(0)];
 		return sType;
 	},
 
@@ -679,7 +655,6 @@ CpcVm.prototype = {
 		}
 		for (i = iFirst; i <= iLast; i += 1) {
 			sVarChar = String.fromCharCode(i);
-			//this.oVarTypes[sVarChar] = sType;
 			this.oVariables.setVarType(sVarChar, sType);
 		}
 	},
@@ -876,7 +851,7 @@ CpcVm.prototype = {
 			sVar = sVar.substr(0, iPos); // remove indices
 		}
 
-		iPos = this.oVariables.getVariableIndex(sVar); //aVarNames.indexOf(sVar);
+		iPos = this.oVariables.getVariableIndex(sVar);
 		if (iPos < 0) {
 			throw this.vmComposeError(Error(), 5, "@" + sVar); // Improper argument
 		}
@@ -1076,7 +1051,6 @@ CpcVm.prototype = {
 		this.iErrorGotoLine = 0;
 		this.iErrorResumeLine = 0;
 		this.aGosubStack.length = 0;
-		//this.vmResetVariables();
 		this.oVariables.initAllVariables();
 		this.defreal("a-z");
 		this.restore(); // restore data line index
@@ -1124,7 +1098,7 @@ CpcVm.prototype = {
 
 		if (oOutFile.bOpen) {
 			if (oOutFile.sCommand !== "openout") {
-				Utils.console.warn("closeout: command=", oOutFile.sCommand); // should not occure
+				Utils.console.warn("closeout: command=", oOutFile.sCommand); // should not occur
 			}
 			if (!oOutFile.aFileData.length) { // openout without data?
 				this.vmCloseoutCallback(); // close directly
@@ -1910,10 +1884,22 @@ CpcVm.prototype = {
 	},
 
 	lower$: function (s) {
+		var fnLowerCase = function (sMatch) {
+			return sMatch.toLowerCase();
+		};
+
 		this.vmAssertString(s, "LOWER$");
-		if (s >= "A" && s <= "Z") {
-			s = s.toLowerCase();
+		s = s.replace(/[A-Z]/g, fnLowerCase); // replace only characters A-Z
+
+		/*
+		for (i = 0; i < s.length; i += 1) {
+			sChar = s.charAt(i);
+			//if (s >= "A" && s <= "Z") {
+		s = s.toLowerCase();
 		}
+		*/
+		//if (s >= "A" && s <= "Z") {
+		//s = s.toLowerCase();
 		return s;
 	},
 
@@ -2358,22 +2344,44 @@ CpcVm.prototype = {
 
 	vmControlSymbol: function (sPara) {
 		var aPara = [],
-			i;
+			i, iChar;
 
 		for (i = 0; i < sPara.length; i += 1) {
 			aPara.push(sPara.charCodeAt(i));
 		}
-		this.symbol.apply(this, aPara);
+		iChar = aPara[0];
+		if (iChar >= this.iMinCustomChar) {
+			this.symbol.apply(this, aPara);
+		} else {
+			Utils.console.log("vmControlSymbol: define SYMBOL ignored:", iChar);
+		}
 	},
 
-	vmControlWindow: function (sPara, iStream) {
+	/*
+	vmControlWindow_ok: function (sPara, iStream) {
 		var aPara = [iStream],
 			i;
 
 		for (i = 0; i < sPara.length; i += 1) {
 			aPara.push(sPara.charCodeAt(i));
 		}
+		this.window.apply(this, aPara);
+	},
+	*/
 
+	vmControlWindow: function (sPara, iStream) {
+		var aPara = [iStream],
+			i, iValue;
+
+		// args in sPara: iLeft, iRight, iTop, iBottom (all -1 !)
+		for (i = 0; i < sPara.length; i += 1) {
+			iValue = sPara.charCodeAt(i) + 1; // control ranges start with 0!
+			iValue %= 256;
+			if (!iValue) {
+				iValue = 1; // avoid error
+			}
+			aPara.push(iValue);
+		}
 		this.window.apply(this, aPara);
 	},
 
@@ -2475,7 +2483,7 @@ CpcVm.prototype = {
 			this.vmControlSymbol(sPara);
 			break;
 		case 0x1a: // SUB
-			this.vmControlWindow(sPara);
+			this.vmControlWindow(sPara, iStream);
 			break;
 		case 0x1b: // ESC, ignored
 			break;
@@ -2718,7 +2726,7 @@ CpcVm.prototype = {
 			item = this.aData[this.iData];
 			this.iData += 1;
 			if (sType !== "$") { // not string? => convert to number (also binary, hex)
-				// Note : Using a number variable ro read a string would cause a syntax error on a real CPC. We cannot detect it since we get always strings.
+				// Note : Using a number variable to read a string would cause a syntax error on a real CPC. We cannot detect it since we get always strings.
 				item = this.val(item);
 			}
 			item = this.vmAssign(sVarType, item); // maybe rounding for type I
@@ -3233,10 +3241,15 @@ CpcVm.prototype = {
 	},
 
 	upper$: function (s) {
+		var fnUpperCase = function (sMatch) {
+			return sMatch.toUpperCase();
+		};
+
 		this.vmAssertString(s, "UPPER$");
-		if (s >= "a" && s <= "z") {
-			s = s.toUpperCase();
-		}
+		//if (s >= "a" && s <= "z") { //s may contain also other non-alpha characters, e.g. *
+		//s = s.toUpperCase();
+
+		s = s.replace(/[a-z]/g, fnUpperCase); // replace only characters a-z
 		return s;
 	},
 

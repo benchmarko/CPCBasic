@@ -186,8 +186,6 @@ BasicTokenizer.prototype = {
 				0x1d: fnNum16Dec, // 16-bit BASIC program line memory address pointer (should not occur)
 				0x1e: fnNum16Dec, // 16-bit integer BASIC line number
 				0x1f: fnNumFp, // floating point value
-				//0x20: " ", // " " (space) symbol
-				//0x21: "!", // "!" symbol
 				// 0x20-0x21 ASCII printable symbols
 				0x22: fnQuotedString, // '"' quoted string value
 				// 0x23-0x7b ASCII printable symbols
@@ -244,7 +242,7 @@ BasicTokenizer.prototype = {
 				0xb1: "NEW",
 				0xb2: "ON",
 				0xb3: "ON BREAK",
-				0xb4: "ON ERROR GOTO",
+				0xb4: "ON ERROR GOTO 0", // (on error goto n > 0 is decoded with separate tokens)
 				0xb5: "ON SQ",
 				0xb6: "OPENIN",
 				0xb7: "OPENOUT",
@@ -416,7 +414,6 @@ BasicTokenizer.prototype = {
 						}
 					}
 
-					//bSpace = ((iToken >= 0x0b && iToken <= 0x1f) || (iToken === 0x7c)); // constant 0..9; variable, or RSX?
 					bSpace = ((iToken >= 0x02 && iToken <= 0x1f) || (iToken === 0x7c)); // constant 0..9; variable, or RSX?
 
 					if (iToken === 0xff) { // extended token?
@@ -436,7 +433,6 @@ BasicTokenizer.prototype = {
 						}
 
 						if (bOldSpace) {
-							//if ((/^[a-zA-Z$%!]+$/).test(tstr) || (iToken >= 0x0b && iToken <= 0x1f)) {
 							if ((/^[a-zA-Z$%!]+$/).test(tstr) || (iToken >= 0x02 && iToken <= 0x1f)) {
 								tstr = " " + tstr;
 							}

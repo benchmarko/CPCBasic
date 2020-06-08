@@ -80,12 +80,12 @@ ZipFile.prototype = {
 
 			oEntry.iMethod = this.readUShort(aTmpdata, 0x0A); // compression method
 
-			iDostime = this.readUInt(aTmpdata, 0x0C); // dostime
+			iDostime = this.readUInt(aTmpdata, 0x0C);
 			// year, month, day, hour, minute, second
 			oEntry.oTimestamp = new Date(((iDostime >> 25) & 0x7F) + 1980, ((iDostime >> 21) & 0x0F) - 1, (iDostime >> 16) & 0x1F, (iDostime >> 11) & 0x1F, (iDostime >> 5) & 0x3F, (iDostime & 0x1F) << 1).getTime(); // eslint-disable-line no-bitwise
 
-			oEntry.crc = this.readUInt(aTmpdata, 0x10); /* CRC */
-			oEntry.iCompressedSize = this.readUInt(aTmpdata, 0x14); // compressed size
+			oEntry.crc = this.readUInt(aTmpdata, 0x10);
+			oEntry.iCompressedSize = this.readUInt(aTmpdata, 0x14);
 			oEntry.iSize = this.readUInt(aTmpdata, 0x18); // uncompressed size
 			oEntry.locOffset = this.readUInt(aTmpdata, 0x2A);
 			oEntry.oZip = this;
@@ -133,49 +133,6 @@ ZipFile.prototype = {
 	readUShort: function (aData, i) {
 		return ((aData[i + 1]) << 8) | aData[i]; // eslint-disable-line no-bitwise
 	},
-
-	/*
-	_getFile: function (name, sEnc) {
-		var oOut, i;
-
-		if (typeof name === "string") {
-			return this.oEntryTable[name].read(sEnc);
-		} else if (name.constructor === Array) {
-			oOut = {};
-			for (i = 0; i < name.length; i += 1) {
-				oOut[name[i]] = this.oEntryTable[name[i]].read(sEnc);
-			}
-			return oOut;
-		}
-		return null;
-	},
-
-	_getEntry: function (name) {
-		var getSimpleEntry = function (oEntry) {
-				return {
-					name: oEntry.sName,
-					isDirectory: oEntry.bIsDirectory,
-					timestamp: oEntry.oTimestamp,
-					size: oEntry.iSize,
-					comment: oEntry.sComment,
-					method: oEntry.iMethod
-				};
-			},
-			oOut, i;
-
-
-		if (typeof name === "string") {
-			return getSimpleEntry(this.oEntryTable[name]);
-		} else if (name.constructor === Array) {
-			oOut = {};
-			for (i = 0; i < name.length; i += 1) {
-				oOut[name[i]] = getSimpleEntry(this.oEntryTable[name[i]]);
-			}
-			return oOut;
-		}
-		return null;
-	},
-	*/
 
 	inflate: function (aData, finalLen) { // eslint-disable-line complexity
 		/* eslint-disable array-element-newline */

@@ -24,6 +24,17 @@ CpcVmRsx.prototype = {
 		return sName in this;
 	},
 
+	rsxExec: function (sName) { // varargs
+		var aArgs;
+
+		if (this.rsxIsAvailable(sName)) {
+			aArgs = Array.prototype.slice.call(arguments, 1);
+			this[sName].apply(this, aArgs);
+		} else {
+			throw this.oVm.vmComposeError(Error(), 28, "|" + sName); // Unknown command
+		}
+	},
+
 	a: function () {
 		this.oVm.vmNotImplemented("|A");
 	},
@@ -42,11 +53,14 @@ CpcVmRsx.prototype = {
 	},
 
 	fnGetVariableByAddress: function (iIndex) {
+		return this.oVm.oVariables.getVariableByIndex(iIndex) || "";
+		/*
 		var v = this.oVm.v,
 			aV = Object.keys(v),
 			sKey = aV[iIndex];
 
 		return sKey ? v[sKey] : "";
+		*/
 	},
 
 	dir: function (sFileMask) { // optional; string or addressOf number

@@ -7,7 +7,7 @@
 
 "use strict";
 
-var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorJs, CommonEventHandler, CpcVm, Keyboard, Sound, Variables, ZipFile;
+var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorJs, CommonEventHandler, CpcVm, DiskImage, Keyboard, Sound, Variables, ZipFile;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -20,6 +20,7 @@ if (typeof require !== "undefined") {
 	CodeGeneratorJs = require("./CodeGeneratorJs.js");
 	CommonEventHandler = require("./CommonEventHandler.js");
 	CpcVm = require("./CpcVm.js");
+	DiskImage = require("./DiskImage.js");
 	Keyboard = require("./Keyboard.js");
 	Sound = require("./Sound.js");
 	Variables = require("./Variables.js");
@@ -41,8 +42,6 @@ Controller.prototype = {
 		this.fnWaitInputHandler = this.fnWaitInput.bind(this);
 		this.fnOnEscapeHandler = this.fnOnEscape.bind(this);
 		this.fnDirectInputHandler = this.fnDirectInput.bind(this);
-
-		//this.oCodeGeneratorJs = null;
 
 		this.fnScript = null;
 
@@ -119,7 +118,7 @@ Controller.prototype = {
 			this.oCanvas.startUpdateCanvas();
 		}
 
-		this.initDropZone(); //TEST
+		this.initDropZone();
 	},
 
 	initDatabases: function () {
@@ -759,6 +758,7 @@ Controller.prototype = {
 		}
 	},
 
+	/*
 	computeChecksum: function (sData) {
 		var iSum = 0,
 			i;
@@ -769,6 +769,7 @@ Controller.prototype = {
 		return iSum;
 	},
 
+	// http://www.benchmarko.de/cpcemu/cpcdoc/chapter/cpcdoc7_e.html#I_AMSDOS_HD
 	parseAmsdosHeader: function (sData) {
 		var oHeader = null,
 			iComputed, iSum;
@@ -798,7 +799,7 @@ Controller.prototype = {
 		}
 		return oHeader;
 	},
-
+	*/
 
 	fnLocalStorageName: function (sName, sDefaultExtension) {
 		// modify name so we do not clash with localstorage methods/properites
@@ -1185,7 +1186,6 @@ Controller.prototype = {
 		var oInput = this.oVm.vmGetStopObject().oParas,
 			iStream = oInput.iStream,
 			sInput = oInput.sInput,
-			oVm = this.oVm,
 			sInputText, sMsg, oOutput, sOutput, fnScript;
 
 		sInput = sInput.trim();
@@ -1217,7 +1217,7 @@ Controller.prototype = {
 					if (oOutput.error.pos >= sInput.length + 1) { // error not in direct?
 						oOutput.error.pos -= (sInput.length + 1);
 						oOutput.error.message = "[prg] " + oOutput.error.message;
-						if (oOutput.error.shortMessage) {
+						if (oOutput.error.shortMessage) { // eslint-disable-line max-depth
 							oOutput.error.shortMessage = "[prg] " + oOutput.error.shortMessage;
 						}
 						sOutput = this.outputError(oOutput.error, true);
@@ -1242,7 +1242,6 @@ Controller.prototype = {
 			this.view.setAreaValue("outputText", sOutput);
 
 			if (!oOutput.error) {
-				//oVm.vmSetVariables(this.oVariables);
 				this.oVm.vmSetStartLine(this.oVm.iLine); // fast hack
 				this.oVm.vmGotoLine("direct");
 
@@ -1252,19 +1251,18 @@ Controller.prototype = {
 				} catch (e) {
 					Utils.console.error(e);
 					this.outputError(e, true);
-					//oVm.print(iStream, (e.shortMessage || e.message) + "\r\n");
 				}
 			}
 
 			if (!oOutput.error) {
-				this.updateResultText(); //TTT
+				this.updateResultText();
 				return true;
 			}
 			sMsg = oInput.sMessage;
 			this.oVm.print(iStream, sMsg);
 			this.oVm.cursor(iStream, 1);
 		}
-		this.updateResultText(); //TTT
+		this.updateResultText();
 		return false;
 	},
 
@@ -1305,12 +1303,6 @@ Controller.prototype = {
 		this.view.setDisabled("stopButton", sReason !== "waitInput" && sReason !== "waitKey" && sReason !== "fileLoad" && sReason !== "fileSave");
 		this.view.setDisabled("continueButton", sReason === "end" || sReason === "waitInput" || sReason === "waitKey" || sReason === "fileLoad" || sReason === "fileSave" || sReason === "parse" || sReason === "renumLines" || sReason === "reset");
 
-		/*
-		if (this.oVariables) {
-			this.setVarSelectOptions("varSelect", this.oVariables);
-			this.commonEventHandler.onVarSelectChange();
-		}
-		*/
 		this.setVarSelectOptions("varSelect", this.oVariables);
 		this.commonEventHandler.onVarSelectChange();
 
@@ -1506,34 +1498,10 @@ Controller.prototype = {
 			oVariables = this.oVariables,
 			sVarType, sType, value, value2;
 
-		/*
-			// similar to that function in BasicParser
-			fnDetermineStaticVarType = function (sName) {
-				var sNameType;
-
-				sNameType = sName.charAt(0); // take first character to determine var type later
-				if (sNameType === "_") { // ignore underscore (do not clash with keywords)
-					sNameType = sName.charAt(1);
-				}
-
-				// explicit type specified?
-				if (sName.indexOf("I") >= 0) {
-					sNameType += "I";
-				} else if (sName.indexOf("R") >= 0) {
-					sNameType += "R";
-				} else if (sName.indexOf("$") >= 0) {
-					sNameType += "$";
-				}
-				return sNameType;
-			};
-		*/
-
 		value = oVariables.getVariable(sPar);
-		//if (typeof oVariables[sPar] === "function") { // TODO
 		if (typeof value === "function") { // TODO
 			value = sValue;
 			value = new Function("o", value); // eslint-disable-line no-new-func
-			//oVariables[sPar] = value;
 			oVariables.setVariable(sPar, value);
 		} else {
 			sVarType = this.oVariables.determineStaticVarType(sPar);
@@ -1546,7 +1514,6 @@ Controller.prototype = {
 			}
 
 			try {
-				//oVariables[sPar] = this.oVm.vmAssign(sVarType, value);
 				value2 = this.oVm.vmAssign(sVarType, value);
 				oVariables.setVariable(sPar, value2);
 				Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
@@ -1591,29 +1558,39 @@ Controller.prototype = {
 			iFile = 0,
 			oStorage = Utils.localStorage,
 			that = this,
-			oRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x20-\x7e]*$/), // starting with (line) number, or 7 bit ASCII characters without control codes
+			reRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x20-\x7e]*$/), // starting with (line) number, or 7 bit ASCII characters without control codes
 			aImported = [],
 			f, oReader;
 
+		function fnEndOfImport() {
+			var iStream = 0,
+				oVm = that.oVm,
+				i;
+
+			for (i = 0; i < aImported.length; i += 1) {
+				oVm.print(iStream, aImported[i], " ");
+			}
+			oVm.print(iStream, "\r\n", aImported.length + " file" + (aImported.length !== 1 ? "s" : "") + " imported.\r\n");
+			that.updateResultText();
+		}
 
 		function fnReadNextFile() {
-			var iStream = 0,
-				sText;
+			var sText;
 
 			if (iFile < aFiles.length) {
 				f = aFiles[iFile];
 				iFile += 1;
-				sText = escape(f.name) + " " + (f.type || "n/a") + " " + f.size + " " + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : "n/a");
+				sText = f.name + " " + (f.type || "n/a") + " " + f.size + " " + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : "n/a");
 				Utils.console.log(sText);
 				if (f.type === "text/plain") {
 					oReader.readAsText(f);
-				} else if (f.type === "application/x-zip-compressed") { //TODO
+				} else if (f.type === "application/x-zip-compressed") {
 					oReader.readAsArrayBuffer(f);
 				} else {
 					oReader.readAsDataURL(f);
 				}
 			} else {
-				that.oVm.print(iStream, (aImported.length ? aImported.join(", ") : "No files") + " imported.\r\n");
+				fnEndOfImport();
 			}
 		}
 
@@ -1634,51 +1611,77 @@ Controller.prototype = {
 		}
 
 		function fnLoad2(sData, sName, sType) {
-			var //sData = evt.target.result,
-				//sName = escape(f.name),
-				sStorageName, sMeta, iIndex, sDecodedData, iLength, oHeader;
+			var sStorageName, sMeta, iIndex, sDecodedData, iLength, oHeader,
+				oDsk, oDir, aDiskFiles, i, sFileName;
 
-			sName = that.oVm.vmAdaptFilename(sName, "FILE");
-			sStorageName = that.fnLocalStorageName(sName);
+			sStorageName = that.oVm.vmAdaptFilename(sName, "FILE");
+			sStorageName = that.fnLocalStorageName(sStorageName);
 
 			if (sType === "text/plain") {
 				sMeta = "A,0," + sData.length;
 			} else {
-				if (sType === "application/x-zip-compressed") {
+				if (sType === "application/x-zip-compressed" || sType === "cpcBasic/binary") { // are we a file inside zip?
 					sDecodedData = sData; // already decoded
 					sData = Utils.btoa(sData); // encode data
-				} else {
+				} else { // e.g. data:application/octet-stream;base64,...
 					iIndex = sData.indexOf(",");
 					sData = iIndex >= 0 ? sData.substr(iIndex + 1) : ""; // remove meta prefix
 					sDecodedData = Utils.atob(sData);
 				}
 				iLength = sDecodedData.length; // or use: f.size
 
-				oHeader = that.parseAmsdosHeader(sDecodedData);
+				oHeader = DiskImage.prototype.parseAmsdosHeader(sDecodedData);
 				if (oHeader) {
 					sMeta = oHeader.sType + "," + oHeader.iStart + "," + oHeader.iLength + "," + oHeader.iEntry;
 					sData = sDecodedData.substr(0x80); // remove header
 					if (oHeader.sType !== "A") {
 						sData = Utils.btoa(sData); // encode data without header
 					}
-				} else if (oRegExpIsText.test(sDecodedData)) {
+				} else if (reRegExpIsText.test(sDecodedData)) {
+					// Node: To get all characters why this does not match: sDecodedData.replace(/[\t\r\n\x20-\x7e]/g,"")
 					sMeta = "A,0," + iLength;
 					sData = sDecodedData;
-				} else {
+				} else if (DiskImage.prototype.testDiskIdent(sDecodedData.substr(0, 8)) !== null) { // disk image file?
+					try {
+						oDsk = new DiskImage({
+							sData: sDecodedData,
+							sDiskName: sName
+						});
+						oDir = oDsk.readDirectory();
+						aDiskFiles = Object.keys(oDir);
+						for (i = 0; i < aDiskFiles.length; i += 1) {
+							sFileName = aDiskFiles[i];
+							sData = oDsk.readFile(oDir[sFileName]);
+							fnLoad2(sData, sFileName, "cpcBasic/binary"); // recursive
+						}
+					} catch (e) {
+						Utils.console.error(e);
+						that.outputError(e, true);
+					}
+					sMeta = null; // ignore dsk file //"B,0," + iLength; // byte length (not base64 encoded)
+				} else { // binary
 					sMeta = "B,0," + iLength; // byte length (not base64 encoded)
 				}
 			}
 
-			oStorage.setItem(sStorageName, sMeta + ";" + sData);
-			Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
-			aImported.push(sStorageName);
-
-			//fnReadNextFile();
+			if (sMeta) {
+				try {
+					oStorage.setItem(sStorageName, sMeta + ";" + sData);
+					Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
+					aImported.push(sName); //aImported.push(sStorageName);
+				} catch (e) { // maybe quota exceeded
+					Utils.console.error(e);
+					if (e.name === "QuotaExceededError") {
+						e.shortMessage = sStorageName + ": Quota exceeded";
+					}
+					that.outputError(e, true);
+				}
+			}
 		}
 
 		function fnOnLoad(evt) {
 			var sData = evt.target.result,
-				sName = escape(f.name),
+				sName = f.name,
 				sType = f.type,
 				oZip, aEntries, i;
 
@@ -1701,7 +1704,6 @@ Controller.prototype = {
 							sData = null;
 						}
 						if (sData) {
-							//sType = "";
 							fnLoad2(sData, sName, sType);
 						}
 					}
@@ -1713,61 +1715,17 @@ Controller.prototype = {
 			fnReadNextFile();
 		}
 
-		/*
-		function fnOnLoad(evt) {
-			var sData = evt.target.result,
-				sName = escape(f.name),
-				sStorageName, sMeta, iIndex, sDecodedData, iLength, oHeader;
-
-			sName = that.oVm.vmAdaptFilename(sName, "FILE");
-			sStorageName = that.fnLocalStorageName(sName);
-
-			if (f.type === "text/plain") {
-				sMeta = "A,0," + sData.length;
-			} else if (f.type === "application/x-zip-compressed") { //TODO
-				var zip = new ZipFile(new Uint8Array(sData)); // rather aData
-				var aEntries = Object.keys(zip.entryTable);
-				var data1 = zip.entryTable[aEntries[0]].read("raw");
-				data1 = data1;
-			} else {
-				iIndex = sData.indexOf(",");
-				sData = iIndex >= 0 ? sData.substr(iIndex + 1) : ""; // remove meta prefix
-
-				sDecodedData = Utils.atob(sData);
-				iLength = sDecodedData.length; // or use: f.size
-
-				oHeader = that.parseAmsdosHeader(sDecodedData);
-				if (oHeader) {
-					sMeta = oHeader.sType + "," + oHeader.iStart + "," + oHeader.iLength + "," + oHeader.iEntry;
-					sData = sDecodedData.substr(0x80); // remove header
-					if (oHeader.sType !== "A") {
-						sData = Utils.btoa(sData); // encode data without header
-					}
-				} else if (oRegExpIsText.test(sDecodedData)) {
-					sMeta = "A,0," + iLength;
-					sData = sDecodedData;
-				} else {
-					sMeta = "B,0," + iLength; // byte length (not base64 encoded)
-				}
-			}
-
-			oStorage.setItem(sStorageName, sMeta + ";" + sData);
-			Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
-			aImported.push(sStorageName);
-			//that.oVm.print(iStream, sStorageName + " imported\r\n");
-
-			fnReadNextFile();
-		}
-		*/
-
 		event.stopPropagation();
 		event.preventDefault();
 
-		oReader = new FileReader();
-		oReader.onerror = fnErrorHandler;
-		oReader.onload = fnOnLoad;
-
-		fnReadNextFile();
+		if (window.FileReader) {
+			oReader = new FileReader();
+			oReader.onerror = fnErrorHandler;
+			oReader.onload = fnOnLoad;
+			fnReadNextFile();
+		} else {
+			Utils.console.warn("FileReader API not supported.");
+		}
 	},
 
 	fnHandleDragOver: function (evt) {

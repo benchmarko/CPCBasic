@@ -159,7 +159,7 @@ BasicLexer.prototype = {
 					sToken += sChar;
 					sChar = advance();
 				}
-				sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces! (how to differentiate e5 and e.g. err?)
+				sToken += advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces!
 				if (sChar === "." && !bStartsWithDot) {
 					sToken += sChar;
 					sChar = advance();
@@ -211,7 +211,6 @@ BasicLexer.prototype = {
 						sChar = "";
 						sToken = advanceWhile(isNotQuotes);
 						if (!isQuotes(sChar)) {
-							//Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
 							Utils.console.log(that.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
 						}
 						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
@@ -272,46 +271,8 @@ BasicLexer.prototype = {
 				sChar = advance();
 			} else if (isDigit(sChar)) {
 				fnParseNumber(false);
-				/*
-				sToken = advanceWhile(isDigit); // TODO: isDigitOrSpace: numbers may contain spaces! (how to differentiate e5 and e.g. err?)
-				if (sChar === ".") {
-					sToken += advanceWhile(isDigit);
-				}
-				if (sChar === "e" || sChar === "E") { // TODO: how to check? [eE][+-]?\d+
-					sToken += advanceWhile(isSign); // TODO: allow at most one sign!
-					if (isDigit(sChar)) {
-						sToken += advanceWhile(isDigit);
-					}
-				}
-				sToken = sToken.trim(); // remove trailing spaces
-				iNumber = parseFloat(sToken);
-				if (!isFinite(sToken)) {
-					throw this.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
-				}
-				addToken("number", iNumber, iStartPos, sToken);
-				if (this.bTakeNumberAsLine) {
-					this.bTakeNumberAsLine = false;
-					this.iLine = iNumber; // save just for error message
-				}
-				*/
-			} else if (isDot(sChar)) { // number starting with dot (similar code to normal number) // TODO: .( *\d+)+[eE] *[+-]? *\d[\d ]*
+			} else if (isDot(sChar)) { // number starting with dot
 				fnParseNumber(true);
-				/*
-				sToken = sChar;
-				sChar = advance();
-				sToken += advanceWhile(isDigit);
-				if (sChar === "e" || sChar === "E") {
-					sToken += advanceWhile(isSign);
-					if (isDigit(sChar)) {
-						sToken += advanceWhile(isDigit);
-					}
-				}
-				iNumber = parseFloat(sToken);
-				if (!isFinite(iNumber)) {
-					throw this.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
-				}
-				addToken("number", iNumber, iStartPos, sToken);
-				*/
 			} else if (isHexOrBin(sChar)) {
 				sToken = sChar;
 				sChar = advance();
@@ -333,7 +294,6 @@ BasicLexer.prototype = {
 				sChar = "";
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					//Utils.console.warn("Unterminated string", sToken, "at position", iStartPos + 1);
 					Utils.console.log(this.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes

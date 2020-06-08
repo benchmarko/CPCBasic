@@ -65,29 +65,21 @@ Canvas.prototype = {
 			iPens: 16, // number of pens
 			iPixelWidth: 4, // pixel width
 			iPixelHeight: 2 // pixel height
-			// iCharWidth: 8 * 4, // width of a char (pixel width * 8)
-			// iCharHeight: 16 // height of a char (pixel height * 8)
 		},
 		{ // mode 1
 			iPens: 4,
 			iPixelWidth: 2,
 			iPixelHeight: 2
-			// iCharWidth: 8 * 2,
-			// iCharHeight: 16
 		},
 		{ // mode 2
 			iPens: 2,
 			iPixelWidth: 1,
 			iPixelHeight: 2
-			// iCharWidth: 8,
-			// iCharHeight: 16
 		},
 		{ // mode 3
 			iPens: 16, // mode 3 not available on a real CPC
 			iPixelWidth: 1,
 			iPixelHeight: 1
-			// iCharWidth: 8,
-			// iCharHeight: 8
 		}
 	],
 
@@ -160,7 +152,6 @@ Canvas.prototype = {
 	},
 
 	reset: function () {
-		//this.iMode = 1;
 		this.changeMode(1);
 		this.iGPen = null; // force update
 		this.iGPaper = null;
@@ -1001,7 +992,6 @@ Canvas.prototype = {
 
 		/* eslint-disable no-bitwise */
 		xOrig &= ~(iPixelWidth - 1);
-		// not modifed: yOrig |= (iPixelHeight - 1);
 		/* eslint-enable no-bitwise */
 
 		this.xOrig = xOrig; // must be integer
@@ -1110,12 +1100,6 @@ Canvas.prototype = {
 
 		this.iMode = iMode;
 		this.oModeData = oModeData;
-
-		/*
-		this.iCurrPixelWidth = oModeData.iPixelWidth;
-		this.iCurrPixelHeight = oModeData.iPixelHeight;
-		this.iCurrPens = oModeData.iPens;
-		*/
 	},
 
 	setMode: function (iMode) { // set mode without clear screen

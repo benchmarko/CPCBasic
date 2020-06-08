@@ -57,7 +57,7 @@ CodeGeneratorJs.prototype = {
 	},
 
 	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments); //Object.assign({}, arguments);
+		var aArgs = Array.prototype.slice.call(arguments);
 
 		aArgs.unshift("CodeGeneratorJs");
 		aArgs.push(this.iLine);
@@ -140,19 +140,8 @@ CodeGeneratorJs.prototype = {
 	evaluate: function (parseTree, oVariables) {
 		var that = this,
 
-			fnDeclareVariable = function (sName, value) { //TTT
-				// var bIsString = sName.includes("$");
-
-				// during compile step, we just init all (not yet defined) variables with a value
-				// we need to set the correct type (needed for direct mode without variable reset)
-				/*
-				if (value === undefined) {
-					value = bIsString ? "" : 0;
-				}
-				*/
+			fnDeclareVariable = function (sName) {
 				if (!oVariables.variableExist(sName)) { // variable not yet defined?
-					//oVariables[sName] = value;
-					//oVariables.setVariable(sName, value);
 					oVariables.initVariable(sName);
 				}
 			},
@@ -212,30 +201,6 @@ CodeGeneratorJs.prototype = {
 				return aNodeArgs;
 			},
 
-			/*
-			fnDetermineStaticVarType = function (sName) {
-				var sNameType;
-
-				if (sName.indexOf("v.") === 0) {
-					sName = sName.substr(2); // remove preceding "v."
-				}
-
-				sNameType = sName.charAt(0); // take first character to determine var type later
-				if (sNameType === "_") { // ignore underscore (do not clash with keywords)
-					sNameType = sName.charAt(1);
-				}
-
-				// explicit type specified?
-				if (sName.indexOf("I") >= 0) {
-					sNameType += "I";
-				} else if (sName.indexOf("R") >= 0) {
-					sNameType += "R";
-				} else if (sName.indexOf("$") >= 0) {
-					sNameType += "$";
-				}
-				return sNameType;
-			},
-			*/
 			fnDetermineStaticVarType = function (sName) {
 				return oVariables.determineStaticVarType(sName);
 			},
@@ -464,17 +429,22 @@ CodeGeneratorJs.prototype = {
 				},
 
 				"|": function (node) { // rsx
-					var sRsxName, aNodeArgs, sLabel;
+					var sRsxName, bRsxAvailable, aNodeArgs, sLabel, oError;
 
 					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_");
+					bRsxAvailable = that.options.rsx.rsxIsAvailable(sRsxName);
 					aNodeArgs = fnParseArgs(node.args);
-					if (that.options.rsx.rsxIsAvailable(sRsxName)) { // RSX available?
-						sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
-						that.iStopCount += 1;
-						node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, ren,...)
-					} else {
-						throw that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
+					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
+					that.iStopCount += 1;
+
+					if (!bRsxAvailable) { // if RSX not available, we delay the error until it is executed (or catched by on error goto)
+						oError = that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
+						Utils.console.warn(oError);
+						aNodeArgs.unshift('"' + sRsxName + '"'); // put as first arg
+						sRsxName = "rsxExec"; // and call special handler which triggers error if not available
 					}
+
+					node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, ren,...)
 					return node.pv;
 				},
 				number: function (node) {
@@ -816,7 +786,7 @@ CodeGeneratorJs.prototype = {
 						}
 						sEndName = sVarName + "End";
 						value = sEndName.substr(2); // remove preceding "v."
-						fnDeclareVariable(value, 0); // declare also end variable
+						fnDeclareVariable(value); // declare also end variable
 					}
 					if (!bStepIsIntConst) {
 						if (stepNode.pt !== "I") {
@@ -824,7 +794,7 @@ CodeGeneratorJs.prototype = {
 						}
 						sStepName = sVarName + "Step";
 						value = sStepName.substr(2); // remove preceding "v."
-						fnDeclareVariable(value, 0); // declare also step variable
+						fnDeclareVariable(value); // declare also step variable
 					}
 
 					value = "/* for() */";
