@@ -83,6 +83,16 @@ Canvas.prototype = {
 		}
 	],
 
+	// CPC Unicode map for text mode (https://www.unicode.org/L2/L2019/19025-terminals-prop.pdf AMSCPC.TXT) incomplete
+	sCpc2Unicode:
+		"................................ !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]\u2195_`abcdefghijklmnopqrstuvwxyz{|}~\u2591"
+		+ "\u00A0\u2598\u259D\u2580\u2596\u258C\u259E\u259B\u2597\u259A\u2590\u259C\u2584\u2599\u259F\u2588\u00B7\u2575\u2576\u2514\u2577\u2502\u250C"
+		+ "\u251C\u2574\u2518\u2500\u2534\u2510\u2524\u252C\u253C\u005E\u00B4\u00A8\u00A3\u00A9\u00B6\u00A7\u2018\u00BC\u00BD\u00BE\u00B1\u00F7\u00AC"
+		+ "\u00BF\u00A1\u03B1\u03B2\u03B3\u03B4\u03B5\u03B8\u03BB\u03BC\u03C0\u03C3\u03C6\u03C8\u03C7\u03C9\u03A3\u03A9\u1FBA0\u1FBA1\u1FBA3\u1FBA2\u1FBA7"
+		+ "\u1FBA5\u1FBA6\u1FBA4\u1FBA8\u1FBA9\u1FBAE\u2573\u2571\u2572\u1FB95\u2592\u23BA\u23B9\u23BD\u23B8\u25E4\u25E5\u25E2\u25E3\u1FB8E\u1FB8D\u1FB8F"
+		+ "\u1FB8C\u1FB9C\u1FB9D\u1FB9E\u1FB9F\u263A\u2639\u2663\u2666\u2665\u2660\u25CB\u25CF\u25A1\u25A0\u2642\u2640\u2669\u266A\u263C\uFFBDB\u2B61\u2B63"
+		+ "\u2B60\u2B62\u25B2\u25BC\u25B6\u25C0\u1FBC6\u1FBC5\u1FBC7\u1FBC8\uFFBDC\uFFBDD\u2B65\u2B64",
+
 	init: function (options) {
 		var iBorderWidth = 4,
 			iWidth, iHeight, canvas, ctx;
@@ -92,7 +102,13 @@ Canvas.prototype = {
 		this.fnUpdateCanvasHandler = this.updateCanvas.bind(this);
 		this.fnUpdateCanvas2Handler = this.updateCanvas2.bind(this);
 
-		this.cpcAreaBox = document.getElementById("cpcAreaBox");
+		this.iFps = 15; // FPS for canvas update
+		this.iTextFpsCounter = 0;
+
+		this.cpcAreaBox = document.getElementById("cpcAreaBox"); //TTT move to view
+
+		//cpcBasic.controller.view.setAreaValue("textText", sOut); //TTT currently fast hack
+		this.textText = document.getElementById("textText"); //TTT currently fast hack
 
 		this.aCharset = this.options.aCharset;
 
@@ -111,14 +127,14 @@ Canvas.prototype = {
 		iHeight = canvas.height;
 		this.iWidth = iWidth;
 		this.iHeight = iHeight;
+		this.iBorderWidth = iBorderWidth;
 		canvas.style.borderWidth = iBorderWidth + "px";
 		canvas.style.borderStyle = "solid";
 
 		this.dataset8 = new Uint8Array(new ArrayBuffer(iWidth * iHeight)); // array with pen values
 
 		this.bNeedUpdate = false;
-		this.oUpdateRect = {};
-		this.initUpdateRect();
+		this.bNeedTextUpdate = false;
 
 		this.aColorValues = this.extractAllColorValues(this.aColors);
 
@@ -152,6 +168,9 @@ Canvas.prototype = {
 	},
 
 	reset: function () {
+		this.resetTextBuffer();
+		this.setNeedTextUpdate();
+
 		this.changeMode(1);
 		this.iGPen = null; // force update
 		this.iGPaper = null;
@@ -172,6 +191,10 @@ Canvas.prototype = {
 
 	resetCustomChars: function () {
 		this.oCustomCharset = {}; // symbol
+	},
+
+	resetTextBuffer: function () {
+		this.aTextBuffer = []; //TTT
 	},
 
 	isLittleEndian: function () {
@@ -209,29 +232,45 @@ Canvas.prototype = {
 		}
 	},
 
-	initUpdateRect: function () {
-	},
-
 	setNeedUpdate: function () {
 		this.bNeedUpdate = true;
+	},
+
+	setNeedTextUpdate: function () {
+		this.bNeedTextUpdate = true;
 	},
 
 	updateCanvas2: function () {
 		this.animationFrame = requestAnimationFrame(this.fnUpdateCanvasHandler);
 		if (this.bNeedUpdate) { // could be improved: update only updateRect
 			this.bNeedUpdate = false;
-			this.initUpdateRect();
 			// we always do a full updateCanvas...
 			this.fnCopy2Canvas();
 		}
+
+		if (this.textText.offsetParent) { //TTT text area visible?
+			if (this.bNeedTextUpdate) { //TTT
+				this.bNeedTextUpdate = false;
+				this.updateTextWindow();
+			}
+		}
+
+		/*
+		this.iTextFpsCounter += 1;
+		if (this.iTextFpsCounter >= this.iFps) {
+			this.iTextFpsCounter = 0;
+			if (this.bNeedTextUpdate) { //TTT
+				this.bNeedTextUpdate = false;
+				this.updateTextWindow();
+			}
+		}
+		*/
 	},
 
 	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
 	// https://stackoverflow.com/questions/19764018/controlling-fps-with-requestanimationframe
 	updateCanvas: function () {
-		var iFps = 15;
-
-		this.animationTimeout = setTimeout(this.fnUpdateCanvas2Handler, 1000 / iFps);
+		this.animationTimeout = setTimeout(this.fnUpdateCanvas2Handler, 1000 / this.iFps);
 	},
 
 	startUpdateCanvas: function () {
@@ -280,6 +319,25 @@ Canvas.prototype = {
 		}
 
 		ctx.putImageData(this.imageData, 0, 0);
+	},
+
+	updateTextWindow: function () { //TTT
+		var aTextBuffer = this.aTextBuffer,
+			sOut = "",
+			x, y, aTextBufferRow;
+
+		for (y = 0; y < aTextBuffer.length; y += 1) {
+			aTextBufferRow = aTextBuffer[y];
+			if (aTextBufferRow) {
+				for (x = 0; x < aTextBufferRow.length; x += 1) {
+					//sOut += String.fromCharCode(aTextBufferRow[x] || 32);
+					sOut += this.sCpc2Unicode[aTextBufferRow[x] || 32];
+				}
+			}
+			sOut += "\n";
+		}
+		//cpcBasic.controller.view.setAreaValue("textText", sOut); //TTT currently fast hack
+		this.textText.value = sOut; //TTT fast hack
 	},
 
 	updateColorMap: function () {
@@ -357,8 +415,58 @@ Canvas.prototype = {
 		this.bHasFocus = true;
 	},
 
+	getMousePos: function (event) {
+		var oRect = this.canvas.getBoundingClientRect(),
+			oPos = {
+				x: event.clientX - this.iBorderWidth - oRect.left,
+				y: event.clientY - this.iBorderWidth - oRect.top
+			};
+
+		return oPos;
+	},
+
+	canvasClickAction2: function (event) {
+		var oPos = this.getMousePos(event),
+			x = oPos.x,
+			y = oPos.y,
+			iCharWidth = this.oModeData.iPixelWidth * 8,
+			iCharHeight = this.oModeData.iPixelHeight * 8,
+			xTxt, yTxt, iChar;
+
+		/* eslint-disable no-bitwise */
+		x |= 0; // force integer
+		y |= 0;
+
+		xTxt = (x / iCharWidth) | 0;
+		yTxt = (y / iCharHeight) | 0;
+		/* eslint-enable no-bitwise */
+
+		iChar = this.getCharFromTextBuffer(xTxt, yTxt);
+
+		if (iChar !== undefined && this.options.onClickKey) {
+			this.options.onClickKey(String.fromCharCode(iChar));
+		}
+
+		// for graphics coordinates, adapt origin
+		x -= this.xOrig;
+		y = this.iHeight - 1 - (y + this.yOrig);
+
+		if (this.xPos === 1000 && this.yPos === 1000) { // only activate move if pos is 1000, 1000
+			this.move(x, y);
+			//this.plot(x, y); // does also move
+			//this.setPixel(x, y, this.iGPen, 1); this.setNeedUpdate(); // 1=XOR mode; plot does alos move
+		}
+		if (Utils.debug > 0) {
+			Utils.console.debug("onCpcCanvasClick: x-xOrig", x, "y-yOrig", y, "iChar", iChar, "char", String.fromCharCode(iChar));
+		}
+	},
+
 	onCpcCanvasClick: function (event) {
-		this.setFocusOnCanvas();
+		if (!this.bHasFocus) {
+			this.setFocusOnCanvas();
+		} else {
+			this.canvasClickAction2(event);
+		}
 		event.stopPropagation();
 	},
 
@@ -395,10 +503,11 @@ Canvas.prototype = {
 			iCharHeight = this.oModeData.iPixelHeight * 8;
 
 		this.fillMyRect(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, iHeight * iCharHeight, iPen);
+		this.clearTextBufferBox(iLeft, iTop, iWidth, iHeight);
 		this.setNeedUpdate();
 	},
 
-	moveMyRectDown: function (x, y, iWidth, iHeight, x2, y2) { // for scrolling up (overlap)
+	moveMyRectUp: function (x, y, iWidth, iHeight, x2, y2) { // for scrolling up (overlap)
 		var iCanvasWidth = this.iWidth,
 			dataset8 = this.dataset8,
 			col, row, idx1, idx2;
@@ -412,7 +521,7 @@ Canvas.prototype = {
 		}
 	},
 
-	moveMyRectUp: function (x, y, iWidth, iHeight, x2, y2) { // for scrolling down (overlap)
+	moveMyRectDown: function (x, y, iWidth, iHeight, x2, y2) { // for scrolling down (overlap)
 		var iCanvasWidth = this.iWidth,
 			dataset8 = this.dataset8,
 			col, row, idx1, idx2;
@@ -745,7 +854,7 @@ Canvas.prototype = {
 
 	plot: function (x, y) {
 		this.move(x, y);
-		this.setPixel(this.xPos, this.yPos, this.iGPen, this.iGColMode); // use rounded values from move
+		this.setPixel(x, y, this.iGPen, this.iGColMode); // must be integer
 		this.setNeedUpdate();
 	},
 
@@ -819,10 +928,87 @@ Canvas.prototype = {
 		this.setNeedUpdate();
 	},
 
+	clearTextBufferBox: function (iLeft, iTop, iWidth, iHeight) {
+		var aTextBuffer = this.aTextBuffer,
+			x, y, aTextBufferRow;
+
+		for (y = iTop; y < iTop + iHeight; y += 1) {
+			aTextBufferRow = aTextBuffer[y];
+			if (aTextBufferRow) {
+				for (x = iLeft; x < iLeft + iWidth; x += 1) {
+					delete aTextBufferRow[x];
+				}
+			}
+		}
+		this.setNeedTextUpdate();
+	},
+
+	copyTextBufferBoxUp: function (iLeft, iTop, iWidth, iHeight, iLeft2, iTop2) {
+		var aTextBuffer = this.aTextBuffer,
+			y, x, aTextBufferRow1, aTextBufferRow2;
+
+		for (y = 0; y < iHeight; y += 1) {
+			aTextBufferRow1 = aTextBuffer[iTop + y];
+			if (aTextBufferRow1) {
+				aTextBufferRow2 = aTextBuffer[iTop2 + y];
+				if (!aTextBufferRow2) {
+					aTextBufferRow2 = [];
+					aTextBuffer[iTop2 + y] = aTextBufferRow2;
+				}
+				for (x = 0; x < iWidth; x += 1) {
+					aTextBufferRow2[iLeft2 + x] = aTextBufferRow1[iLeft + x];
+				}
+			}
+		}
+		this.setNeedTextUpdate();
+	},
+
+	copyTextBufferBoxDown: function (iLeft, iTop, iWidth, iHeight, iLeft2, iTop2) {
+		var aTextBuffer = this.aTextBuffer,
+			y, x, aTextBufferRow1, aTextBufferRow2;
+
+		for (y = iHeight - 1; y >= 0; y -= 1) {
+			aTextBufferRow1 = aTextBuffer[iTop + y];
+			if (aTextBufferRow1) {
+				aTextBufferRow2 = aTextBuffer[iTop2 + y];
+				if (!aTextBufferRow2) {
+					aTextBufferRow2 = [];
+					aTextBuffer[iTop2 + y] = aTextBufferRow2;
+				}
+				for (x = 0; x < iWidth; x += 1) {
+					aTextBufferRow2[iLeft2 + x] = aTextBufferRow1[iLeft + x];
+				}
+			}
+		}
+		this.setNeedTextUpdate();
+	},
+
+	putCharInTextBuffer: function (iChar, x, y) {
+		var aTextBuffer = this.aTextBuffer;
+
+		if (!aTextBuffer[y]) {
+			aTextBuffer[y] = [];
+		}
+		this.aTextBuffer[y][x] = iChar;
+		this.setNeedTextUpdate();
+	},
+
+	getCharFromTextBuffer: function (x, y) {
+		var aTextBuffer = this.aTextBuffer,
+			iChar;
+
+		if (aTextBuffer[y]) {
+			iChar = this.aTextBuffer[y][x]; // can be undefined, if not set
+		}
+		return iChar;
+	},
+
 	printChar: function (iChar, x, y, iPen, iPaper, bTransparent) {
 		var iCharWidth = this.oModeData.iPixelWidth * 8,
 			iCharHeight = this.oModeData.iPixelHeight * 8,
 			iPens = this.oModeData.iPens;
+
+		this.putCharInTextBuffer(iChar, x, y); //TTT testing text buffer
 
 		if (iChar >= this.aCharset.length) {
 			Utils.console.warn("printChar: Ignoring char with code", iChar);
@@ -976,6 +1162,7 @@ Canvas.prototype = {
 				p1 = this.testSubPixel(oPixel.x, y1);
 			}
 		}
+		this.setNeedUpdate();
 	},
 
 	fnPutInRange: function (n, min, max) {
@@ -1049,6 +1236,7 @@ Canvas.prototype = {
 			iHeight = iBottom + 1 - iTop;
 
 		this.fillTextBox(iLeft, iTop, iWidth, iHeight, iPaper);
+		//this.clearTextBufferBox(iLeft, iTop, iWidth, iHeight);
 	},
 
 	clearGraphicsWindow: function () { // clear graphics window with graphics paper
@@ -1061,6 +1249,10 @@ Canvas.prototype = {
 		var iPaper = 0;
 
 		this.fillMyRect(0, 0, this.iWidth, this.iHeight, iPaper);
+
+		this.resetTextBuffer();
+		this.setNeedTextUpdate();
+
 		this.setNeedUpdate();
 	},
 
@@ -1071,7 +1263,10 @@ Canvas.prototype = {
 			iHeight = iBottom + 1 - iTop;
 
 		if (iHeight > 1) { // scroll part
-			this.moveMyRectDown(iLeft * iCharWidth, (iTop + 1) * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, iTop * iCharHeight);
+			this.moveMyRectUp(iLeft * iCharWidth, (iTop + 1) * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, iTop * iCharHeight);
+
+			// adapt also text buffer
+			this.copyTextBufferBoxUp(iLeft, iTop + 1, iWidth, iHeight - 1, iLeft, iTop);
 		}
 		this.fillTextBox(iLeft, iBottom, iWidth, 1, iPen);
 		this.setNeedUpdate();
@@ -1084,7 +1279,10 @@ Canvas.prototype = {
 			iHeight = iBottom + 1 - iTop;
 
 		if (iHeight > 1) { // scroll part
-			this.moveMyRectUp(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, (iTop + 1) * iCharHeight);
+			this.moveMyRectDown(iLeft * iCharWidth, iTop * iCharHeight, iWidth * iCharWidth, (iHeight - 1) * iCharHeight, iLeft * iCharWidth, (iTop + 1) * iCharHeight);
+
+			// adapt also text buffer
+			this.copyTextBufferBoxDown(iLeft, iTop, iWidth, iHeight - 1, iLeft, iTop + 1);
 		}
 		this.fillTextBox(iLeft, iTop, iWidth, 1, iPen);
 		this.setNeedUpdate();

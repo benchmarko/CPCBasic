@@ -140,10 +140,17 @@ CpcVm.prototype = {
 		// "bOpen": File open flag
 		// "sCommand": Command that started the file open (in: chain, chainMerge, load, merge, openin, run; out: save, openput)
 		// "sName": File name
-		// "iAddress": // load address, save address
+		// "sType": File type: A, B, P, T
+		// "iStart": start address of data
+		// "iLength": length of data
+		// "iEntry": entry address (save)
 		// "iLine": ?
-		// "fnFileCallback": Callback for stop reason "fileLoad", "fileSave"
 		// "aFileData": File contents for (LINE) INPUT #9; PRINT #9, WRITE #9
+		// "fnFileCallback": Callback for stop reason "fileLoad", "fileSave"
+		// "iLine": run line (CHAIN, CHAIN MERGE)
+		// "iFirst": first line to delete (CHAIN MERGE)
+		// "iLast": last line to delete (CHAIN MERGE)
+
 
 		this.iInkeyTime = 0; // if >0, next time when inkey$ can be checked without inserting "waitFrame"
 
@@ -207,7 +214,7 @@ CpcVm.prototype = {
 		this.bTron = this.options.tron || false; // trace flag
 		this.iTronLine = 0; // last trace line
 
-		this.aMem.length = 0; // for peek, poke
+		this.aMem.length = 0; // clear memory (for PEEK, POKE)
 		this.iRamSelect = 0; // for banking with 16K banks in the range 0x4000-0x7fff (0=default; 1...=additional)
 		this.iScreenPage = 3; // 16K screen page, 3=0xc000..0xffff
 
@@ -1815,43 +1822,45 @@ CpcVm.prototype = {
 
 	vmLoadCallback: function (sInput, sMeta) {
 		var oInFile = this.oInFile,
-			aMeta, iAddress, iLength, i, iByte;
+			aMeta, iStart, iLength, i, iByte;
 
 		if (sInput !== null) {
-			if (sMeta && Utils.stringStartsWith(sMeta, "B")) { // only for binary files
-				aMeta = sMeta.split(",");
+			if (sMeta && sMeta.charAt(0) === "B") { // only for binary files
+				aMeta = sMeta.split(";");
 
-				iAddress = oInFile.iAddress !== undefined ? oInFile.iAddress : Number(aMeta[1]);
+				iStart = oInFile.iStart !== undefined ? oInFile.iStart : Number(aMeta[1]);
 				iLength = Number(aMeta[2]); // we do not really need the length from metadata
 
-				//sInput = Utils.atob(sInput); // already done
 				if (isNaN(iLength)) {
 					iLength = sInput.length; // only valid after atob()
 				}
+				if (Utils.debug > 1) {
+					Utils.console.debug("vmLoadCallback:", oInFile.sName + ": putting binary data in memory from", iStart, "to", iStart + iLength);
+				}
 				for (i = 0; i < iLength; i += 1) {
 					iByte = sInput.charCodeAt(i);
-					this.poke((iAddress + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
+					this.poke((iStart + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
 				}
 			}
 		}
 		this.closein();
 	},
 
-	load: function (sName, iAddress) { // optional iAddress
+	load: function (sName, iStart) { // optional iStart
 		var oInFile = this.oInFile;
 
 		sName = this.vmAdaptFilename(sName, "LOAD");
-		if (iAddress !== undefined) {
-			iAddress = this.vmInRangeRound(iAddress, -32768, 65535, "LOAD");
-			if (iAddress < 0) { // 2nd complement of 16 bit address
-				iAddress += 65536;
+		if (iStart !== undefined) {
+			iStart = this.vmInRangeRound(iStart, -32768, 65535, "LOAD");
+			if (iStart < 0) { // 2nd complement of 16 bit address
+				iStart += 65536;
 			}
 		}
 		this.closein();
 		oInFile.bOpen = true;
 		oInFile.sCommand = "load";
 		oInFile.sName = sName;
-		oInFile.iAddress = iAddress;
+		oInFile.iStart = iStart;
 		oInFile.fnFileCallback = this.fnLoadHandler;
 		this.vmStop("fileLoad", 90);
 	},
@@ -1890,16 +1899,6 @@ CpcVm.prototype = {
 
 		this.vmAssertString(s, "LOWER$");
 		s = s.replace(/[A-Z]/g, fnLowerCase); // replace only characters A-Z
-
-		/*
-		for (i = 0; i < s.length; i += 1) {
-			sChar = s.charAt(i);
-			//if (s >= "A" && s <= "Z") {
-		s = s.toLowerCase();
-		}
-		*/
-		//if (s >= "A" && s <= "Z") {
-		//s = s.toLowerCase();
 		return s;
 	},
 
@@ -2356,18 +2355,6 @@ CpcVm.prototype = {
 			Utils.console.log("vmControlSymbol: define SYMBOL ignored:", iChar);
 		}
 	},
-
-	/*
-	vmControlWindow_ok: function (sPara, iStream) {
-		var aPara = [iStream],
-			i;
-
-		for (i = 0; i < sPara.length; i += 1) {
-			aPara.push(sPara.charCodeAt(i));
-		}
-		this.window.apply(this, aPara);
-	},
-	*/
 
 	vmControlWindow: function (sPara, iStream) {
 		var aPara = [iStream],
@@ -2903,50 +2890,66 @@ CpcVm.prototype = {
 		}
 	},
 
-	save: function (sName, sType, iAddr, iLen, iEntry) { // varargs; parameter sType,... are optional
+	save: function (sName, sType, iStart, iLength, iEntry) { // varargs; parameter sType,... are optional
 		var oOutFile = this.oOutFile,
-			aFileData = [],
-			i;
+			aFileData = null,
+			i, iAddress;
 
 		sName = this.vmAdaptFilename(sName, "SAVE");
-		if (sType !== undefined) {
-			sType = String(sType).toUpperCase();
-			if (sType === "A" && iAddr === undefined) { // ascii
-				// ...
-			} else if (sType === "B") { // binary
-				iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "SAVE");
-				if (iAddr < 0) { // 2nd complement of 16 bit address
-					iAddr += 65536;
-				}
-				iLen = this.vmInRangeRound(iLen, -32768, 65535, "SAVE");
-				if (iLen < 0) {
-					iLen += 65536;
-				}
-				sType += "," + iAddr + "," + iLen; // it gets sMeta
-				if (iEntry !== undefined) {
-					iEntry = this.vmInRangeRound(iEntry, -32768, 65535, "SAVE");
-					if (iEntry < 0) {
-						iEntry += 65536;
-					}
-					sType += "," + iEntry;
-				}
-				for (i = 0; i < iLen; i += 1) {
-					aFileData[i] = String.fromCharCode(this.peek(iAddr + i));
-				}
-				aFileData = [Utils.btoa(aFileData.join(""))];
-			} else if (sType === "P" && iAddr === undefined) { // protected BASIC
-				// ...
-			} else {
-				throw this.vmComposeError(Error(), 2, "SAVE " + sType); // Syntax Error
-			}
+		if (!sType) {
+			sType = "T"; // default is tokenized BASIC
 		} else {
-			sType = "T"; // new (default) type: tokenized BASIC
+			sType = String(sType).toUpperCase();
+		}
+
+		if (sType === "B") { // binary
+			iStart = this.vmInRangeRound(iStart, -32768, 65535, "SAVE");
+			if (iStart < 0) { // 2nd complement of 16 bit address
+				iStart += 65536;
+			}
+			//oOutFile.iStart = iStart;
+
+			iLength = this.vmInRangeRound(iLength, -32768, 65535, "SAVE");
+			if (iLength < 0) {
+				iLength += 65536;
+			}
+
+			//oOutFile.iLength = iLength;
+
+			//sType += "," + iAddr + "," + iLen; // it gets sMeta
+			if (iEntry !== undefined) {
+				iEntry = this.vmInRangeRound(iEntry, -32768, 65535, "SAVE");
+				if (iEntry < 0) {
+					iEntry += 65536;
+				}
+				//aMeta.push(iEntry);
+				//sType += "," + iEntry;
+			}
+			//oOutFile.iEntry = iEntry;
+			aFileData = [];
+			for (i = 0; i < iLength; i += 1) {
+				iAddress = (iStart + i) & 0xffff; // eslint-disable-line no-bitwise
+				aFileData[i] = String.fromCharCode(this.peek(iAddress));
+			}
+			//aFileData = [Utils.btoa(aFileData.join(""))];
+		} else if ((sType === "A" || sType === "T" || sType === "P") && iStart === undefined) {
+			// ASCII or tokenized BASIC or protected BASIC, and no load address specified
+			iStart = 368; // BASIC start
+			// need file data from controller (text box)
+		} else {
+			throw this.vmComposeError(Error(), 2, "SAVE " + sType); // Syntax Error
 		}
 
 		oOutFile.bOpen = true;
 		oOutFile.sCommand = "save";
 		oOutFile.sName = sName;
+
 		oOutFile.sType = sType;
+		oOutFile.iStart = iStart;
+		oOutFile.iLength = iLength;
+		oOutFile.iEntry = iEntry;
+
+		//oOutFile.sMeta = aMeta.join(";");
 		oOutFile.aFileData = aFileData;
 		oOutFile.fnFileCallback = this.fnCloseoutHandler; // we use closeout handler to reset out file handling
 
@@ -3246,9 +3249,6 @@ CpcVm.prototype = {
 		};
 
 		this.vmAssertString(s, "UPPER$");
-		//if (s >= "a" && s <= "z") { //s may contain also other non-alpha characters, e.g. *
-		//s = s.toUpperCase();
-
 		s = s.replace(/[a-z]/g, fnUpperCase); // replace only characters a-z
 		return s;
 	},

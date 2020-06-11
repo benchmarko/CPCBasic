@@ -127,7 +127,7 @@ BasicTokenizer.prototype = {
 			},
 
 			fnStringUntilEol = function () {
-				var sOut = that.sInput.substring(that.iPos, that.iLineEnd); // take remaining line
+				var sOut = that.sInput.substring(that.iPos, that.iLineEnd - 1); // take remaining line
 
 				that.iPos = that.iLineEnd;
 				return sOut;

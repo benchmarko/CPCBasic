@@ -106,6 +106,10 @@ CommonEventHandler.prototype = {
 		this.toogleHidden("resultArea", "showResult");
 	},
 
+	onTextButtonClick: function () {
+		this.toogleHidden("textArea", "showText");
+	},
+
 	onVariableButtonClick: function () {
 		this.toogleHidden("variableArea", "showVariable");
 	},
@@ -247,6 +251,11 @@ CommonEventHandler.prototype = {
 			return;
 		}
 
+		if (oDatabase.text === "storage") { // sepcial handling: browser localStorage
+			this.controller.updateStorageDatabase("set", null); // set all
+			oDatabase.loaded = true;
+		}
+
 		if (oDatabase.loaded) {
 			this.controller.setExampleSelectOptions();
 			this.onExampleSelectChange();
@@ -261,7 +270,8 @@ CommonEventHandler.prototype = {
 		var oController = this.controller,
 			oVm = oController.oVm,
 			oInFile = oVm.vmGetInFileObject(),
-			sExample, oExample;
+			sDataBase = this.model.getProperty("database"),
+			sExample, oExample, sType;
 
 		oVm.closein();
 
@@ -269,14 +279,23 @@ CommonEventHandler.prototype = {
 
 		sExample = this.view.getSelectValue("exampleSelect");
 		oExample = this.model.getExample(sExample);
-		if (oExample && oExample.meta && oExample.meta.charAt(0) === "D") { // data only?
-			oInFile.sCommand = "load";
-		} else {
-			oInFile.sCommand = "run";
+		oInFile.sCommand = "run";
+		if (oExample && oExample.meta) {
+			sType = oExample.meta.charAt(0);
+			if (sType === "B" || sType === "D" || sType === "G") { // binary, data only, Gena Assembler?
+				oInFile.sCommand = "load";
+			}
 		}
 
-		oInFile.sName = "/" + sExample; // load absolute
-		oInFile.fnFileCallback = null;
+		if (sDataBase !== "storage") {
+			sExample = "/" + sExample; // load absolute
+		} else {
+			this.model.setProperty("example", sExample); //TTT set it here
+		}
+
+		oInFile.sName = sExample;
+		oInFile.iStart = undefined;
+		oInFile.fnFileCallback = oVm.fnLoadHandler; //null;
 		oVm.vmStop("fileLoad", 90);
 		oController.startMainLoop();
 	},

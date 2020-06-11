@@ -28,8 +28,8 @@ ZipFile.prototype = {
 
 		this.oEntryTable = {};
 
-		i = aData.length - 21; /* 22=END Header size, 1 offset to make loop functional */
-		n = Math.max(0, i - 0xFFFF); /* 0xFFFF=Max zip comment length */
+		i = aData.length - 21; // 22=END Header size, 1 offset to make loop functional
+		n = Math.max(0, i - 0xFFFF); // 0xFFFF=max zip comment length
 		while (i >= n) {
 			i -= 1;
 			if (this.readUInt(aData, i) === 0x06054B50) { // end of central signature: "PK\x05\x06"
@@ -40,15 +40,18 @@ ZipFile.prototype = {
 			throw this.composeError(Error(), "Zip ended abruptly", "", (i >= 0) ? i : 0);
 		}
 
-		aHead = this.subArr(aData, iZipEnd, 22);
-		iEntryAmount = this.readUShort(aHead, 10);
+		// read from header:
+		//aHead = this.subArr(aData, iZipEnd, 22);
+		//iEntryAmount = this.readUShort(aHead, 10);
+		iEntryAmount = this.readUShort(aData, iZipEnd + 10);
 
 		// Process entries
-		iOffset = this.readUInt(aHead, 0x10); /* 0x10=Offset of first CEN header */
+		//iOffset = this.readUInt(aHead, 0x10); // 0x10=Offset of first CEN header
+		iOffset = this.readUInt(aData, iZipEnd + 0x10); // 0x10=Offset of first CEN header
 
 		for (i = 0; i < iEntryAmount; i += 1) {
 			aTmpdata = this.subArr(aData, iOffset, 0x2E);
-			iOffset += 46; /* VERIFY HEADER | 0x2E=Cen header size */
+			iOffset += 46; // VERIFY HEADER | 0x2E=Cen header size
 
 			if (this.readUInt(aTmpdata, 0x0) !== 0x02014B50) { // central header signature: "PK\x01\x02" (0x02014B50)
 				throw this.composeError(Error(), "Bad Zip CEN signature", "", i);
@@ -84,7 +87,7 @@ ZipFile.prototype = {
 			// year, month, day, hour, minute, second
 			oEntry.oTimestamp = new Date(((iDostime >> 25) & 0x7F) + 1980, ((iDostime >> 21) & 0x0F) - 1, (iDostime >> 16) & 0x1F, (iDostime >> 11) & 0x1F, (iDostime >> 5) & 0x3F, (iDostime & 0x1F) << 1).getTime(); // eslint-disable-line no-bitwise
 
-			oEntry.crc = this.readUInt(aTmpdata, 0x10);
+			oEntry.iCrc = this.readUInt(aTmpdata, 0x10);
 			oEntry.iCompressedSize = this.readUInt(aTmpdata, 0x14);
 			oEntry.iSize = this.readUInt(aTmpdata, 0x18); // uncompressed size
 			oEntry.locOffset = this.readUInt(aTmpdata, 0x2A);
@@ -143,7 +146,6 @@ ZipFile.prototype = {
 			aDynamicTableOrder = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15],
 			/* eslint-enable array-element-newline */
 			that = this,
-			distcode, lencode, symbol, ncode, ndist, dist, last, type, lens, nlen, err1, err2, len, i,
 			aInBuf = aData,
 			iBufLen = aData.length, // the amount of bytes to read
 			iInCnt = 0, // amount of bytes read
@@ -151,24 +153,24 @@ ZipFile.prototype = {
 			iBitCnt = 0, // helper to keep track of where we are in #bits
 			iBitBuf = 0,
 			aOutBuf = new Uint8Array(finalLen),
+			oDistCode, oLenCode, iSymbol, iNCode, iNDist, iDist, iLast, iType, lens, iNLen, iErr1, iErr2, iLen, i,
 
-			// helper functions
-			fnBits = function (need) {
-				var out = iBitBuf;
+			fnBits = function (iNeed) {
+				var iOut = iBitBuf;
 
-				while (iBitCnt < need) {
+				while (iBitCnt < iNeed) {
 					if (iInCnt === iBufLen) {
 						throw that.composeError(Error(), "Zip: inflate: Data overflow", that.sZipName, i);
 					}
-					out |= aInBuf[iInCnt] << iBitCnt; // eslint-disable-line no-bitwise
+					iOut |= aInBuf[iInCnt] << iBitCnt; // eslint-disable-line no-bitwise
 					iInCnt += 1;
 					iBitCnt += 8;
 				}
-				iBitBuf = out >> need; // eslint-disable-line no-bitwise
-				iBitCnt -= need;
-				return out & ((1 << need) - 1);	// eslint-disable-line no-bitwise
+				iBitBuf = iOut >> iNeed; // eslint-disable-line no-bitwise
+				iBitCnt -= iNeed;
+				return iOut & ((1 << iNeed) - 1);	// eslint-disable-line no-bitwise
 			},
-			fnDecode = function (codes) {
+			fnDecode = function (oCodes) {
 				var code = 0,
 					first = 0,
 					i = 0,
@@ -176,9 +178,9 @@ ZipFile.prototype = {
 
 				for (j = 1; j <= 0xF; j += 1) {
 					code |= fnBits(1); // eslint-disable-line no-bitwise
-					count = codes.count[j];
+					count = oCodes.count[j];
 					if (code < first + count) {
-						return codes.symbol[i + (code - first)];
+						return oCodes.symbol[i + (code - first)];
 					}
 					i += count;
 					first += count;
@@ -187,190 +189,191 @@ ZipFile.prototype = {
 				}
 				return null;
 			},
-			fnConstruct = function (codes, lens, n) {
-				var offs = [/* undefined */, 0],
-					left = 1,
+			fnConstruct = function (oCodes, lens, n) {
+				var aOffs = [/* undefined */, 0],
+					iLeft = 1,
 					i;
 
 				for (i = 0; i <= 0xF; i += 1) {
-					codes.count[i] = 0;
+					oCodes.count[i] = 0;
 				}
 
 				for (i = 0; i < n; i += 1) {
-					codes.count[lens[i]] += 1;
+					oCodes.count[lens[i]] += 1;
 				}
 
-				if (codes.count[0] === n) {
+				if (oCodes.count[0] === n) {
 					return 0;
 				}
 
 				for (i = 1; i <= 0xF; i += 1) {
-					if ((left = (left << 1) - codes.count[i]) < 0) { // eslint-disable-line no-bitwise
-						return left;
+					if ((iLeft = (iLeft << 1) - oCodes.count[i]) < 0) { // eslint-disable-line no-bitwise
+						return iLeft;
 					}
 				}
 
 				for (i = 1; i < 0xF; i += 1) {
-					offs[i + 1] = offs[i] + codes.count[i];
+					aOffs[i + 1] = aOffs[i] + oCodes.count[i];
 				}
 
 				for (i = 0; i < n; i += 1) {
 					if (lens[i] !== 0) {
-						codes.symbol[offs[lens[i]]] = i;
-						offs[lens[i]] += 1;
+						oCodes.symbol[aOffs[lens[i]]] = i;
+						aOffs[lens[i]] += 1;
 					}
 				}
-				return left;
+				return iLeft;
 			};
 
 		do { // The actual inflation
-			last = fnBits(1);
-			type = fnBits(2);
+			iLast = fnBits(1);
+			iType = fnBits(2);
 
-			switch (type) {
+			switch (iType) {
 			case 0: // STORED
 				iBitBuf = 0;
 				iBitCnt = 0;
 				if (iInCnt + 4 > iBufLen) {
 					throw this.composeError(Error(), "Zip: inflate: Data overflow", "", iInCnt);
 				}
-				len = aInBuf[iInCnt];
+				iLen = aInBuf[iInCnt];
 				iInCnt += 1;
-				len |= aInBuf[iInCnt] << 8; // eslint-disable-line no-bitwise
+				iLen |= aInBuf[iInCnt] << 8; // eslint-disable-line no-bitwise
 				iInCnt += 1;
 
-				if (aInBuf[iInCnt++] !== (~len & 0xFF) || aInBuf[iInCnt++] !== ((~len >> 8) & 0xFF)) { // eslint-disable-line no-bitwise
+				if (aInBuf[iInCnt] !== (~iLen & 0xFF) || aInBuf[iInCnt + 1] !== ((~iLen >> 8) & 0xFF)) { // eslint-disable-line no-bitwise
 					throw this.composeError(Error(), "Zip: inflate: Bad length", "", iInCnt);
 				}
+				iInCnt += 2;
 
-				if (iInCnt + len > iBufLen) {
+				if (iInCnt + iLen > iBufLen) {
 					throw this.composeError(Error(), "Zip: inflate: Data overflow", "", iInCnt);
 				}
 
 				// Compatibility: Instead of: outbuf.push.apply(outbuf, outbuf.slice(incnt, incnt + len)); outcnt += len; incnt += len;
-				while (len) {
+				while (iLen) {
 					aOutBuf[iOutCnt] = aInBuf[iInCnt];
 					iOutCnt += 1;
 					iInCnt += 1;
-					len -= 1;
+					iLen -= 1;
 				}
 				break;
 			case 1:
-			case 2: // FIXED or DYNAMIC HUFFMAN
-				lencode = {
+			case 2: // fixed (=1) or dynamic (=2) huffman
+				oLenCode = {
 					count: [],
 					symbol: []
 				};
-				distcode = {
+				oDistCode = {
 					count: [],
 					symbol: []
 				};
 				lens = [];
-				if (type === 1) { // construct fixed huffman tables
-					/* UNTESTED */
-					for (symbol = 0; symbol < 0x90; symbol += 1) {
-						lens[symbol] = 8;
+				if (iType === 1) { // construct fixed huffman tables
+					// UNTESTED ??
+					for (iSymbol = 0; iSymbol < 0x90; iSymbol += 1) {
+						lens[iSymbol] = 8;
 					}
-					for (; symbol < 0x100; symbol += 1) {
-						lens[symbol] = 9;
+					for (; iSymbol < 0x100; iSymbol += 1) {
+						lens[iSymbol] = 9;
 					}
-					for (; symbol < 0x118; symbol += 1) {
-						lens[symbol] = 7;
+					for (; iSymbol < 0x118; iSymbol += 1) {
+						lens[iSymbol] = 7;
 					}
-					for (; symbol < 0x120; symbol += 1) {
-						lens[symbol] = 8;
+					for (; iSymbol < 0x120; iSymbol += 1) {
+						lens[iSymbol] = 8;
 					}
-					fnConstruct(lencode, lens, 0x120);
-					for (symbol = 0; symbol < 0x1E; symbol += 1) {
-						lens[symbol] = 5;
+					fnConstruct(oLenCode, lens, 0x120);
+					for (iSymbol = 0; iSymbol < 0x1E; iSymbol += 1) {
+						lens[iSymbol] = 5;
 					}
-					fnConstruct(distcode, lens, 0x1E);
-				} else { /* Construct dynamic huffman tables */
-					nlen = fnBits(5) + 257;
-					ndist = fnBits(5) + 1;
-					ncode = fnBits(4) + 4;
-					if (nlen > 0x11E || ndist > 0x1E) {
+					fnConstruct(oDistCode, lens, 0x1E);
+				} else { // construct dynamic huffman tables
+					iNLen = fnBits(5) + 257;
+					iNDist = fnBits(5) + 1;
+					iNCode = fnBits(4) + 4;
+					if (iNLen > 0x11E || iNDist > 0x1E) {
 						throw this.composeError(Error(), "Zip: inflate: length/distance code overflow", "", 0);
 					}
-					for (i = 0; i < ncode; i += 1) {
+					for (i = 0; i < iNCode; i += 1) {
 						lens[aDynamicTableOrder[i]] = fnBits(3);
 					}
 					for (; i < 19; i += 1) {
 						lens[aDynamicTableOrder[i]] = 0;
 					}
-					if (fnConstruct(lencode, lens, 19) !== 0) {
+					if (fnConstruct(oLenCode, lens, 19) !== 0) {
 						throw this.composeError(Error(), "Zip: inflate: length codes incomplete", "", 0);
 					}
 
-					for (i = 0; i < nlen + ndist;) {
-						symbol = fnDecode(lencode);
+					for (i = 0; i < iNLen + iNDist;) {
+						iSymbol = fnDecode(oLenCode);
 						/* eslint-disable max-depth */
-						if (symbol < 16) {
-							lens[i] = symbol;
+						if (iSymbol < 16) {
+							lens[i] = iSymbol;
 							i += 1;
 						} else {
-							len = 0;
-							if (symbol === 16) {
+							iLen = 0;
+							if (iSymbol === 16) {
 								if (i === 0) {
 									throw this.composeError(Error(), "Zip: inflate: repeat lengths with no first length", "", 0);
 								}
-								len = lens[i - 1];
-								symbol = 3 + fnBits(2);
-							} else if (symbol === 17) {
-								symbol = 3 + fnBits(3);
+								iLen = lens[i - 1];
+								iSymbol = 3 + fnBits(2);
+							} else if (iSymbol === 17) {
+								iSymbol = 3 + fnBits(3);
 							} else {
-								symbol = 11 + fnBits(7);
+								iSymbol = 11 + fnBits(7);
 							}
 
-							if (i + symbol > nlen + ndist) {
+							if (i + iSymbol > iNLen + iNDist) {
 								throw this.composeError(Error(), "Zip: inflate: more lengths than specified", "", 0);
 							}
-							while (symbol) {
-								lens[i] = len;
-								symbol -= 1;
+							while (iSymbol) {
+								lens[i] = iLen;
+								iSymbol -= 1;
 								i += 1;
 							}
 						}
 						/* eslint-enable max-depth */
 					}
-					err1 = fnConstruct(lencode, lens, nlen);
-					err2 = fnConstruct(distcode, lens.slice(nlen), ndist);
-					if ((err1 < 0 || (err1 > 0 && nlen - lencode.count[0] !== 1))
-					|| (err2 < 0 || (err2 > 0 && ndist - distcode.count[0] !== 1))) {
+					iErr1 = fnConstruct(oLenCode, lens, iNLen);
+					iErr2 = fnConstruct(oDistCode, lens.slice(iNLen), iNDist);
+					if ((iErr1 < 0 || (iErr1 > 0 && iNLen - oLenCode.count[0] !== 1))
+					|| (iErr2 < 0 || (iErr2 > 0 && iNDist - oDistCode.count[0] !== 1))) {
 						throw this.composeError(Error(), "Zip: inflate: bad literal or length codes", "", 0);
 					}
 				}
 
 				do { /* Decode deflated data */
-					symbol = fnDecode(lencode);
-					if (symbol < 256) {
-						aOutBuf[iOutCnt] = symbol;
+					iSymbol = fnDecode(oLenCode);
+					if (iSymbol < 256) {
+						aOutBuf[iOutCnt] = iSymbol;
 						iOutCnt += 1;
 					}
-					if (symbol > 256) {
-						symbol -= 257;
-						if (symbol > 28) {
+					if (iSymbol > 256) {
+						iSymbol -= 257;
+						if (iSymbol > 28) {
 							throw this.composeError(Error(), "Zip: inflate: Invalid length/distance", "", 0);
 						}
-						len = aLens[symbol] + fnBits(aLExt[symbol]);
-						symbol = fnDecode(distcode);
-						dist = aDists[symbol] + fnBits(aDExt[symbol]);
-						if (dist > iOutCnt) {
+						iLen = aLens[iSymbol] + fnBits(aLExt[iSymbol]);
+						iSymbol = fnDecode(oDistCode);
+						iDist = aDists[iSymbol] + fnBits(aDExt[iSymbol]);
+						if (iDist > iOutCnt) {
 							throw this.composeError(Error(), "Zip: inflate: distance out of range", "", 0);
 						}
 						// instead of outbuf.slice, we use...
-						while (len) {
-							aOutBuf[iOutCnt] = aOutBuf[iOutCnt - dist];
-							len -= 1;
+						while (iLen) {
+							aOutBuf[iOutCnt] = aOutBuf[iOutCnt - iDist];
+							iLen -= 1;
 							iOutCnt += 1;
 						}
 					}
-				} while (symbol !== 256);
+				} while (iSymbol !== 256);
 				break;
 			default:
-				throw this.composeError(Error(), "Zip: inflate: unsupported compression type" + type, "", 0);
+				throw this.composeError(Error(), "Zip: inflate: unsupported compression type" + iType, "", 0);
 			}
-		} while (!last);
+		} while (!iLast);
 		return aOutBuf;
 	}
 };
@@ -390,13 +393,13 @@ ZipFile.ZipEntry.prototype.read = function (sEncoding) {
 			return this.aData;
 		}
 		fileData = this.oZip.subArr(this.oZip.aData, this.dataStart, this.iCompressedSize);
-		if (this.iMethod === 0) { /* STORED */
+		if (this.iMethod === 0) { // STORED
 			this.aData = fileData;
 			return fileData;
-		} else if (this.iMethod === 8) { /* DEFLATED */
+		} else if (this.iMethod === 8) { // DEFLATED
 			return (this.aData = this.oZip.inflate(fileData, this.iSize));
 		}
-		throw "ZipFile.ZipEntry: Invalid compression method"; //TTT
+		throw this.oZip.composeError(Error(), "Zip: Invalid compression method", this.iMethod);
 
 	case "base64":
 		if (this.dataBase64) {
@@ -406,7 +409,6 @@ ZipFile.ZipEntry.prototype.read = function (sEncoding) {
 		return (this.dataBase64 = b64);
 
 	case "utf8":
-	case "utf-8":
 	default:
 		if (this.dataUTF8) {
 			return this.dataUTF8;

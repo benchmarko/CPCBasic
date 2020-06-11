@@ -34,12 +34,6 @@ DiskImage.prototype = {
 			}
 		};
 
-		/*
-		this.oDiskInfo = {};
-		this.oTrackInfo = {};
-		this.aSectorInfo = [];
-		*/
-
 		this.oFormat = {};
 		return this;
 	},
@@ -62,13 +56,6 @@ DiskImage.prototype = {
 		}
 		return bExtended;
 	},
-
-	/*
-	setPos: function (iPos) {
-		this.iPos = iPos;
-		return this;
-	},
-	*/
 
 	readUtf: function (iPos, iLen) {
 		var sOut = this.sData.substr(iPos, iLen);
@@ -129,7 +116,6 @@ DiskImage.prototype = {
 
 		oTrackInfo.sIdent = this.readUtf(iPos, 12);
 		if (oTrackInfo.sIdent !== "Track-Info\r\n") {
-			//Utils.console.warn("Dsk: Track indent not found: iPos=" + iPos); // just a warning, maybe some do not set it
 			throw this.composeError(Error(), "Dsk: Track indent not found", oTrackInfo.sIdent, iPos);
 		}
 		// 4 unused bytes
@@ -141,16 +127,6 @@ DiskImage.prototype = {
 		oTrackInfo.iSpt = this.readUInt8(iPos + 21);
 		oTrackInfo.iGap3 = this.readUInt8(iPos + 22);
 		oTrackInfo.iFill = this.readUInt8(iPos + 23);
-
-		/*
-			var iTrackInfoSize = 0x100,
-			iSectorInfoSize = 8,
-			iSectorOffset = 24, // sectors start at offset 24
-		// check for formats with more then 29 sectors which need multiple track info blocks...
-		iRequiredTrackInfoSize = iSectorOffset + oTrackInfo.iSpt * iSectorInfoSize;
-		// round up: http://www.issociate.de/board/goto/931095/round_up_to_nearest....html
-		iRequiredTrackInfoSize += (-iRequiredTrackInfoSize % iTrackInfoSize); // round up to multiple
-		*/
 
 		aSectorInfo.length = oTrackInfo.iSpt;
 
@@ -209,10 +185,7 @@ DiskImage.prototype = {
 	seekSector: function (iSectorIndex) {
 		var aSectorInfo = this.oDiskInfo.oTrackInfo.aSectorInfo,
 			oSectorInfo = aSectorInfo[iSectorIndex];
-			//iDataPos = oSectorInfo.iDataPos,
-			//iSectorSize = oSectorInfo.iSectorSize;
 
-		//this.setPos(iDataPos);
 		return oSectorInfo;
 	},
 
@@ -345,34 +318,48 @@ DiskImage.prototype = {
 	},
 
 	readDirectoryExtents: function (aExtents, iPos, iEndPos) {
-		var oExtent, i, aBlocks, iBlock,
-			fnRemoveHighBits = function (sName) {
-				var sName2 = "",
-					i2, iCode;
+		var oExtent, iChar, i, aBlocks, iBlock,
 
-				// does not always work: sName = sName.replace(/([\x80-\xff])/g, String.fromCharCode((RegExp.$1.charCodeAt(0)) & 0x7f)); // eslint-disable-line no-bitwise
-				for (i2 = 0; i2 < sName.length; i2 += 1) {
-					iCode = sName.charCodeAt(i2);
-					iCode &= 0x7f; // eslint-disable-line no-bitwise
-					sName2 += String.fromCharCode(iCode);
+			fnUnpackFtypeFlags = function () {
+				var aFTypes = [
+						"bReadOnly",
+						"bSystem",
+						"bBackup" //TTT
+					],
+					sExt = oExtent.sExt,
+					sFType;
+
+				for (i = 0; i < aFTypes.length; i += 1) {
+					sFType = aFTypes[i];
+					iChar = sExt.charCodeAt(i);
+					oExtent[sFType] = Boolean(iChar & 0x80); // eslint-disable-line no-bitwise
+					if (oExtent[sFType]) { // bit 7 set?
+						sExt = sExt.substr(0, i) + String.fromCharCode(iChar & 0x7f) + sExt.substr(i + 1); // eslint-disable-line no-bitwise
+					}
 				}
-				return sName2;
+				oExtent.sExt = sExt; // maybe changed
 			};
+		/*
+			fnRemoveHighBits = function (sMatch) {
+				return String.fromCharCode(sMatch.charCodeAt(0) & 0x7f);
+			};
+		*/
 
 		while (iPos < iEndPos) {
 			oExtent = {
 				iUser: this.readUInt8(iPos),
 				sName: this.readUtf(iPos + 1, 8),
-				sExt: this.readUtf(iPos + 9, 3),
+				sExt: this.readUtf(iPos + 9, 3), // extension with high bits set for...
 				iExtent: this.readUInt8(iPos + 12),
 				iLastRecBytes: this.readUInt8(iPos + 13),
-				iExtentHi: this.readUInt8(iPos + 14), //TTT
+				iExtentHi: this.readUInt8(iPos + 14), // used for what?
 				iRecords: this.readUInt8(iPos + 15),
 				aBlocks: []
 			};
 			iPos += 16;
 
-			oExtent.sExt = fnRemoveHighBits(oExtent.sExt); // remove read only/system high bit
+			//oExtent.sExt = oExtent.sExt.replace(/([\x80-\xff])/g, fnRemoveHighBits); // remove read only/system high bit 7
+			fnUnpackFtypeFlags();
 
 			aBlocks = oExtent.aBlocks;
 			for (i = 0; i < 16; i += 1) {
@@ -386,20 +373,6 @@ DiskImage.prototype = {
 			iPos += 16;
 			aExtents.push(oExtent);
 		}
-
-/*
-		qw(user fname ftype extent last_rec_bytes extent_hi_x records);
-    (@{$ext_r}{@ext_txt}) = unpack('Ca8a3CCCC', $dir_entry);
-    my @blocks = unpack('x16C16', $dir_entry);
-    $ext_r->{'blocks'} = \@blocks; # allocation blocks
-
-    ($ext_r->{'ftype'}, $ext_r->{'ftype_flags'}) = _unpack_ftype_flags($ext_r->{'ftype'});
-
-    push @$extents_r, $ext_r;
-    $offset += $extent_len;
-
-    $ext_r->{'fname'} =~ s/([\x80-\xff])/ chr(ord($1) & 0x7f) /eg; # remove high bits from filename
-*/
 		return aExtents;
 	},
 
@@ -425,9 +398,8 @@ DiskImage.prototype = {
 		for (i = 0; i < aExtents.length; i += 1) {
 			oExtent = aExtents[i];
 			if (iFill === null || oExtent.iUser !== iFill) {
-				sName = oExtent.sName + "." + oExtent.sExt; // oExtent.iUser + ":" + oExtent.sName + "." + oExtent.sExt;
-				//TTT sName = sName.replace(/ /g, "").toLowerCase(); // remove spaces
-				// do not convert filename here (to display messages in filenames)
+				sName = oExtent.sName + "." + oExtent.sExt; // and oExtent.iUser?
+				// (do not convert filename here (to display messages in filenames))
 				if (!reFilePattern || reFilePattern.test(sName)) {
 					if (!(sName in oDir)) {
 						oDir[sName] = [];
@@ -449,13 +421,13 @@ DiskImage.prototype = {
 
 		oPos = {
 			iTrack: Math.floor(iLogSec / iSpt) + oFormat.iOff,
-			iHead: 0, //TTT
+			iHead: 0, // currently always 0
 			iSector: (iLogSec % iSpt) + oFormat.iFirstSector
 		};
 		return oPos;
 	},
 
-	readDirectory: function (sFilePattern) {
+	readDirectory: function (/* sFilePattern */) {
 		var iDirectorySectors = 4,
 			oSectorInfo, i,
 			oFormat, iOff, iFirstSector, iSectorIndex,
@@ -474,8 +446,6 @@ DiskImage.prototype = {
 			oSectorInfo = this.seekSector(iSectorIndex);
 			this.readDirectoryExtents(aExtents, oSectorInfo.iDataPos, oSectorInfo.iDataPos + oSectorInfo.iSectorSize);
 		}
-
-		//this.aExtents = aExtents;
 
 		oDir = this.prepareDirectoryList(aExtents, oFormat.iFill, null);
 		return oDir;
@@ -576,19 +546,24 @@ DiskImage.prototype = {
 			iSum = sData.charCodeAt(67) + sData.charCodeAt(68) * 256;
 			if (iComputed === iSum) {
 				oHeader = {
+					iUser: sData.charCodeAt(0),
+					iName: sData.substr(1, 8),
+					iExt: sData.substr(9, 2),
 					iType: sData.charCodeAt(18),
 					iStart: sData.charCodeAt(21) + sData.charCodeAt(22) * 256,
 					iPseudoLen: sData.charCodeAt(24) + sData.charCodeAt(25) * 256,
 					iEntry: sData.charCodeAt(26) + sData.charCodeAt(27) * 256,
 					iLength: sData.charCodeAt(64) + sData.charCodeAt(65) * 256 + sData.charCodeAt(66) * 65536
 				};
-				if (oHeader.iType === 0) {
+				if (oHeader.iType === 0) { // tokenized BASIC (T=not official)
 					oHeader.sType = "T";
-				} else if (oHeader.iType === 1) {
+				} else if (oHeader.iType === 1) { // protected BASIC
 					oHeader.sType = "P";
-				} else if (oHeader.iType === 2) {
+				} else if (oHeader.iType === 2) { // Binary
 					oHeader.sType = "B";
-				} else {
+				} else if (oHeader.iType === 8) { // GENA3 Assember (G=not official)
+					oHeader.sType = "G";
+				} else { // assume ASCII
 					oHeader.sType = "A";
 				}
 			}

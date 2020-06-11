@@ -25,6 +25,7 @@ cpcBasic = {
 		showKbdLayout: false,
 		showOutput: false,
 		showResult: false,
+		showText: false,
 		showVariable: false,
 		showConsole: false,
 		sound: false,

@@ -79,6 +79,15 @@ Model.prototype = {
 		}
 		this.examples[selectedDatabase][sKey] = oExample;
 		return this;
+	},
+	removeExample: function (sKey) {
+		var selectedDatabase = this.getProperty("database");
+
+		if (!this.examples[selectedDatabase][sKey]) {
+			Utils.console.warn("removeExample: example does not exist: " + sKey);
+		}
+		delete this.examples[selectedDatabase][sKey];
+		return this;
 	}
 };
 

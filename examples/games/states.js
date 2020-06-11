@@ -5,6 +5,8 @@
 cpcBasic.addItem("", function () { /*
 1 rem states: States of the Earth
 2 rem
+3 rem Modifications: put in one file, RSX removed, input frames in BASIC; currently no title screen
+4 rem
 10  ' ***************************
 11  ' **   Staaten  der Erde   **
 12  ' **                       **
@@ -13,8 +15,8 @@ cpcBasic.addItem("", function () { /*
 15  ' ***************************
 16 '
 17 CLEAR:DEFINT i-z:DEFSTR a-h: 'gosub 1800
-18 SYMBOL AFTER 255:SYMBOL 255,0,0,0,0,0,0,0,126
-19 '
+18 'SYMBOL AFTER 255
+19 SYMBOL 255,0,0,0,0,0,0,0,126
 20 MODE 1:BORDER 2:PAPER 0:PEN 1
 21 INK 0,2:INK 1,24:INK 2,14:INK 3,9
 22 LOCATE 13,2:PRINT"STAATEN ";:PEN 1:PRINT"DER";:PEN 3:PRINT" ERDE"
@@ -28,13 +30,13 @@ cpcBasic.addItem("", function () { /*
 30 REM ***************
 31 REM ** TITELBILD **
 32 REM ***************
-33 'MEMORY &75FF
+33 MEMORY &75FF
 34 'CLEAR:DEFINT i-z:DEFSTR a-h
 35 'LOAD"!STAATEN.BIN",&A000:CALL &A000
-36 'LOAD"!STAATEN.SCN",&8000
+36 load"!STATESFX",&8000:'LOAD"!STAATEN.SCN",&8000
 37 LOCATE 7,25:PEN 3:PRINT"(Bitte eine Taste druecken)":PEN 1:CALL &BB18
 38 'FOR i=&a000 TO &a030:READ c:POKE i,VAL("&"+c):NEXT
-39 cls:'|SHOW,&C000:'Karte zeigen
+39 cls:gosub 4610:'|SHOW,&C000:'Karte zeigen
 40 FOR i=0 TO 6 STEP 2:PLOT 0+i,0+i,3-i/2:DRAW 0+i,399-i:DRAW 639-i,399-i
 41 DRAW 639-i,0+i:DRAW 0+i,0+i:NEXT i
 42 PRINT CHR$(23)+CHR$(1);:TAG:PLOT 182,355,2
@@ -140,7 +142,7 @@ cpcBasic.addItem("", function () { /*
 1030 IF ASC(d)>90 OR ASC(d)<65 THEN 980 ELSE PRINT#2,d;
 1040 SOUND 2,30+r,15,5:e=e+d:NEXT t
 1050 ti=REMAIN(0):CLS#3:CLS#4
-1060 IF e<>a(r,q1) THEN GOSUB 1330 ELSE GOSUB 1150:GOSUB 1600:'|PUT,1,48,&7600:|PUT,7,48,&7880:|PUT,67,48,&7B00:|PUT,73,48,&7D80
+1060 IF e<>a(r,q1) THEN GOSUB 1330 ELSE GOSUB 1150:GOSUB 1605:'|PUT,1,48,&7600:|PUT,7,48,&7880:|PUT,67,48,&7B00:|PUT,73,48,&7D80
 1070 NEXT p
 1080 NEXT
 1090 PEN 3:LOCATE 10,25:PRINT"BITTE TASTE DRUECKEN":CALL &BB18
@@ -153,7 +155,7 @@ cpcBasic.addItem("", function () { /*
 1160 PRINT#3,"K O R R E C K T";:pe1=3:pe2=1:ri(r)=1:o=o+1:GOSUB 1520
 1170 '|GET,1,48,&7600:|GET,7,48,&7880:|GET,67,48,&7B00:|GET,73,48,&7D80
 1180 while inkey$<>"":wend:'FOR i=1 TO 500:d=INKEY$:NEXT
-1190 '|SHOW,&C000
+1190 gosub 4610:'|SHOW,&C000
 1200 LOCATE 1,25:PRINT a(r,q):LOCATE 20,25:PRINT a(r,q1);
 1210 PLOT x(r)-10,y(r)-10,1:DRAWR 20,20:PLOT x(r)-10,y(r)+10:DRAWR 20,-20
 1220 INK 1,16,24
@@ -194,16 +196,25 @@ cpcBasic.addItem("", function () { /*
 1570 RETURN
 1580 '
 1590 REM *** BILDMASKE ***
-1600 CLS:LOCATE 10,2:PEN 2:PRINT"Spieler:":LOCATE 10,3:PRINT"Punkte :"
+1600 CLS
+1605 LOCATE 10,2:PEN 2:PRINT"Spieler:":LOCATE 10,3:PRINT"Punkte :"
 1610 LOCATE 2,5:PRINT"1":IF pl>1 THEN LOCATE 5,5:PRINT"2":IF pl>2 THEN LOCATE 35,5:PRINT"3":IF pl>3 THEN LOCATE 38,5:PRINT"4"
 1620 PEN 1
 1630 LOCATE 16,5:PRINT b(q):LOCATE 16,10:PRINT b(q1)
 1640 '|RAHMEN,9,6,21,1:|RAHMEN,9,11,21,1
+1641 xw=21:yw=1:x1=9:y1=6:GOSUB 1692:y1=11:GOSUB 1692
 1650 '|RAHMEN,9,14,21,1:|RAHMEN,9,19,21,3
+1651 y1=14:GOSUB 1692:yw=3:y1=19:GOSUB 1692
 1660 LOCATE 2,24:PEN 3:PRINT CHR$(143);"= ok"
 1670 LOCATE 2,2:PEN 1:PRINT CHR$(143);"= ko"
 1680 RETURN
 1690 '
+1691 REM Rahmen
+1692 PEN 1:LOCATE x1,y1:PRINT CHR$(150)STRING$(xw,154)CHR$(156)
+1693 FOR i=1 TO yw:LOCATE x1,y1+i:PRINT CHR$(149)SPC(xw)CHR$(149):NEXT
+1694 LOCATE x1,y1+yw+1:PRINT CHR$(147)STRING$(xw,154)CHR$(153)
+1695 RETURN
+1696 '
 1700 REM  ****************
 1710 REM  ***  E N D E ***
 1720 REM  ****************
@@ -245,7 +256,7 @@ cpcBasic.addItem("", function () { /*
 2070 '
 2080 REM *** Karte zeigen ***
 2090 INK 0,2:INK 1,2:INK 2,2:INK 3,2
-2100 CALL &BD19:cls:'|SHOW,&C000
+2100 CALL &BD19:cls:gosub 4610:'|SHOW,&C000
 2110 INK 0,2:INK 1,24:INK 2,14:INK 3,9
 2120 BORDER 2:RETURN
 2130 REM *** Menue ausgeben ***
@@ -493,4 +504,23 @@ cpcBasic.addItem("", function () { /*
 4550 DATA NEUSEELAND,WELLINGTON,614,38
 4560 '
 4570 '
+4600 REM Decode
+4610 rhl=&8000:rbc=&1724:rde=&c000
+4611 ra=peek(rhl)
+4612 rhl=rhl+1:rbc=rbc-1
+4613 ra2=peek(rhl):if ra=ra2 then 4620
+4614 poke rde,ra2
+4615 rhl=rhl+1:rde=rde+1:rbc=rbc-1
+4616 if rbc>0 then 4613
+4617 return
+4618 '
+4620 rhl=rhl+1:rbc=rbc-3
+4621 ra3=peek(rhl):rhl=rhl+1
+4622 ra4=peek(rhl):rhl=rhl+1
+4630 poke rde,ra4
+4631 rde=rde+1
+4632 ra3=ra3-1:if ra3>0 then 4630
+4633 if rbc>0 then 4613
+4640 return
+4680 rem
 */ });

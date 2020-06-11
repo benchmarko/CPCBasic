@@ -54,13 +54,6 @@ CpcVmRsx.prototype = {
 
 	fnGetVariableByAddress: function (iIndex) {
 		return this.oVm.oVariables.getVariableByIndex(iIndex) || "";
-		/*
-		var v = this.oVm.v,
-			aV = Object.keys(v),
-			sKey = aV[iIndex];
-
-		return sKey ? v[sKey] : "";
-		*/
 	},
 
 	dir: function (sFileMask) { // optional; string or addressOf number

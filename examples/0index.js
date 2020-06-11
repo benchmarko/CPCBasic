@@ -82,6 +82,11 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "States of the Earth"
 	},
 	{
+		"key": "games/statesfx",
+		"title": "States of the Earth",
+		"meta": "B;16384;5924;0;base64"
+	},
+	{
     	"key": "math/anageo",
 		"title": "Analytical Geometry"
 	},
@@ -119,8 +124,8 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
     	"key": "math/ninedig2",
-		"title": "Nine Digits 2 (Tokenized)",
-		"meta": "T,368,1126,0"
+		"title": "Nine Digits 2 (tokenized BASIC)",
+		"meta": "T;368;1126;0;base64"
 	},
 	{
     	"key": "math/regress",
@@ -153,6 +158,10 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
 		"key": "test/keyboard",
 		"title": "Keyboard Test"
+	},
+	{
+		"key": "test/mousepa",
+		"title": "Mouse Painting"
 	},
 	{
 		"key": "test/ramtest",

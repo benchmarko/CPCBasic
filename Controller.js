@@ -42,6 +42,7 @@ Controller.prototype = {
 		this.fnWaitInputHandler = this.fnWaitInput.bind(this);
 		this.fnOnEscapeHandler = this.fnOnEscape.bind(this);
 		this.fnDirectInputHandler = this.fnDirectInput.bind(this);
+		this.fnPutKeyInBufferHandler = this.fnPutKeyInBuffer.bind(this);
 
 		this.fnScript = null;
 
@@ -60,6 +61,7 @@ Controller.prototype = {
 		oView.setHidden("inp2Area", !oModel.getProperty("showInp2"));
 		oView.setHidden("outputArea", !oModel.getProperty("showOutput"));
 		oView.setHidden("resultArea", !oModel.getProperty("showResult"));
+		oView.setHidden("textArea", !oModel.getProperty("showText"));
 		oView.setHidden("variableArea", !oModel.getProperty("showVariable"));
 		oView.setHidden("kbdArea", !oModel.getProperty("showKbd"), "flex");
 		oView.setHidden("kbdLayoutArea", !oModel.getProperty("showKbdLayout"));
@@ -67,7 +69,8 @@ Controller.prototype = {
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
 			aCharset: cpcBasicCharset,
-			cpcDivId: "cpcArea"
+			cpcDivId: "cpcArea",
+			onClickKey: this.fnPutKeyInBufferHandler
 		});
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
 
@@ -108,7 +111,7 @@ Controller.prototype = {
 			rsx: this.oVm.rsx // just to check the names
 		});
 
-		this.BasicTokenizer = new BasicTokenizer(); // for tokenized BASIC
+		this.oBasicTokenizer = new BasicTokenizer(); // for tokenized BASIC
 
 		this.initDatabases();
 		if (oModel.getProperty("sound")) { // activate sound needs user action
@@ -133,7 +136,7 @@ Controller.prototype = {
 			sName = aParts[aParts.length - 1];
 			oDatabases[sName] = {
 				text: sName,
-				title: sName,
+				title: sDatabaseDir,
 				src: sDatabaseDir
 			};
 		}
@@ -171,6 +174,7 @@ Controller.prototype = {
 			sKey = this.model.getProperty("example");
 		}
 		oExample = this.model.getExample(sKey);
+		/*
 		if (!oExample) {
 			oExample = this.fnCreateNewExample({
 				key: sKey
@@ -179,6 +183,7 @@ Controller.prototype = {
 			this.model.setExample(oExample);
 			Utils.console.log("addItem: Creating new example:", sKey);
 		}
+		*/
 		oExample.key = sKey; // maybe changed
 		oExample.script = sInput;
 		oExample.loaded = true;
@@ -275,6 +280,56 @@ Controller.prototype = {
 		}
 		aItems = aItems.sort(fnSortByStringProperties);
 		this.view.setSelectOptions(sSelect, aItems);
+	},
+
+	updateStorageDatabase: function (sAction, sKey) {
+		var sDatabase = this.model.getProperty("database"),
+			oStorage = Utils.localStorage,
+			aDir, i, oExample, sData; //
+
+		if (!sKey) { //no sKey => get all
+			aDir = this.fnGetDirectoryEntries();
+		} else {
+			aDir = [sKey];
+		}
+
+		for (i = 0; i < aDir.length; i += 1) {
+			sKey = aDir[i];
+			if (sAction === "remove") {
+				this.model.removeExample(sKey);
+			} else if (sAction === "set") {
+				oExample = this.model.getExample(sKey);
+				if (!oExample) {
+					sData = oStorage.getItem(sKey);
+					oExample = {
+						key: sKey,
+						title: "", //sKey
+						meta: sData.charAt(0) // currently we take only the type
+						//bLocalStorage: true
+					};
+					this.model.setExample(oExample);
+				}
+			} else {
+				Utils.console.error("updateStorageDatabase: unknown action", sAction);
+			}
+		}
+
+		/*
+		aDir = this.fnGetDirectoryEntries();
+		for (i = 0; i < aDir.length; i += 1) {
+			sKey = aDir[i];
+			oExample = {
+				key: sKey,
+				title: "" //sKey
+				//bLocalStorage: true
+			};
+			this.model.setExample(oExample);
+		}
+		*/
+
+		if (sDatabase === "storage") {
+			this.setExampleSelectOptions();
+		}
 	},
 
 	invalidateScript: function () {
@@ -579,6 +634,7 @@ Controller.prototype = {
 		var iStream = oParas.iStream,
 			oStorage = Utils.localStorage,
 			sFileMask = oParas.sFileMask,
+			//sDatabase = this.model.getProperty("database"),
 			aDir, i, sName;
 
 		sFileMask =	this.fnLocalStorageName(sFileMask);
@@ -592,6 +648,12 @@ Controller.prototype = {
 			sName = aDir[i];
 			if (oStorage.getItem(sName) !== null) {
 				oStorage.removeItem(sName);
+				this.updateStorageDatabase("remove", sName);
+				/*
+				if (sDatabase === "storage") {
+					this.model.removeExample(sName); // remove also from model
+				}
+				*/
 				if (Utils.debug > 0) {
 					Utils.console.debug("fnEraseFile: sName=" + sName + ": removed from localStorage");
 				}
@@ -600,6 +662,7 @@ Controller.prototype = {
 				Utils.console.warn("fnEraseFile: file not found in localStorage:", sName);
 			}
 		}
+		//this.updateStorageDatabase();
 		this.oVm.vmStop("", 0, true);
 	},
 
@@ -615,29 +678,76 @@ Controller.prototype = {
 
 		sItem = oStorage.getItem(sOld);
 		if (sItem !== null) {
-			oStorage.setItem(sNew, sItem);
-			oStorage.removeItem(sOld);
+			if (!oStorage.getItem(sNew)) {
+				oStorage.setItem(sNew, sItem);
+				this.updateStorageDatabase("set", sNew);
+				oStorage.removeItem(sOld);
+				this.updateStorageDatabase("remove", sOld);
+			} else {
+				this.oVm.print(iStream, sOld + " already exists\r\n");
+			}
 		} else {
 			this.oVm.print(iStream, sOld + " not found\r\n");
 		}
 		this.oVm.vmStop("", 0, true);
 	},
 
+	// Hisoft Devpac GENA3 Z80 Assember (http://www.cpcwiki.eu/index.php/Hisoft_Devpac)
+	asmGena3Convert: function (sData) {
+		var iPos = 0,
+			sOut = "",
+			iLength = sData.length,
+			fnUInt16 = function (iPos2) {
+				return sData.charCodeAt(iPos2) + sData.charCodeAt(iPos2 + 1) * 256;
+			},
+			iLineNum, iIndex1, iIndex2;
+
+		iPos += 4; //TTT what is the meaning of these bytes?
+
+		while (iPos < iLength) {
+			iLineNum = fnUInt16(iPos);
+			iPos += 2;
+			iIndex1 = sData.indexOf("\r", iPos); // EOL marker 0x0d
+			if (iIndex1 < 0) {
+				iIndex1 = iLength;
+			}
+			iIndex2 = sData.indexOf("\x1c", iPos); // EOL marker 0x1c
+			if (iIndex2 < 0) {
+				iIndex2 = iLength;
+			}
+			iIndex1 = Math.min(iIndex1, iIndex2);
+			sOut += iLineNum + " " + sData.substring(iPos, iIndex1) + "\n";
+			iPos = iIndex1 + 1;
+		}
+
+		return sOut;
+	},
+
 	loadFileContinue: function (sInput, sMeta) {
 		var oInFile = this.oVm.vmGetInFileObject(),
 			sCommand = oInFile.sCommand,
-			iStartLine = 0;
+			iStartLine = 0,
+			sType;
 
 		this.oVm.vmStop("", 0, true);
 
 		sMeta = sMeta || "";
-		if (sMeta.charAt(0) === "T") { // tokenized basic?
-			sInput = this.BasicTokenizer.decode(Utils.atob(sInput));
-		} else if (sMeta.charAt(0) === "B") { // binary?
-			sInput = Utils.atob(sInput);
-		} else if (sMeta.charAt(0) === "A") { // ASCII?
+
+		if (sMeta.indexOf("base64") >= 0) {
+			sInput = Utils.atob(sInput); // decode base64
+		}
+
+		sType = sMeta.charAt(0);
+		if (sType === "T") { // tokenized basic?
+			//sInput = this.oBasicTokenizer.decode(Utils.atob(sInput));
+			sInput = this.oBasicTokenizer.decode(sInput);
+		} else if (sType === "B") { // binary?
+			//sInput = Utils.atob(sInput);
+		} else if (sType === "A") { // ASCII?
 			// remove EOF character(s) (0x1a) from the end of file
 			sInput = sInput.replace(/\x1a+$/, ""); // eslint-disable-line no-control-regex
+		} else if (sType === "G") { // Hisoft Devpac GENA3 Z80 Assember
+			sInput = this.asmGena3Convert(sInput);
 		}
 
 		if (oInFile.fnFileCallback) {
@@ -660,7 +770,7 @@ Controller.prototype = {
 				this.fnParseRun();
 				break;
 			case "load":
-				if (!Utils.stringStartsWith(sMeta || "", "B")) { // not for binary files
+				if (sType !== "B") { // not for binary files
 					this.view.setAreaValue("inputText", sInput);
 					this.view.setAreaValue("resultText", "");
 					this.invalidateScript();
@@ -702,11 +812,10 @@ Controller.prototype = {
 			fnExampleLoaded = function (sFullUrl, bSuppressLog) {
 				var sInput;
 
-				if (!bSuppressLog) {
-					Utils.console.log("Example", sUrl, "loaded");
-				}
-
 				oExample = that.model.getExample(sExample);
+				if (!bSuppressLog) {
+					Utils.console.log("Example", sUrl, oExample.meta || "", "loaded");
+				}
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				that.loadFileContinue(sInput, oExample.meta);
@@ -753,53 +862,15 @@ Controller.prototype = {
 			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
 		} else { // keep original sExample in this error case
 			sUrl = sExample;
-			Utils.console.warn("loadExample: Unknown file:", sExample);
-			fnExampleError();
-		}
-	},
-
-	/*
-	computeChecksum: function (sData) {
-		var iSum = 0,
-			i;
-
-		for (i = 0; i < sData.length; i += 1) {
-			iSum += sData.charCodeAt(i);
-		}
-		return iSum;
-	},
-
-	// http://www.benchmarko.de/cpcemu/cpcdoc/chapter/cpcdoc7_e.html#I_AMSDOS_HD
-	parseAmsdosHeader: function (sData) {
-		var oHeader = null,
-			iComputed, iSum;
-
-		// http://www.cpcwiki.eu/index.php/AMSDOS_Header
-		if (sData.length >= 0x80) {
-			iComputed = this.computeChecksum(sData.substr(0, 66));
-			iSum = sData.charCodeAt(67) + sData.charCodeAt(68) * 256;
-			if (iComputed === iSum) {
-				oHeader = {
-					iType: sData.charCodeAt(18),
-					iStart: sData.charCodeAt(21) + sData.charCodeAt(22) * 256,
-					iPseudoLen: sData.charCodeAt(24) + sData.charCodeAt(25) * 256,
-					iEntry: sData.charCodeAt(26) + sData.charCodeAt(27) * 256,
-					iLength: sData.charCodeAt(64) + sData.charCodeAt(65) * 256 + sData.charCodeAt(66) * 65536
-				};
-				if (oHeader.iType === 0) {
-					oHeader.sType = "T";
-				} else if (oHeader.iType === 1) {
-					oHeader.sType = "P";
-				} else if (oHeader.iType === 2) {
-					oHeader.sType = "B";
-				} else {
-					oHeader.sType = "A"; //TTT
-				}
+			if (sExample !== "") { // only if not empty
+				Utils.console.warn("loadExample: Unknown file:", sExample);
+				fnExampleError();
+			} else {
+				this.model.setProperty("example", sExample);
+				this.loadFileContinue("", "");
 			}
 		}
-		return oHeader;
 	},
-	*/
 
 	fnLocalStorageName: function (sName, sDefaultExtension) {
 		// modify name so we do not clash with localstorage methods/properites
@@ -809,10 +880,29 @@ Controller.prototype = {
 		return sName;
 	},
 
+	tryLoadingFromLocalStorage: function (sName) {
+		var oStorage = Utils.localStorage,
+			aExtensions = [
+				null,
+				"bas",
+				"bin"
+			],
+			i, sStorageName, sInput;
+
+		for (i = 0; i < aExtensions.length; i += 1)	{
+			sStorageName = this.fnLocalStorageName(sName, aExtensions[i]);
+			sInput = oStorage.getItem(sStorageName);
+			if (sInput !== null) {
+				break; // found
+			}
+		}
+		return sInput; // null=not found
+	},
+
+	// run loop: fileLoad
 	fnFileLoad: function () {
 		var oInFile = this.oVm.vmGetInFileObject(),
-			oStorage = Utils.localStorage,
-			sName, sStorageName, sInput, iIndex, sMeta;
+			sName, sInput, iIndex, sMeta;
 
 		if (oInFile.bOpen) {
 			if (oInFile.sCommand === "chainMerge" && oInFile.iFirst && oInFile.iLast) { // special handling to delete line numbers first
@@ -825,47 +915,78 @@ Controller.prototype = {
 			}
 
 			sName = oInFile.sName;
+			if (Utils.debug > 1) {
+				Utils.console.debug("fnFileLoad:", oInFile.sCommand, sName, "details:", oInFile);
+			}
+
+			/*
 			sStorageName = this.fnLocalStorageName(sName);
-			if (oStorage.getItem(sStorageName) === null && sName !== sStorageName) {
+			sInput = oStorage.getItem(sStorageName);
+			if (sInput === null && sName !== sStorageName) { // not found and name modified?
 				sStorageName = this.fnLocalStorageName(sName, "bas");
-				if (oStorage.getItem(sStorageName) === null) {
-					sStorageName = this.fnLocalStorageName(sName, "bin");
-				}
-			}
-
-			if (Utils.debug > 0) {
-				Utils.console.debug("fnFileLoad: sName=" + sName + " oStorage=" + oStorage);
-			}
-
-			if (oStorage.getItem(sStorageName) !== null) {
-				if (Utils.debug > 0) {
-					Utils.console.debug("fnFileLoad: sName=" + sName + ": get from localStorage");
-				}
 				sInput = oStorage.getItem(sStorageName);
-				iIndex = sInput.indexOf(";"); // metadata separator
+				if (sInput === null) {
+					sStorageName = this.fnLocalStorageName(sName, "bin");
+					sInput = oStorage.getItem(sStorageName);
+				}
+			}
+			*/
+
+			sInput = this.tryLoadingFromLocalStorage(sName);
+			if (sInput !== null) {
+				iIndex = sInput.indexOf(","); // metadata separator
 				if (iIndex >= 0) {
 					sMeta = sInput.substr(0, iIndex);
 					sInput = sInput.substr(iIndex + 1);
+				}
+				if (Utils.debug > 0) {
+					Utils.console.debug("fnFileLoad:", oInFile.sCommand, sName, sMeta, "from localStorage");
 				}
 				this.loadFileContinue(sInput, sMeta || "");
 			} else { // load from example
 				this.loadExample(sName);
 			}
 		} else {
-			Utils.console.error("fnFileLoad: File not open!");
+			Utils.console.error("fnFileLoad:", sName, "File not open!");
 		}
 		this.iNextLoopTimeOut = this.oVm.vmGetTimeUntilFrame(); // wait until next frame
 	},
 
+	/*
+	splitMeta: function (sMeta) {
+		var aMeta = sMeta.split(";");
+
+		return aMeta;
+	},
+
+	joinMeta: function (aMeta) {
+		var sMeta = aMeta.join(";");
+
+		return sMeta;
+	},
+	*/
+
+	joinMeta: function (oMeta) {
+		var sMeta = [
+			oMeta.sType,
+			oMeta.iStart,
+			oMeta.iLength,
+			oMeta.iEntry
+		].join(";");
+
+		return sMeta;
+	},
+
+	// run loop: fileSave
 	fnFileSave: function () {
 		var oOutFile = this.oVm.vmGetOutFileObject(),
 			oStorage = Utils.localStorage,
 			sDefaultExtension = "",
-			sName, sMeta, sType, sStorageName, sFileData;
+			sName, sType, sStorageName, sFileData, sMeta;
 
 		if (oOutFile.bOpen) {
-			sMeta = oOutFile.sType;
-			sType = sMeta.charAt(0);
+			//aMeta = this.splitMeta(oOutFile.sMeta);
+			sType = oOutFile.sType;
 			sName = oOutFile.sName;
 
 			if (sType === "P" || sType === "T") {
@@ -875,16 +996,27 @@ Controller.prototype = {
 			}
 			sStorageName = this.fnLocalStorageName(sName, sDefaultExtension);
 
-			sFileData = oOutFile.aFileData.join("");
+			if (oOutFile.aFileData) {
+				sFileData = oOutFile.aFileData.join("");
+			} else { // no file data (assuming sType A, P or T) => get text
+				sFileData = this.view.getAreaValue("inputText");
+				oOutFile.iLength = sFileData.length; // set length
+				//aMeta[0] = "A"; // currently we support type "A" only
+				oOutFile.sType = "A"; // override sType: currently we support type "A" only
+			}
+
 			if (Utils.debug > 0) {
 				Utils.console.debug("fnFileSave: sName=" + sName + ": put into localStorage");
 			}
+
+			/*
 			if (sFileData === "") {
 				if (sType === "A" || sType === "P" || sType === "T") { // TODO: only "A" supported, not "P" or "T"
 					sFileData = this.view.getAreaValue("inputText");
-					sMeta = "A"; // currently we support type "A" only
+					aMeta[0] = "A"; // currently we support type "A" only
 				}
 			}
+			*/
 
 			if (oOutFile.fnFileCallback) {
 				try {
@@ -894,11 +1026,20 @@ Controller.prototype = {
 				}
 			}
 
-			if (sMeta.indexOf(",") < 0) { // no start and length?
-				sMeta += ",0," + sFileData.length;
+			/*
+			if (sMeta.indexOf(";") < 0) { // no start and length?
+				sMeta += ";0;" + sFileData.length;
 			}
+			*/
+			/*
+			if (aMeta.length < 2) { // no start and length?
+				aMeta.push(0, sFileData.length); // add start and length
+			}
+			*/
 
-			oStorage.setItem(sStorageName, sMeta + ";" + sFileData);
+			sMeta = this.joinMeta(oOutFile);
+			oStorage.setItem(sStorageName, sMeta + "," + sFileData);
+			this.updateStorageDatabase("set", sStorageName);
 			this.oVm.vmResetFileHandling(oOutFile); //TTT make sure it is closed
 		} else {
 			Utils.console.error("fnFileSave: file not open!");
@@ -1473,22 +1614,34 @@ Controller.prototype = {
 		return image;
 	},
 
+	fnPutKeyInBuffer: function (sKey) {
+		var oKeyDownHandler = this.oKeyboard.getKeyDownHandler();
+
+		this.oKeyboard.putKeyInBuffer(sKey);
+
+		if (oKeyDownHandler) {
+			oKeyDownHandler();
+		}
+	},
+
 	startEnter: function () {
 		var sInput = this.view.getAreaValue("inp2Text"),
-			i, oKeyDownHandler;
+			i;
 
 		sInput = sInput.replace("\n", "\r"); // LF => CR
 		if (!Utils.stringEndsWith(sInput, "\r")) {
 			sInput += "\r";
 		}
 		for (i = 0; i < sInput.length; i += 1) {
-			this.oKeyboard.putKeyInBuffer(sInput.charAt(i));
+			this.fnPutKeyInBuffer(sInput.charAt(i));
 		}
 
+		/*
 		oKeyDownHandler = this.oKeyboard.getKeyDownHandler();
 		if (oKeyDownHandler) {
 			oKeyDownHandler();
 		}
+		*/
 		this.view.setAreaValue("inp2Text", "");
 	},
 
@@ -1558,7 +1711,8 @@ Controller.prototype = {
 			iFile = 0,
 			oStorage = Utils.localStorage,
 			that = this,
-			reRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x20-\x7e]*$/), // starting with (line) number, or 7 bit ASCII characters without control codes
+			reRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x1a\x20-\x7e]*$/), // eslint-disable-line no-control-regex
+			// starting with (line) number, or 7 bit ASCII characters without control codes except \x1a=EOF
 			aImported = [],
 			f, oReader;
 
@@ -1572,6 +1726,7 @@ Controller.prototype = {
 			}
 			oVm.print(iStream, "\r\n", aImported.length + " file" + (aImported.length !== 1 ? "s" : "") + " imported.\r\n");
 			that.updateResultText();
+			//that.updateStorageDatabase();
 		}
 
 		function fnReadNextFile() {
@@ -1611,40 +1766,59 @@ Controller.prototype = {
 		}
 
 		function fnLoad2(sData, sName, sType) {
-			var sStorageName, sMeta, iIndex, sDecodedData, iLength, oHeader,
-				oDsk, oDir, aDiskFiles, i, sFileName;
+			var sStorageName, sMeta, iIndex, oHeader,
+				oDsk, oDir, aDiskFiles, i, sFileName, sInfo1;
 
 			sStorageName = that.oVm.vmAdaptFilename(sName, "FILE");
 			sStorageName = that.fnLocalStorageName(sStorageName);
 
 			if (sType === "text/plain") {
-				sMeta = "A,0," + sData.length;
+				//sMeta = "A,0," + sData.length;
+				oHeader = {
+					sType: "A",
+					iStart: 0,
+					iLength: sData.length
+				};
 			} else {
 				if (sType === "application/x-zip-compressed" || sType === "cpcBasic/binary") { // are we a file inside zip?
-					sDecodedData = sData; // already decoded
-					sData = Utils.btoa(sData); // encode data
-				} else { // e.g. data:application/octet-stream;base64,...
+					//sDecodedData = sData; // already decoded
+					//sData = Utils.btoa(sData); // encode data
+				} else { // e.g. "data:application/octet-stream;base64,..."
 					iIndex = sData.indexOf(",");
-					sData = iIndex >= 0 ? sData.substr(iIndex + 1) : ""; // remove meta prefix
-					sDecodedData = Utils.atob(sData);
+					if (iIndex >= 0) {
+						sInfo1 = sData.substr(0, iIndex);
+						sData = sData.substr(iIndex + 1); // remove meta prefix
+						if (sInfo1.indexOf("base64") >= 0) {
+							sData = Utils.atob(sData); // decode base64
+						}
+					}
+					//sDecodedData = Utils.atob(sData);
 				}
-				iLength = sDecodedData.length; // or use: f.size
+				//iLength = sDecodedData.length; // or use: f.size
 
-				oHeader = DiskImage.prototype.parseAmsdosHeader(sDecodedData);
+				oHeader = DiskImage.prototype.parseAmsdosHeader(sData);
 				if (oHeader) {
-					sMeta = oHeader.sType + "," + oHeader.iStart + "," + oHeader.iLength + "," + oHeader.iEntry;
-					sData = sDecodedData.substr(0x80); // remove header
+					//sMeta = that.joinMeta(oHeader);
+					//sData = sDecodedData.substr(0x80); // remove header
+					sData = sData.substr(0x80); // remove header
+					/*
 					if (oHeader.sType !== "A") {
 						sData = Utils.btoa(sData); // encode data without header
 					}
-				} else if (reRegExpIsText.test(sDecodedData)) {
-					// Node: To get all characters why this does not match: sDecodedData.replace(/[\t\r\n\x20-\x7e]/g,"")
-					sMeta = "A,0," + iLength;
-					sData = sDecodedData;
-				} else if (DiskImage.prototype.testDiskIdent(sDecodedData.substr(0, 8)) !== null) { // disk image file?
+					*/
+				} else if (reRegExpIsText.test(sData)) {
+					// Node: To get all characters why this does not match: sDecodedData.replace(/[\t\r\n\x1a\x20-\x7e]/g,"")
+					//sMeta = "A,0," + iLength;
+					//sData = sDecodedData;
+					oHeader = {
+						sType: "A",
+						iStart: 0,
+						iLength: sData.length
+					};
+				} else if (DiskImage.prototype.testDiskIdent(sData.substr(0, 8)) !== null) { // disk image file?
 					try {
 						oDsk = new DiskImage({
-							sData: sDecodedData,
+							sData: sData,
 							sDiskName: sName
 						});
 						oDir = oDsk.readDirectory();
@@ -1658,17 +1832,26 @@ Controller.prototype = {
 						Utils.console.error(e);
 						that.outputError(e, true);
 					}
-					sMeta = null; // ignore dsk file //"B,0," + iLength; // byte length (not base64 encoded)
+					//sMeta = null; // ignore dsk file //"B,0," + iLength; // byte length (not base64 encoded)
+					oHeader = null; // ignore dsk file
 				} else { // binary
-					sMeta = "B,0," + iLength; // byte length (not base64 encoded)
+					//sMeta = "B,0," + iLength; // byte length (not base64 encoded)
+					oHeader = {
+						sType: "B",
+						iStart: 0,
+						iLength: sData.length
+					};
 				}
 			}
 
-			if (sMeta) {
+			if (oHeader) {
+				sMeta = that.joinMeta(oHeader);
 				try {
-					oStorage.setItem(sStorageName, sMeta + ";" + sData);
+					oStorage.setItem(sStorageName, sMeta + "," + sData);
+					that.updateStorageDatabase("set", sStorageName);
 					Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
 					aImported.push(sName); //aImported.push(sStorageName);
+					//that.updateStorageDatabase();
 				} catch (e) { // maybe quota exceeded
 					Utils.console.error(e);
 					if (e.name === "QuotaExceededError") {
