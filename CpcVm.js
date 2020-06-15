@@ -995,6 +995,11 @@ CpcVm.prototype = {
 		case 0xbd19: // MC Wait Flyback (ROM &07BA)
 			this.frame();
 			break;
+		case 0xbd5b: // KL RAM SELECT (CPC 6128 only)
+			// we can only set RAM bank depending on number of args
+			//this.out(0x7f00, arguments.length | 0xc0); // eslint-disable-line no-bitwise
+			this.vmSetRamSelect(arguments.length - 1);
+			break;
 		default:
 			if (Utils.debug > 0) {
 				Utils.console.debug("Ignored: CALL", iAddr);
@@ -1820,30 +1825,31 @@ CpcVm.prototype = {
 		});
 	},
 
-	vmLoadCallback: function (sInput, sMeta) {
+	vmLoadCallback: function (sInput, oMeta) {
 		var oInFile = this.oInFile,
-			aMeta, iStart, iLength, i, iByte;
+			bPutInMemory = false,
+			iStart, iLength, i, iByte;
 
-		if (sInput !== null) {
-			if (sMeta && sMeta.charAt(0) === "B") { // only for binary files
-				aMeta = sMeta.split(";");
-
-				iStart = oInFile.iStart !== undefined ? oInFile.iStart : Number(aMeta[1]);
-				iLength = Number(aMeta[2]); // we do not really need the length from metadata
+		if (sInput !== null && oMeta) {
+			if (oMeta.sType === "B" || oInFile.iStart !== undefined) { // only for binary files or when a load address is specified (feature)
+				iStart = oInFile.iStart !== undefined ? oInFile.iStart : Number(oMeta.iStart);
+				iLength = Number(oMeta.iLength); // we do not really need the length from metadata
 
 				if (isNaN(iLength)) {
 					iLength = sInput.length; // only valid after atob()
 				}
 				if (Utils.debug > 1) {
-					Utils.console.debug("vmLoadCallback:", oInFile.sName + ": putting binary data in memory from", iStart, "to", iStart + iLength);
+					Utils.console.debug("vmLoadCallback:", oInFile.sName + ": putting data in memory", iStart, "-", iStart + iLength);
 				}
 				for (i = 0; i < iLength; i += 1) {
 					iByte = sInput.charCodeAt(i);
 					this.poke((iStart + i) & 0xffff, iByte); // eslint-disable-line no-bitwise
 				}
+				bPutInMemory = true;
 			}
 		}
 		this.closein();
+		return bPutInMemory;
 	},
 
 	load: function (sName, iStart) { // optional iStart
@@ -2145,6 +2151,15 @@ CpcVm.prototype = {
 		}
 	},
 
+	vmSetRamSelect: function (iBank) {
+		// we support RAM select for banks 0,4... (so not for 1 to 3)
+		if (!iBank) {
+			this.iRamSelect = 0;
+		} else if (iBank >= 4) {
+			this.iRamSelect = iBank - 3; // bank 4 gets position 1
+		}
+	},
+
 	out: function (iPort, iByte) {
 		iPort = this.vmInRangeRound(iPort, -32768, 65535, "OUT");
 		if (iPort < 0) { // 2nd complement of 16 bit address?
@@ -2153,11 +2168,14 @@ CpcVm.prototype = {
 		iByte = this.vmInRangeRound(iByte, 0, 255, "OUT");
 		// 7Fxx = RAM select
 		if (iPort >> 8 === 0x7f) { // eslint-disable-line no-bitwise
+			this.vmSetRamSelect(iByte - 0xc0);
+			/*
 			if (iByte === 0xc0) {
 				this.iRamSelect = 0;
 			} else if (iByte >= 0xc4) {
 				this.iRamSelect = iByte - 0xc4 + 1;
 			}
+			*/
 		} else if (Utils.debug > 0) {
 			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte, ": unknown port");
 		}
@@ -2712,7 +2730,10 @@ CpcVm.prototype = {
 		if (this.iData < this.aData.length) {
 			item = this.aData[this.iData];
 			this.iData += 1;
-			if (sType !== "$") { // not string? => convert to number (also binary, hex)
+
+			if (item === null) { // empty arg?
+				item = sType === "$" ? "" : 0; // set arg depending on expected type
+			} else if (sType !== "$") { // not string expected? => convert to number (also binary, hex)
 				// Note : Using a number variable to read a string would cause a syntax error on a real CPC. We cannot detect it since we get always strings.
 				item = this.val(item);
 			}
@@ -2860,8 +2881,12 @@ CpcVm.prototype = {
 		return Number(Math.round(n + "e" + iDecimals) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
 	},
 
-	vmRunCallback: function (sInput) {
-		var oInFile = this.oInFile;
+	vmRunCallback: function (sInput, oMeta) {
+		var oInFile = this.oInFile,
+			bPutInMemory;
+
+		bPutInMemory = sInput !== null && oMeta && (oMeta.sType === "B" || oInFile.iStart !== undefined);
+		// TODO: we could put it in memory as we do it for LOAD
 
 		if (sInput !== null) {
 			this.vmStop("run", 90, false, {
@@ -2869,6 +2894,7 @@ CpcVm.prototype = {
 			});
 		}
 		this.closein();
+		return bPutInMemory;
 	},
 
 	run: function (numOrString) {
@@ -2907,31 +2933,23 @@ CpcVm.prototype = {
 			if (iStart < 0) { // 2nd complement of 16 bit address
 				iStart += 65536;
 			}
-			//oOutFile.iStart = iStart;
 
 			iLength = this.vmInRangeRound(iLength, -32768, 65535, "SAVE");
 			if (iLength < 0) {
 				iLength += 65536;
 			}
 
-			//oOutFile.iLength = iLength;
-
-			//sType += "," + iAddr + "," + iLen; // it gets sMeta
 			if (iEntry !== undefined) {
 				iEntry = this.vmInRangeRound(iEntry, -32768, 65535, "SAVE");
 				if (iEntry < 0) {
 					iEntry += 65536;
 				}
-				//aMeta.push(iEntry);
-				//sType += "," + iEntry;
 			}
-			//oOutFile.iEntry = iEntry;
 			aFileData = [];
 			for (i = 0; i < iLength; i += 1) {
 				iAddress = (iStart + i) & 0xffff; // eslint-disable-line no-bitwise
 				aFileData[i] = String.fromCharCode(this.peek(iAddress));
 			}
-			//aFileData = [Utils.btoa(aFileData.join(""))];
 		} else if ((sType === "A" || sType === "T" || sType === "P") && iStart === undefined) {
 			// ASCII or tokenized BASIC or protected BASIC, and no load address specified
 			iStart = 368; // BASIC start
@@ -2949,7 +2967,6 @@ CpcVm.prototype = {
 		oOutFile.iLength = iLength;
 		oOutFile.iEntry = iEntry;
 
-		//oOutFile.sMeta = aMeta.join(";");
 		oOutFile.aFileData = aFileData;
 		oOutFile.fnFileCallback = this.fnCloseoutHandler; // we use closeout handler to reset out file handling
 

@@ -60,7 +60,7 @@ BasicParser.mKeywords = {
 	cos: "f n", // COS(<numeric expression>)
 	creal: "f n", // CREAL(<numeric expression>)
 	cursor: "c #0? n0? n?", // CURSOR [<system switch>][,<user switch>] (either parameter can be omitted but not both)
-	data: "c *", // DATA <list of: constant>
+	data: "c n0*", // DATA <list of: constant> (rather 0*, insert dummy null, if necessary)
 	dec$: "f n s", // DEC$(<numeric expression>,<format template>)
 	def: "c s *", // DEF FN[<space>]<function name>[(<formal parameters>)]=<expression> / (not checked from this)
 	defint: "c r r*", // DEFINT <list of: letter range>
@@ -930,6 +930,61 @@ BasicParser.prototype = {
 			return fnCreateCmdCall(sName);
 		});
 
+		stmt("data", function () {
+			var oValue = oPreviousToken,
+				bParameterFound = false;
+
+			oValue.args = [];
+
+			// data is special: it can have empty parameters, also the last parameter, and also if no parameters
+			if (oToken.type !== "," && oToken.type !== "(eol)") {
+				oValue.args.push(expression(0)); // take first argument
+				bParameterFound = true;
+			}
+
+			while (oToken.type === ",") {
+				if (!bParameterFound) {
+					oValue.args.push(fnCreateDummyArg()); // insert null parameter
+				}
+				advance(",");
+				bParameterFound = false;
+				if (oToken.type === "(eol)") {
+					break;
+				} else if (oToken.type !== ",") {
+					oValue.args.push(expression(0));
+					bParameterFound = true;
+				}
+			}
+
+			if (!bParameterFound) {
+				oValue.args.push(fnCreateDummyArg()); // insert null parameter
+			}
+
+			/*
+			if (oToken.type === "," || oToken.type === "(eol)") { // starts with "," or eol?
+				oExpression = fnCreateDummyArg(); // insert null parameter
+				oValue.args.push(oExpression);
+			} else {
+				oValue.args.push(expression(0)); // take first argument
+			}
+
+			while (oToken.type === ",") {
+				advance(",");
+				if (oToken.type === "," || oToken.type === "(eol)") { // no parameter?
+					oExpression = fnCreateDummyArg(); // insert null parameter
+					oValue.args.push(oExpression);
+					if (oToken.type === "(eol)") {
+						break;
+					}
+				}
+				oExpression = expression(0);
+				oValue.args.push(oExpression);
+			}
+			*/
+
+			return oValue;
+		});
+
 		stmt("def", function () { // somehow special
 			var oValue = oPreviousToken;
 
@@ -972,7 +1027,6 @@ BasicParser.prototype = {
 			oValue.type = "rem"; // create a comment form else
 			oValue.args = [];
 
-			//Utils.console.warn("ELSE: Weird use of ELSE at pos", oToken.pos, ", line");
 			Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oToken.type, oToken.pos).message);
 
 			// TODO: data line as separate statement is taken
@@ -1108,7 +1162,6 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.right = statements("else");
 					if (oValue.right.length && oValue.right[0].type !== "rem") {
-						//Utils.console.warn("IF: Unreachable code after THEN at pos", oToken2.pos + ", line");
 						Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
 					}
 					oValue.right.unshift(oValue2);
@@ -1124,7 +1177,6 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.third = statements("else");
 					if (oValue.third.length) {
-						//Utils.console.warn("IF: Unreachable code after ELSE at pos", oToken2.pos + ", line");
 						Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
 					}
 					oValue.third.unshift(oValue2);

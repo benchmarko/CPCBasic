@@ -20,8 +20,6 @@ Model.prototype = {
 		this.initialConfig = initialConfig || {};
 		this.databases = {};
 		this.examples = {}; // loaded examples per database
-		//this.oVariables = {};
-		// this.initVariables();
 	},
 	getProperty: function (sProperty) {
 		return this.config[sProperty];

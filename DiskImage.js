@@ -76,15 +76,15 @@ DiskImage.prototype = {
 	readDiskInfo: function (iPos) {
 		var iDiskInfoSize = 0x100,
 			oDiskInfo = this.oDiskInfo,
-			sIndent, i, iTrackSizeCount, iTrackSize, aTrackSizes, aTrackPos, iTrackPos;
+			sIdent, i, iTrackSizeCount, iTrackSize, aTrackSizes, aTrackPos, iTrackPos;
 
-		sIndent = this.readUtf(iPos, 8); // check first 8 characters as characteristic
-		oDiskInfo.bExtended = this.testDiskIdent(sIndent);
+		sIdent = this.readUtf(iPos, 8); // check first 8 characters as characteristic
+		oDiskInfo.bExtended = this.testDiskIdent(sIdent);
 		if (oDiskInfo.bExtended === null) {
-			throw this.composeError(Error(), "Dsk: Indent not found");
+			throw this.composeError(Error(), "Dsk: Ident not found");
 		}
 
-		oDiskInfo.sIdent = sIndent + this.readUtf(iPos + 8, 34 - 8); // read remaining indent
+		oDiskInfo.sIdent = sIdent + this.readUtf(iPos + 8, 34 - 8); // read remaining ident
 		oDiskInfo.sCreator = this.readUtf(iPos + 34, 14);
 		oDiskInfo.iTracks = this.readUInt8(iPos + 48);
 		oDiskInfo.iHeads = this.readUInt8(iPos + 49);
@@ -116,7 +116,7 @@ DiskImage.prototype = {
 
 		oTrackInfo.sIdent = this.readUtf(iPos, 12);
 		if (oTrackInfo.sIdent !== "Track-Info\r\n") {
-			throw this.composeError(Error(), "Dsk: Track indent not found", oTrackInfo.sIdent, iPos);
+			throw this.composeError(Error(), "Dsk: Track ident not found", oTrackInfo.sIdent, iPos);
 		}
 		// 4 unused bytes
 		oTrackInfo.iTrack = this.readUInt8(iPos + 16);
@@ -190,9 +190,13 @@ DiskImage.prototype = {
 	},
 
 	readSector: function (iSector) {
-		var iSectorIndex = this.sectorNum2Index(iSector),
+		var oTrackInfo = this.oDiskInfo.oTrackInfo,
+			iSectorIndex = this.sectorNum2Index(iSector),
 			oSectorInfo, sOut;
 
+		if (iSectorIndex === undefined) {
+			throw this.composeError(Error(), "Dsk: Track " + oTrackInfo.iTrack + ": Sector not found", iSector, 0);
+		}
 		oSectorInfo = this.seekSector(iSectorIndex);
 		sOut = this.readUtf(oSectorInfo.iDataPos, oSectorInfo.iSectorSize);
 		return sOut;
@@ -304,14 +308,14 @@ DiskImage.prototype = {
 			sFormat = "data";
 		} else if (iFirstSector === 0x41) {
 			sFormat = "system";
-		} else if ((iFirstSector === 0x01) && (oTrackInfo.iTracks === 80)) { // big780k TTT
+		} else if ((iFirstSector === 0x01) && (oDiskInfo.iTracks === 80)) { // big780k TTT
 			sFormat = "big780k";
 		} else {
 			throw this.composeError(Error(), "Dsk: Unknown format with sector", iFirstSector);
 		}
 
-		if (oTrackInfo.iHeads > 1) { // maybe 2
-			sFormat += oTrackInfo.iHeads; // e.g. "data": "data2"
+		if (oDiskInfo.iHeads > 1) { // maybe 2
+			sFormat += String(oDiskInfo.iHeads); // e.g. "data": "data2"
 		}
 
 		return this.getFormatDescriptor(sFormat);
@@ -320,36 +324,36 @@ DiskImage.prototype = {
 	readDirectoryExtents: function (aExtents, iPos, iEndPos) {
 		var oExtent, iChar, i, aBlocks, iBlock,
 
-			fnUnpackFtypeFlags = function () {
+			fnRemoveHighBit7 = function (sStr) {
+				var sOut = "";
+
+				for (i = 0; i < sStr.length; i += 1) {
+					iChar = sStr.charCodeAt(i);
+					sOut += String.fromCharCode(iChar & 0x7f); // eslint-disable-line no-bitwise
+				}
+				return sOut;
+			},
+
+			fnUnpackFtypeFlags = function (sExt) {
 				var aFTypes = [
 						"bReadOnly",
 						"bSystem",
-						"bBackup" //TTT
+						"bBackup" // not known
 					],
-					sExt = oExtent.sExt,
 					sFType;
 
 				for (i = 0; i < aFTypes.length; i += 1) {
 					sFType = aFTypes[i];
 					iChar = sExt.charCodeAt(i);
 					oExtent[sFType] = Boolean(iChar & 0x80); // eslint-disable-line no-bitwise
-					if (oExtent[sFType]) { // bit 7 set?
-						sExt = sExt.substr(0, i) + String.fromCharCode(iChar & 0x7f) + sExt.substr(i + 1); // eslint-disable-line no-bitwise
-					}
 				}
-				oExtent.sExt = sExt; // maybe changed
 			};
-		/*
-			fnRemoveHighBits = function (sMatch) {
-				return String.fromCharCode(sMatch.charCodeAt(0) & 0x7f);
-			};
-		*/
 
 		while (iPos < iEndPos) {
 			oExtent = {
 				iUser: this.readUInt8(iPos),
 				sName: this.readUtf(iPos + 1, 8),
-				sExt: this.readUtf(iPos + 9, 3), // extension with high bits set for...
+				sExt: this.readUtf(iPos + 9, 3), // extension with high bits set for special flags
 				iExtent: this.readUInt8(iPos + 12),
 				iLastRecBytes: this.readUInt8(iPos + 13),
 				iExtentHi: this.readUInt8(iPos + 14), // used for what?
@@ -358,8 +362,9 @@ DiskImage.prototype = {
 			};
 			iPos += 16;
 
-			//oExtent.sExt = oExtent.sExt.replace(/([\x80-\xff])/g, fnRemoveHighBits); // remove read only/system high bit 7
-			fnUnpackFtypeFlags();
+			oExtent.sName = fnRemoveHighBit7(oExtent.sName);
+			fnUnpackFtypeFlags(oExtent.sExt);
+			oExtent.sExt = fnRemoveHighBit7(oExtent.sExt);
 
 			aBlocks = oExtent.aBlocks;
 			for (i = 0; i < 16; i += 1) {
@@ -480,6 +485,7 @@ DiskImage.prototype = {
 			iRealLen = null,
 			iRecPerBlock = 8,
 			iAmsdosHeaderLength = 0x80,
+			bProtected = false,
 			i, iBlock, oExtent, iRecords, aBlocks, sBlock, oHeader, iFileLen, iLastRecPos, iIndex;
 
 		for (i = 0; i < aFileExtents.length; i += 1) {
@@ -503,6 +509,13 @@ DiskImage.prototype = {
 		oHeader = this.parseAmsdosHeader(sOut);
 		if (oHeader) {
 			iRealLen = oHeader.iLength + iAmsdosHeaderLength;
+			bProtected = Boolean(oHeader.iType & 0x01); // eslint-disable-line no-bitwise
+
+			/*
+			if (bProtected) {
+				sOut = this.unOrProtectData(sOut);
+			}
+			*/
 		}
 
 		iFileLen = sOut.length;
@@ -520,6 +533,54 @@ DiskImage.prototype = {
 		if (iRealLen !== null) { // now real length (from header or ASCII)?
 			sOut = sOut.substr(0, iRealLen);
 		}
+		return sOut;
+	},
+
+	// ...
+
+	// see AMSDOS ROM, &D252
+	unOrProtectData: function (sData) {
+		var sOut = "",
+			/* eslint-disable array-element-newline */
+			aTable1 = [0xe2, 0x9d, 0xdb, 0x1a, 0x42, 0x29, 0x39, 0xc6, 0xb3, 0xc6, 0x90, 0x45, 0x8a], // 13 bytes
+			aTable2 = [0x49, 0xb1, 0x36, 0xf0, 0x2e, 0x1e, 0x06, 0x2a, 0x28, 0x19, 0xea], // 11 bytes
+			/* eslint-enable array-element-newline */
+			//iTable1 = 0,
+			//iTable2 = 0,
+			i, iByte;
+
+			//var aDebug = [];
+
+		for (i = 0; i < sData.length; i += 1) {
+			iByte = sData.charCodeAt(i);
+			iByte ^= aTable1[(i & 0x7f) % aTable1.length] ^ aTable2[(i & 0x7f) % aTable2.length]; // eslint-disable-line no-bitwise
+			sOut += String.fromCharCode(iByte);
+
+			/*
+			if (i < 0x80) {
+				iByte = aTable1[iTable1] ^ aTable2[iTable2];
+				aDebug.push("0x" + iByte.toString(16).toUpperCase().padStart(2, "0"));
+			}
+			*/
+
+			/*
+			iTable1 += 1;
+			if (iTable1 >= aTable1.length) {
+				iTable1 = 0;
+			}
+			iTable2 += 1;
+			if (iTable2 >= aTable2.length) {
+				iTable2 = 0;
+			}
+			if ((i & 0x80) === 0x80) { // eslint-disable-line no-bitwise
+				iTable1 = 0;
+				iTable2 = 0;
+			}
+			*/
+		}
+
+		//Utils.console.log("unOrProtectData:", aDebug.join(", ")); //TTT
+
 		return sOut;
 	},
 

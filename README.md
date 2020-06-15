@@ -54,6 +54,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   - The **Screenshot** button creates a screenshot of the current CPC screen.
   - The **Sound** button activates or deactivates sound.
     - If you use the *Reload* button with sound activated, the sound needs to be activated again. Just do a user action, e.g. click somewhere. This is a browser limitation.
+- The *Text View* window shows the text which is written in text mode.
 - The *Keyboard* window shows a virtual keyboard which can be also used with touch devices. You can test the functionality with the test program [keyboard](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/keyboard&showKbd=true).
 - The *Input* window is an alternative way to send input to the CPC.
 - The *Console* window shows the textual output. This is useful for copying and pasting the output. It is cleared when the CPC screen is cleared (*MODE* or *CLS*).
@@ -102,16 +103,19 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 ## Extensions and Features
 
-- File operations work on Browser local storage memory. Also examples visible in the selection field can be loaded with *LOAD*, *MERGE*, *OPENIN*, if in the same "subdirectory" as the selected example.
-- Use Drag & Drop on the canvas or on the input drop zone to import files.
-  File types can be normal ASCII, tokenized BASIC or binary. An AMSDOS header is detected. ZIP files and DSK files can also be imported.
-- Data can be loadad with file load and merge commands like *LOAD*, *MERGE*, *OPENIN*. These also work on the predefined examples.
+- File operations work on Browser local storage memory (check in Browser: e.g. Developement tools, Application).
+  - Use "storage" in the "CPC BASIC" selection field to load files.
+  - Specific for *RUN*, *LOAD*, *MERGE*, *OPENIN*: If a file is not found in storage memory and an example with the name exists in the current directory, this example is loaded.
+  - Use Drag & Drop on the CPC canvas or on the input drop zone to import files. An AMSDOS header is detected.
+  File types can be normal ASCII, tokenized BASIC, protected (tokenized) BASIC, or Binary. ZIP files and DSK files can also be imported.
+- Mouse clicks on CPC canvas: If the canvas is not active, click on it to activate it. The border color changes. A click on a character written in text mode puts this character in the keyboard input queue. The next *INKEY$* will return it. This could be useful to select options presented on the screen.
+  Another feature: After a MOVE 1000,1000, a mouse click does a *MOVE* at the click position. this can be detected by a BASIC program. Example: [Mouse Painting](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/mousepa)
 - *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character. This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
-Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles)
+Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/art), [Landscape](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/landscape), [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles).
 - *|MODE,n*: Change mode without *CLS*, including mode 3 (experimental)
 - *|RENUM,...*: similar to *RENUM* but with a 4th parameter to keep line numbers starting with this line
 - Computations with numbers are not limited to 16 bit
-- *PEEK&POKE* features:
+- *PEEK & POKE* features:
   - Access screen memory in address range &C000-&FFFF or &4000-&7FFF
   - Access character map data starting at *HIMEM*+1 after *SYMBOL AFTER* n with n<256
 
@@ -136,6 +140,7 @@ Several examples use CPCBasic mode 3, e.g. [Rectangles](https://benchmarko.githu
 - *CALL &BCB6*: SOUND Hold (TODO)
 - *CALL &BCB9*: SOUND Continue (TODO)
 - *CALL &BD19*: MC Wait Flyback (wait for screen beam flyback; same as *FRAME*)
+- *CALL &BD5B*: KL RAM SELECT (depending on number of arguments; CPC 6128 only)
 
 ### OUTs
 

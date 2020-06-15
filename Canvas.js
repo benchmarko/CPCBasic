@@ -105,10 +105,8 @@ Canvas.prototype = {
 		this.iFps = 15; // FPS for canvas update
 		this.iTextFpsCounter = 0;
 
-		this.cpcAreaBox = document.getElementById("cpcAreaBox"); //TTT move to view
-
-		//cpcBasic.controller.view.setAreaValue("textText", sOut); //TTT currently fast hack
-		this.textText = document.getElementById("textText"); //TTT currently fast hack
+		this.cpcAreaBox = document.getElementById("cpcAreaBox"); // TODO: move to view
+		this.textText = document.getElementById("textText"); // TODO: move to view
 
 		this.aCharset = this.options.aCharset;
 
@@ -194,7 +192,7 @@ Canvas.prototype = {
 	},
 
 	resetTextBuffer: function () {
-		this.aTextBuffer = []; //TTT
+		this.aTextBuffer = [];
 	},
 
 	isLittleEndian: function () {
@@ -245,26 +243,17 @@ Canvas.prototype = {
 		if (this.bNeedUpdate) { // could be improved: update only updateRect
 			this.bNeedUpdate = false;
 			// we always do a full updateCanvas...
-			this.fnCopy2Canvas();
+			if (this.imageData) { // not available on e.g. IE8
+				this.fnCopy2Canvas();
+			}
 		}
 
-		if (this.textText.offsetParent) { //TTT text area visible?
-			if (this.bNeedTextUpdate) { //TTT
+		if (this.textText.offsetParent) { // text area visible?
+			if (this.bNeedTextUpdate) {
 				this.bNeedTextUpdate = false;
 				this.updateTextWindow();
 			}
 		}
-
-		/*
-		this.iTextFpsCounter += 1;
-		if (this.iTextFpsCounter >= this.iFps) {
-			this.iTextFpsCounter = 0;
-			if (this.bNeedTextUpdate) { //TTT
-				this.bNeedTextUpdate = false;
-				this.updateTextWindow();
-			}
-		}
-		*/
 	},
 
 	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
@@ -274,7 +263,7 @@ Canvas.prototype = {
 	},
 
 	startUpdateCanvas: function () {
-		if (this.animationFrame === null && this.canvas.offsetParent !== null && this.imageData) { // animation off and canvas visible in DOM?
+		if (this.animationFrame === null && this.canvas.offsetParent !== null) { //TTT && this.imageData) { // animation off and canvas visible in DOM?
 			this.updateCanvas();
 		}
 	},
@@ -321,7 +310,7 @@ Canvas.prototype = {
 		ctx.putImageData(this.imageData, 0, 0);
 	},
 
-	updateTextWindow: function () { //TTT
+	updateTextWindow: function () {
 		var aTextBuffer = this.aTextBuffer,
 			sOut = "",
 			x, y, aTextBufferRow;
@@ -330,14 +319,12 @@ Canvas.prototype = {
 			aTextBufferRow = aTextBuffer[y];
 			if (aTextBufferRow) {
 				for (x = 0; x < aTextBufferRow.length; x += 1) {
-					//sOut += String.fromCharCode(aTextBufferRow[x] || 32);
 					sOut += this.sCpc2Unicode[aTextBufferRow[x] || 32];
 				}
 			}
 			sOut += "\n";
 		}
-		//cpcBasic.controller.view.setAreaValue("textText", sOut); //TTT currently fast hack
-		this.textText.value = sOut; //TTT fast hack
+		this.textText.value = sOut;
 	},
 
 	updateColorMap: function () {
@@ -453,8 +440,6 @@ Canvas.prototype = {
 
 		if (this.xPos === 1000 && this.yPos === 1000) { // only activate move if pos is 1000, 1000
 			this.move(x, y);
-			//this.plot(x, y); // does also move
-			//this.setPixel(x, y, this.iGPen, 1); this.setNeedUpdate(); // 1=XOR mode; plot does alos move
 		}
 		if (Utils.debug > 0) {
 			Utils.console.debug("onCpcCanvasClick: x-xOrig", x, "y-yOrig", y, "iChar", iChar, "char", String.fromCharCode(iChar));
@@ -1008,7 +993,7 @@ Canvas.prototype = {
 			iCharHeight = this.oModeData.iPixelHeight * 8,
 			iPens = this.oModeData.iPens;
 
-		this.putCharInTextBuffer(iChar, x, y); //TTT testing text buffer
+		this.putCharInTextBuffer(iChar, x, y);
 
 		if (iChar >= this.aCharset.length) {
 			Utils.console.warn("printChar: Ignoring char with code", iChar);
@@ -1236,7 +1221,6 @@ Canvas.prototype = {
 			iHeight = iBottom + 1 - iTop;
 
 		this.fillTextBox(iLeft, iTop, iWidth, iHeight, iPaper);
-		//this.clearTextBufferBox(iLeft, iTop, iWidth, iHeight);
 	},
 
 	clearGraphicsWindow: function () { // clear graphics window with graphics paper

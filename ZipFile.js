@@ -21,7 +21,7 @@ function ZipFile(aData, sZipName) {
 
 ZipFile.prototype = {
 	init: function (aData, sZipName) {
-		var i, n, iZipEnd, aHead, iEntryAmount, iOffset, aTmpdata, iLen, oEntry, iDostime;
+		var i, n, iZipEnd, iEntryAmount, iOffset, aTmpdata, iLen, oEntry, iDostime;
 
 		this.aData = aData;
 		this.sZipName = sZipName;
@@ -41,12 +41,9 @@ ZipFile.prototype = {
 		}
 
 		// read from header:
-		//aHead = this.subArr(aData, iZipEnd, 22);
-		//iEntryAmount = this.readUShort(aHead, 10);
 		iEntryAmount = this.readUShort(aData, iZipEnd + 10);
 
 		// Process entries
-		//iOffset = this.readUInt(aHead, 0x10); // 0x10=Offset of first CEN header
 		iOffset = this.readUInt(aData, iZipEnd + 0x10); // 0x10=Offset of first CEN header
 
 		for (i = 0; i < iEntryAmount; i += 1) {

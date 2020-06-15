@@ -207,6 +207,10 @@ BasicLexer.prototype = {
 					if (isWhiteSpace(sChar)) {
 						advanceWhile(isWhiteSpace);
 					}
+					if (isNewLine(sChar)) { // now newline?
+						break;
+					}
+
 					if (isQuotes(sChar)) {
 						sChar = "";
 						sToken = advanceWhile(isNotQuotes);
@@ -215,18 +219,21 @@ BasicLexer.prototype = {
 						}
 						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 						sToken = hexEscape(sToken);
-						addToken("string", sToken, iStartPos + 1);
+						addToken("string", sToken, iStartPos + 1); // this is a quoted string (but we cannot detect it during runtime)
 						if (sChar === '"') { // not for newline
 							sChar = advance();
 						}
-					} else if (sChar === ",") { // empty argument?
-						sToken = "";
-						addToken("string", sToken, iStartPos);
+					} else if (sChar === ",") { // empty argument? => insert dummy token
+						/*
+						sToken = null; // can be read as string or number later
+						addToken("null", sToken, iStartPos);
+						*/
 					} else {
 						sToken = advanceWhile(isUnquotedData);
+						sToken = sToken.trim(); // remove whitespace before and after
 						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 						sToken = sToken.replace(/"/g, "\\\""); // escape "
-						addToken("string", sToken, iStartPos);
+						addToken("string", sToken, iStartPos); // could be interpreted as string or number during runtime
 					}
 
 					if (isWhiteSpace(sChar)) {
@@ -243,10 +250,12 @@ BasicLexer.prototype = {
 						sChar = advance();
 					}
 
+					/*
 					if (isNewLine(sChar)) { // data ending with "," (empty argument) => append dummy token
-						sToken = "";
-						addToken("string", sToken, iStartPos);
+						sToken = null; // can be read as string or number later
+						addToken("null", sToken, iStartPos);
 					}
+					*/
 				}
 			};
 

@@ -30,6 +30,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "CPC Lib"
 	},
 	{
+		"key": "crypto1",
+		"title": "Cryptology 1"
+	},
+	{
 		"key": "labyrinth",
 		"title": "Labyrinth"
 	},
@@ -62,6 +66,18 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Sphere"
 	},
 	{
+    	"key": "archi/archidr",
+		"title": "Little Architect Draw (BASIC)"
+	},
+	{
+    	"key": "archi/archi1.bil",
+		"title": "Drawing Set 1"
+	},
+	{
+    	"key": "archi/archi2.bil",
+		"title": "Drawing Set 2"
+	},
+	{
     	"key": "demo/blocky",
 		"title": "Blocky CPC Demo"
 	},
@@ -83,8 +99,7 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
 		"key": "games/statesfx",
-		"title": "States of the Earth",
-		"meta": "B;16384;5924;0;base64"
+		"title": "States of the Earth"
 	},
 	{
     	"key": "math/anageo",
@@ -124,12 +139,15 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
     	"key": "math/ninedig2",
-		"title": "Nine Digits 2 (tokenized BASIC)",
-		"meta": "T;368;1126;0;base64"
+		"title": "Nine Digits 2 (tokenized BASIC)"
 	},
 	{
     	"key": "math/regress",
 		"title": "Regression (Ausgleich)"
+	},
+	{
+		"key": "test/basbankm",
+		"title": "Basic Bank Manager"
 	},
 	{
 		"key": "test/bmbench3",

@@ -431,6 +431,25 @@ BasicTokenizer.prototype = {
 						if ((/[a-zA-Z0-9.]$/).test(tstr)) { // last character char, number, dot?
 							bSpace = true; // maybe need space next time...
 						}
+					} else { // normal ASCII
+						tstr = String.fromCharCode(iToken);
+					}
+					if (bOldSpace) {
+						if ((/^[a-zA-Z0-9$%!]+$/).test(tstr) || (iToken >= 0x02 && iToken <= 0x1f)) {
+							tstr = " " + tstr;
+						}
+					}
+					sOut += tstr;
+
+					/*
+					if (tstr !== undefined) {
+						if (typeof tstr === "function") {
+							tstr = tstr();
+						}
+
+						if ((/[a-zA-Z0-9.]$/).test(tstr)) { // last character char, number, dot?
+							bSpace = true; // maybe need space next time...
+						}
 
 						if (bOldSpace) {
 							if ((/^[a-zA-Z$%!]+$/).test(tstr) || (iToken >= 0x02 && iToken <= 0x1f)) {
@@ -441,6 +460,7 @@ BasicTokenizer.prototype = {
 					} else { // normal ASCII
 						sOut += String.fromCharCode(iToken);
 					}
+					*/
 				}
 				return iLineNum + " " + sOut;
 			},

@@ -280,7 +280,7 @@ CommonEventHandler.prototype = {
 		sExample = this.view.getSelectValue("exampleSelect");
 		oExample = this.model.getExample(sExample);
 		oInFile.sCommand = "run";
-		if (oExample && oExample.meta) {
+		if (oExample && oExample.meta) { // TTT TODO: this is just a workaround, meta is in input now; should change command after loading!
 			sType = oExample.meta.charAt(0);
 			if (sType === "B" || sType === "D" || sType === "G") { // binary, data only, Gena Assembler?
 				oInFile.sCommand = "load";
@@ -290,12 +290,12 @@ CommonEventHandler.prototype = {
 		if (sDataBase !== "storage") {
 			sExample = "/" + sExample; // load absolute
 		} else {
-			this.model.setProperty("example", sExample); //TTT set it here
+			this.model.setProperty("example", sExample);
 		}
 
 		oInFile.sName = sExample;
 		oInFile.iStart = undefined;
-		oInFile.fnFileCallback = oVm.fnLoadHandler; //null;
+		oInFile.fnFileCallback = oVm.fnLoadHandler;
 		oVm.vmStop("fileLoad", 90);
 		oController.startMainLoop();
 	},
