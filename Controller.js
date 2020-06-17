@@ -708,6 +708,11 @@ Controller.prototype = {
 			oData,
 			sType;
 
+		if (sInput === undefined) {
+			Utils.console.error("loadFileContinue: File " + oInFile.sName + ": sInput undefined!");
+			sInput = null;
+		}
+
 		if (sInput === null) {
 			this.oVm.vmStop("stop", 60, true);
 			if (oInFile.fnFileCallback) {
@@ -917,23 +922,10 @@ Controller.prototype = {
 
 			sInput = this.tryLoadingFromLocalStorage(sName);
 			if (sInput !== null) {
-				/*
-				iIndex = sInput.indexOf(","); // metadata separator
-				if (iIndex >= 0) {
-					sMeta = sInput.substr(0, iIndex);
-					sInput = sInput.substr(iIndex + 1);
-				}
-				if (Utils.debug > 0) {
-					Utils.console.debug("fnFileLoad:", oInFile.sCommand, sName, sMeta, "from localStorage");
-				}
-				this.loadFileContinue(sInput, sMeta || "");
-				*/
-
 				if (Utils.debug > 0) {
 					Utils.console.debug("fnFileLoad:", oInFile.sCommand, sName, "from localStorage");
 				}
 				this.loadFileContinue(sInput);
-
 			} else { // load from example
 				this.loadExample(sName);
 			}
@@ -1836,7 +1828,7 @@ Controller.prototype = {
 					for (i = 0; i < aEntries.length; i += 1) {
 						sName = aEntries[i];
 						try {
-							sData = oZip.oEntryTable[sName].read("utf"); // or: "raw"
+							sData = oZip.readData(sName);
 						} catch (e) {
 							Utils.console.error(e);
 							that.outputError(e, true);

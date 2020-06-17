@@ -6,7 +6,7 @@ cpcBasic.addItem("", function () { /*
 10 REM archidr - Little Architect Draw (BASIC)
 20 REM (c) Marco Vieth
 30 REM BASIC only version, based on archidr2.bas (3/1991)
-40 REM
+40 REM Examples: archi, archi2
 50 '
 60 CLEAR:DEFINT a-z
 70 dt=5:'delay
@@ -15,7 +15,7 @@ cpcBasic.addItem("", function () { /*
 100 mode m:goto 120
 110 m=2:resume 120
 120 on error goto 0
-130 mx=m:m=2
+130 mx=m:m=1
 140 '
 150 t$="archi1":gosub 520:'load a drawing set
 160 '
@@ -51,6 +51,7 @@ cpcBasic.addItem("", function () { /*
 460 '
 470 REM load drawing set
 480 PRINT
+485 ?"archi1  archi2"
 490 |DIR,"*.BIL"
 500 PRINT"File name (without.BIL): ";
 510 INPUT t$

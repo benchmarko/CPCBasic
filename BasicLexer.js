@@ -223,11 +223,8 @@ BasicLexer.prototype = {
 						if (sChar === '"') { // not for newline
 							sChar = advance();
 						}
-					} else if (sChar === ",") { // empty argument? => insert dummy token
-						/*
-						sToken = null; // can be read as string or number later
-						addToken("null", sToken, iStartPos);
-						*/
+					} else if (sChar === ",") { // empty argument?
+						// parser can insert dummy token
 					} else {
 						sToken = advanceWhile(isUnquotedData);
 						sToken = sToken.trim(); // remove whitespace before and after
@@ -249,13 +246,6 @@ BasicLexer.prototype = {
 					if (sChar === "\r") { // IE8 has "/r/n" newlines
 						sChar = advance();
 					}
-
-					/*
-					if (isNewLine(sChar)) { // data ending with "," (empty argument) => append dummy token
-						sToken = null; // can be read as string or number later
-						addToken("null", sToken, iStartPos);
-					}
-					*/
 				}
 			};
 

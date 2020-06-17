@@ -32,7 +32,7 @@ cpcBasic.addItem("", function () { /*
 330 IF t$="S" THEN GOSUB 440:PRINT"Schreib Nr":GOTO 300
 340 IF t$="T" THEN CLS:INPUT t$:PRINT#1,t$:GOTO 290
 350 IF t$="L" THEN INPUT"Name:";t$:LOAD"!"+t$,&C000:GOTO 290
-355 IF t$="M" THEN INPUT"Mode:";m:IF m<0 OR m>2 THEN 355 ELSE 260
+355 IF t$="M" THEN INPUT"Mode:";m:IF m<0 OR m>2 THEN 355 ELSE 260
 360 IF t$<"1" OR t$>"5" THEN 300
 370 IF PEEK(hl)=&C0 THEN CLS:PRINT"Bild:";bild:'schreiben
 380 bild=VAL(t$):GOSUB 460

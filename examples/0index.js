@@ -209,6 +209,20 @@ cpcBasic.addIndex("./examples", function () { /*
     {
 		"key": "test/testpage",
 		"title": "Test Page"
+	},
+	{
+		"key": "vidi/vidi",
+		"title": "VIDI - Der Videofilmverwalter"
+	},
+	{
+		"key": "vidi/v2000.fil",
+		"title": "VIDI - Video 2000 Sammlung",
+		"meta": "D"
+	},
+	{
+		"key": "vidi/vhs.fil",
+		"title": "VIDI - VHS Sammlung",
+		"meta": "D"
 	}
 ]
 */ });

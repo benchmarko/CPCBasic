@@ -997,7 +997,6 @@ CpcVm.prototype = {
 			break;
 		case 0xbd5b: // KL RAM SELECT (CPC 6128 only)
 			// we can only set RAM bank depending on number of args
-			//this.out(0x7f00, arguments.length | 0xc0); // eslint-disable-line no-bitwise
 			this.vmSetRamSelect(arguments.length - 1);
 			break;
 		default:
@@ -2169,13 +2168,6 @@ CpcVm.prototype = {
 		// 7Fxx = RAM select
 		if (iPort >> 8 === 0x7f) { // eslint-disable-line no-bitwise
 			this.vmSetRamSelect(iByte - 0xc0);
-			/*
-			if (iByte === 0xc0) {
-				this.iRamSelect = 0;
-			} else if (iByte >= 0xc4) {
-				this.iRamSelect = iByte - 0xc4 + 1;
-			}
-			*/
 		} else if (Utils.debug > 0) {
 			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte, ": unknown port");
 		}

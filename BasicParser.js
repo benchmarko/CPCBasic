@@ -703,7 +703,67 @@ BasicParser.prototype = {
 						}
 					}
 				}
+			},
+			fnInputOrLineInput = function (oValue) {
+				var sText = "",
+					oValue2, oStream;
+
+				oValue.args = [];
+
+				oStream = fnGetOptionalStream();
+				oValue.args.push(oStream);
+				if (oStream.len !== 0) { // not an inserted stream?
+					advance(",");
+				}
+
+				oValue.args.push({ // create
+					type: "string",
+					value: (oToken.type === ";") ? ";" : "",
+					len: 0
+				});
+				if (oToken.type === ";") { // no newline after input?
+					advance(";");
+				}
+
+				if (oToken.type === "string") {
+					sText += oToken.value;
+					advance();
+					if (oToken.type === ";") { // ";" => append prompt "? "
+						sText += "? ";
+						advance(";");
+					} else if (oToken.type === ",") {
+						advance(",");
+					} else {
+						throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
+					}
+				} else { // no string => also append prompt "? "
+					sText = "? ";
+				}
+
+				oValue.args.push({
+					type: "string",
+					value: sText
+				});
+
+				do { // we need loop for input
+					if (oToken.type !== "identifier") {
+						throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
+					}
+					oValue2 = oToken; // identifier
+					advance();
+					if (oToken.type === "(") {
+						oValue2.args = fnGetArgsInParenthesis();
+					} else if (oToken.type === "[") {
+						oValue2.args = fnGetArgsInBrackets();
+					}
+					oValue.args.push(oValue2);
+					if (oValue.type === "lineInput") {
+						break; // no loop for lineInput (only one arg)
+					}
+				} while ((oToken.type === ",") && advance());
+				return oValue;
 			};
+
 
 		fnGenerateKeywordSymbols();
 
@@ -960,28 +1020,6 @@ BasicParser.prototype = {
 				oValue.args.push(fnCreateDummyArg()); // insert null parameter
 			}
 
-			/*
-			if (oToken.type === "," || oToken.type === "(eol)") { // starts with "," or eol?
-				oExpression = fnCreateDummyArg(); // insert null parameter
-				oValue.args.push(oExpression);
-			} else {
-				oValue.args.push(expression(0)); // take first argument
-			}
-
-			while (oToken.type === ",") {
-				advance(",");
-				if (oToken.type === "," || oToken.type === "(eol)") { // no parameter?
-					oExpression = fnCreateDummyArg(); // insert null parameter
-					oValue.args.push(oExpression);
-					if (oToken.type === "(eol)") {
-						break;
-					}
-				}
-				oExpression = expression(0);
-				oValue.args.push(oExpression);
-			}
-			*/
-
 			return oValue;
 		});
 
@@ -1192,6 +1230,12 @@ BasicParser.prototype = {
 		});
 
 		stmt("input", function () {
+			var oValue = oPreviousToken;
+
+			fnInputOrLineInput(oValue);
+			return oValue;
+
+			/*
 			var oValue = oPreviousToken,
 				sText = "",
 				oValue2, oStream;
@@ -1216,7 +1260,7 @@ BasicParser.prototype = {
 			if (oToken.type === "string") {
 				sText += oToken.value;
 				advance();
-				if (oToken.type === ";") { // ";" => append "? "
+				if (oToken.type === ";") { // ";" => append prompt "? "
 					sText += "? ";
 					advance(";");
 				} else if (oToken.type === ",") {
@@ -1224,9 +1268,7 @@ BasicParser.prototype = {
 				} else {
 					throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
 				}
-			}
-
-			if (sText === "") { // no message => also append "? "
+			} else { // no string => also append prompt "? "
 				sText = "? ";
 			}
 
@@ -1249,6 +1291,7 @@ BasicParser.prototype = {
 				oValue.args.push(oValue2);
 			} while ((oToken.type === ",") && advance());
 			return oValue;
+			*/
 		});
 
 		stmt("key", function () {
@@ -1274,6 +1317,15 @@ BasicParser.prototype = {
 		});
 
 		stmt("line", function () {
+			var oValue = oPreviousToken;
+
+			advance("input");
+			oValue.type = "lineInput";
+
+			fnInputOrLineInput(oValue);
+			return oValue;
+
+			/*
 			var oValue = oPreviousToken,
 				sText = "",
 				oValue2, oStream;
@@ -1309,9 +1361,7 @@ BasicParser.prototype = {
 				} else {
 					throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
 				}
-			}
-
-			if (sText === "") { // no message => also append "? "
+			} else { // no string => also append prompt "? "
 				sText = "? ";
 			}
 
@@ -1324,7 +1374,7 @@ BasicParser.prototype = {
 			if (oToken.type !== "identifier") {
 				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
 			}
-			oValue2 = oToken;
+			oValue2 = oToken; // identifier
 			advance();
 			if (oToken.type === "(") {
 				oValue2.args = fnGetArgsInParenthesis();
@@ -1332,8 +1382,7 @@ BasicParser.prototype = {
 				oValue2.args = fnGetArgsInBrackets();
 			}
 			oValue.args.push(oValue2);
-
-			return oValue;
+			*/
 		});
 
 		stmt("list", function () {

@@ -115,7 +115,7 @@ DiskImage.prototype = {
 		oTrackInfo.iDataPos = iPos + iTrackInfoSize;
 
 		oTrackInfo.sIdent = this.readUtf(iPos, 12);
-		if (oTrackInfo.sIdent !== "Track-Info\r\n") {
+		if (oTrackInfo.sIdent.substr(0, 10) !== "Track-Info") { // some tools use ""Track-Info  " instead of ""Track-Info\r\n", so compare without "\r\n"
 			throw this.composeError(Error(), "Dsk: Track ident not found", oTrackInfo.sIdent, iPos);
 		}
 		// 4 unused bytes
@@ -448,6 +448,9 @@ DiskImage.prototype = {
 
 		for (i = 0; i < iDirectorySectors; i += 1) {
 			iSectorIndex = this.sectorNum2Index(iFirstSector + i);
+			if (iSectorIndex === undefined) {
+				throw this.composeError(Error(), "Dsk: Cannot read directory at track " + iOff + " sector", iFirstSector);
+			}
 			oSectorInfo = this.seekSector(iSectorIndex);
 			this.readDirectoryExtents(aExtents, oSectorInfo.iDataPos, oSectorInfo.iDataPos + oSectorInfo.iSectorSize);
 		}
@@ -485,7 +488,6 @@ DiskImage.prototype = {
 			iRealLen = null,
 			iRecPerBlock = 8,
 			iAmsdosHeaderLength = 0x80,
-			bProtected = false,
 			i, iBlock, oExtent, iRecords, aBlocks, sBlock, oHeader, iFileLen, iLastRecPos, iIndex;
 
 		for (i = 0; i < aFileExtents.length; i += 1) {
@@ -509,13 +511,6 @@ DiskImage.prototype = {
 		oHeader = this.parseAmsdosHeader(sOut);
 		if (oHeader) {
 			iRealLen = oHeader.iLength + iAmsdosHeaderLength;
-			bProtected = Boolean(oHeader.iType & 0x01); // eslint-disable-line no-bitwise
-
-			/*
-			if (bProtected) {
-				sOut = this.unOrProtectData(sOut);
-			}
-			*/
 		}
 
 		iFileLen = sOut.length;
@@ -545,42 +540,13 @@ DiskImage.prototype = {
 			aTable1 = [0xe2, 0x9d, 0xdb, 0x1a, 0x42, 0x29, 0x39, 0xc6, 0xb3, 0xc6, 0x90, 0x45, 0x8a], // 13 bytes
 			aTable2 = [0x49, 0xb1, 0x36, 0xf0, 0x2e, 0x1e, 0x06, 0x2a, 0x28, 0x19, 0xea], // 11 bytes
 			/* eslint-enable array-element-newline */
-			//iTable1 = 0,
-			//iTable2 = 0,
 			i, iByte;
-
-			//var aDebug = [];
 
 		for (i = 0; i < sData.length; i += 1) {
 			iByte = sData.charCodeAt(i);
 			iByte ^= aTable1[(i & 0x7f) % aTable1.length] ^ aTable2[(i & 0x7f) % aTable2.length]; // eslint-disable-line no-bitwise
 			sOut += String.fromCharCode(iByte);
-
-			/*
-			if (i < 0x80) {
-				iByte = aTable1[iTable1] ^ aTable2[iTable2];
-				aDebug.push("0x" + iByte.toString(16).toUpperCase().padStart(2, "0"));
-			}
-			*/
-
-			/*
-			iTable1 += 1;
-			if (iTable1 >= aTable1.length) {
-				iTable1 = 0;
-			}
-			iTable2 += 1;
-			if (iTable2 >= aTable2.length) {
-				iTable2 = 0;
-			}
-			if ((i & 0x80) === 0x80) { // eslint-disable-line no-bitwise
-				iTable1 = 0;
-				iTable2 = 0;
-			}
-			*/
 		}
-
-		//Utils.console.log("unOrProtectData:", aDebug.join(", ")); //TTT
-
 		return sOut;
 	},
 

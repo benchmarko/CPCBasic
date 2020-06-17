@@ -256,14 +256,14 @@ Canvas.prototype = {
 		}
 	},
 
-	// http://creativejs.com/resources/requestanimationframe/  (set frame rate)
+	// http://creativejs.com/resources/requestanimationframe/ (set frame rate)
 	// https://stackoverflow.com/questions/19764018/controlling-fps-with-requestanimationframe
 	updateCanvas: function () {
 		this.animationTimeout = setTimeout(this.fnUpdateCanvas2Handler, 1000 / this.iFps);
 	},
 
 	startUpdateCanvas: function () {
-		if (this.animationFrame === null && this.canvas.offsetParent !== null) { //TTT && this.imageData) { // animation off and canvas visible in DOM?
+		if (this.animationFrame === null && this.canvas.offsetParent !== null) { // animation off and canvas visible in DOM?
 			this.updateCanvas();
 		}
 	},
@@ -344,7 +344,7 @@ Canvas.prototype = {
 				if (this.bLittleEndian) {
 					aPen2Color32[i] = aColor[0] + aColor[1] * 256 + aColor[2] * 65536 + 255 * 65536 * 256;
 				} else {
-					aPen2Color32[i] = aColor[2] + aColor[1] * 256 + aColor[0] * 65536 + 255 * 65536 * 256; // TODO: do we need this?
+					aPen2Color32[i] = aColor[2] + aColor[1] * 256 + aColor[0] * 65536 + 255 * 65536 * 256; // for big endian (untested)
 				}
 			}
 		}
@@ -428,9 +428,13 @@ Canvas.prototype = {
 		yTxt = (y / iCharHeight) | 0;
 		/* eslint-enable no-bitwise */
 
-		iChar = this.getCharFromTextBuffer(xTxt, yTxt);
+		iChar = this.getCharFromTextBuffer(xTxt, yTxt); // is there a character an the click position?
 
-		if (iChar !== undefined && this.options.onClickKey) {
+		if (iChar === undefined && event.detail === 2) { // no char but mouse double click?
+			iChar = 13; // use CR
+		}
+
+		if (iChar !== undefined && this.options.onClickKey) { // call click handler (put char in keyboard input buffer)
 			this.options.onClickKey(String.fromCharCode(iChar));
 		}
 
@@ -442,7 +446,7 @@ Canvas.prototype = {
 			this.move(x, y);
 		}
 		if (Utils.debug > 0) {
-			Utils.console.debug("onCpcCanvasClick: x-xOrig", x, "y-yOrig", y, "iChar", iChar, "char", String.fromCharCode(iChar));
+			Utils.console.debug("onCpcCanvasClick: x-xOrig", x, "y-yOrig", y, "iChar", iChar, "char", String.fromCharCode(iChar), "detail", event.detail);
 		}
 	},
 
