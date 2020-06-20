@@ -98,7 +98,8 @@ Controller.prototype = {
 			keyboard: this.oKeyboard,
 			sound: this.oSound,
 			variables: this.oVariables,
-			tron: oModel.getProperty("tron")
+			tron: oModel.getProperty("tron"),
+			onCharReturn: this.fnPutKeyInBufferHandler
 		});
 		this.oVm.vmReset();
 
@@ -220,16 +221,18 @@ Controller.prototype = {
 		for (sKey in oAllExamples) {
 			if (oAllExamples.hasOwnProperty(sKey)) {
 				oExample = oAllExamples[sKey];
-				oItem = {
-					value: oExample.key,
-					title: (oExample.key + ": " + oExample.title).substr(0, iMaxTitleLength)
-				};
-				oItem.text = oItem.title.substr(0, iMaxTextLength);
-				if (oExample.key === sExample) {
-					oItem.selected = true;
-					bExampleSelected = true;
+				if (oExample.meta !== "D") { // skip data files
+					oItem = {
+						value: oExample.key,
+						title: (oExample.key + ": " + oExample.title).substr(0, iMaxTitleLength)
+					};
+					oItem.text = oItem.title.substr(0, iMaxTextLength);
+					if (oExample.key === sExample) {
+						oItem.selected = true;
+						bExampleSelected = true;
+					}
+					aItems.push(oItem);
 				}
-				aItems.push(oItem);
 			}
 		}
 		if (!bExampleSelected && aItems.length) {
@@ -546,16 +549,48 @@ Controller.prototype = {
 		return aLines;
 	},
 
-	fnGetDirectoryEntries: function (sMask) { // optional sMask
+	fnPrepareMaskRegExp: function (sMask) {
+		var oRegExp;
+
+		sMask = sMask.replace(/([.+^$[\]\\(){}|-])/g, "\\$1");
+		sMask = sMask.replace(/\?/g, ".");
+		sMask = sMask.replace(/\*/g, ".*");
+		oRegExp = new RegExp("^" + sMask + "$");
+		return oRegExp;
+	},
+
+	fnGetExampleDirectoryEntries: function (sMask) { // optional sMask
+		var aDir = [],
+			oAllExamples = this.model.getAllExamples(),
+			sKey, sKey2, sMatchKey2, oExample, oRegExp;
+
+		if (sMask) {
+			oRegExp = this.fnPrepareMaskRegExp(sMask);
+		}
+
+		for (sKey in oAllExamples) {
+			if (oAllExamples.hasOwnProperty(sKey)) {
+				oExample = oAllExamples[sKey];
+				sKey2 = oExample.key;
+				sMatchKey2 = sKey2;
+				if (sKey2.indexOf(".") < 0) {
+					sMatchKey2 = sKey2 + ".";
+				}
+				if (!oRegExp || oRegExp.test(sMatchKey2)) {
+					aDir.push(sKey2);
+				}
+			}
+		}
+		return aDir;
+	},
+
+	fnGetDirectoryEntries: function (sMask) {
 		var oStorage = Utils.localStorage,
 			aDir = [],
 			oRegExp, i, sKey;
 
 		if (sMask) {
-			sMask = sMask.replace(/([.+^$[\]\\(){}|-])/g, "\\$1");
-			sMask = sMask.replace(/\?/g, ".");
-			sMask = sMask.replace(/\*/g, ".*");
-			oRegExp = new RegExp("^" + sMask + "$");
+			oRegExp = this.fnPrepareMaskRegExp(sMask);
 		}
 
 		for (i = 0; i < oStorage.length; i += 1) {
@@ -604,12 +639,26 @@ Controller.prototype = {
 	fnFileDir: function (oParas) {
 		var iStream = oParas.iStream,
 			sFileMask = oParas.sFileMask,
-			aDir;
+			aDir, aDir2, sExample, iLastSlash, sPath, i;
 
 		if (sFileMask) {
 			sFileMask =	this.fnLocalStorageName(sFileMask);
 		}
 		aDir = this.fnGetDirectoryEntries(sFileMask);
+
+		// if we have a fileMask, include also example names from same directory:
+		sExample = this.model.getProperty("example");
+		iLastSlash = sExample.lastIndexOf("/");
+		if (iLastSlash >= 0) {
+			sPath = sExample.substr(0, iLastSlash);
+			sFileMask = sPath + "/" + sFileMask; // only in same directory
+			aDir2 = this.fnGetExampleDirectoryEntries(sFileMask); // also from examples
+			for (i = 0; i < aDir2.length; i += 1) {
+				aDir2[i] = aDir2[i].substr(sPath.length + 1); // remove preceding path; +1 because of "/"
+			}
+			aDir = aDir2.concat(aDir); // combine
+		}
+
 		this.fnPrintDirectoryEntries(iStream, aDir, false);
 		this.oVm.vmStop("", 0, true);
 	},
@@ -708,53 +757,49 @@ Controller.prototype = {
 			oData,
 			sType;
 
-		if (sInput === undefined) {
-			Utils.console.error("loadFileContinue: File " + oInFile.sName + ": sInput undefined!");
-			sInput = null;
-		}
+		//this.oVm.vmStop("", 0, true);
 
-		if (sInput === null) {
-			this.oVm.vmStop("stop", 60, true);
-			if (oInFile.fnFileCallback) {
-				try {
-					bPutInMemory = oInFile.fnFileCallback(sInput, null); // just to close file
-				} catch (e) {
-					Utils.console.warn(e);
-				}
+		if (sInput !== null && sInput !== undefined) {
+			oData = this.splitMeta(sInput);
+			sInput = oData.sData; // maybe changed
+
+			if (oData.oMeta.sEncoding === "base64") {
+				sInput = Utils.atob(sInput); // decode base64
 			}
-			this.startMainLoop();
-			return;
-		}
 
-		this.oVm.vmStop("", 0, true);
-
-		oData = this.splitMeta(sInput);
-		sInput = oData.sData; // maybe changed
-
-		if (oData.oMeta.sEncoding === "base64") {
-			sInput = Utils.atob(sInput); // decode base64
-		}
-
-		sType = oData.oMeta.sType;
-		if (sType === "T") { // tokenized basic?
-			sInput = this.oBasicTokenizer.decode(sInput);
-		} else if (sType === "P") { // protected BASIC?
-			sInput = DiskImage.prototype.unOrProtectData(sInput);
-			sInput = this.oBasicTokenizer.decode(sInput);
-		} else if (sType === "B") { // binary?
-		} else if (sType === "A") { // ASCII?
-			// remove EOF character(s) (0x1a) from the end of file
-			sInput = sInput.replace(/\x1a+$/, ""); // eslint-disable-line no-control-regex
-		} else if (sType === "G") { // Hisoft Devpac GENA3 Z80 Assember
-			sInput = this.asmGena3Convert(sInput);
+			sType = oData.oMeta.sType;
+			if (sType === "T") { // tokenized basic?
+				sInput = this.oBasicTokenizer.decode(sInput);
+			} else if (sType === "P") { // protected BASIC?
+				sInput = DiskImage.prototype.unOrProtectData(sInput);
+				sInput = this.oBasicTokenizer.decode(sInput);
+			} else if (sType === "B") { // binary?
+			} else if (sType === "A") { // ASCII?
+				// remove EOF character(s) (0x1a) from the end of file
+				sInput = sInput.replace(/\x1a+$/, ""); // eslint-disable-line no-control-regex
+			} else if (sType === "G") { // Hisoft Devpac GENA3 Z80 Assember
+				sInput = this.asmGena3Convert(sInput);
+			}
 		}
 
 		if (oInFile.fnFileCallback) {
 			try {
-				bPutInMemory = oInFile.fnFileCallback(sInput, oData.oMeta);
+				bPutInMemory = oInFile.fnFileCallback(sInput, oData && oData.oMeta);
 			} catch (e) {
 				Utils.console.warn(e);
 			}
+		}
+
+		if (sInput === undefined) {
+			Utils.console.error("loadFileContinue: File " + oInFile.sName + ": sInput undefined!");
+			this.oVm.vmStop("stop", 60, true);
+			this.startMainLoop();
+			return;
+		}
+
+		if (sInput === null) {
+			this.startMainLoop();
+			return;
 		}
 
 		switch (sCommand) {
@@ -819,6 +864,7 @@ Controller.prototype = {
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				//TTT we no not use oExample.meta any more
+				that.oVm.vmStop("", 0, true);
 				that.loadFileContinue(sInput);
 			},
 			fnExampleError = function () {
@@ -826,9 +872,15 @@ Controller.prototype = {
 
 				Utils.console.log("Example", sUrl, "error");
 				that.model.setProperty("example", oInFile.sMemorizedExample);
+
+				that.oVm.vmStop("", 0, true);
 				oError = that.oVm.vmComposeError(Error(), 32, sExample + " not found"); // TODO: set also derr=146 (xx not found)
+				// error or onError set
+				if (oError.hidden) {
+					that.oVm.vmStop("", 0, true); // clear onError
+				}
 				that.outputError(oError, true);
-				that.loadFileContinue(null);
+				that.loadFileContinue(null, oError);
 			};
 
 		sName = oInFile.sName;
@@ -868,6 +920,7 @@ Controller.prototype = {
 				fnExampleError();
 			} else {
 				this.model.setProperty("example", sExample);
+				this.oVm.vmStop("", 0, true);
 				this.loadFileContinue(""); //TTT empty input?
 			}
 		}
@@ -925,6 +978,7 @@ Controller.prototype = {
 				if (Utils.debug > 0) {
 					Utils.console.debug("fnFileLoad:", oInFile.sCommand, sName, "from localStorage");
 				}
+				this.oVm.vmStop("", 0, true);
 				this.loadFileContinue(sInput);
 			} else { // load from example
 				this.loadExample(sName);
@@ -1061,10 +1115,15 @@ Controller.prototype = {
 		var sInput = this.view.getAreaValue("inputText"),
 			iStream = oParas.iStream,
 			aLines = this.fnGetLinesInRange(sInput, oParas.iFirst, oParas.iLast),
-			i;
+			oRegExp = new RegExp(/([\x00-\x1f])/g), //eslint-disable-line no-control-regex
+			i, sLine;
 
 		for (i = 0; i < aLines.length; i += 1) {
-			this.oVm.print(iStream, aLines[i] + "\r\n");
+			sLine = aLines[i];
+			if (iStream !== 9) {
+				sLine = sLine.replace(oRegExp, "\x01$1"); // escape control characters to print them directly
+			}
+			this.oVm.print(iStream, sLine, "\r\n");
 		}
 
 		this.oVm.vmGotoLine(0); // reset current line
@@ -1631,7 +1690,7 @@ Controller.prototype = {
 			try {
 				value2 = this.oVm.vmAssign(sVarType, value);
 				oVariables.setVariable(sPar, value2);
-				Utils.console.log("Variable", sPar, "changed:", oVariables[sPar], "=>", value);
+				Utils.console.log("Variable", sPar, "changed:", oVariables.getVariable(sPar), "=>", value);
 			} catch (e) {
 				Utils.console.warn(e);
 			}

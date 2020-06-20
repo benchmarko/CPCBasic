@@ -683,7 +683,8 @@ CodeGeneratorJs.prototype = {
 					node.pv = this.fnParseDefIntRealStr(node);
 					return node.pv;
 				},
-				dim: function (node) {
+				/*
+				dim_ttt: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
 						i, sName, aName, sStringType;
 
@@ -695,6 +696,26 @@ CodeGeneratorJs.prototype = {
 						sName = aName.shift();
 						sStringType = (sName.indexOf("$") > -1) ? "$" : "";
 						aNodeArgs[i] = sName + " = o.dim(\"" + sStringType + "\", " + aName.join(", ") + ")";
+						// TTT not needed to assign to variable here!
+					}
+					node.pv = aNodeArgs.join("; ");
+					return node.pv;
+				},
+				*/
+				dim: function (node) {
+					var aNodeArgs = fnParseArgs(node.args),
+						i, sName, sName2, aName;
+
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sName = aNodeArgs[i];
+						sName += " "; // for buggy IE8 split: Otherwise it won't return last empty element in split
+						aName = sName.split(/\[|\]\[|\]/); // split in variable and dimension(s)
+						aName.pop(); // remove empty last element
+						sName = aName.shift();
+						sName2 = sName.substr(2); // remove preceding "v."
+						//sStringType = (sName.indexOf("$") > -1) ? "$" : "";
+						aNodeArgs[i] = "/* " + sName + " = */ o.dim(\"" + sName2 + "\", " + aName.join(", ") + ")";
+						// TTT not needed to assign to variable here!
 					}
 					node.pv = aNodeArgs.join("; ");
 					return node.pv;

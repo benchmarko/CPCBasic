@@ -65,8 +65,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *MASK*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, some AMDSOS commands
+- Unimplemented commands are ignored: *AUTO*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, some AMDSOS commands
 - Sound: More hardware volume envelopes
+- Multi-line strings containing LF (\n)
 - No complete check of the BASIC program
 - Incomplete type checking
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
@@ -100,6 +101,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: Edit and direct input and execution mode; cursor]
 - [done: *DELETE*, *EDIT*, *LIST*, *NEW*]
 - [done: *CAT*, *|DIR*, *|ERA*, *|REN*]
+- [done: Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic]
+- [done: DSK images support, for reading]
+- [done: *MASK*]
 
 ## Extensions and Features
 
@@ -116,7 +120,7 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 - *|RENUM,...*: similar to *RENUM* but with a 4th parameter to keep line numbers starting with this line
 - Computations with numbers are not limited to 16 bit
 - *PEEK & POKE* features:
-  - Access screen memory in address range &C000-&FFFF or &4000-&7FFF
+  - Access screen memory in screen base address range, e.g. &C000-&FFFF or &4000-&7FFF
   - Access character map data starting at *HIMEM*+1 after *SYMBOL AFTER* n with n<256
 
 ## Supported CALLs and OUTs
@@ -126,16 +130,30 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 - *CALL &BB00*: KM Initialize (KM Reset and reset also CPC key extensions)
 - *CALL &BB03*: KM Reset (clear input and reset expansion tokens)
 - *CALL &BB06*: KM Wait Char (CPCBasic: same as *Call &BB18*)
+- *CALL &BB0C*: KM Char Return (depending on number of arguments)
 - *CALL &BB18*: KM Wait Key
+- *CALL &BB4E*: TXT Initialize (initialize window parameter, delete custom chars)
+- *CALL &BB51*: TXT Reset (reset control character buffer)
+- *CALL &BB5A*: TXT Output (*PRINT* text char including control codes, depending on number of arguments)
+- *CALL &BB5D*: TXT WR Char (*PRINT* text char depending on number of arguments)
+- *CALL &BB6C*: TXT Clear Window
 - *CALL &BB7B*: TXT Cursor Enable
 - *CALL &BB7E*: TXT Cursor Disable
 - *CALL &BB81*: TXT Cursor On
 - *CALL &BB84*: TXT Cursor Off
-- *CALL &BB4E*: TXT Initialize (initialize window parameter, delete custom chars)
+- *CALL &BB8A*: TXT Place Cursor
+- *CALL &BB8D*: TXT Remove Cursor
+- *CALL &BB90*: TXT Set Pen (set *PEN* depending on number of arguments)
+- *CALL &BB96*: TXT Set Paper (set *PAPER* depending on number of arguments)
 - *CALL &BB9C*: TXT Inverse (same as *PRINT CHR$(24)*)
-- *CALL &BBDE,n1,n2,...*: GRA Set Pen (set *GRAPHICS PEN* depending on number of arguments)
+- *CALL &BB9F*: TXT Set Back (set *PEN* transparent mode, depending on number of arguments)
+- *CALL &BBDB*: GRA Clear Window
+- *CALL &BBDE*: GRA Set Pen (set *GRAPHICS PEN* depending on number of arguments)
+- *CALL &BBE4*: GRA Set Paper (set *GRAPHICS PAPER* depending on number of arguments)
+- *CALL &BBFC*: GRA WR Char (*PRINT* graphics char depending on number of arguments)
 - *CALL &BBFF*: SCR Initialize (set *MODE* 1, reset inks, clear screen)
 - *CALL &BC06,nn*: SCR SET BASE (really &BC08; set screen start high byte: &00, &40, &80 or &C0)
+- *CALL &BC0E*: SCR Set Mode (set *MODE* depending on number of arguments)
 - *CALL &BCA7*: SOUND Reset
 - *CALL &BCB6*: SOUND Hold (TODO)
 - *CALL &BCB9*: SOUND Continue (TODO)
@@ -174,8 +192,6 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 
 ## Possible Future Enhancements
 
-- Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic
-- DSK images support
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
 - RSX extension libraries / plugins programmed in JavaScript
 - Can we detect busy loops and insert *FRAME* automatically?

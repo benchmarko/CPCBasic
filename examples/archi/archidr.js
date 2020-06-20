@@ -51,7 +51,6 @@ cpcBasic.addItem("", function () { /*
 460 '
 470 REM load drawing set
 480 PRINT
-485 ?"archi1  archi2"
 490 |DIR,"*.BIL"
 500 PRINT"File name (without.BIL): ";
 510 INPUT t$

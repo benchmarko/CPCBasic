@@ -333,7 +333,7 @@ cpcBasic.addItem("", function () { /*
 3310 '
 3320 ?"OPENIN and LINE INPUT #9"
 3330 ?"OPENIN testdat with characters 33..255"
-3340 openin "testdat1"
+3340 openin "testpg1.dat"
 3350 for i=33 to 255:line input #9,t$
 3360 t=asc(t$):?t$;: if t<>i then ?"error:";i;"<>";t:error 33
 3370 tag:move ((i-33) mod 80)*8, 90-((i-33)\80)*16:?t$;:tagoff
@@ -343,11 +343,11 @@ cpcBasic.addItem("", function () { /*
 3410 ?
 3420 '
 3430 ?"OPENOUT, OPENIN and LINE INPUT #9"
-3440 openout "testdat2"
+3440 openout "testpg2.dat"
 3450 for i=33 to 255:t$=chr$(i):print #9,t$
 3460 next
 3470 closeout
-3480 openin "testdat2"
+3480 openin "testpg2.dat"
 3490 for i=33 to 255:line input #9,t$:?t$;
 3500 t=asc(t$):if t<>i then ?"error:";i;"<>";t:error 33
 3510 next
@@ -355,39 +355,39 @@ cpcBasic.addItem("", function () { /*
 3530 ?:?
 3540 '
 3550 ?"Numbers in files"
-3560 openout "testdat2"
+3560 openout "testpg2.dat"
 3570 for i=0 to 10:?#9,i:next :'separate lines
 3580 closeout
-3590 openin "testdat2"
+3590 openin "testpg2.dat"
 3600 for i=0 to 10:input #9,t
 3610 if i<>t then ?"error:";i;"<>";t:error 33
 3620 next
 3630 closein
-3640 openin "testdat2"
+3640 openin "testpg2.dat"
 3650 for i=0 to 10:input #9,t$
 3660 a$=str$(i)+" ":a$=right$(a$,len(a$)-1):if a$<>t$ then ?"error:";a$;"<>";t$:error 33
 3670 next
 3680 closein
 3690 '
-3700 openout "testdat2"
+3700 openout "testpg2.dat"
 3710 for i=0 to 10:?#9,i;:next :'one line
 3720 closeout
-3730 openin "testdat2"
+3730 openin "testpg2.dat"
 3740 for i=0 to 10:input #9,t
 3750 if i<>t then ?"error:";i;"<>";t:error 33
 3760 next
 3770 closein
-3780 openin "testdat2"
+3780 openin "testpg2.dat"
 3790 input #9,t$
 3800 if t$<>"0  1  2  3  4  5  6  7  8  9  10 " then ?"error:";:error 33
 3810 closein
 3820 ?
 3830 '
 3840 ?"Mixed style"
-3850 openout "testdat2"
+3850 openout "testpg2.dat"
 3860 for i=0 to 10:?#9,i;"&a1";&a2:next
 3870 closeout
-3880 openin "testdat2"
+3880 openin "testpg2.dat"
 3890 for i=0 to 10:input #9,t,t2
 3900 if i<>t then ?"error:";i;"<>";t:error 33
 3910 if t2<>&a1 then ?"error:";t2;"<>";&a1:error 33
@@ -396,8 +396,8 @@ cpcBasic.addItem("", function () { /*
 3940 next
 3950 closein
 3960 '
-3965 ?"|ERA to delete testdat2 (CPC: DISC only)"
-3970 |ERA,"testdat2"
+3965 ?"|ERA to delete testpg2.dat (CPC: DISC only)"
+3970 |ERA,"testpg2.dat"
 3980 '
 3990 gosub 9040
 4000 '

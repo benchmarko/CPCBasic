@@ -113,6 +113,10 @@ Canvas.prototype = {
 		this.iGColMode = 0; // 0=normal, 1=xor, 2=and, 3=or
 		this.bClipped = false;
 
+		this.iMask = 255;
+		this.iMaskBitPos = 1;
+		this.iMaskFirst = 1;
+
 		canvas = document.getElementById("cpcCanvas");
 		this.canvas = canvas;
 
@@ -744,8 +748,12 @@ Canvas.prototype = {
 		var iPixelWidth = this.oModeData.iPixelWidth,
 			iPixelHeight = this.oModeData.iPixelHeight,
 			iGPen = this.iGPen,
+			iGPaper = this.iGPaper,
+			iMask = this.iMask,
+			iMaskBitPos = this.iMaskBitPos,
+			iMaskFirst = this.iMaskFirst,
 			iGColMode = this.iGColMode,
-			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err;
+			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err, iBit;
 
 
 		// we have to add origin before modifying coordinates to match CPC pixel
@@ -799,7 +807,11 @@ Canvas.prototype = {
 		x = xstart;
 		y = ystart;
 		err = deltafastdirection >> 1; // eslint-disable-line no-bitwise
-		this.setPixelOriginIncluded(x, y, iGPen, iGColMode); // we expect integers
+
+		iBit = iMask & iMaskBitPos; // eslint-disable-line no-bitwise
+		// rotate bitpos left
+		iMaskBitPos = ((iMaskBitPos << 1) & 0xff) | (iMaskBitPos >> (8 - 1)); // eslint-disable-line no-bitwise
+		this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
 
 		for (t = 0; t < deltafastdirection; t += 1) {
 			err -= deltaslowdirection;
@@ -811,7 +823,17 @@ Canvas.prototype = {
 				x += pdx;
 				y += pdy;
 			}
-			this.setPixelOriginIncluded(x, y, iGPen, iGColMode); // we expect integers
+
+			iBit = iMask & iMaskBitPos; // eslint-disable-line no-bitwise
+			iMaskBitPos = ((iMaskBitPos << 1) & 0xff) | (iMaskBitPos >> (8 - 1)); // eslint-disable-line no-bitwise
+			/*
+			iMaskBitPos *= 2;
+			if (iMaskBitPos > 256) {
+				iMaskBitPos = 1;
+			}
+			*/
+
+			this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
 		}
 	},
 
@@ -1281,6 +1303,15 @@ Canvas.prototype = {
 		this.aSpeedInk[1] = iTime2;
 	},
 
+	setMask: function (iMask) { // set line mask
+		this.iMask = iMask;
+		this.iMaskBitPos = 1;
+	},
+
+	setMaskFirst: function (iMaskFirst) { // set first dot for line mask
+		this.iMaskFirst = iMaskFirst;
+	},
+
 	changeMode: function (iMode) {
 		var oModeData = this.aModeData[iMode];
 
@@ -1293,6 +1324,8 @@ Canvas.prototype = {
 		this.setOrigin(0, 0);
 		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0);
 		this.setGColMode(0);
+		this.setMask(255);
+		this.setMaskFirst(1);
 		this.setGPen(this.iGPen); // keep, but maybe different for other mode
 		this.setGPaper(this.iGPaper); // keep, maybe different for other mode
 		this.setGTransparentMode(false);

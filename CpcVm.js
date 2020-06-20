@@ -199,6 +199,8 @@ CpcVm.prototype = {
 		this.vmResetFileHandling(this.oInFile);
 		this.vmResetFileHandling(this.oOutFile);
 
+		this.vmResetControlBuffer();
+
 		this.sOut = ""; // console output
 
 		this.vmStop("", 0, true);
@@ -217,6 +219,7 @@ CpcVm.prototype = {
 		this.aMem.length = 0; // clear memory (for PEEK, POKE)
 		this.iRamSelect = 0; // for banking with 16K banks in the range 0x4000-0x7fff (0=default; 1...=additional)
 		this.iScreenPage = 3; // 16K screen page, 3=0xc000..0xffff
+		//this.iScreenViewPage = 3; // visible screen page ( not yet supported)
 
 		this.iMinCharHimem = this.iMaxHimem;
 		this.iMaxCharHimem = this.iMaxHimem;
@@ -309,6 +312,10 @@ CpcVm.prototype = {
 		Object.assign(oWin, oWinData, oCassetteData);
 	},
 
+	vmResetControlBuffer: function () {
+		this.sPrintControlBuf = ""; // collected control characters for PRINT
+	},
+
 	vmResetFileHandling: function (oFile) {
 		oFile.bOpen = false;
 		oFile.sCommand = ""; // to be sure
@@ -324,6 +331,7 @@ CpcVm.prototype = {
 
 	vmResetInks: function () {
 		this.oCanvas.setDefaultInks();
+		this.oCanvas.setSpeedInk(10, 10);
 	},
 
 	vmReset4Run: function () {
@@ -603,6 +611,7 @@ CpcVm.prototype = {
 		return this.oStop.sReason === "";
 	},
 
+	/*
 	fnCreateNDimArray: function (aDims, initVal) {
 		var aRet,
 			fnCreateRec = function (iIndex) {
@@ -626,7 +635,9 @@ CpcVm.prototype = {
 		aRet = fnCreateRec(0);
 		return aRet;
 	},
+	*/
 
+	/*
 	fnGetVarDefault: function (sVarName) {
 		var iArrayIndices = sVarName.split("A").length - 1,
 			bIsString = sVarName.includes("$"),
@@ -647,6 +658,21 @@ CpcVm.prototype = {
 		}
 		return value;
 	},
+	*/
+
+	vmInitUntypedVariables: function (sVarChar) {
+		var aNames = this.oVariables.getAllVariableNames(),
+			i, sName;
+
+		for (i = 0; i < aNames.length; i += 1) {
+			sName = aNames[i];
+			if (sName.charAt(0) === sVarChar) {
+				if (sName.indexOf("$") === -1 && sName.indexOf("%") === -1 && sName.indexOf("!") === -1) { // no explicit type?
+					this.oVariables.initVariable(sName);
+				}
+			}
+		}
+	},
 
 	vmDefineVarTypes: function (sType, sNameOrRange, sErr) {
 		var aRange, iFirst, iLast, i, sVarChar;
@@ -662,7 +688,11 @@ CpcVm.prototype = {
 		}
 		for (i = iFirst; i <= iLast; i += 1) {
 			sVarChar = String.fromCharCode(i);
-			this.oVariables.setVarType(sVarChar, sType);
+			if (this.oVariables.getVarType(sVarChar) !== sType) { // type changed?
+				this.oVariables.setVarType(sVarChar, sType);
+				// initialize all untyped variables starting with sVarChar!
+				this.vmInitUntypedVariables(sVarChar);
+			}
 		}
 	},
 
@@ -786,13 +816,17 @@ CpcVm.prototype = {
 		iInterval = this.vmInRangeRound(iInterval, 0, 32767, sType); // more would be overflow
 		iTimer = this.vmInRangeRound(iTimer || 0, 0, 3, sType);
 		oTimer = this.aTimer[iTimer];
-		iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
+		if (iInterval) {
+			iIntervalMs = iInterval * this.iFrameTimeMs; // convert to ms
 
-		oTimer.iIntervalMs = iIntervalMs;
-		oTimer.iLine = iLine;
-		oTimer.bRepeat = (sType === "EVERY");
-		oTimer.bActive = true;
-		oTimer.iNextTimeMs = Date.now() + iIntervalMs;
+			oTimer.iIntervalMs = iIntervalMs;
+			oTimer.iLine = iLine;
+			oTimer.bRepeat = (sType === "EVERY");
+			oTimer.bActive = true;
+			oTimer.iNextTimeMs = Date.now() + iIntervalMs;
+		} else { // interval 0 => switch running timer off
+			oTimer.bActive = false;
+		}
 	},
 
 	vmCopyFromScreen: function (iSource, iDest) {
@@ -831,7 +865,10 @@ CpcVm.prototype = {
 			iAddr = iPage << 14; // eslint-disable-line no-bitwise
 			this.vmCopyToScreen(iAddr, iAddr);
 		}
+		//this.vmSetScreenViewBase(iByte); //TTT
 	},
+
+	// could be also set vmSetScreenViewBase? thisiScreenViewPage?  We always draw on visible canvas?
 
 	vmSetTransparentMode: function (iStream, iTransparent) {
 		var oWin = this.aWindow[iStream];
@@ -946,10 +983,33 @@ CpcVm.prototype = {
 				this.vmStop("waitKey", 30); // wait for key
 			}
 			break;
+		case 0xbb0c: // KM Char Return (ROM &1A77), depending on number of args
+			if (this.options.onCharReturn) {
+				this.options.onCharReturn(String.fromCharCode(arguments.length - 1));
+			}
+			break;
 		case 0xbb18: // KM Wait Key (ROM &1B56)
 			if (this.inkey$() === "") { // no key?
 				this.vmStop("waitKey", 30); // wait for key
 			}
+			break;
+		case 0xbb4e: // TXT Initialize (ROM &1078)
+			this.oCanvas.resetCustomChars();
+			this.vmResetWindowData(true); // reset windows, including pen and paper
+			// falls through
+		case 0xbb51: // TXT Reset (ROM &11088)
+			this.vmResetControlBuffer();
+			break;
+		case 0xbb5a: // TXT Output (ROM &1400), depending on number of args
+			this.print(0, String.fromCharCode(arguments.length - 1));
+			break;
+		case 0xbb5d: // TXT WR Char (ROM &1334), depending on number of args
+			this.vmDrawUndrawCursor(0);
+			this.vmPrintChars(0, String.fromCharCode(arguments.length - 1));
+			this.vmDrawUndrawCursor(0);
+			break;
+		case 0xbb6c: // TXT Clear Window (ROM &1540)
+			this.cls(0);
 			break;
 		case 0xbb7b: // TXT Cursor Enable (ROM &1289); user switch (cursor enabled)
 			this.cursor(0, null, 1);
@@ -963,25 +1023,51 @@ CpcVm.prototype = {
 		case 0xbb84: // TXT Cursor Off (ROM &1281); system switch
 			this.cursor(0, 0);
 			break;
-		case 0xbb4e: // TXT Initialize (ROM &1078)
-			this.vmResetWindowData(true); // reset windows, including pen and paper
-			this.oCanvas.resetCustomChars();
+		case 0xbb8a: // TXT Place Cursor (ROM &1268)
+			this.vmPlaceRemoveCursor(0); // 0=stream
+			break;
+		case 0xbb8d: // TXT Remove Cursor (ROM &1268); same as place cursor
+			this.vmPlaceRemoveCursor(0);
+			break;
+		case 0xbb90: // TXT Set Pen (ROM &12A9), depending on number of args
+			this.pen(0, (arguments.length - 1) % 16);
+			break;
+		case 0xbb96: // TXT Set Paper (ROM &12AE); depending on number of args
+			this.paper(0, (arguments.length - 1) % 16);
 			break;
 		case 0xbb9c: // TXT Inverse (ROM &12C9), same as print chr$(24);
 			this.vmTxtInverse(0);
 			break;
-		case 0xbbde: // GRA Set Pen (ROM &17F6)
+		case 0xbb9f: // TXT Set Back (ROM &137A), depending on number of args
+			this.vmSetTransparentMode(0, arguments.length - 1);
+			break;
+		case 0xbbdb: // GRA Clear Window (ROM &17C5)
+			this.oCanvas.clearGraphicsWindow();
+			break;
+		case 0xbbde: // GRA Set Pen (ROM &17F6), depending on number of args
 			// we can only set graphics pen depending on number of args (pen 0=no arg, pen 1=one arg)
-			this.graphicsPen(arguments.length - 1);
+			this.graphicsPen((arguments.length - 1) % 16);
+			break;
+		case 0xbbe4: // GRA Set Paper (ROM &17FD), depending on number of args
+			this.graphicsPaper((arguments.length - 1) % 16);
+			break;
+		case 0xbbfc: // GRA WR Char (ROM &1945), depending on number of args
+			this.oCanvas.printGChar(arguments.length - 1);
 			break;
 		case 0xbbff: // SCR Initialize (ROM &0AA0)
+			this.vmSetScreenBase(0xc0);
 			this.iMode = 1;
-			this.vmResetInks();
 			this.oCanvas.setMode(this.iMode); // does not clear canvas
 			this.oCanvas.clearFullWindow(); // (SCR Mode Clear)
+			// fall through
+		case 0xbc02: // SCR Reset (ROM &0AB1)
+			this.vmResetInks();
 			break;
-		case 0xbc06: // SCR SET BASIC (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E
+		case 0xbc06: // SCR SET BASE (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E
 			this.vmSetScreenBase(arguments[1]);
+			break;
+		case 0xbc0e: // SCR SET MODE (ROM &0ACE), depending on number of args
+			this.mode((arguments.length - 1) % 4); // 3 is valid also on CPC
 			break;
 		case 0xbca7: // SOUND Reset (ROM &1E68)
 			this.oSound.reset();
@@ -1121,11 +1207,14 @@ CpcVm.prototype = {
 		}
 	},
 
+	// also called for chr$(12), call &bb6c
 	cls: function (iStream) { // optional iStream
 		var oWin;
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "CLS");
 		oWin = this.aWindow[iStream];
+
+		this.vmDrawUndrawCursor(iStream); // why, if we clear anyway?
 
 		this.oCanvas.clearTextWindow(oWin.iLeft, oWin.iRight, oWin.iTop, oWin.iBottom, oWin.iPaper); // cls window
 		oWin.iPos = 0;
@@ -1185,12 +1274,18 @@ CpcVm.prototype = {
 		return n;
 	},
 
+	vmPlaceRemoveCursor: function (iStream) {
+		var oWin = this.aWindow[iStream];
+
+		this.vmMoveCursor2AllowedPos(iStream);
+		this.oCanvas.drawCursor(oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper);
+	},
+
 	vmDrawUndrawCursor: function (iStream) {
 		var oWin = this.aWindow[iStream];
 
 		if (oWin.bCursorOn && oWin.bCursorEnabled) {
-			this.vmMoveCursor2AllowedPos(iStream);
-			this.oCanvas.drawCursor(oWin.iPos + oWin.iLeft, oWin.iVpos + oWin.iTop, oWin.iPen, oWin.iPaper);
+			this.vmPlaceRemoveCursor(iStream);
 		}
 	},
 
@@ -1203,17 +1298,17 @@ CpcVm.prototype = {
 			iCursorOn = this.vmInRangeRound(iCursorOn, 0, 1, "CURSOR");
 			this.vmDrawUndrawCursor(iStream); // undraw
 			oWin.bCursorOn = Boolean(iCursorOn);
-			if (oWin.bCursorOn && oWin.bCursorEnabled) {
-				this.vmDrawUndrawCursor(iStream); // draw
-			}
+			//if (oWin.bCursorOn && oWin.bCursorEnabled) {
+			this.vmDrawUndrawCursor(iStream); // draw
+			//}
 		}
 		if (iCursorEnabled !== undefined) { // user
 			iCursorEnabled = this.vmInRangeRound(iCursorEnabled, 0, 1, "CURSOR");
 			this.vmDrawUndrawCursor(iStream); // undraw
 			oWin.bCursorEnabled = Boolean(iCursorEnabled);
-			if (oWin.bCursorEnabled && oWin.bCursorOn) {
-				this.vmDrawUndrawCursor(iStream); // draw
-			}
+			//if (oWin.bCursorEnabled && oWin.bCursorOn) {
+			this.vmDrawUndrawCursor(iStream); // draw
+			//}
 		}
 	},
 
@@ -1280,7 +1375,22 @@ CpcVm.prototype = {
 		this.bTimersDisabled = true;
 	},
 
-	dim: function (sStringType) { // varargs
+	//TTT
+	dim: function (sVarName) { // varargs
+		var aDimensions = [],
+			i, iSize;
+
+		for (i = 1; i < arguments.length; i += 1) {
+			iSize = this.vmInRangeRound(arguments[i], 0, 32767, "DIM") + 1; // for basic we have sizes +1
+			aDimensions.push(iSize);
+		}
+		this.oVariables.dimVariable(sVarName, aDimensions);
+
+		return this.oVariables.getVariable(sVarName); //TTT not really needed any more
+	},
+
+	/*
+	dim_ttt: function (sStringType) { // varargs
 		var aArgs = [],
 			bIsString = (sStringType === "$"),
 			varDefault = (bIsString) ? "" : 0,
@@ -1293,6 +1403,7 @@ CpcVm.prototype = {
 		aValue = this.fnCreateNDimArray(aArgs, varDefault);
 		return aValue;
 	},
+	*/
 
 	draw: function (x, y, iGPen, iGColMode) {
 		this.vmDrawMovePlot("DRAW", x, y, iGPen, iGColMode);
@@ -1817,6 +1928,12 @@ CpcVm.prototype = {
 			iLast = this.vmInRangeRound(iLast, 1, 65535, "LIST");
 		}
 
+		if (iStream === 9) {
+			if (!this.oOutFile.bOpen) { // catch here
+				throw this.vmComposeError(Error(), 31, "LIST #" + iStream); // File not open
+			}
+		}
+
 		this.vmStop("list", 90, false, {
 			iStream: iStream,
 			iFirst: iFirst || 1,
@@ -1910,12 +2027,13 @@ CpcVm.prototype = {
 	mask: function (iMask, iFirst) { // one of iMask, iFirst is optional
 		if (iMask !== null) {
 			iMask = this.vmInRangeRound(iMask, 0, 255, "MASK");
+			this.oCanvas.setMask(iMask);
 		}
 
 		if (iFirst !== undefined) {
 			iFirst = this.vmInRangeRound(iFirst, 0, 1, "MASK");
+			this.oCanvas.setMaskFirst(iFirst);
 		}
-		this.vmNotImplemented("MASK: " + iMask + " " + iFirst);
 	},
 
 	max: function () { // varargs
@@ -2326,7 +2444,7 @@ CpcVm.prototype = {
 		oWin.iVpos = y;
 	},
 
-	vmPrintChars: function (sStr, iStream) {
+	vmPrintChars: function (iStream, sStr) {
 		var oWin = this.aWindow[iStream],
 			i, iChar;
 
@@ -2390,7 +2508,7 @@ CpcVm.prototype = {
 		case 0x00: // NUL, ignore
 			break;
 		case 0x01: // SOH 0-255
-			this.vmPrintChars(sPara, iStream);
+			this.vmPrintChars(iStream, sPara);
 			break;
 		case 0x02: // STX
 			oWin.bCursorEnabled = false; // cursor disable (user)
@@ -2539,7 +2657,7 @@ CpcVm.prototype = {
 		2 //  0x1f
 	],
 
-	vmPrintCharsOrControls: function (sStr, iStream, sBuf) {
+	vmPrintCharsOrControls: function (iStream, sStr, sBuf) {
 		var sOut = "",
 			i = 0,
 			iCode, iParaCount;
@@ -2554,7 +2672,7 @@ CpcVm.prototype = {
 			i += 1;
 			if (iCode <= 0x1f) { // control code?
 				if (sOut !== "") {
-					this.vmPrintChars(sOut, iStream); // print chars collected so far
+					this.vmPrintChars(iStream, sOut); // print chars collected so far
 					sOut = "";
 				}
 				iParaCount = this.mControlCodeParameterCount[iCode];
@@ -2570,7 +2688,7 @@ CpcVm.prototype = {
 			}
 		}
 		if (sOut !== "") {
-			this.vmPrintChars(sOut, iStream); // print chars collected so far
+			this.vmPrintChars(iStream, sOut); // print chars collected so far
 			sOut = "";
 		}
 		return sBuf;
@@ -2586,7 +2704,7 @@ CpcVm.prototype = {
 	},
 
 	print: function (iStream) { // varargs
-		var sBuf = "",
+		var sBuf = this.sPrintControlBuf || "",
 			oWin, aSpecialArgs, sStr, i, arg;
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "PRINT");
@@ -2621,7 +2739,7 @@ CpcVm.prototype = {
 				if (oWin.bTag) {
 					this.vmPrintGraphChars(sStr);
 				} else {
-					sBuf = this.vmPrintCharsOrControls(sStr, iStream, sBuf);
+					sBuf = this.vmPrintCharsOrControls(iStream, sStr, sBuf);
 				}
 				this.sOut += sStr; // console
 			} else { // iStream === 9
@@ -2641,6 +2759,7 @@ CpcVm.prototype = {
 		if (iStream < 8) {
 			if (!oWin.bTag) {
 				this.vmDrawUndrawCursor(iStream); // draw
+				this.sPrintControlBuf = sBuf || ""; // maybe some parameters missing
 			}
 		} else if (iStream === 9) {
 			this.oOutFile.aFileData.push(sBuf);
@@ -3424,8 +3543,8 @@ CpcVm.prototype = {
 				this.vmPrintGraphChars(sStr + "\r\n");
 			} else {
 				this.vmDrawUndrawCursor(iStream); // undraw
-				this.vmPrintChars(sStr, iStream);
-				this.vmPrintCharsOrControls("\r\n", iStream);
+				this.vmPrintChars(iStream, sStr);
+				this.vmPrintCharsOrControls(iStream, "\r\n");
 				this.vmDrawUndrawCursor(iStream); // draw
 			}
 			this.sOut += sStr + "\n"; // console

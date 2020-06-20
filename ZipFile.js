@@ -36,40 +36,11 @@ ZipFile.prototype = {
 	},
 
 	subArr: function (iBegin, iLength) {
-		//iEnd = typeof iLength === "undefined" ? aData.length : iBegin + iLength;
 		var aData = this.aData,
 			iEnd = iBegin + iLength;
 
 		return aData.slice ? aData.slice(iBegin, iEnd) : aData.subarray(iBegin, iEnd); // array.slice on Uint8Array not for IE11
 	},
-
-	/*
-	readUTF_window: function (aData, iOffset, iLen) {
-		var iCallSize = 25000, //TTT
-			sOut, i, l;
-
-		iOffset = iOffset || 0;
-		aData = this.subArr(iOffset, iLen);
-		sOut = "";
-		for (i = 0, l = aData.length; i < l; i += iCallSize) {
-			sOut += String.fromCharCode.apply(null, this.subArr(i, iCallSize));
-		}
-		return sOut;
-	},
-	*/
-
-	/*
-	readUTFsingle: function (aData, iOffset, iLen) {
-		var iEnd = iOffset + iLen,
-			sOut = "",
-			i;
-
-		for (i = iOffset; i < iEnd; i += 1) {
-			sOut += String.fromCharCode(aData[i]);
-		}
-		return sOut;
-	},
-	*/
 
 	readUTF: function (iOffset, iLen) {
 		var iCallSize = 25000, // use call window to avoid "maximum call stack error" for e.g. size 336461
@@ -188,7 +159,7 @@ ZipFile.prototype = {
 
 			// local file header... much more info
 			if (this.readUInt(oCdfh.iLocalOffset) !== iLfhSignature) {
-				Utils.console.error("Zip: readZipDirectory: LFH signature not found at offset", oCdfh.iLocalOffset); // not throw?
+				Utils.console.error("Zip: readZipDirectory: LFH signature not found at offset", oCdfh.iLocalOffset);
 			}
 
 			iLfhExtrafieldLength = this.readUShort(oCdfh.iLocalOffset + 28); // extra field length
@@ -209,7 +180,7 @@ ZipFile.prototype = {
 			/* eslint-enable array-element-newline */
 			that = this,
 			aData = this.aData,
-			iBufEnd = iOffset + iCompressedSize, //???  + 1, // aData.length, // the amount of bytes to read
+			iBufEnd = iOffset + iCompressedSize, //TTT  -1?
 			iInCnt = iOffset, // read position
 			iOutCnt = 0, // bytes written to outbuf
 			iBitCnt = 0, // helper to keep track of where we are in #bits
@@ -482,10 +453,6 @@ ZipFile.prototype = {
 			this.aData = aFileData; // we need to switch this.aData
 			sDataUTF8 = this.readUTF(0, aFileData.length);
 			this.aData = aSavedData; // restore
-
-			if (sDataUTF8.length !== oCdfh.iSize || sDataUTF8.length !== aFileData.length) { //TTT assert
-				Utils.console.error("Zip: readData: different length 1!");
-			}
 		} else {
 			throw this.composeError(Error(), "Zip: readData: compression method not supported:" + oCdfh.iCompressionMethod, "", 0);
 		}

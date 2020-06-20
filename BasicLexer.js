@@ -247,7 +247,22 @@ BasicLexer.prototype = {
 						sChar = advance();
 					}
 				}
+			},
+			fnTryContinueString = function () { // There could be a LF in a string but no CR. In CPCBasic we use LF only as EOL, so we cannot detect the difference.
+				var sOut = "",
+					sChar1;
+
+				while (isNewLine(sChar)) {
+					sChar1 = testChar(1);
+					if (sChar1 !== "" && (sChar1 < "0" || sChar1 > "9")) { // heuristic: next char not a digit => continue with the string
+						sOut += advanceWhile(isNotQuotes);
+					} else {
+						break;
+					}
+				}
+				return sOut;
 			};
+
 
 		while (iIndex < input.length) {
 			iStartPos = iIndex;
@@ -291,9 +306,11 @@ BasicLexer.prototype = {
 				}
 			} else if (isQuotes(sChar)) {
 				sChar = "";
+
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
 					Utils.console.log(this.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
+					sToken += fnTryContinueString(); // heuristic to detect an LF in the string
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 				sToken = hexEscape(sToken);

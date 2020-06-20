@@ -305,7 +305,7 @@ CommonEventHandler.prototype = {
 			oVariables = this.controller.oVariables,
 			sValue;
 
-		sValue = oVariables[sPar];
+		sValue = oVariables.getVariable(sPar);
 		if (sValue === undefined) {
 			sValue = "";
 		}

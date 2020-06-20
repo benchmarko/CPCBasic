@@ -364,17 +364,22 @@ BasicParser.prototype = {
 
 			statements = function (sStopType) {
 				var aStatements = [],
+					bColonExpected = false,
 					oStatement;
 
 				while (oToken.type !== "(end)" && oToken.type !== "(eol)") {
 					if (sStopType && oToken.type === sStopType) {
 						break;
 					}
-					if (oToken.type === ":") {
-						advance(":");
+					if (bColonExpected || oToken.type === ":") {
+						if (oToken.type !== "'" && oToken.type !== "else") { // no colon required for line comment or ELSE
+							advance(":");
+						}
+						bColonExpected = false;
 					} else {
 						oStatement = statement();
 						aStatements.push(oStatement);
+						bColonExpected = true;
 					}
 				}
 				return aStatements;
@@ -1234,64 +1239,6 @@ BasicParser.prototype = {
 
 			fnInputOrLineInput(oValue);
 			return oValue;
-
-			/*
-			var oValue = oPreviousToken,
-				sText = "",
-				oValue2, oStream;
-
-			oValue.args = [];
-
-			oStream = fnGetOptionalStream();
-			oValue.args.push(oStream);
-			if (oStream.len !== 0) { // not an inserted stream?
-				advance(",");
-			}
-
-			oValue.args.push({ // create
-				type: "string",
-				value: (oToken.type === ";") ? ";" : "",
-				len: 0
-			});
-			if (oToken.type === ";") { // no newline after input?
-				advance(";");
-			}
-
-			if (oToken.type === "string") {
-				sText += oToken.value;
-				advance();
-				if (oToken.type === ";") { // ";" => append prompt "? "
-					sText += "? ";
-					advance(";");
-				} else if (oToken.type === ",") {
-					advance(",");
-				} else {
-					throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
-				}
-			} else { // no string => also append prompt "? "
-				sText = "? ";
-			}
-
-			oValue.args.push({
-				type: "string",
-				value: sText
-			});
-
-			do {
-				if (oToken.type !== "identifier") {
-					throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
-				}
-				oValue2 = oToken; // identifier
-				advance();
-				if (oToken.type === "(") {
-					oValue2.args = fnGetArgsInParenthesis();
-				} else if (oToken.type === "[") {
-					oValue2.args = fnGetArgsInBrackets();
-				}
-				oValue.args.push(oValue2);
-			} while ((oToken.type === ",") && advance());
-			return oValue;
-			*/
 		});
 
 		stmt("key", function () {
@@ -1324,65 +1271,6 @@ BasicParser.prototype = {
 
 			fnInputOrLineInput(oValue);
 			return oValue;
-
-			/*
-			var oValue = oPreviousToken,
-				sText = "",
-				oValue2, oStream;
-
-			advance("input");
-
-			oValue.type = "lineInput";
-			oValue.args = [];
-
-			oStream = fnGetOptionalStream();
-			oValue.args.push(oStream);
-			if (oStream.len !== 0) { // not an inserted stream?
-				advance(",");
-			}
-
-			oValue.args.push({ // create
-				type: "string",
-				value: (oToken.type === ";") ? ";" : "",
-				len: 0
-			});
-			if (oToken.type === ";") { // no newline after input?
-				advance(";");
-			}
-
-			if (oToken.type === "string") {
-				sText += oToken.value;
-				advance();
-				if (oToken.type === ";") { // ";" => append "? "
-					sText += "? ";
-					advance();
-				} else if (oToken.type === ",") {
-					advance();
-				} else {
-					throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
-				}
-			} else { // no string => also append prompt "? "
-				sText = "? ";
-			}
-
-			oValue.args.push({
-				type: "string",
-				value: sText
-			});
-
-
-			if (oToken.type !== "identifier") {
-				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
-			}
-			oValue2 = oToken; // identifier
-			advance();
-			if (oToken.type === "(") {
-				oValue2.args = fnGetArgsInParenthesis();
-			} else if (oToken.type === "[") {
-				oValue2.args = fnGetArgsInBrackets();
-			}
-			oValue.args.push(oValue2);
-			*/
 		});
 
 		stmt("list", function () {

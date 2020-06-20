@@ -87,10 +87,10 @@ Variables.prototype = {
 		return sNameType;
 	},
 
-	getVarDefault: function (sVarName) {
+	getVarDefault: function (sVarName, aDimensions) { // optional aDimensions
 		var iArrayIndices = sVarName.split("A").length - 1,
 			bIsString = sVarName.includes("$"),
-			sFirst, value, aArgs, aValue, i;
+			sFirst, value, aValue, i;
 
 		if (!bIsString) { // check dynamic varType...
 			sFirst = sVarName.charAt(0);
@@ -101,22 +101,28 @@ Variables.prototype = {
 		}
 		value = bIsString ? "" : 0;
 		if (iArrayIndices) {
-			// on CPC up to 3 dimensions 0..10 without dim
-			if (iArrayIndices > 3) {
-				iArrayIndices = 3;
+			if (!aDimensions) {
+				aDimensions = [];
+				if (iArrayIndices > 3) { // on CPC up to 3 dimensions 0..10 without dim
+					iArrayIndices = 3;
+				}
+				for (i = 0; i < iArrayIndices; i += 1) {
+					aDimensions.push(11);
+				}
 			}
-			aArgs = [];
-			for (i = 0; i < iArrayIndices; i += 1) {
-				aArgs.push(11);
-			}
-			aValue = this.createNDimArray(aArgs, value);
+			aValue = this.createNDimArray(aDimensions, value);
 			value = aValue;
 		}
 		return value;
 	},
 
 	initVariable: function (sName) {
-		this.oVariables[sName] = this.getVarDefault(sName);
+		this.oVariables[sName] = this.getVarDefault(sName, null);
+		return this;
+	},
+
+	dimVariable: function (sName, aDimensions) {
+		this.oVariables[sName] = this.getVarDefault(sName, aDimensions);
 		return this;
 	},
 

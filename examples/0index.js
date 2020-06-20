@@ -71,11 +71,13 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
     	"key": "archi/archi1.bil",
-		"title": "Drawing Set 1"
+		"title": "Drawing Set 1",
+		"meta": "D"
 	},
 	{
     	"key": "archi/archi2.bil",
-		"title": "Drawing Set 2"
+		"title": "Drawing Set 2",
+		"meta": "D"
 	},
 	{
     	"key": "demo/blocky",
@@ -178,6 +180,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Keyboard Test"
 	},
 	{
+		"key": "test/linemask",
+		"title": "Line Mask"
+	},
+	{
 		"key": "test/mousepa",
 		"title": "Mouse Painting"
 	},
@@ -201,14 +207,14 @@ cpcBasic.addIndex("./examples", function () { /*
 		"key": "test/stars",
 		"title": "Stars Test 1 and 2"
 	},
-	{
-    	"key": "test/testdat1",
-		"title": "testdat1 - Test data for Test Page",
-		"meta": "D"
-	},
     {
 		"key": "test/testpage",
 		"title": "Test Page"
+	},
+	{
+    	"key": "test/testpg1.dat",
+		"title": "testpg1 - Test data 1 for Test Page",
+		"meta": "D"
 	},
 	{
 		"key": "vidi/vidi",

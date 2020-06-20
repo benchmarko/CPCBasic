@@ -171,7 +171,7 @@ cpcBasic.addItem("", function () { /*
 1660 mi=1:ma=4:GOSUB 2350
 1670 IF m=4 THEN RETURN
 1675 CLS
-1680 IF m=1 THEN a="V2000" ELSE IF m=2 THEN a="VHS" ELSE INPUT"Filename: ";a
+1680 IF m=1 THEN a="V2000" ELSE IF m=2 THEN a="VHS" ELSE |dir,"*.FIL":INPUT"Filename: ";a
 1690 a=a+".FIL"
 1700 PRINT a
 1705 CLOSEIN:CLOSEOUT

@@ -520,10 +520,22 @@ Keyboard.prototype = {
 
 	mSpecialKeys: {
 		Alt: String.fromCharCode(224), // Copy
+
 		ArrowUp: String.fromCharCode(240),
 		ArrowDown: String.fromCharCode(241),
 		ArrowLeft: String.fromCharCode(242),
 		ArrowRight: String.fromCharCode(243),
+
+		ArrowUpShift: String.fromCharCode(244),
+		ArrowDownShift: String.fromCharCode(245),
+		ArrowLeftShift: String.fromCharCode(246),
+		ArrowRightShift: String.fromCharCode(247),
+
+		ArrowUpCtrl: String.fromCharCode(248),
+		ArrowDownCtrl: String.fromCharCode(249),
+		ArrowLeftCtrl: String.fromCharCode(250),
+		ArrowRightCtrl: String.fromCharCode(251),
+
 		Backspace: String.fromCharCode(127),
 		Delete: String.fromCharCode(16),
 		Enter: "\r",
@@ -766,12 +778,12 @@ Keyboard.prototype = {
 		this.oKey2CpcKey = oNewMap;
 	},
 
-	fnPressCpcKey: function (iCpcKey, sPressedKey, sKey, bShiftKey, bCtrlKey) {
+	fnPressCpcKey: function (iCpcKey, sPressedKey, sKey, bShiftKey, bCtrlKey) { // eslint-disable-line complexity
 		var oPressedKeys = this.oPressedKeys,
 			oCpcKeyExpansions = this.oCpcKeyExpansions,
 			mSpecialKeys = this.mSpecialKeys,
 			sCpcKey = String(iCpcKey),
-			bKeyAlreadyPressed, oCpcKey, oExpansions, iExpKey, i;
+			bKeyAlreadyPressed, oCpcKey, oExpansions, iExpKey, i, sShiftCtrlKey;
 
 		oCpcKey = oPressedKeys[sCpcKey];
 		if (!oCpcKey) {
@@ -815,7 +827,11 @@ Keyboard.prototype = {
 			}
 		}
 
-		if (sKey in mSpecialKeys) {
+		sShiftCtrlKey = sKey + (bShiftKey ? "Shift" : "") + (bCtrlKey ? "Ctrl" : "");
+
+		if (sShiftCtrlKey in mSpecialKeys) {
+			sKey = mSpecialKeys[sShiftCtrlKey];
+		} else if (sKey in mSpecialKeys) {
 			sKey = mSpecialKeys[sKey];
 		} else if (bCtrlKey) {
 			if (sKey >= "a" && sKey <= "z") { // map keys with ctrl to control codes (problem: some control codes are browser functions, e.g. w: close window)
