@@ -4,14 +4,6 @@
 
 "use strict";
 
-/*
-var Utils;
-
-if (typeof require !== "undefined") {
-	Utils = require("./Utils.js"); // eslint-disable-line global-require
-}
-*/
-
 function Variables(config) {
 	this.init(config);
 }

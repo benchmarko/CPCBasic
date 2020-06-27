@@ -5,56 +5,50 @@
 cpcBasic.addItem("", function () { /*
 10 rem linemask - Line Mask
 20 rem
-30 MODE 0:BORDER 4:INK 0,11:INK 1,18:INK 14,9:INK 15,15
+30 INK 14,9:INK 15,15:BORDER 4
 40 DEFINT a-z
-50 h=1:'1 for MASK or 2 for BASIC mask simulation
-60 '
-70 cls:t!=time
-80 gosub 150
-90 t!=time-t!
-100 locate 1,25:?"h=";h;":";int(t!/300*1000);spc(3);
-110 call &bb18
-120 h=h+1:if h>3 then h=1
-130 goto 70
-140 '
-150 c=1
-160 y=398:d=640
-170 k=&X10011001:x=0:GOSUB 270
-180 FOR a=0 TO 1
-190 k=&X10111101:x=0:y=y-2:GOSUB 270
-200 NEXT a
-210 y=y-2
-220 k=&X10011001:x=0:GOSUB 270
-230 y=y-4
-240 IF y>0 THEN GOTO 170
-250 return
-260 '
-270 c=(c MOD 15)+1
-280 on h goto 300,330,450
-290 '
-300 MASK k:MOVE x,y:DRAW d,y,c
-310 RETURN
-320 '
-330 l=0
-340 WHILE l<d\32
-350 p=1
-360 while p<256
-370 IF (k and p)=p then PLOT x,y,c
-380 x=x+4
-390 p=p*2
-400 wend
-410 l=l+1
-420 WEND
-430 RETURN
-440 '
-450 a$=bin$(k,8)
-460 l=0
-470 WHILE l<d\32
-480   FOR p=1 TO LEN(a$)
-490     IF MID$(a$,p,1)="1" THEN PLOT x,y,c
-500     x=x+4
-510   NEXT p
-520   l=l+1
-530 WEND
-540 return
+50 dim pa(7)
+60 b=1:for p=0 to 7:pa(p)=b:b=b*2:next
+70 '
+80 for m=0 to 2
+90 xd=2^(2-min(m,2)):yd=((m=3)+2)
+100 MODE m:paper #1,11:cls#1:locate 1,24
+110 h=1:gosub 170
+120 h=2:gosub 170
+130 call &bb18
+140 next m
+150 goto 80
+160 '
+170 t!=time
+180 k=&X10110100
+190 x1=0:if h=2 then x1=320
+200 x2=x1+xd*8*8-1
+210 y1=398:y2=0
+220 c=1:f=1
+230 gosub 330
+240 for y=y1 to y2 step -yd
+250 on h gosub 370,410
+260 c=c+1:if c>15 then c=1:f=f xor 1:k=k+1:gosub 330
+270 next
+280 t!=time-t!
+290 tag:move 8*xd+((h=1)+1)*320,2*8*yd,1:?int(t!/300*1000);:tagoff
+300 return
+310 '
+320 ' init method
+330 if h=1 then MASK k,f else p=7
+340 return
+350 '
+360 REM method 1: MASK instruction
+370 MOVE x1,y:DRAW x2,y,c
+380 return
+390 '
+400 REM method 2: BASIC MASK simulation
+410 fd=0:if f=0 then fd=xd
+420 for x=x1+fd to x2 step xd
+430 b=pa(p)
+440 IF (k and b)=b then PLOT x,y,c else plot x,y,0
+450 p=p-1:if p<0 then p=7
+460 next
+470 return
+480 '
 */ });

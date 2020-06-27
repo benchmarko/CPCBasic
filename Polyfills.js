@@ -223,6 +223,13 @@ if (!Math.sign) { // IE11
 	};
 }
 
+if (!Math.trunc) { // IE11
+	Utils.console.debug("Polyfill: Math.trunc");
+	Math.trunc = function (v) {
+		return v < 0 ? Math.ceil(v) : Math.floor(v);
+	};
+}
+
 if (!Object.assign) { // IE11
 	Utils.console.debug("Polyfill: Object.assign");
 	Object.assign = function (oTarget) { // varargs // Object.assign is ES6, not in IE
@@ -300,6 +307,25 @@ if (!String.prototype.padStart) { // IE11
 				sPad += sPad.repeat(iTargetLength / sPad.length);
 			}
 			sRet = sPad.slice(0, iTargetLength) + sRet;
+		}
+		return sRet;
+	};
+}
+
+if (!String.prototype.padEnd) { // IE11
+	// based on: https://github.com/behnammodi/polyfill/blob/master/string.polyfill.js
+	Utils.console.debug("Polyfill: String.prototype.padEnd");
+	String.prototype.padEnd = function (iTargetLength, sPad) { // eslint-disable-line no-extend-native
+		var sRet = String(this);
+
+		iTargetLength >>= 0; // eslint-disable-line no-bitwise
+		if (this.length < iTargetLength) {
+			sPad = String(typeof sPad !== "undefined" ? sPad : " ");
+			iTargetLength -= this.length;
+			if (iTargetLength > sPad.length) {
+				sPad += sPad.repeat(iTargetLength / sPad.length);
+			}
+			sRet += sPad.slice(0, iTargetLength); // this line differs from padStart
 		}
 		return sRet;
 	};

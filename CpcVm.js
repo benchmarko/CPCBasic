@@ -219,7 +219,6 @@ CpcVm.prototype = {
 		this.aMem.length = 0; // clear memory (for PEEK, POKE)
 		this.iRamSelect = 0; // for banking with 16K banks in the range 0x4000-0x7fff (0=default; 1...=additional)
 		this.iScreenPage = 3; // 16K screen page, 3=0xc000..0xffff
-		//this.iScreenViewPage = 3; // visible screen page ( not yet supported)
 
 		this.iMinCharHimem = this.iMaxHimem;
 		this.iMaxCharHimem = this.iMaxHimem;
@@ -611,55 +610,6 @@ CpcVm.prototype = {
 		return this.oStop.sReason === "";
 	},
 
-	/*
-	fnCreateNDimArray: function (aDims, initVal) {
-		var aRet,
-			fnCreateRec = function (iIndex) {
-				var iLen, aArr, i;
-
-				iLen = aDims[iIndex];
-				iIndex += 1;
-				aArr = new Array(iLen);
-				if (iIndex < aDims.length) { // more dimensions?
-					for (i = 0; i < iLen; i += 1) {
-						aArr[i] = fnCreateRec(iIndex); // recursive call
-					}
-				} else { // one dimension
-					for (i = 0; i < iLen; i += 1) {
-						aArr[i] = initVal;
-					}
-				}
-				return aArr;
-			};
-
-		aRet = fnCreateRec(0);
-		return aRet;
-	},
-	*/
-
-	/*
-	fnGetVarDefault: function (sVarName) {
-		var iArrayIndices = sVarName.split("A").length - 1,
-			bIsString = sVarName.includes("$"),
-			value, aArgs, aValue, i;
-
-		value = bIsString ? "" : 0;
-		if (iArrayIndices) {
-			// on CPC up to 3 dimensions 0..10 without dim
-			if (iArrayIndices > 3) {
-				iArrayIndices = 3;
-			}
-			aArgs = [];
-			for (i = 0; i < iArrayIndices; i += 1) {
-				aArgs.push(11);
-			}
-			aValue = this.fnCreateNDimArray(aArgs, value);
-			value = aValue;
-		}
-		return value;
-	},
-	*/
-
 	vmInitUntypedVariables: function (sVarChar) {
 		var aNames = this.oVariables.getAllVariableNames(),
 			i, sName;
@@ -865,7 +815,6 @@ CpcVm.prototype = {
 			iAddr = iPage << 14; // eslint-disable-line no-bitwise
 			this.vmCopyToScreen(iAddr, iAddr);
 		}
-		//this.vmSetScreenViewBase(iByte); //TTT
 	},
 
 	// could be also set vmSetScreenViewBase? thisiScreenViewPage?  We always draw on visible canvas?
@@ -961,6 +910,16 @@ CpcVm.prototype = {
 		this.paper(iStream, iTmp);
 	},
 
+	vmPutKeyInBuffer: function (sKey) {
+		var oKeyDownHandler = this.oKeyboard.getKeyDownHandler();
+
+		this.oKeyboard.putKeyInBuffer(sKey);
+
+		if (oKeyDownHandler) {
+			oKeyDownHandler();
+		}
+	},
+
 	call: function (iAddr) { // eslint-disable-line complexity
 		// varargs (adr + parameters)
 		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "CALL");
@@ -984,9 +943,7 @@ CpcVm.prototype = {
 			}
 			break;
 		case 0xbb0c: // KM Char Return (ROM &1A77), depending on number of args
-			if (this.options.onCharReturn) {
-				this.options.onCharReturn(String.fromCharCode(arguments.length - 1));
-			}
+			this.vmPutKeyInBuffer(String.fromCharCode(arguments.length - 1));
 			break;
 		case 0xbb18: // KM Wait Key (ROM &1B56)
 			if (this.inkey$() === "") { // no key?
@@ -1080,6 +1037,18 @@ CpcVm.prototype = {
 			break;
 		case 0xbd19: // MC Wait Flyback (ROM &07BA)
 			this.frame();
+			break;
+		case 0xbd3d: // KM Flush (ROM ?; CPC 664/6128)
+			this.clearInput();
+			break;
+		case 0xbd49: // GRA Set First (ROM ?; CPC 664/6128), depending on number of args
+			this.oCanvas.setMaskFirst((arguments.length - 1) % 2);
+			break;
+		case 0xbd4c: // GRA Set Mask (ROM ?; CPC 664/6128), depending on number of args
+			this.oCanvas.setMask(arguments.length - 1);
+			break;
+		case 0xbd52: // GRA Fill (ROM ?; CPC 664/6128), depending on number of args
+			this.fill((arguments.length - 1) % 16);
 			break;
 		case 0xbd5b: // KL RAM SELECT (CPC 6128 only)
 			// we can only set RAM bank depending on number of args
@@ -1298,17 +1267,13 @@ CpcVm.prototype = {
 			iCursorOn = this.vmInRangeRound(iCursorOn, 0, 1, "CURSOR");
 			this.vmDrawUndrawCursor(iStream); // undraw
 			oWin.bCursorOn = Boolean(iCursorOn);
-			//if (oWin.bCursorOn && oWin.bCursorEnabled) {
 			this.vmDrawUndrawCursor(iStream); // draw
-			//}
 		}
 		if (iCursorEnabled !== undefined) { // user
 			iCursorEnabled = this.vmInRangeRound(iCursorEnabled, 0, 1, "CURSOR");
 			this.vmDrawUndrawCursor(iStream); // undraw
 			oWin.bCursorEnabled = Boolean(iCursorEnabled);
-			//if (oWin.bCursorEnabled && oWin.bCursorOn) {
 			this.vmDrawUndrawCursor(iStream); // draw
-			//}
 		}
 	},
 
@@ -1375,7 +1340,6 @@ CpcVm.prototype = {
 		this.bTimersDisabled = true;
 	},
 
-	//TTT
 	dim: function (sVarName) { // varargs
 		var aDimensions = [],
 			i, iSize;
@@ -1385,25 +1349,7 @@ CpcVm.prototype = {
 			aDimensions.push(iSize);
 		}
 		this.oVariables.dimVariable(sVarName, aDimensions);
-
-		return this.oVariables.getVariable(sVarName); //TTT not really needed any more
 	},
-
-	/*
-	dim_ttt: function (sStringType) { // varargs
-		var aArgs = [],
-			bIsString = (sStringType === "$"),
-			varDefault = (bIsString) ? "" : 0,
-			i, iSize, aValue;
-
-		for (i = 1; i < arguments.length; i += 1) {
-			iSize = this.vmInRangeRound(arguments[i], 0, 32767, "DIM") + 1; // for basic we have sizes +1
-			aArgs.push(iSize);
-		}
-		aValue = this.fnCreateNDimArray(aArgs, varDefault);
-		return aValue;
-	},
-	*/
 
 	draw: function (x, y, iGPen, iGColMode) {
 		this.vmDrawMovePlot("DRAW", x, y, iGPen, iGColMode);

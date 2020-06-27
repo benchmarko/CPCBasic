@@ -44,7 +44,7 @@ Controller.prototype = {
 		this.fnDirectInputHandler = this.fnDirectInput.bind(this);
 		this.fnPutKeyInBufferHandler = this.fnPutKeyInBuffer.bind(this);
 
-		this.sMetaIdent = "CPCBasic"; //TTT
+		this.sMetaIdent = "CPCBasic";
 
 		this.fnScript = null;
 
@@ -98,8 +98,7 @@ Controller.prototype = {
 			keyboard: this.oKeyboard,
 			sound: this.oSound,
 			variables: this.oVariables,
-			tron: oModel.getProperty("tron"),
-			onCharReturn: this.fnPutKeyInBufferHandler
+			tron: oModel.getProperty("tron")
 		});
 		this.oVm.vmReset();
 
@@ -372,18 +371,39 @@ Controller.prototype = {
 		this.startMainLoop();
 	},
 
+	fnWaitSound: function () { // rather fnEvent
+		var oStop = this.oVm.vmGetStopObject(),
+			aSoundData;
+
+		this.oVm.vmLoopCondition(); // update iNextFrameTime, timers, inks; schedule sound: free queue
+		if (this.oSound.isActivatedByUser()) { // only if activated
+			aSoundData = this.oVm.vmGetSoundData();
+			while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
+				this.oSound.sound(aSoundData.shift());
+			}
+			if (!aSoundData.length) {
+				if (oStop.sReason === "waitSound") { // only for this reason
+					this.oVm.vmStop("", 0, true); // no more wait
+				}
+			}
+		}
+		this.iNextLoopTimeOut = this.oVm.vmGetTimeUntilFrame(); // wait until next frame
+	},
+
 	fnWaitKey: function () {
 		var sKey;
 
 		sKey = this.oKeyboard.getKeyFromBuffer();
-		if (sKey !== "") {
+		if (sKey !== "") { // do we have a key from the buffer already?
 			Utils.console.log("Wait for key:", sKey);
 			this.oVm.vmStop("", 0, true);
 			this.oKeyboard.setKeyDownHandler(null);
-			this.startMainLoop();
+			//this.startMainLoop();
 		} else {
+			this.fnWaitSound(); // sound and blinking events
 			this.oKeyboard.setKeyDownHandler(this.fnWaitKeyHandler); // wait until keypress handler (for call &bb18)
 		}
+		return sKey;
 	},
 
 	fnWaitInput: function () { // eslint-disable-line complexity
@@ -460,7 +480,7 @@ Controller.prototype = {
 
 		oInput.sInput = sInput;
 		if (sKey === "\r") {
-			Utils.console.log("fnWaitInput:", sInput);
+			Utils.console.log("fnWaitInput:", sInput, "reason", oStop.sReason);
 			if (!oInput.sNoCRLF) {
 				this.oVm.print(iStream, "\r\n");
 			}
@@ -471,29 +491,20 @@ Controller.prototype = {
 			}
 			if (bInputOk) {
 				this.oKeyboard.setKeyDownHandler(null);
-				this.startContinue();
+				if (oStop.sReason === "waitInput") { // only for this reason
+					this.oVm.vmStop("", 0, true); // no more wait
+				} else {
+					this.startContinue(); //TTT
+				}
 			}
 		}
 
 		if (!bInputOk) {
+			if (oStop.sReason === "waitInput") { // only for this reason
+				this.fnWaitSound(); // sound and blinking events
+			}
 			this.oKeyboard.setKeyDownHandler(this.fnWaitInputHandler); // make sure it is set
 		}
-	},
-
-	fnWaitSound: function () {
-		var aSoundData;
-
-		this.oVm.vmLoopCondition(); // update iNextFrameTime, timers, inks; schedule sound: free queue
-		if (this.oSound.isActivatedByUser()) { // only if activated
-			aSoundData = this.oVm.vmGetSoundData();
-			while (aSoundData.length && this.oSound.testCanQueue(aSoundData[0].iState)) {
-				this.oSound.sound(aSoundData.shift());
-			}
-			if (!aSoundData.length) {
-				this.oVm.vmStop("", 0, true); // no more wait
-			}
-		}
-		this.iNextLoopTimeOut = this.oVm.vmGetTimeUntilFrame(); // wait until next frame
 	},
 
 	// merge two scripts with sorted line numbers, lines from script2 overwrite lines from script1
@@ -757,8 +768,6 @@ Controller.prototype = {
 			oData,
 			sType;
 
-		//this.oVm.vmStop("", 0, true);
-
 		if (sInput !== null && sInput !== undefined) {
 			oData = this.splitMeta(sInput);
 			sInput = oData.sData; // maybe changed
@@ -814,7 +823,7 @@ Controller.prototype = {
 			this.fnParseRun();
 			break;
 		case "load":
-			if (!bPutInMemory) { //sType !== "B") { // not for binary files
+			if (!bPutInMemory) {
 				this.view.setAreaValue("inputText", sInput);
 				this.view.setAreaValue("resultText", "");
 				this.invalidateScript();
@@ -830,14 +839,14 @@ Controller.prototype = {
 			break;
 		case "chain": // TODO: run through... : if we have a line number, make sure it is not optimized away when compiling!
 		case "run":
-			if (!bPutInMemory) { //if (sType !== "B") { // not for binary files
+			if (!bPutInMemory) {
 				this.view.setAreaValue("inputText", sInput);
 				this.view.setAreaValue("resultText", "");
 				iStartLine = oInFile.iLine || 0;
 				this.fnReset();
 				this.fnParseRun();
 			} else {
-				this.fnReset(); //TTT
+				this.fnReset();
 			}
 			break;
 		default:
@@ -1012,7 +1021,6 @@ Controller.prototype = {
 				aMeta = sMeta.split(";");
 
 				oMeta = {
-					//sIdent: aMeta[0],
 					sType: aMeta[1],
 					iStart: aMeta[2],
 					iLength: aMeta[3],
@@ -1115,7 +1123,7 @@ Controller.prototype = {
 		var sInput = this.view.getAreaValue("inputText"),
 			iStream = oParas.iStream,
 			aLines = this.fnGetLinesInRange(sInput, oParas.iFirst, oParas.iLast),
-			oRegExp = new RegExp(/([\x00-\x1f])/g), //eslint-disable-line no-control-regex
+			oRegExp = new RegExp(/([\x00-\x1f])/g), // eslint-disable-line no-control-regex
 			i, sLine;
 
 		for (i = 0; i < aLines.length; i += 1) {
@@ -1470,8 +1478,8 @@ Controller.prototype = {
 		this.updateResultText();
 
 		this.view.setDisabled("runButton", sReason === "reset");
-		this.view.setDisabled("stopButton", sReason !== "waitInput" && sReason !== "waitKey" && sReason !== "fileLoad" && sReason !== "fileSave");
-		this.view.setDisabled("continueButton", sReason === "end" || sReason === "waitInput" || sReason === "waitKey" || sReason === "fileLoad" || sReason === "fileSave" || sReason === "parse" || sReason === "renumLines" || sReason === "reset");
+		this.view.setDisabled("stopButton", sReason !== "fileLoad" && sReason !== "fileSave");
+		this.view.setDisabled("continueButton", sReason === "end" || sReason === "fileLoad" || sReason === "fileSave" || sReason === "parse" || sReason === "renumLines" || sReason === "reset");
 
 		this.setVarSelectOptions("varSelect", this.oVariables);
 		this.commonEventHandler.onVarSelectChange();
@@ -1535,7 +1543,7 @@ Controller.prototype = {
 			this.oVm.vmStop("error", 55); //TTT
 		}
 
-		if (oStop.sReason && oStop.sReason !== "waitSound") {
+		if (oStop.sReason && oStop.sReason !== "waitSound" && oStop.sReason !== "waitKey" && oStop.sReason !== "waitInput") {
 			this.bTimeoutHandlerActive = false; // not running any more
 			this.exitLoop();
 		} else {
@@ -1615,7 +1623,7 @@ Controller.prototype = {
 		this.view.setDisabled("runButton", true);
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
-		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop" || oStop.sReason === "direct" || oStop.sReason === "waitInput") {
+		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop" || oStop.sReason === "direct" /*TTT || oStop.sReason === "waitInput" */) {
 			if (!oSavedStop.fnInputCallback) { // no keyboard callback? make sure no handler is set (especially for direct->continue)
 				this.oKeyboard.setKeyDownHandler(null);
 			}

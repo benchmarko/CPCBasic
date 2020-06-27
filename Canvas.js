@@ -114,7 +114,7 @@ Canvas.prototype = {
 		this.bClipped = false;
 
 		this.iMask = 255;
-		this.iMaskBitPos = 1;
+		this.iMaskBit = 128;
 		this.iMaskFirst = 1;
 
 		canvas = document.getElementById("cpcCanvas");
@@ -750,11 +750,10 @@ Canvas.prototype = {
 			iGPen = this.iGPen,
 			iGPaper = this.iGPaper,
 			iMask = this.iMask,
-			iMaskBitPos = this.iMaskBitPos,
+			iMaskBit = this.iMaskBit,
 			iMaskFirst = this.iMaskFirst,
 			iGColMode = this.iGColMode,
 			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err, iBit;
-
 
 		// we have to add origin before modifying coordinates to match CPC pixel
 		xstart += this.xOrig;
@@ -808,10 +807,37 @@ Canvas.prototype = {
 		y = ystart;
 		err = deltafastdirection >> 1; // eslint-disable-line no-bitwise
 
-		iBit = iMask & iMaskBitPos; // eslint-disable-line no-bitwise
-		// rotate bitpos left
-		iMaskBitPos = ((iMaskBitPos << 1) & 0xff) | (iMaskBitPos >> (8 - 1)); // eslint-disable-line no-bitwise
+		/*
+		if (iMaskFirst) { // draw first pixel?
+			// rotate bitpos left
+			iMaskBit = ((iMaskBit << 1) & 0xff) | (iMaskBit >> (8 - 1)); // eslint-disable-line no-bitwise
+		}
+		iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
+		this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+		*/
+
+		/*
+		if (iMaskFirst) { // draw first pixel?
+			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
+			this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			// rotate bitpos right
+			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
+		}
+		*/
+
+		/*
+		iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
 		this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+		// rotate bitpos right
+		iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
+		*/
+
+		if (iMaskFirst) { // draw first pixel?
+			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
+			this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			// rotate bitpos right
+			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
+		}
 
 		for (t = 0; t < deltafastdirection; t += 1) {
 			err -= deltaslowdirection;
@@ -824,17 +850,12 @@ Canvas.prototype = {
 				y += pdy;
 			}
 
-			iBit = iMask & iMaskBitPos; // eslint-disable-line no-bitwise
-			iMaskBitPos = ((iMaskBitPos << 1) & 0xff) | (iMaskBitPos >> (8 - 1)); // eslint-disable-line no-bitwise
-			/*
-			iMaskBitPos *= 2;
-			if (iMaskBitPos > 256) {
-				iMaskBitPos = 1;
-			}
-			*/
-
+			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
 			this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			// rotate bitpos right
+			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
 		}
+		this.iMaskBit = iMaskBit;
 	},
 
 	draw: function (x, y) {
@@ -1099,7 +1120,7 @@ Canvas.prototype = {
 
 
 	// idea from: https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
-	fill: function (iFill) {
+	fill: function (iFillPen) {
 		var that = this,
 			xPos = this.xPos,
 			yPos = this.yPos,
@@ -1109,13 +1130,13 @@ Canvas.prototype = {
 			aPixels = [],
 			oPixel, x1, y1, bSpanLeft, bSpanRight, p1, p2, p3,
 			fnIsStopPen = function (p) {
-				return p === iFill || p === iGPen;
+				return p === iFillPen || p === iGPen;
 			},
 			fnIsNotInWindow = function (x, y) {
 				return (x < that.xLeft || x > that.xRight || y < (that.iHeight - 1 - that.yTop) || y > (that.iHeight - 1 - that.yBottom));
 			};
 
-		iFill %= this.oModeData.iPens; // limit pens
+		iFillPen %= this.oModeData.iPens; // limit pens
 
 		// apply origin
 		xPos += this.xOrig;
@@ -1144,7 +1165,7 @@ Canvas.prototype = {
 			bSpanRight = false;
 			p1 = this.testSubPixel(oPixel.x, y1);
 			while (y1 <= (that.iHeight - 1 - that.yBottom) && !fnIsStopPen(p1)) {
-				this.setSubPixels(oPixel.x, y1, iFill, 0);
+				this.setSubPixels(oPixel.x, y1, iFillPen, 0);
 
 				x1 = oPixel.x - iPixelWidth;
 				p2 = this.testSubPixel(x1, y1);
@@ -1244,8 +1265,10 @@ Canvas.prototype = {
 
 	clearTextWindow: function (iLeft, iRight, iTop, iBottom, iPaper) { // clear current text window
 		var iWidth = iRight + 1 - iLeft,
-			iHeight = iBottom + 1 - iTop;
+			iHeight = iBottom + 1 - iTop,
+			iPens = this.oModeData.iPens;
 
+		iPaper %= iPens; // limit papers
 		this.fillTextBox(iLeft, iTop, iWidth, iHeight, iPaper);
 	},
 
@@ -1305,7 +1328,7 @@ Canvas.prototype = {
 
 	setMask: function (iMask) { // set line mask
 		this.iMask = iMask;
-		this.iMaskBitPos = 1;
+		this.iMaskBit = 128;
 	},
 
 	setMaskFirst: function (iMaskFirst) { // set first dot for line mask

@@ -158,6 +158,10 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 - *CALL &BCB6*: SOUND Hold (TODO)
 - *CALL &BCB9*: SOUND Continue (TODO)
 - *CALL &BD19*: MC Wait Flyback (wait for screen beam flyback; same as *FRAME*)
+- *CALL &BD3D*: KM Flush (*CLEAR INPUT*; CPC 664/6128 only)
+- *CALL &BD49*: GRA Set First (set *MASK* first pixel, depending on number of arguments; CPC 664/6128 only)
+- *CALL &BD4C*: GRA Set Mask (set *MASK*, depending on number of arguments; CPC 664/6128 only)
+- *CALL &BD52*: GRA Fill (*FILL*, depending on number of arguments; CPC 664/6128 only)
 - *CALL &BD5B*: KL RAM SELECT (depending on number of arguments; CPC 6128 only)
 
 ### OUTs

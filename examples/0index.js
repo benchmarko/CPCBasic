@@ -101,7 +101,8 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
 		"key": "games/statesfx",
-		"title": "States of the Earth"
+		"title": "States of the Earth",
+		"meta": "D"
 	},
 	{
     	"key": "math/anageo",

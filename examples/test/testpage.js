@@ -191,6 +191,12 @@ cpcBasic.addItem("", function () { /*
 1890 a=0:for i=0 to 4:a=a+a(i):next:if a<>0 then error 33
 1900 gosub 9040
 1910 '
+1911 ?"FIX"
+1912 a=fix(1.5)
+1913 if a<>1 then error 33
+1914 a=fix(-1.5)
+1915 if a<>-1 then error 33
+1919 '
 1920 ?"FOR with integer constants"
 1930 a$="":for i=+4 to 0 step -2:a$=a$+str$(i):next:if a$<>" 4 2 0" then error 33
 1940 a=0:for i=++4 to 1 step ---2:a=a+i:next:if a<>6 then error 33: 'avoid ++ and -- in js!
