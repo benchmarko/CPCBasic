@@ -807,34 +807,9 @@ Canvas.prototype = {
 		y = ystart;
 		err = deltafastdirection >> 1; // eslint-disable-line no-bitwise
 
-		/*
-		if (iMaskFirst) { // draw first pixel?
-			// rotate bitpos left
-			iMaskBit = ((iMaskBit << 1) & 0xff) | (iMaskBit >> (8 - 1)); // eslint-disable-line no-bitwise
-		}
-		iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
-		this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
-		*/
-
-		/*
 		if (iMaskFirst) { // draw first pixel?
 			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
-			this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
-			// rotate bitpos right
-			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
-		}
-		*/
-
-		/*
-		iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
-		this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
-		// rotate bitpos right
-		iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
-		*/
-
-		if (iMaskFirst) { // draw first pixel?
-			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
-			this.setPixelOriginIncluded(x, y, iMaskFirst && iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
 			// rotate bitpos right
 			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
 		}

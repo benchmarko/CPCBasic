@@ -167,6 +167,7 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 ### OUTs
 
 - *OUT &7Fxx,nn*: Select RAM bank in range &4000-&7FFF; &C0=default; &C4-&FF=additional banks
+- *WAIT &F5xx,1*: Wait for Frame Fly (same as *CALL &BD19*, *FRAME*)
 
 ## Programming hints
 
@@ -193,6 +194,13 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 - There is also an experimental parameter *bench=n* to time the *parsing step* n times.
   An example with a large BASIC program:
 [sultans2 parsing](https://benchmarko.github.io/CPCBasic/cpcbasic.html?bench=5&database=apps&example=games/sultan2) (Check the console in the browser developer tools).
+
+## Development, Testing
+
+QUnit test [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/testsuite.qunit.html) runs:
+
+- [Model.qunit.html](https://benchmarko.github.io/CPCBasic/test/Model.qunit.html)
+- To be done
 
 ## Possible Future Enhancements
 

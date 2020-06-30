@@ -10,139 +10,139 @@ cpcBasic.addItem("", function () { /*
 50 '|renum,100,100,10,9000:stop
 60 '
 100 '
-110 mode 2:'comment
+110 MODE 2:'comment
 120 '
-130 ?"Numbers"
-140 a=1:if a<>1 then error 33
-150 a%=1:if a%<>1 then error 33
-160 a=1.2:if a<>1.2 then error 33
-170 a!=1.2:if a!<>1.2 then error 33
-180 a!=-1.2:if a!<>-1.2 then error 33
-190 a=1.2e3:if a<>1200 then error 33
-200 a%=1.2e3:if a%<>1200 then error 33
-210 a=-7.2:if a<>-7.2 then error 33
-220 a%=-7.2:if a%<>-7 then error 33
-230 a=+7.2:if a<>7.2 then error 33
-240 a=.2:if a<>0.2 then error 33
-250 a=2.:if a<>2 then error 33
-260 a=1.e+4:if a<>10000 then error 33
-270 a=1e-4:if a<>0.0001 then error 33
-280 ?"hex number: &, &h"
-290 a=&a7:if a<>167 then error 33
-300 a%=&a7:if a%<>167 then error 33
-310 a%=-&a7:if a%<>-167 then error 33
-320 a%=&h7fff:if a%<>32767 then error 33
-330 ?"bin number: &x"
-340 a=&x10100111:if a<>167 then error 33
-350 a%=&x10100111:if a%<>167 then error 33
-360 a%=&x0111111111111111:if a%<>32767 then error 33
-370 a%=-&x0111111111111111:if a%<>-32767 then error 33
-380 ?"Strings"
-390 a$="a12":if a$<>"a12" then error 33
-400 a$=+"7.1":if a$<>"7.1" then error 33
+130 PRINT"Numbers"
+140 a=1:IF a<>1 THEN ERROR 33
+150 a%=1:IF a%<>1 THEN ERROR 33
+160 a=1.2:IF a<>1.2 THEN ERROR 33
+170 a!=1.2:IF a!<>1.2 THEN ERROR 33
+180 a!=-1.2:IF a!<>-1.2 THEN ERROR 33
+190 a=1200:IF a<>1200 THEN ERROR 33
+200 a%=1200:IF a%<>1200 THEN ERROR 33
+210 a=-7.2:IF a<>-7.2 THEN ERROR 33
+220 a%=-7.2:IF a%<>-7 THEN ERROR 33
+230 a=+7.2:IF a<>7.2 THEN ERROR 33
+240 a=0.2:IF a<>0.2 THEN ERROR 33
+250 a=2:IF a<>2 THEN ERROR 33
+260 a=10000:IF a<>10000 THEN ERROR 33
+270 a=0.0001:IF a<>0.0001 THEN ERROR 33
+280 PRINT"hex number: &, &h"
+290 a=&A7:IF a<>167 THEN ERROR 33
+300 a%=&A7:IF a%<>167 THEN ERROR 33
+310 a%=-&A7:IF a%<>-167 THEN ERROR 33
+320 a%=&7FFF:IF a%<>32767 THEN ERROR 33
+330 PRINT"bin number: &x"
+340 a=&X10100111:IF a<>167 THEN ERROR 33
+350 a%=&X10100111:IF a%<>167 THEN ERROR 33
+360 a%=&X111111111111111:IF a%<>32767 THEN ERROR 33
+370 a%=-&X111111111111111:IF a%<>-32767 THEN ERROR 33
+380 PRINT"Strings"
+390 a$="a12":IF a$<>"a12" THEN ERROR 33
+400 a$=+"7.1":IF a$<>"7.1" THEN ERROR 33
 410 '
-420 ?"Variable types"
-430 a!=1.4:if a!<>1.4 then error 33
-440 a!=1.5:if a!<>1.5 then error 33
-450 a%=1.4:if a%<>1 then error 33
-460 a%=1.5:if a%<>2 then error 33
-470 a$="1.4":if a$<>"1.4" then error 33
-480 insert.line=2:if insert.line<>2 then error 33
+420 PRINT"Variable types"
+430 a!=1.4:IF a!<>1.4 THEN ERROR 33
+440 a!=1.5:IF a!<>1.5 THEN ERROR 33
+450 a%=1.4:IF a%<>1 THEN ERROR 33
+460 a%=1.5:IF a%<>2 THEN ERROR 33
+470 a$="1.4":IF a$<>"1.4" THEN ERROR 33
+480 insert.line=2:IF insert.line<>2 THEN ERROR 33
 490 '
-500 ?"Array Variables"
-510 a!(2)=1.4:if a!(2)<>1.4 then error 33
-520 a!(2)=1.5:if a!(2)<>1.5 then error 33
-530 a%(2)=1.4:if a%(2)<>1 then error 33
-540 a%(2)=1.5:if a%(2)<>2 then error 33
-550 a$(2)="1.4":if a$(2)<>"1.4" then error 33
+500 PRINT"Array Variables"
+510 a!(2)=1.4:IF a!(2)<>1.4 THEN ERROR 33
+520 a!(2)=1.5:IF a!(2)<>1.5 THEN ERROR 33
+530 a%(2)=1.4:IF a%(2)<>1 THEN ERROR 33
+540 a%(2)=1.5:IF a%(2)<>2 THEN ERROR 33
+550 a$(2)="1.4":IF a$(2)<>"1.4" THEN ERROR 33
 560 '
-570 ?"expressions, operators +-*..."
-580 a%=1+2+3:if a%<>6 then error 33
-590 a%=3-2-1:if a%<>0 then error 33
-600 a%=&a7+&x10100111-(123-27):if a%<>238 then error 33
-610 a%=3+2*3-7:if a%<>2 then error 33
-620 a%=(3+2)*(3-7):if a%<>-20 then error 33
-630 a=20/2.5:if a<>8 then error 33
-640 a=20\3:if a<>6 then error 33
-650 a=3^2:if a<>9 then error 33
-660 a=&x1001 and &x1110:if a<>&x1000 then error 33
-670 a=&x1001 or &x0110:if a<>&x1111 then error 33
-680 a=&x1001 xor &x1010:if a<>&x0011 then error 33
-690 a=+++++++++---9:if a<>-9 then error 33
-700 a=(1=0):if a<>0 then error 33
-710 a=(1>0)*(0<1):if a<>1 then error 33
-720 gosub 9040
+570 PRINT"expressions, operators +-*..."
+580 a%=1+2+3:IF a%<>6 THEN ERROR 33
+590 a%=3-2-1:IF a%<>0 THEN ERROR 33
+600 a%=&A7+&X10100111-(123-27):IF a%<>238 THEN ERROR 33
+610 a%=3+2*3-7:IF a%<>2 THEN ERROR 33
+620 a%=(3+2)*(3-7):IF a%<>-20 THEN ERROR 33
+630 a=20/2.5:IF a<>8 THEN ERROR 33
+640 a=20\3:IF a<>6 THEN ERROR 33
+650 a=3^2:IF a<>9 THEN ERROR 33
+660 a=&X1001 AND &X1110:IF a<>&X1000 THEN ERROR 33
+670 a=&X1001 OR &X110:IF a<>&X1111 THEN ERROR 33
+680 a=&X1001 XOR &X1010:IF a<>&X11 THEN ERROR 33
+690 a=+++++++++---9:IF a<>-9 THEN ERROR 33
+700 a=(1=0):IF a<>0 THEN ERROR 33
+710 a=(1>0)*(0<1):IF a<>1 THEN ERROR 33
+720 GOSUB 9040
 730 '
-740 ?"ABS(positive number)"
-750 a=abs(+67.98):if a<>67.98 then error 33
-760 a!=abs(+67.98):if a!<>67.98 then error 33
-770 ?"ABS(negative number)"
-780 a=abs(-67.98):if a<>67.98 then error 33
-790 ?"ABS(0)"
-800 a=abs(0):if a<>0 then error 33
+740 PRINT"ABS(positive number)"
+750 a=ABS(+67.98):IF a<>67.98 THEN ERROR 33
+760 a!=ABS(+67.98):IF a!<>67.98 THEN ERROR 33
+770 PRINT"ABS(negative number)"
+780 a=ABS(-67.98):IF a<>67.98 THEN ERROR 33
+790 PRINT"ABS(0)"
+800 a=ABS(0):IF a<>0 THEN ERROR 33
 810 '
-820 ?"@ (address of)": 'CPCBasic: just return internal variable index
-830 clear
-840 a=7:?@a;@a^2;@a+1*2
-850 b=8:?@b;@a(0)
+820 PRINT"@ (address of)": 'CPCBasic: just return internal variable index
+830 CLEAR
+840 a=7:PRINT@a;@a^2;@a+1*2
+850 b=8:PRINT@b;@a(0)
 860 '
-870 ?"AND (and OR)"
-880 a=4 or 7 and 2:if a<>6 then error 33
-890 a%=4 or 7 and 2:if a%<>6 then error 33
+870 PRINT"AND (and OR)"
+880 a=4 OR 7 AND 2:IF a<>6 THEN ERROR 33
+890 a%=4 OR 7 AND 2:IF a%<>6 THEN ERROR 33
 900 '
-910 ?"ASC"
-920 a=asc("a"):if a<>97 then error 33
-930 a=asc("ab"):if a<>97 then error 33
-940 on error goto 950:a=asc(""):?"Error expected!":error 33: 'expect error 5
-950 if err<>5 then ?"err=";err;"erl=";erl:error 33 else resume 960
-960 on error goto 0
-970 on error goto 980:a=asc(0):?"Error expected!":error 33: 'expect error 13
-980 if err<>13 then ?"err=";err;"erl=";erl:error 33 else resume 990
-990 on error goto 0
+910 PRINT"ASC"
+920 a=ASC("a"):IF a<>97 THEN ERROR 33
+930 a=ASC("ab"):IF a<>97 THEN ERROR 33
+940 ON ERROR GOTO 950:a=ASC(""):PRINT"Error expected!":ERROR 33: 'expect error 5
+950 IF ERR<>5 THEN PRINT"err=";ERR;"erl=";ERL:ERROR 33 ELSE RESUME 960
+960 ON ERROR GOTO 0
+970 ON ERROR GOTO 980:a=ASC(0):PRINT"Error expected!":ERROR 33: 'expect error 13
+980 IF ERR<>13 THEN PRINT"err=";ERR;"erl=";ERL:ERROR 33 ELSE RESUME 990
+990 ON ERROR GOTO 0
 1000 '
 1010 'cls#0: a=2: cls #(a*3)
-1020 ?"COPYCHR$"
-1030 ?"Detect char 143 with matching pen"
-1040 ?chr$(143);"#";:paper 1
-1050 gosub 9010:paper 0:if a$<>chr$(143)+"#" then ?"Check: Different on real CPC!":if a$<>" #" then error 33
-1060 ?"Detect char 130 with matching paper as char 141"
-1070 pen 0:paper 1:?chr$(130);"#";:pen 1
-1080 gosub 9010:paper 0:if a$<>chr$(141)+"#" then ?"Check: Different on real CPC!":if a$<>chr$(130)+"#" then error 33
-1090 ?"Detect char 143 with matching paper as char 32"
-1100 pen 0:paper 1:?chr$(143);"#";:pen 1
-1110 gosub 9010:paper 0:if a$<>" #" then error 33
+1020 PRINT"COPYCHR$"
+1030 PRINT"Detect char 143 with matching pen"
+1040 PRINT CHR$(143);"#";:PAPER 1
+1050 GOSUB 9010:PAPER 0:IF a$<>CHR$(143)+"#" THEN PRINT"Check: Different on real CPC!":IF a$<>" #" THEN ERROR 33
+1060 PRINT"Detect char 130 with matching paper as char 141"
+1070 PEN 0:PAPER 1:PRINT CHR$(130);"#";:PEN 1
+1080 GOSUB 9010:PAPER 0:IF a$<>CHR$(141)+"#" THEN PRINT"Check: Different on real CPC!":IF a$<>CHR$(130)+"#" THEN ERROR 33
+1090 PRINT"Detect char 143 with matching paper as char 32"
+1100 PEN 0:PAPER 1:PRINT CHR$(143);"#";:PEN 1
+1110 GOSUB 9010:PAPER 0:IF a$<>" #" THEN ERROR 33
 1120 '
-1130 ?"DATA with spaces between arguments"
-1140 b$="":restore 1160
-1150 read a$:b$=b$+a$:if a$<>"-1" then goto 1150
-1160 data ",", "abc"  , xy, -1
-1170 if b$<>",abcxy-1" then error 33
-1180 ?"DATA with special characters"
-1190 b$="":restore 1200
+1130 PRINT"DATA with spaces between arguments"
+1140 b$="":RESTORE 1160
+1150 READ a$:b$=b$+a$:IF a$<>"-1" THEN GOTO 1150
+1160 DATA ",", "abc"  , xy, -1
+1170 IF b$<>",abcxy-1" THEN ERROR 33
+1180 PRINT"DATA with special characters"
+1190 b$="":RESTORE 1200
 1200 DATA " ",!"#$%&'()*+,","
-1210 for i=1 to 3:read a$:b$=b$+a$:next
-1220 if b$<>" !"+chr$(34)+"#$%&'()*+," then error 33
-1230 ?"DATA is interpeted depending on variable type"
-1240 data 001.6,001.6, 001.6
-1250 read a%,a!,a$
-1260 if a%<>2 then error 33
-1270 if a!<>1.6 then error 33
-1280 if a$<>"001.6" then error 33
-1290 data &a7, &ha7, &x10100111
-1300 read a%:if a%<>&a7 then error 33
-1310 read a%:if a%<>&a7 then error 33
-1320 read a%:if a%<>&a7 then error 33
-1330 ?"DATA with empty parameters"
-1340 b$="":restore 1440
-1350 for i=1 to 16:read a$:b$=b$+a$:next
-1360 if b$<>"1a11b1#" then error 33
-1370 ?"DATA reading empty as numbers"
-1380 b$="":restore 1440
-1390 for i=1 to 16
-1400 if i=8 or i=13 or i=16 then read a$ else read a:a$=str$(a)
+1210 FOR i=1 TO 3:READ a$:b$=b$+a$:NEXT
+1220 IF b$<>" !"+CHR$(34)+"#$%&'()*+," THEN ERROR 33
+1230 PRINT"DATA is interpeted depending on variable type"
+1240 DATA 001.6,001.6, 001.6
+1250 READ a%,a!,a$
+1260 IF a%<>2 THEN ERROR 33
+1270 IF a!<>1.6 THEN ERROR 33
+1280 IF a$<>"001.6" THEN ERROR 33
+1290 DATA &a7, &ha7, &x10100111
+1300 READ a%:IF a%<>&A7 THEN ERROR 33
+1310 READ a%:IF a%<>&A7 THEN ERROR 33
+1320 READ a%:IF a%<>&A7 THEN ERROR 33
+1330 PRINT"DATA with empty parameters"
+1340 b$="":RESTORE 1440
+1350 FOR i=1 TO 16:READ a$:b$=b$+a$:NEXT
+1360 IF b$<>"1a11b1#" THEN ERROR 33
+1370 PRINT"DATA reading empty as numbers"
+1380 b$="":RESTORE 1440
+1390 FOR i=1 TO 16
+1400 IF i=8 OR i=13 OR i=16 THEN READ a$ ELSE READ a:a$=STR$(a)
 1410 b$=b$+a$
-1420 next
-1430 if b$<>" 0 0 0 0 0 0 1a 0 1 1 0b 1 0#" then error 33
+1420 NEXT
+1430 IF b$<>" 0 0 0 0 0 0 1a 0 1 1 0b 1 0#" THEN ERROR 33
 1440 DATA
 1450 DATA ,
 1460 DATA ,,
@@ -153,300 +153,329 @@ cpcBasic.addItem("", function () { /*
 1510 DATA   b   ,   1   ,
 1520 DATA #
 1530 '
-1540 ?"DEC$(number,format)"
-1550 a$=dec$(8.575,"##.##"):if a$<>" 8.58" then error 33
-1560 a$=dec$(15.35,"#.##"):if a$<>"%15.35" then error 33
+1540 PRINT"DEC$(number,format)"
+1550 a$=DEC$(8.575,"##.##"):IF a$<>" 8.58" THEN ERROR 33
+1560 a$=DEC$(15.35,"#.##"):IF a$<>"%15.35" THEN ERROR 33
 1570 '
-1580 ?"DEF FN"
-1590 def FNf1(x)=x*x
-1600 a=FNf1(2.5):if a<>6.25 then error 33
-1610 a=FN f1(2.5):if a<>6.25 then error 33
-1620 def FN f1%(x)=x*x
-1630 a%=FNf1%(2.5):if a%<>6 then error 33
-1640 a%=FN f1%(2.5):if a%<>6 then error 33
-1650 a=FNf1%(2.5):if a<>6 then error 33
-1660 def FN f1!(x)=x*x
-1670 a!=FNf1!(2.5):if a!<>6.25 then error 33
-1680 a!=FN f1!(2.5):if a!<>6.25 then error 33
-1690 a=FNf1!(2.5):if a<>6.25 then error 33
-1700 def FN f1$(x$)=x$+x$
-1710 a$=FNf1$("a"):if a$<>"aa" then error 33
-1720 a$=FN f1$("a"):if a$<>"aa" then error 33
-1730 def FNf2=2.5*2.5
-1740 a=FNf2:if a<>6.25 then error 33
-1750 def FN f2%=2.5*2.5
-1760 a%=FN f2%:if a%<>6 then error 33
+1580 PRINT"DEF FN"
+1590 DEF FNf1(x)=x*x
+1600 a=FNf1(2.5):IF a<>6.25 THEN ERROR 33
+1610 a=FN f1(2.5):IF a<>6.25 THEN ERROR 33
+1620 DEF FN f1%(x)=x*x
+1630 a%=FNf1%(2.5):IF a%<>6 THEN ERROR 33
+1640 a%=FN f1%(2.5):IF a%<>6 THEN ERROR 33
+1650 a=FNf1%(2.5):IF a<>6 THEN ERROR 33
+1660 DEF FN f1!(x)=x*x
+1670 a!=FNf1!(2.5):IF a!<>6.25 THEN ERROR 33
+1680 a!=FN f1!(2.5):IF a!<>6.25 THEN ERROR 33
+1690 a=FNf1!(2.5):IF a<>6.25 THEN ERROR 33
+1700 DEF FN f1$(x$)=x$+x$
+1710 a$=FNf1$("a"):IF a$<>"aa" THEN ERROR 33
+1720 a$=FN f1$("a"):IF a$<>"aa" THEN ERROR 33
+1730 DEF FNf2=2.5*2.5
+1740 a=FNf2:IF a<>6.25 THEN ERROR 33
+1750 DEF FN f2%=2.5*2.5
+1760 a%=FN f2%:IF a%<>6 THEN ERROR 33
 1770 '
-1780 ?"ELSE"
-1790 a=1 else a=2
-1800 else a=3
-1810 if a<>1 then error 33
+1780 PRINT"ELSE"
+1790 a=1 ELSE a=2
+1800 ELSE a=3
+1810 IF a<>1 THEN ERROR 33
 1820 '
-1830 ?"ERASE"
-1840 erase a: 'a was used in previous tests
-1850 dim a(4):for i=0 to 4:a(i)=i:next
-1860 a=0:for i=0 to 4:a=a+a(i):next:if a<>10 then error 33
-1870 erase a
-1880 if a<>10 then error 33
-1890 a=0:for i=0 to 4:a=a+a(i):next:if a<>0 then error 33
-1900 gosub 9040
+1830 PRINT"ERASE"
+1840 ERASE a: 'a was used in previous tests
+1850 DIM a(4):FOR i=0 TO 4:a(i)=i:NEXT
+1860 a=0:FOR i=0 TO 4:a=a+a(i):NEXT:IF a<>10 THEN ERROR 33
+1870 ERASE a
+1880 IF a<>10 THEN ERROR 33
+1890 a=0:FOR i=0 TO 4:a=a+a(i):NEXT:IF a<>0 THEN ERROR 33
+1900 GOSUB 9040
 1910 '
-1911 ?"FIX"
-1912 a=fix(1.5)
-1913 if a<>1 then error 33
-1914 a=fix(-1.5)
-1915 if a<>-1 then error 33
-1919 '
-1920 ?"FOR with integer constants"
-1930 a$="":for i=+4 to 0 step -2:a$=a$+str$(i):next:if a$<>" 4 2 0" then error 33
-1940 a=0:for i=++4 to 1 step ---2:a=a+i:next:if a<>6 then error 33: 'avoid ++ and -- in js!
-1950 ?"FOR with integer variable and floating point ranges"
-1960 a=0:for i%=1.2 to 9.7 step 3.2:a=a+i%:next:if a<>22 then error 33: '1+4+7+10
-1970 ?"FOR with condition expressions"
-1980 a=3:for i=a<>3 to a>=3 step a=3:?i;:next:print "#";
-1990 gosub 9010:if a$<>" 0 -1 #" then error 33
-2000 ?"FOR up to 2*PI"
-2010 a=13/8*PI:for i=1 to 3:a=a+1/8*PI:next:if a>2*PI then ?"limit exceeded by";a-2*PI;"(TODO)" else ?"ok"
-2020 'gosub 9040
-2030 '
-2040 ?"GOTO with leading zeros"
-2050 goto 2060
-2060 ?"ok"
-2070 ?"INSTR"
-2080 a=instr("Amstrad", "m"):if a<>2 then error 33
-2090 a=instr("Amstrad", "sr"):if a<>0 then error 33
-2100 '
-2110 ?"ON n GOSUB"
-2120 a=0:on 1 gosub 2190,2200:if a<>1 then error 33
-2130 a=0:on 2 gosub 2190,2200:if a<>2 then error 33
-2140 a=0:on 1.5 gosub 2190,2200:if a<>2 then error 33
-2150 a=1.5:on a gosub 2190,2200:if a<>2 then error 33
-2160 a=0:on 3 gosub 2190,2200:if a<>0 then error 33
-2170 a=0:on 0 gosub 2190,2200:if a<>0 then error 33
-2180 goto 2210
-2190 a=1:return
-2200 a=2:return
-2210 ?"ON n GOTO"
-2220 a=1.7:on a-0.2 goto 2240,2250
-2230 goto 2260
-2240 a=1:goto 2260
-2250 a=2:goto 2260
-2260 if a<>2 then error 33
-2270 gosub 9040
-2280 '
-2290 ?"PRINT in FOR loop"
-2300 for i=1 to 5:print i;:next i:print"#";
-2310 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
-2320 ?"PRINT in GOTO loop"
-2330 a=1
-2340 print a;: a=a+1: if a <= 5 then goto 2340 else print "#";
-2350 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
-2360 ?"PRINT in WHILE loop"
-2370 a=1: while a<=5: print a;: a=a+1: wend: print "#";
-2380 gosub 9010:if a$<>" 1  2  3  4  5 #" then error 33
-2390 ?"PRINT concatenated string"
-2400 a=1: s$="": while a<=5: s$=s$+str$(a)+":": a=a+1: b=0: while b<3: b=b+1: s$=s$+str$(b): wend: s$=s$+" ": wend: s$=s$+"#":print s$;
-2410 gosub 9010:if a$<>" 1: 1 2 3  2: 1 2 3  3: 1 2 3  4: 1 2 3  5: 1 2 3 #" then error 33
-2420 '
-2430 ?"IF THEN ELSE: WEND in ELSE"
-2440 a=0: while a<5: a=a+1: if a=3 or 3=a then print "a=";a;"(three) "; else print "a<>3:";a;"(not three) ";: wend : ?"after WEND": 'WEND in ELSE
-2450 ?"#";
-2460 gosub 9010:if a$<>"a<>3: 1 (not three) a<>3: 2 (not three) a= 3 (three) #" then error 33
-2470 '
-2480 gosub 9040
-2490 ?"PRINT numbers separated by space"
-2500 print 1 2 3;:?"#";
-2510 gosub 9010: 'if a$<>" 1  2  3 #" then error 33: 'not ok! On real CPC one number: " 123 #"
-2520 ?"PRINT numbers separated by ;"
-2530 print 1;2;3;:?"#";
-2540 gosub 9010:if a$<>" 1  2  3 #" then error 33
-2550 ?"PRINT numbers separated by , (default ZONE 13)"
-2560 print 1,2,3;:?"#";
-2570 gosub 9010:if a$<>" 1            2            3 #" then error 33
-2580 ?"PRINT numbers, computed"
-2590 print -1 -2 -3;"#";
-2600 gosub 9010:if a$<>"-6 #" then error 33
-2610 print -1;-2;-3;"#";
-2620 gosub 9010:if a$<>"-1 -2 -3 #" then error 33
-2630 ?"PRINT strings separated by space"
-2640 print "a" "b" "c" "#";
-2650 gosub 9010:if a$<>"abc#" then error 33
-2660 ?"PRINT strings separated by ;"
-2670 print "a";"b";"c";"#";
-2680 gosub 9010:if a$<>"abc#" then error 33
-2690 ?"PRINT strings separated by ,"
-2700 print "a","b","c";"#";: '[zone 13]
-2710 gosub 9010:if a$<>"a            b            c#" then error 33
-2720 zone 5
-2730 print "a","b","c";"#";: '[zone 5]
-2740 gosub 9010:if a$<>"a    b    c#" then error 33
-2750 zone 13
-2760 ?"PRINT strings separated by tab()"
-2770 print "a"tab(2)"b"tab(3)"c"tab(4)"#";
-2780 gosub 9010:if a$<>"abc#" then error 33
-2790 print "a"tab(13)"b"tab(20)"c"tab(22)"#";
-2800 gosub 9010:if a$<>"a           b      c #" then error 33
-2810 print "a"tab(78)"bc#";
-2820 if pos(#0)<>1 then error 33
-2830 ?chr$(8);: 'back
-2840 if pos(#0)<>80 then error 33
-2850 gosub 9010:if a$<>"a                                                                            bc#" then error 33
-2860 print "a"tab(79)"bc#";
-2870 gosub 9010:if a$<>"bc#" then error 33
-2880 ?"PRINT number without separator"
-2890 ?&x102;"#";
-2900 gosub 9010:if a$<>" 2  2 #" then error 33
-2910 gosub 9040
-2920 '
-2930 ?"PRINT special exponential number expressions"
-2940 print 1e++4;:?"#";
-2950 gosub 9010:if a$<>" 1  4 #" then error 33
-2960 print 1e+-4;:?"#";
-2970 gosub 9010:if a$<>" 1 -4 #" then error 33
-2980 print 5e4.5;:?"#";
-2990 gosub 9010:if a$<>" 50000  0.5 #" then error 33
-3000 print 1exp(0);:?"#";
-3010 gosub 9010:if a$<>" 1  1 #" then error 33
-3020 '
-3030 ?"PRINT USING number format"
-3040 print using "##.##";8.575;:?"#";
-3050 gosub 9010:if a$<>" 8.58#" then error 33
-3060 ?"PRINT USING number too long"
-3070 print using "#.##";15.35;:?"#";
-3080 gosub 9010:if a$<>"%15.35#" then error 33
-3090 ?"PRINT USING string format"
-3100 print using "\   \";"n1";"n2";" xx3";:?"#";
-3110 gosub 9010:if a$<>"n1   n2    xx3 #" then error 33
-3120 print using "!";"a1";"b2";:?"#";
-3130 gosub 9010:if a$<>"ab#" then error 33
-3140 print using "&";"a1";"b2";:?"#";
-3150 gosub 9010:if a$<>"a1b2#" then error 33
-3160 'gosub 9040
-3170 '
-3180 ?"ROUND"
-3190 a=round(PI):if a<>3 then error 33
-3200 a=round(PI,0):if a<>3 then error 33
-3210 a=round(PI,0.4):if a<>3 then error 33
-3220 a=round(PI,2):if a<>3.14 then error 33
-3230 a=round(PI,2.4):if a<>3.14 then error 33
-3240 a=round(1234.5678,-2):if a<>1200 then error 33
-3250 a=round(8.575,2):if a<>8.58 then error 33
-3260 '
-3270 gosub 9040
-3280 ?"DATA and RESTORE"
-3290 restore 3300: read s$,t$: if s$+t$<>"1" then error 33
-3300 data 1,
-3310 '
-3320 ?"OPENIN and LINE INPUT #9"
-3330 ?"OPENIN testdat with characters 33..255"
-3340 openin "testpg1.dat"
-3350 for i=33 to 255:line input #9,t$
-3360 t=asc(t$):?t$;: if t<>i then ?"error:";i;"<>";t:error 33
-3370 tag:move ((i-33) mod 80)*8, 90-((i-33)\80)*16:?t$;:tagoff
-3380 next
-3390 ?
-3400 closein
-3410 ?
-3420 '
-3430 ?"OPENOUT, OPENIN and LINE INPUT #9"
-3440 openout "testpg2.dat"
-3450 for i=33 to 255:t$=chr$(i):print #9,t$
-3460 next
-3470 closeout
-3480 openin "testpg2.dat"
-3490 for i=33 to 255:line input #9,t$:?t$;
-3500 t=asc(t$):if t<>i then ?"error:";i;"<>";t:error 33
-3510 next
-3520 closein
-3530 ?:?
+1920 PRINT"FIX"
+1930 a=FIX(1.5)
+1940 IF a<>1 THEN ERROR 33
+1950 a=FIX(-1.5)
+1960 IF a<>-1 THEN ERROR 33
+1970 '
+1980 PRINT"FOR with integer constants"
+1990 a$="":FOR i=+4 TO 0 STEP -2:a$=a$+STR$(i):NEXT:IF a$<>" 4 2 0" THEN ERROR 33
+2000 a=0:FOR i=++4 TO 1 STEP ---2:a=a+i:NEXT:IF a<>6 THEN ERROR 33: 'avoid ++ and -- in js!
+2010 PRINT"FOR with integer variable and floating point ranges"
+2020 a=0:FOR i%=1.2 TO 9.7 STEP 3.2:a=a+i%:NEXT:IF a<>22 THEN ERROR 33: '1+4+7+10
+2030 PRINT"FOR with condition expressions"
+2040 a=3:FOR i=a<>3 TO a>=3 STEP a=3:PRINT i;:NEXT:PRINT "#";
+2050 GOSUB 9010:IF a$<>" 0 -1 #" THEN ERROR 33
+2060 PRINT"FOR up to 2*PI"
+2070 a=13/8*PI:FOR i=1 TO 3:a=a+1/8*PI:NEXT:IF a>2*PI THEN PRINT"limit exceeded by";a-2*PI;"(TODO)" ELSE PRINT"ok"
+2080 'gosub 9040
+2090 '
+2100 PRINT"GOTO with leading zeros"
+2110 GOTO 2120
+2120 PRINT"ok"
+2130 PRINT"INSTR"
+2140 a=INSTR("Amstrad", "m"):IF a<>2 THEN ERROR 33
+2150 a=INSTR("Amstrad", "sr"):IF a<>0 THEN ERROR 33
+2160 '
+2170 PRINT"ON n GOSUB"
+2180 a=0:ON 1 GOSUB 2250,2260:IF a<>1 THEN ERROR 33
+2190 a=0:ON 2 GOSUB 2250,2260:IF a<>2 THEN ERROR 33
+2200 a=0:ON 1.5 GOSUB 2250,2260:IF a<>2 THEN ERROR 33
+2210 a=1.5:ON a GOSUB 2250,2260:IF a<>2 THEN ERROR 33
+2220 a=0:ON 3 GOSUB 2250,2260:IF a<>0 THEN ERROR 33
+2230 a=0:ON 0 GOSUB 2250,2260:IF a<>0 THEN ERROR 33
+2240 GOTO 2270
+2250 a=1:RETURN
+2260 a=2:RETURN
+2270 PRINT"ON n GOTO"
+2280 a=1.7:ON a-0.2 GOTO 2300,2310
+2290 GOTO 2320
+2300 a=1:GOTO 2320
+2310 a=2:GOTO 2320
+2320 IF a<>2 THEN ERROR 33
+2330 GOSUB 9040
+2340 '
+2350 PRINT"PRINT in FOR loop"
+2360 FOR i=1 TO 5:PRINT i;:NEXT i:PRINT"#";
+2370 GOSUB 9010:IF a$<>" 1  2  3  4  5 #" THEN ERROR 33
+2380 PRINT"PRINT in GOTO loop"
+2390 a=1
+2400 PRINT a;: a=a+1: IF a <= 5 THEN GOTO 2400 ELSE PRINT "#";
+2410 GOSUB 9010:IF a$<>" 1  2  3  4  5 #" THEN ERROR 33
+2420 PRINT"PRINT in WHILE loop"
+2430 a=1: WHILE a<=5: PRINT a;: a=a+1: WEND: PRINT "#";
+2440 GOSUB 9010:IF a$<>" 1  2  3  4  5 #" THEN ERROR 33
+2450 PRINT"PRINT concatenated string"
+2460 a=1: s$="": WHILE a<=5: s$=s$+STR$(a)+":": a=a+1: b=0: WHILE b<3: b=b+1: s$=s$+STR$(b): WEND: s$=s$+" ": WEND: s$=s$+"#":PRINT s$;
+2470 GOSUB 9010:IF a$<>" 1: 1 2 3  2: 1 2 3  3: 1 2 3  4: 1 2 3  5: 1 2 3 #" THEN ERROR 33
+2480 '
+2490 PRINT"IF THEN ELSE: WEND in ELSE"
+2500 a=0: WHILE a<5: a=a+1: IF a=3 OR 3=a THEN PRINT "a=";a;"(three) "; ELSE PRINT "a<>3:";a;"(not three) ";: WEND : PRINT"after WEND": 'WEND in ELSE
+2510 PRINT"#";
+2520 GOSUB 9010:IF a$<>"a<>3: 1 (not three) a<>3: 2 (not three) a= 3 (three) #" THEN ERROR 33
+2530 '
+2540 GOSUB 9040
+2550 PRINT"PRINT numbers separated by space"
+2560 PRINT 123;:PRINT"#";
+2570 GOSUB 9010: 'if a$<>" 1  2  3 #" then error 33: 'not ok! On real CPC one number: " 123 #"
+2580 PRINT"PRINT numbers separated by ;"
+2590 PRINT 1;2;3;:PRINT"#";
+2600 GOSUB 9010:IF a$<>" 1  2  3 #" THEN ERROR 33
+2610 PRINT"PRINT numbers separated by , (default ZONE 13)"
+2620 PRINT 1,2,3;:PRINT"#";
+2630 GOSUB 9010:IF a$<>" 1            2            3 #" THEN ERROR 33
+2640 PRINT"PRINT numbers, computed"
+2650 PRINT -1 -2 -3;"#";
+2660 GOSUB 9010:IF a$<>"-6 #" THEN ERROR 33
+2670 PRINT -1;-2;-3;"#";
+2680 GOSUB 9010:IF a$<>"-1 -2 -3 #" THEN ERROR 33
+2690 PRINT"PRINT strings separated by space"
+2700 PRINT "a" "b" "c" "#";
+2710 GOSUB 9010:IF a$<>"abc#" THEN ERROR 33
+2720 PRINT"PRINT strings separated by ;"
+2730 PRINT "a";"b";"c";"#";
+2740 GOSUB 9010:IF a$<>"abc#" THEN ERROR 33
+2750 PRINT"PRINT strings separated by ,"
+2760 PRINT "a","b","c";"#";: '[zone 13]
+2770 GOSUB 9010:IF a$<>"a            b            c#" THEN ERROR 33
+2780 ZONE 5
+2790 PRINT "a","b","c";"#";: '[zone 5]
+2800 GOSUB 9010:IF a$<>"a    b    c#" THEN ERROR 33
+2810 ZONE 13
+2820 PRINT"PRINT strings separated by tab()"
+2830 PRINT "a"TAB(2)"b"TAB(3)"c"TAB(4)"#";
+2840 GOSUB 9010:IF a$<>"abc#" THEN ERROR 33
+2850 PRINT "a"TAB(13)"b"TAB(20)"c"TAB(22)"#";
+2860 GOSUB 9010:IF a$<>"a           b      c #" THEN ERROR 33
+2870 PRINT "a"TAB(78)"bc#";
+2880 IF POS(#0)<>1 THEN ERROR 33
+2890 PRINT CHR$(8);: 'back
+2900 IF POS(#0)<>80 THEN ERROR 33
+2910 GOSUB 9010:IF a$<>"a                                                                            bc#" THEN ERROR 33
+2920 PRINT "a"TAB(79)"bc#";
+2930 GOSUB 9010:IF a$<>"bc#" THEN ERROR 33
+2940 PRINT"PRINT number without separator"
+2950 PRINT &X10 2;"#";
+2960 GOSUB 9010:IF a$<>" 2  2 #" THEN ERROR 33
+2970 GOSUB 9040
+2980 '
+2990 PRINT"PRINT special exponential number expressions"
+3000 PRINT 1 e++4;:PRINT"#";
+3010 GOSUB 9010:IF a$<>" 1  4 #" THEN ERROR 33
+3020 PRINT 1 e+-4;:PRINT"#";
+3030 GOSUB 9010:IF a$<>" 1 -4 #" THEN ERROR 33
+3040 PRINT 50000 0.5;:PRINT"#";
+3050 GOSUB 9010:IF a$<>" 50000  0.5 #" THEN ERROR 33
+3060 PRINT 1 EXP(0);:PRINT"#";
+3070 GOSUB 9010:IF a$<>" 1  1 #" THEN ERROR 33
+3080 '
+3090 PRINT"PRINT USING number format"
+3100 PRINT USING "##.##";0;:PRINT"#";
+3110 GOSUB 9010:IF a$<>" 0.00#" THEN ERROR 33
+3120 PRINT USING "##.##";-1.2;:PRINT"#";
+3130 GOSUB 9010:IF a$<>"-1.20#" THEN ERROR 33
+3140 PRINT USING "##.##";1.005;:PRINT"#";
+3150 GOSUB 9010:IF a$<>" 1.01#" THEN ERROR 33
+3160 PRINT USING "##.##";8.575;:PRINT"#";
+3170 GOSUB 9010:IF a$<>" 8.58#" THEN ERROR 33
+3180 PRINT"PRINT USING number too long"
+3190 PRINT USING "#.##";15.355;:PRINT"#";
+3200 GOSUB 9010:IF a$<>"%15.36#" THEN ERROR 33
+3210 PRINT"PRINT USING string format"
+3220 PRINT USING "\   \";"n1";"n2";" xx3";:PRINT"#";
+3230 GOSUB 9010:IF a$<>"n1   n2    xx3 #" THEN ERROR 33
+3240 PRINT USING "!";"a1";"b2";:PRINT"#";
+3250 GOSUB 9010:IF a$<>"ab#" THEN ERROR 33
+3260 PRINT USING "&";"a1";"b2";:PRINT"#";
+3270 GOSUB 9010:IF a$<>"a1b2#" THEN ERROR 33
+3280 'gosub 9040
+3290 '
+3300 PRINT"ROUND"
+3310 a=ROUND(PI):IF a<>3 THEN ERROR 33
+3320 a=ROUND(PI,0):IF a<>3 THEN ERROR 33
+3330 a=ROUND(PI,0.4):IF a<>3 THEN ERROR 33
+3340 a=ROUND(PI,2):IF a<>3.14 THEN ERROR 33
+3350 a=ROUND(PI,2.4):IF a<>3.14 THEN ERROR 33
+3360 a=ROUND(1234.5678,-2):IF a<>1200 THEN ERROR 33
+3370 a=ROUND(8.575,2):IF a<>8.58 THEN ERROR 33
+3380 '
+3390 GOSUB 9040
+3400 PRINT"DATA and RESTORE"
+3410 RESTORE 3420: READ s$,t$: IF s$+t$<>"1" THEN ERROR 33
+3420 DATA 1,
+3430 '
+3440 PRINT"OPENIN and LINE INPUT #9"
+3450 t$="testpage.dat":PRINT"OPENIN ";t$;" with characters 33..255"
+3460 OPENIN "!"+t$
+3470 FOR i=33 TO 255:LINE INPUT #9,t$
+3480 t=ASC(t$):PRINT t$;: IF t<>i THEN PRINT"error:";i;"<>";t:ERROR 33
+3490 PRINT t$;
+3500 NEXT
+3510 PRINT
+3520 CLOSEIN
+3530 PRINT
 3540 '
-3550 ?"Numbers in files"
-3560 openout "testpg2.dat"
-3570 for i=0 to 10:?#9,i:next :'separate lines
-3580 closeout
-3590 openin "testpg2.dat"
-3600 for i=0 to 10:input #9,t
-3610 if i<>t then ?"error:";i;"<>";t:error 33
-3620 next
-3630 closein
-3640 openin "testpg2.dat"
-3650 for i=0 to 10:input #9,t$
-3660 a$=str$(i)+" ":a$=right$(a$,len(a$)-1):if a$<>t$ then ?"error:";a$;"<>";t$:error 33
-3670 next
-3680 closein
-3690 '
-3700 openout "testpg2.dat"
-3710 for i=0 to 10:?#9,i;:next :'one line
-3720 closeout
-3730 openin "testpg2.dat"
-3740 for i=0 to 10:input #9,t
-3750 if i<>t then ?"error:";i;"<>";t:error 33
-3760 next
-3770 closein
-3780 openin "testpg2.dat"
-3790 input #9,t$
-3800 if t$<>"0  1  2  3  4  5  6  7  8  9  10 " then ?"error:";:error 33
-3810 closein
-3820 ?
-3830 '
-3840 ?"Mixed style"
-3850 openout "testpg2.dat"
-3860 for i=0 to 10:?#9,i;"&a1";&a2:next
-3870 closeout
-3880 openin "testpg2.dat"
-3890 for i=0 to 10:input #9,t,t2
-3900 if i<>t then ?"error:";i;"<>";t:error 33
-3910 if t2<>&a1 then ?"error:";t2;"<>";&a1:error 33
-3920 input #9,t2
-3930 if t2<>&a2 then ?"error:";t2;"<>";&a2:error 33
-3940 next
-3950 closein
-3960 '
-3965 ?"|ERA to delete testpg2.dat (CPC: DISC only)"
-3970 |ERA,"testpg2.dat"
-3980 '
-3990 gosub 9040
-4000 '
-4010 ?"SYMBOL AFTER"
-4020 a=240:h=himem+(256-a)*8
-4030 a=256:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
-4040 a=0:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
-4050 a=240:symbol after a:if himem<>h-(256-a)*8 then ?"error:";himem;"<>";h:error 33
-4060 memory himem-1
-4070 on error goto 4080:symbol after 241:?"Error expected!":error 33: 'expect error 5
-4080 if err<>5 then ?"err=";err;"erl=";erl:error 33 else resume 4090
-4090 on error goto 0
-4100 memory himem+1
-4110 ?"UNT"
-4120 a=unt(32767):if a<>32767 then error 33
-4130 a=unt(32768):if a<>-32768 then error 33
-4140 a=unt(65535):if a<>-1 then error 33
-4150 ?"VAL"
-4160 a=val(""):if a<>0 then error 33
-4170 a=val("4r"):if a<>4 then error 33
-4180 a=val("&ff"):if a<>&ff then error 33
+3550 PRINT"OPENOUT, OPENIN and LINE INPUT #9"
+3560 OPENOUT "!testpg2.dat"
+3570 FOR i=33 TO 255:t$=CHR$(i):PRINT #9,t$
+3580 NEXT
+3590 CLOSEOUT
+3600 OPENIN "!testpg2.dat"
+3610 FOR i=33 TO 255:LINE INPUT #9,t$:PRINT t$;
+3620 t=ASC(t$):IF t<>i THEN PRINT"error:";i;"<>";t:ERROR 33
+3630 NEXT
+3640 CLOSEIN
+3650 PRINT:PRINT
+3660 '
+3670 PRINT"Numbers in files"
+3680 OPENOUT "!testpg2.dat"
+3690 FOR i=0 TO 10:PRINT#9,i:NEXT :'separate lines
+3700 CLOSEOUT
+3710 OPENIN "!testpg2.dat"
+3720 FOR i=0 TO 10:INPUT #9,t
+3730 IF i<>t THEN PRINT"error:";i;"<>";t:ERROR 33
+3740 NEXT
+3750 CLOSEIN
+3760 OPENIN "!testpg2.dat"
+3770 FOR i=0 TO 10:INPUT #9,t$
+3780 a$=STR$(i)+" ":a$=RIGHT$(a$,LEN(a$)-1):IF a$<>t$ THEN PRINT"error:";a$;"<>";t$:ERROR 33
+3790 NEXT
+3800 CLOSEIN
+3810 '
+3820 OPENOUT "!testpg2.dat"
+3830 FOR i=0 TO 10:PRINT#9,i;:NEXT :'one line
+3840 CLOSEOUT
+3850 OPENIN "!testpg2.dat"
+3860 FOR i=0 TO 10:INPUT #9,t
+3870 IF i<>t THEN PRINT"error:";i;"<>";t:ERROR 33
+3880 NEXT
+3890 CLOSEIN
+3900 OPENIN "!testpg2.dat"
+3910 INPUT #9,t$
+3920 IF t$<>"0  1  2  3  4  5  6  7  8  9  10 " THEN PRINT"error:";:ERROR 33
+3930 CLOSEIN
+3940 PRINT
+3950 '
+3960 PRINT"Mixed style"
+3970 OPENOUT "!testpg2.dat"
+3980 FOR i=0 TO 10:PRINT#9,i;"&a1";&A2:NEXT
+3990 CLOSEOUT
+4000 OPENIN "!testpg2.dat"
+4010 FOR i=0 TO 10:INPUT #9,t,t2
+4020 IF i<>t THEN PRINT"error:";i;"<>";t:ERROR 33
+4030 IF t2<>&A1 THEN PRINT"error:";t2;"<>";&A1:ERROR 33
+4040 INPUT #9,t2
+4050 IF t2<>&A2 THEN PRINT"error:";t2;"<>";&A2:ERROR 33
+4060 NEXT
+4070 CLOSEIN
+4080 '
+4090 PRINT"Separated with comma"
+4100 OPENOUT "!testpg2.dat"
+4110 FOR i=0 TO 25:PRINT#9,i+65,CHR$(i+65):NEXT
+4120 CLOSEOUT
+4130 OPENIN "!testpg2.dat"
+4140 FOR i=0 TO 25:INPUT #9,t,t$
+4150 IF i+65<>t THEN PRINT"error:";i+65;"<>";t:ERROR 33
+4160 IF t$<>CHR$(i+65) THEN PRINT"error:";t$;"<>";CHR$(i+65):ERROR 33
+4170 NEXT
+4180 CLOSEIN
 4190 '
-4200 gosub 9040
-4210 '
-4220 print "stairs"
-4230 for i=1 to 24:print string$(i*2, "O"):next
-4240 move 0,350
-4250 for n=1 to 8
-4260 drawr 50,0
-4270 drawr 0,-50
-4280 next
-4290 move 348,0
-4300 fill 1
+4200 PRINT"WRITE and INPUT"
+4210 OPENOUT "!testpg2.dat"
+4220 FOR i=0 TO 25:WRITE #9,i+65,CHR$(i+65):NEXT
+4230 CLOSEOUT
+4240 OPENIN "!testpg2.dat"
+4250 FOR i=0 TO 25:INPUT #9,t,t$
+4260 IF i+65<>t THEN PRINT"error:";i+65;"<>";t:ERROR 33
+4270 IF t$<>CHR$(i+65) THEN PRINT"error:";t$;"<>";CHR$(i+65):ERROR 33
+4280 NEXT
+4290 CLOSEIN
+4300 '
 4310 '
-4320 print "test finished: ok"
-4330 end
+4320 PRINT"|ERA to delete testpg2.dat (CPC: DISC only)"
+4330 |ERA,"testpg2.dat"
 4340 '
+4350 GOSUB 9040
+4360 '
+4370 PRINT"SYMBOL AFTER"
+4380 a=240:h=HIMEM+(256-a)*8
+4390 a=256:SYMBOL AFTER a:IF HIMEM<>h-(256-a)*8 THEN PRINT"error:";HIMEM;"<>";h:ERROR 33
+4400 a=0:SYMBOL AFTER a:IF HIMEM<>h-(256-a)*8 THEN PRINT"error:";HIMEM;"<>";h:ERROR 33
+4410 a=240:SYMBOL AFTER a:IF HIMEM<>h-(256-a)*8 THEN PRINT"error:";HIMEM;"<>";h:ERROR 33
+4420 MEMORY HIMEM-1
+4430 ON ERROR GOTO 4440:SYMBOL AFTER 241:PRINT"Error expected!":ERROR 33: 'expect error 5
+4440 IF ERR<>5 THEN PRINT"err=";ERR;"erl=";ERL:ERROR 33 ELSE RESUME 4450
+4450 ON ERROR GOTO 0
+4460 MEMORY HIMEM+1
+4470 PRINT"UNT"
+4480 a=UNT(32767):IF a<>32767 THEN ERROR 33
+4490 a=UNT(32768):IF a<>-32768 THEN ERROR 33
+4500 a=UNT(65535):IF a<>-1 THEN ERROR 33
+4510 PRINT"VAL"
+4520 a=VAL(""):IF a<>0 THEN ERROR 33
+4530 a=VAL("4r"):IF a<>4 THEN ERROR 33
+4540 a=VAL("&ff"):IF a<>&FF THEN ERROR 33
+4550 '
+4560 GOSUB 9040
+4570 '
+4580 PRINT "stairs"
+4590 FOR i=1 TO 24:PRINT STRING$(i*2, "O"):NEXT
+4600 MOVE 0,350
+4610 FOR n=1 TO 8
+4620 DRAWR 50,0
+4630 DRAWR 0,-50
+4640 NEXT
+4650 MOVE 348,0
+4660 FILL 1
+4670 '
+4680 PRINT "test finished: ok"
+4690 END
+4700 '
 9000 'get characters from screen; print crlf
-9010 a$="":i=1:while i<=80 and right$(a$,1)<>"#":locate i,vpos(#0):a$=a$+copychr$(#0):i=i+1:wend:?:return
+9010 a$="":i=1:WHILE i<=80 AND RIGHT$(a$,1)<>"#":LOCATE i,VPOS(#0):a$=a$+COPYCHR$(#0):i=i+1:WEND:PRINT:RETURN
 9020 '
 9030 'wait some time or for key press
-9040 t!=time+6*50:a$="":while time<t! and a$="":a$=inkey$:wend
-9050 ?:?string$(10, "-"):?
-9060 return
+9040 t!=TIME+6*50:a$="":WHILE TIME<t! AND a$="":a$=INKEY$:WEND
+9050 PRINT:PRINT STRING$(10, "-"):PRINT
+9060 RETURN
 9070 '
 */ });

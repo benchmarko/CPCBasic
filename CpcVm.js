@@ -689,7 +689,8 @@ CpcVm.prototype = {
 				iDecimals = aFormat[1].length;
 				// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
 				arg = Number(Math.round(arg + "e" + iDecimals) + "e-" + iDecimals);
-				arg = String(arg);
+				//arg = String(arg);
+				arg = arg.toFixed(iDecimals);
 			}
 			iPadLen = sFormat.length - arg.length;
 			sPad = (iPadLen > 0) ? sPadChar.repeat(iPadLen) : "";
@@ -1689,42 +1690,87 @@ CpcVm.prototype = {
 		return bInputOk;
 	},
 
+	vmInputNextFileItem: function (sType) {
+		var that = this,
+			aFileData = this.oInFile.aFileData,
+			sLine, iIndex, value,
+
+			fnGetString = function () {
+				if (sLine.charAt(0) === '"') { // quoted string?
+					iIndex = sLine.indexOf('"', 1); // closing quotes in this line?
+					if (iIndex >= 0) {
+						value = sLine.substr(1, iIndex - 1); // take string without quotes
+						sLine = sLine.substr(iIndex + 1);
+						sLine = sLine.replace(/^\s*,/, ""); // multiple args => remove next comma
+					} else if (aFileData.length > 1) { // no closing quotes in this line => try to combine with next line
+						aFileData.shift(); // remove line
+						sLine += "\n" + aFileData[0]; // combine lines
+					} else {
+						throw that.vmComposeError(Error(), 13, "INPUT #9: no closing quotes" + value); // TTT
+					}
+				} else { // unquoted string
+					iIndex = sLine.indexOf(","); // multiple args?
+					if (iIndex >= 0) {
+						value = sLine.substr(0, iIndex); // take arg
+						sLine = sLine.substr(iIndex + 1);
+					} else {
+						value = sLine; // take line
+						sLine = "";
+					}
+				}
+				return value;
+			},
+			fnGetNumber = function () {
+				iIndex = sLine.indexOf(","); // multiple args?
+				if (iIndex >= 0) {
+					value = sLine.substr(0, iIndex); // take arg
+					sLine = sLine.substr(iIndex + 1);
+				} else {
+					iIndex = sLine.indexOf(" "); // space?
+					if (iIndex >= 0) {
+						value = sLine.substr(0, iIndex); // take item until space
+						sLine = sLine.substr(iIndex);
+					} else {
+						value = sLine; // take line
+						sLine = "";
+					}
+				}
+				value = that.vmVal(value); // convert to number (also binary, hex)
+				if (isNaN(value)) { // eslint-disable-line max-depth
+					throw that.vmComposeError(Error(), 13, "INPUT #9 " + value); // Type mismatch
+				}
+				return value;
+			};
+
+		while (aFileData.length && value === undefined) {
+			sLine = aFileData[0];
+			sLine = sLine.replace(/^\s+/, ""); // remove preceding whitespace
+			if (sLine.length) {
+				if (sType === "$") {
+					value = fnGetString();
+				} else { // number type
+					value = fnGetNumber();
+				}
+			}
+
+			if (sLine.length) {
+				aFileData[0] = sLine;
+			} else {
+				aFileData.shift(); // remove line
+			}
+		}
+		return value;
+	},
+
 	vmInputFromFile: function (aTypes) {
-		var aFileData = this.oInFile.aFileData,
-			aInputValues = [],
-			i, sVarType, sType, value, aValue;
+		var aInputValues = [],
+			i, sVarType, sType, value;
 
 		for (i = 0; i < aTypes.length; i += 1) {
 			sVarType = aTypes[i];
 			sType = this.vmDetermineVarType(sVarType);
 
-			if (sType === "$") { // string?
-				value = aFileData.shift(); // get complete (remaining) line
-				value = value.replace(/^\s+/, ""); // remove preceding whitespace
-			} else { // number (in same line or in next line)
-				value = "";
-				while (aFileData.length && value === "") {
-					aFileData[0] = aFileData[0].replace(/^\s+/, ""); // remove preceding whitespace
-					if (aFileData[0].length) { // do we have something in line?
-						aValue = aFileData[0].match(/^(\S+)(.*)/);
-						value = aValue[1];
-						aFileData[0] = aValue[2];
-						aFileData[0] = aFileData[0].replace(/^\s+/, ""); // remove preceding whitespace
-						if (!aFileData[0].length) { // eslint-disable-line max-depth
-							aFileData.shift(); // remove empty line
-						}
-						value = this.vmVal(value); // convert to number (also binary, hex)
-						if (isNaN(value)) { // eslint-disable-line max-depth
-							throw this.vmComposeError(Error(), 13, "INPUT #9 " + value); // Type mismatch
-						}
-					} else { // empty line
-						aFileData.shift(); // remove empty line
-					}
-				}
-				if (value === "") {
-					throw this.vmComposeError(Error(), 24, "INPUT #9"); // EOF met
-				}
-			}
+			value = this.vmInputNextFileItem(sType);
 
 			aInputValues[i] = this.vmAssign(sVarType, value);
 		}
@@ -3420,7 +3466,11 @@ CpcVm.prototype = {
 		if (iInv !== undefined) {
 			iInv = this.vmInRangeRound(iInv, 0, 255, "WAIT");
 		}
-		if (iPort === 0) {
+		if ((iPort & 0xff00) === 0xf500) { // eslint-disable-line no-bitwise
+			if (iMask === 1) {
+				this.frame();
+			}
+		} else if (iPort === 0) {
 			debugger; // Testing
 		}
 	},

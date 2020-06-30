@@ -197,6 +197,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Rectangles Test"
 	},
 	{
+		"key": "test/reftime",
+		"title": "Reference Timings"
+	},
+	{
 		"key": "test/scrtest",
 		"title": "Screen Memory Test"
 	},
@@ -213,8 +217,8 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Test Page"
 	},
 	{
-    	"key": "test/testpg1.dat",
-		"title": "testpg1 - Test data 1 for Test Page",
+    	"key": "test/testpage.dat",
+		"title": "testpage.dat - Test data for Test Page",
 		"meta": "D"
 	},
 	{

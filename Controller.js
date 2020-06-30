@@ -170,7 +170,7 @@ Controller.prototype = {
 	addItem: function (sKey, input) { // optional sKey
 		var sInput, oExample;
 
-		sInput = input.trim();
+		sInput = input.replace(/^\n/, ""); // remove preceding newline
 
 		if (!sKey) {
 			sKey = this.model.getProperty("example");
