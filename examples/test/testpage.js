@@ -320,6 +320,8 @@ cpcBasic.addItem("", function () { /*
 3180 PRINT"PRINT USING number too long"
 3190 PRINT USING "#.##";15.355;:PRINT"#";
 3200 GOSUB 9010:IF a$<>"%15.36#" THEN ERROR 33
+3201 PRINT USING "[#,###,###]";1234567;123;12345678;:PRINT"#";
+3202 GOSUB 9010:IF a$<>"[1,234,567][      123][%12,345,678]#" THEN ERROR 33
 3210 PRINT"PRINT USING string format"
 3220 PRINT USING "\   \";"n1";"n2";" xx3";:PRINT"#";
 3230 GOSUB 9010:IF a$<>"n1   n2    xx3 #" THEN ERROR 33

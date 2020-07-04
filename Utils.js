@@ -119,6 +119,16 @@ var Utils = {
 	stringCapitalize: function (str) { // capitalize first letter
 		return str.charAt(0).toUpperCase() + str.substring(1);
 	},
+	stringTrimRight: function (str) {
+		return str.replace(/[\s\uFEFF\xA0]+$/, "");
+	},
+	numberWithCommas: function (x) {
+		// https://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
+		var aParts = String(x).split(".");
+
+		aParts[0] = aParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		return aParts.join(".");
+	},
 	toRadians: function (deg) {
 		return deg * Math.PI / 180;
 	},

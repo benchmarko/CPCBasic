@@ -221,6 +221,15 @@ BasicParser.mKeywords = {
 	zone: "c n" // ZONE <integer expression>  / integer expression=1..255
 };
 
+BasicParser.mCloseTokens = {
+	":": 1,
+	"(eol)": 1,
+	"(end)": 1,
+	"else": 1,
+	rem: 1,
+	"'": 1
+};
+
 BasicParser.prototype = {
 	init: function (options) {
 		this.options = options || {}; // e.g. tron
@@ -520,14 +529,7 @@ BasicParser.prototype = {
 			fnGetArgs = function (sKeyword) { // eslint-disable-line complexity
 				var aArgs = [],
 					sSeparator = ",",
-					oCloseTokens = {
-						":": 1,
-						"(eol)": 1,
-						"(end)": 1,
-						"else": 1,
-						rem: 1,
-						"'": 1
-					},
+					mCloseTokens = BasicParser.mCloseTokens,
 					bNeedMore = false,
 					sType = "ok",
 					aTypes, sKeyOpts, oExpression;
@@ -541,7 +543,7 @@ BasicParser.prototype = {
 					}
 				}
 
-				while (bNeedMore || (sType && !oCloseTokens[oToken.type])) {
+				while (bNeedMore || (sType && !mCloseTokens[oToken.type])) {
 					if (aTypes && sType.slice(-1) !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
 						if (!sType) {
@@ -613,9 +615,10 @@ BasicParser.prototype = {
 			},
 
 			fnGetArgsSepByCommaSemi = function () {
-				var aArgs = [];
+				var mCloseTokens = BasicParser.mCloseTokens,
+					aArgs = [];
 
-				while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "else" && oToken.type !== "rem" && oToken.type !== "'") {
+				while (!mCloseTokens[oToken.type]) {
 					aArgs.push(expression(0));
 					if (oToken.type === "," || oToken.type === ";") {
 						advance();
@@ -1377,6 +1380,7 @@ BasicParser.prototype = {
 
 		stmt("print", function () {
 			var oValue = oPreviousToken,
+				mCloseTokens = BasicParser.mCloseTokens,
 				bTrailingSemicolon = false,
 				iSpcOrTabEnd = 0,
 				bCommaAfterStream = false,
@@ -1390,7 +1394,7 @@ BasicParser.prototype = {
 				bCommaAfterStream = true;
 			}
 
-			while (oToken.type !== ":" && oToken.type !== "(eol)" && oToken.type !== "(end)" && oToken.type !== "'") {
+			while (!mCloseTokens[oToken.type]) {
 				if (bCommaAfterStream) {
 					advance(",");
 					bCommaAfterStream = false;

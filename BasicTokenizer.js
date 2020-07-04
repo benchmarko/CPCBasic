@@ -5,6 +5,14 @@
 
 "use strict";
 
+var Utils;
+
+if (typeof require !== "undefined") {
+	/* eslint-disable global-require */
+	Utils = require("./Utils.js");
+	/* eslint-enable global-require */
+}
+
 function BasicTokenizer(options) {
 	this.init(options);
 }
@@ -16,6 +24,7 @@ BasicTokenizer.prototype = {
 	reset: function () {
 		this.sData = "";
 		this.iPos = 0;
+		this.iLine = 0;
 	},
 
 	decode: function (sProgram) { // decode tokenized BASIC to ASCII
@@ -90,8 +99,8 @@ BasicTokenizer.prototype = {
 					if (sOut.indexOf("e") >= 0) {
 						sOut = sOut.replace(/\.?0*e/, "E"); // exponential uppercase, no zeros
 						sOut = sOut.replace(/(E[+-])(\d)$/, "$10$2"); // exponent 1 digit to 2 digits
-					} else {
-						sOut = sOut.replace(/\.?0*$/, ""); // remove trailing 0
+					} else if (sOut.indexOf(".") >= 0) { // decimal number?
+						sOut = sOut.replace(/\.?0*$/, ""); // remove trailing dot and/or zeros
 					}
 				}
 				return sOut;
@@ -144,7 +153,16 @@ BasicTokenizer.prototype = {
 					sOut = that.sInput.substring(that.iPos, iClosingQuotes + 1);
 					that.iPos = iClosingQuotes + 1; // after quotes
 				}
-				return '"' + sOut;
+				sOut = '"' + sOut;
+				if (sOut.indexOf("\r") >= 0) {
+					Utils.console.log("BasicTokenizer line", that.iLine, ": string contains CR, replaced by CHR$(13)");
+					sOut = sOut.replace(/\r/g, '"+chr$(13)+"');
+				}
+				if ((/\n\d/).test(sOut)) {
+					Utils.console.log("BasicTokenizer line", that.iLine, ": string contains LF<digit>, replaced by CHR$(10)<digit>");
+					sOut = sOut.replace(/\n(\d)/g, '"+chr$(10)+"$1');
+				}
+				return sOut;
 			},
 
 			mTokens = {
@@ -391,14 +409,14 @@ BasicTokenizer.prototype = {
 				var sInput = that.sInput,
 					sOut = "",
 					bSpace = false,
-					iLineLength, iLineNum, iToken, iNextToken, bOldSpace, tstr;
+					iLineLength, iToken, iNextToken, bOldSpace, tstr;
 
 				iLineLength = fnNum16Dec();
 				if (!iLineLength) {
 					return null; // nothing more
 				}
 				that.iLineEnd = that.iPos + iLineLength - 2;
-				iLineNum = fnNum16Dec();
+				that.iLine = fnNum16Dec();
 
 				while (that.iPos < that.iLineEnd) {
 					bOldSpace = bSpace;
@@ -428,7 +446,7 @@ BasicTokenizer.prototype = {
 							tstr = tstr();
 						}
 
-						if ((/[a-zA-Z0-9.]$/).test(tstr)) { // last character char, number, dot?
+						if ((/[a-zA-Z0-9.]$/).test(tstr) && iToken !== 0xe4) { // last character char, number, dot? (not for token "FN")
 							bSpace = true; // maybe need space next time...
 						}
 					} else { // normal ASCII
@@ -441,7 +459,7 @@ BasicTokenizer.prototype = {
 					}
 					sOut += tstr;
 				}
-				return iLineNum + " " + sOut;
+				return that.iLine + " " + sOut;
 			},
 
 
@@ -452,6 +470,7 @@ BasicTokenizer.prototype = {
 				that.iPos = 0;
 				while ((sLine = fnParseNextLine()) !== null) {
 					sOut += sLine + "\n";
+					// CPC uses "\r\n" line breaks, JavaScript uses "\n", textArea cannot contain "\r"
 				}
 				return sOut;
 			};

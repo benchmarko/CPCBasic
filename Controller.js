@@ -171,6 +171,7 @@ Controller.prototype = {
 		var sInput, oExample;
 
 		sInput = input.replace(/^\n/, ""); // remove preceding newline
+		sInput = Utils.stringTrimRight(sInput);
 
 		if (!sKey) {
 			sKey = this.model.getProperty("example");
@@ -509,10 +510,10 @@ Controller.prototype = {
 
 	// merge two scripts with sorted line numbers, lines from script2 overwrite lines from script1
 	mergeScripts: function (sScript1, sScript2) {
-		var aLines1 = sScript1.split("\n"),
-			aLines2 = sScript2.split("\n"),
+		var aLines1 = Utils.stringTrimRight(sScript1).split("\n"),
+			aLines2 = Utils.stringTrimRight(sScript2).split("\n"),
 			aResult = [],
-			iLine1, sLine2, iLine2;
+			iLine1, sLine2, iLine2, sResult;
 
 		while (aLines1.length && aLines2.length) {
 			iLine1 = iLine1 || parseInt(aLines1[0], 10);
@@ -539,7 +540,13 @@ Controller.prototype = {
 				aResult.pop(); // remove additional newline
 			}
 		}
-		return aResult.join("\n");
+		sResult = aResult.join("\n");
+		/*
+		if (sResult !== "" && !Utils.stringEndsWith(sResult, "\n")) { // not really needed
+			sResult += "\n";
+		}
+		*/
+		return sResult;
 	},
 
 	// get line range from a script with sorted line numbers

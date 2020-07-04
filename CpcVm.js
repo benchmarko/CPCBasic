@@ -689,9 +689,12 @@ CpcVm.prototype = {
 				iDecimals = aFormat[1].length;
 				// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
 				arg = Number(Math.round(arg + "e" + iDecimals) + "e-" + iDecimals);
-				//arg = String(arg);
 				arg = arg.toFixed(iDecimals);
 			}
+			if (sFormat.indexOf(",") >= 0) { // contains comma => insert thousands separator
+				arg = Utils.numberWithCommas(arg);
+			}
+
 			iPadLen = sFormat.length - arg.length;
 			sPad = (iPadLen > 0) ? sPadChar.repeat(iPadLen) : "";
 			sStr = sPad + arg;
@@ -3374,7 +3377,8 @@ CpcVm.prototype = {
 	},
 
 	using: function (sFormat) { // varargs
-		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/g,
+		//var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/g,
+		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?(?:#|,)+\.?#*(?:\^\^\^\^)?[+-]?)/g,
 			s = "",
 			aFormat = [],
 			iIndex,	oMatch,	sFrmt, iFormat, i, arg;

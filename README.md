@@ -65,7 +65,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 
 - CPCBasic is still in progress and not complete or accurate. The goal is that most BASIC programs run without change.
 - It is BASIC only and can not execute Z80 machine code
-- Unimplemented commands are ignored: *AUTO*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, some AMDSOS commands
+- Unimplemented commands are ignored: *AUTO*, *PRINT #8*, *RESUME* (partly), *SPEED KEY/WRITE*, *WIDTH*, *WRITE #8*, some AMDSOS commands.
 - Sound: More hardware volume envelopes
 - Multi-line strings containing LF (\n)
 - No complete check of the BASIC program
@@ -73,8 +73,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Variables typed with *DEFINT*, *DEFREAL* or *DEFSTR* are different from those with type extension:
   `defint a: a=1: a%=2: ?a,a%`
 - Array access: Array indices are not rounded, and there is no range check.
-- *ON ERROR GOTO* and *RESUME* without line number do not fully work because this would require to single step every instruction
-- Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript. Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block
+- *ON ERROR GOTO* and *RESUME* without line number do not fully work because this would require to single step every instruction.
+- Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript.
+  Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block.
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
 - That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
 - Maybe something more...
@@ -112,9 +113,14 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   - Specific for *RUN*, *LOAD*, *MERGE*, *OPENIN*: If a file is not found in storage memory and an example with the name exists in the current directory, this example is loaded.
   - Use Drag & Drop on the CPC canvas or on the input drop zone to import files. An AMSDOS header is detected.
   File types can be normal ASCII, tokenized BASIC, protected (tokenized) BASIC, or Binary. ZIP files and DSK files can also be imported.
-- Mouse clicks on CPC canvas: If the canvas is not active, click on it to activate it. The border color changes. A click on a character written in text mode puts this character in the keyboard input queue. The next *INKEY$* will return it. This could be useful to select options presented on the screen.
-  Another feature: After a MOVE 1000,1000, a mouse click does a *MOVE* at the click position. this can be detected by a BASIC program. Example: [Mouse Painting](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/mousepa)
-- *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character. This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
+- Mouse clicks on CPC canvas: If the canvas is not active, click on it to activate it.
+  The border color changes. A click on a character written in text mode puts this character in the keyboard input queue.
+  The next *INKEY$* will return it. This could be useful to select options presented on the screen.
+  Another feature: After a MOVE 1000,1000, a mouse click does a *MOVE* at the click position.
+  This can be detected by a BASIC program.
+  Example: [Mouse Painting](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/mousepa)
+- *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character.
+  This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
 Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/art), [Landscape](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/landscape), [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles).
 - *|MODE,n*: Change mode without *CLS*, including mode 3 (experimental)
 - *|RENUM,...*: similar to *RENUM* but with a 4th parameter to keep line numbers starting with this line
@@ -186,7 +192,7 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 
 ## Debugging
 
-- Use the URL parameter *tron=true* to compile with BASIC line number trace. The trace can be switched on and off in BASIC with *TRON* and *TROFF*. A side effect of "trace on" in CPCBasic   is that the correct line number is reported in case of an error.
+- Use the URL parameter *tron=true* to compile with BASIC line number trace. The trace can be switched on and off in BASIC with *TRON* and *TROFF*. A side effect of "trace on" in CPCBasic is that the correct line number is reported in case of an error.
 - For debugging in a desktop browser, you will usually use the Browser Development Tools (F12).
 - You can also use a *Console log* window which is usually hidden. You can activate it with the URL parameters *showConsole=true* and *debug=2*. Example:
  [CPCBasic Debug](https://benchmarko.github.io/CPCBasic/cpcbasic.html?showConsole=true&debug=2).
@@ -205,6 +211,7 @@ QUnit test [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/tes
 ## Possible Future Enhancements
 
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
+- Save and restore snapshot of variables, also system varaibles
 - RSX extension libraries / plugins programmed in JavaScript
 - Can we detect busy loops and insert *FRAME* automatically?
 - Shall we support hardware scrolling with *OUT* or is it already a hardware emulation feature?
