@@ -28,7 +28,7 @@ cpcBasic = {
 		showText: false,
 		showVariable: false,
 		showConsole: false,
-		sound: false,
+		sound: true,
 		tron: false // trace on
 	},
 	model: null,

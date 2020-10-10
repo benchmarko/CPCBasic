@@ -905,6 +905,22 @@ CpcVm.prototype = {
 
 	// break
 
+	vmMcSetMode: function (iMode) {
+		var iAddr = this.iScreenPage << 14, // eslint-disable-line no-bitwise
+			iCanvasMode = this.oCanvas.getMode();
+
+		iMode = this.vmInRangeRound(iMode, 0, 3, "MCSetMode");
+
+		if (iMode !== iCanvasMode) {
+			// keep screen bytes, just interpret in other mode
+			this.vmCopyFromScreen(iAddr, iAddr); // read bytes from screen memory into memory
+			this.oCanvas.changeMode(iMode); // change mode and interpretation of bytes
+			this.vmCopyToScreen(iAddr, iAddr); // write bytes back to screen memory
+			this.oCanvas.changeMode(iCanvasMode); // keep moe
+			// TODO: new content should still written in old mode but interpreted in new mode
+		}
+	},
+
 	vmTxtInverse: function (iStream) { // iStream must be checked
 		var oWin = this.aWindow[iStream],
 			iTmp;
@@ -1041,6 +1057,9 @@ CpcVm.prototype = {
 			break;
 		case 0xbd19: // MC Wait Flyback (ROM &07BA)
 			this.frame();
+			break;
+		case 0xbd1c: // MC Set Mode (ROM &0776) just set mode, depending on number of args
+			this.vmMcSetMode((arguments.length - 1) % 4);
 			break;
 		case 0xbd3d: // KM Flush (ROM ?; CPC 664/6128)
 			this.clearInput();
@@ -1438,7 +1457,7 @@ CpcVm.prototype = {
 			} else { // special handling for register parameters
 				oArg = {
 					register: this.vmInRangeRound(arguments[i + 1], 0, 15, "ENV"), // register: 0..15
-					period: this.vmInRangeRound(arguments[i + 2], 0, 255, "ENV")
+					period: this.vmInRangeRound(arguments[i + 2], -32768, 65535, "ENV")
 				};
 			}
 			aArgs.push(oArg);

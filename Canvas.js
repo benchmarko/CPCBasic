@@ -1310,6 +1310,10 @@ Canvas.prototype = {
 		this.iMaskFirst = iMaskFirst;
 	},
 
+	getMode: function () {
+		return this.iMode;
+	},
+
 	changeMode: function (iMode) {
 		var oModeData = this.aModeData[iMode];
 
