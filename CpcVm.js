@@ -1743,6 +1743,8 @@ CpcVm.prototype = {
 				return value;
 			},
 			fnGetNumber = function () {
+				var nValue;
+
 				iIndex = sLine.indexOf(","); // multiple args?
 				if (iIndex >= 0) {
 					value = sLine.substr(0, iIndex); // take arg
@@ -1752,27 +1754,26 @@ CpcVm.prototype = {
 					if (iIndex >= 0) {
 						value = sLine.substr(0, iIndex); // take item until space
 						sLine = sLine.substr(iIndex);
+						sLine = sLine.replace(/^\s*/, ""); // remove spaces after number
 					} else {
 						value = sLine; // take line
 						sLine = "";
 					}
 				}
-				value = that.vmVal(value); // convert to number (also binary, hex)
-				if (isNaN(value)) { // eslint-disable-line max-depth
-					throw that.vmComposeError(Error(), 13, "INPUT #9 " + value); // Type mismatch
+				nValue = that.vmVal(value); // convert to number (also binary, hex)
+				if (isNaN(nValue)) { // eslint-disable-line max-depth
+					throw that.vmComposeError(Error(), 13, "INPUT #9 " + nValue + ": " + value); // Type mismatch
 				}
-				return value;
+				return nValue;
 			};
 
 		while (aFileData.length && value === undefined) {
 			sLine = aFileData[0];
 			sLine = sLine.replace(/^\s+/, ""); // remove preceding whitespace
-			if (sLine.length) {
-				if (sType === "$") {
-					value = fnGetString();
-				} else { // number type
-					value = fnGetNumber();
-				}
+			if (sType === "$") {
+				value = fnGetString();
+			} else { // number type sLine.length TTT
+				value = fnGetNumber();
 			}
 
 			if (sLine.length) {

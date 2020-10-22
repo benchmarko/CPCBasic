@@ -684,18 +684,23 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				dim: function (node) {
-					var aNodeArgs = fnParseArgs(node.args),
-						i, sName, sName2, aName;
+					var aNodeArgs = [],
+						oNodeArg, sName, aArgs, iIndex, sFullExpression, i;
 
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						sName = aNodeArgs[i];
-						sName += " "; // for buggy IE8 split: Otherwise it won't return last empty element in split
-						aName = sName.split(/\[|\]\[|\]/); // split in variable and dimension(s)
-						aName.pop(); // remove empty last element
-						sName = aName.shift();
-						sName2 = sName.substr(2); // remove preceding "v."
-						aNodeArgs[i] = "/* " + sName + " = */ o.dim(\"" + sName2 + "\", " + aName.join(", ") + ")";
+					for (i = 0; i < node.args.length; i += 1) {
+						oNodeArg = node.args[i];
+						if (oNodeArg.type !== "identifier") {
+							throw that.composeError(Error(), "Identifier expected in DIM at", node.type, node.pos);
+						}
+						aArgs = fnParseArgs(oNodeArg.args);
+						sFullExpression = fnParseOneArg(oNodeArg);
+						sName = sFullExpression;
+						sName = sName.substr(2); // remove preceding "v."
+						iIndex = sName.indexOf("["); // we should always have it
+						sName = sName.substr(0, iIndex);
+						aNodeArgs.push("/* " + sFullExpression + " = */ o.dim(\"" + sName + "\", " + aArgs.join(", ") + ")");
 					}
+
 					node.pv = aNodeArgs.join("; ");
 					return node.pv;
 				},

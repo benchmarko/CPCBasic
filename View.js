@@ -86,7 +86,7 @@ View.prototype = {
 				option.value = oItem.value;
 				option.text = oItem.text;
 				option.title = oItem.title;
-				select.add(option);
+				select.add(option, null); // null needed for old FF 3.x
 			} else {
 				option = select.options[i];
 				if (option.value !== oItem.value) {

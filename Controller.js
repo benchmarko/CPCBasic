@@ -340,11 +340,15 @@ Controller.prototype = {
 		if (this.oVm.iBreakGosubLine < 0) { //TTT on break cont?  fast hack to access iBreakGosubLine
 			// ignore break
 		} else if (oStop.sReason === "direct" || this.oVm.iBreakResumeLine) { //TTT fast hack to access iBreakResumeLine
+			if (!oStop.oParas) {
+				oStop.oParas = {};
+			}
 			oStop.oParas.sInput = "";
 			sMsg = "*Break*\r\n";
 			this.oVm.print(iStream, sMsg);
 		} else if (oStop.sReason !== "escape") { // first escape?
 			this.oVm.cursor(iStream, 1);
+			this.oKeyboard.clearInput();
 			this.oKeyboard.setKeyDownHandler(this.fnWaitForContinue.bind(this));
 			this.setStopObject(oStop);
 			this.oVm.vmStop("escape", 85, false, {
@@ -419,9 +423,9 @@ Controller.prototype = {
 			sKey = this.oKeyboard.getKeyFromBuffer(); // (inkey$ could insert frame if checked too often)
 			// chr13 shows as empty string!
 			switch (sKey) {
-			case "":
+			case "": // no key?
 				break;
-			case "\r": // cr
+			case "\r": // cr (\x0c)
 				break;
 			case "\x7f": // del
 				if (sInput.length) {
@@ -468,9 +472,35 @@ Controller.prototype = {
 					sKey = "\x07"; // ignore (BEL) TODO
 				}
 				break;
+			case "\xf4": // shift+cursor up
+				sKey = ""; // currently ignore
+				break;
+			case "\xf5": // shift+cursor down
+				sKey = ""; // currently ignore
+				break;
+			case "\xf6": // shift+cursor left
+				sKey = ""; // currently ignore
+				break;
+			case "\xf7": // shift+cursor right
+				sKey = ""; // currently ignore
+				break;
+			case "\xf8": // ctrl+cursor up
+				sKey = ""; // currently ignore
+				break;
+			case "\xf9": // ctrl+cursor down
+				sKey = ""; // currently ignore
+				break;
+			case "\xfa": // ctrl+cursor left
+				sKey = ""; // currently ignore
+				break;
+			case "\xfb": // ctrl+cursor right
+				sKey = ""; // currently ignore
+				break;
 			default:
 				if (sKey >= "\x20") { // no control codes in buffer
 					sInput += sKey;
+				} else {
+					sKey = "\x01" + sKey; // print control code (do not execute)
 				}
 				break;
 			}

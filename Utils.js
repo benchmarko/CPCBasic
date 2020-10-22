@@ -177,8 +177,8 @@ var Utils = {
 		return rc;
 	}()),
 
-	atob: typeof window !== "undefined" && window.atob ? window.atob.bind(window) : null, // we need bind: https://stackoverflow.com/questions/9677985/uncaught-typeerror-illegal-invocation-in-chrome
-	btoa: typeof window !== "undefined" && window.btoa ? window.btoa.bind(window) : null,
+	atob: typeof window !== "undefined" && window.atob && window.atob.bind ? window.atob.bind(window) : null, // we need bind: https://stackoverflow.com/questions/9677985/uncaught-typeerror-illegal-invocation-in-chrome
+	btoa: typeof window !== "undefined" && window.btoa && window.btoa.bind ? window.btoa.bind(window) : null,
 
 	composeError: function (name, oError, message, value, pos, line, hidden) {
 		var iEndPos;

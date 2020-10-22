@@ -92,6 +92,22 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Graphics CPC Demo"
 	},
 	{
+		"key": "games/energy0",
+		"title": "Energy Collectors 0"
+	},
+	{
+		"key": "games/energy1",
+		"title": "Energy Collectors 1"
+	},
+	{
+		"key": "games/energysa",
+		"title": "Energy Savers"
+	},
+	{
+		"key": "games/hopper",
+		"title": "Hopper"
+	},
+	{
 		"key": "games/shot",
 		"title": "Shot Game (Textual)"
 	},
@@ -187,6 +203,10 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
 		"key": "test/mousepa",
 		"title": "Mouse Painting"
+	},
+	{
+		"key": "test/pixeltst",
+		"title": "Pixel Test (Mode 0)"
 	},
 	{
 		"key": "test/ramtest",
