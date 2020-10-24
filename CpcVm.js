@@ -227,7 +227,8 @@ CpcVm.prototype = {
 		this.symbolAfter(240); // set also iMinCustomChar
 
 		this.vmResetTimers();
-		this.bTimersDisabled = false; // flag if timers are disabled
+		//this.bTimersDisabled = false; // flag if timers are disabled
+		this.iTimerPriority = -1; // priority of running task: -1=low (min priority to start new timers)
 
 		this.iZone = 13; // print tab zone value
 
@@ -253,9 +254,10 @@ CpcVm.prototype = {
 				bRepeat: false, // flag if timer is repeating (every) or one time (after)
 				iIntervalMs: 0, // interval or timeout
 				bActive: false, // flag if timer is active
-				iNextTime: 0, // next expiration time
+				iNextTimeMs: 0, // next expiration time
 				bHandlerRunning: false, // flag if handler (subroutine) is running
-				iStackIndexReturn: 0 // index in gosub stack with return, if handler is running
+				iStackIndexReturn: 0, // index in gosub stack with return, if handler is running
+				iSavedPriority: 0 //TTT
 			},
 			aTimer = this.aTimer,
 			aSqTimer = this.aSqTimer,
@@ -338,6 +340,7 @@ CpcVm.prototype = {
 
 		this.vmResetInks();
 		this.clearInput();
+		//this.ei();
 		this.closein();
 		this.closeout();
 		this.cursor(iStream, 0);
@@ -489,7 +492,7 @@ CpcVm.prototype = {
 		var bTimerExpired = false,
 			oTimer, i;
 
-		if (!this.bTimersDisabled) { // BASIC timers not disabled?
+		if (this.iTimerPriority < 2) { //TTT
 			for (i = 0; i < this.iSqTimerCount; i += 1) {
 				oTimer = this.aSqTimer[i];
 
@@ -511,25 +514,25 @@ CpcVm.prototype = {
 		var bTimerExpired = false,
 			iDelta, oTimer, i;
 
-		if (!this.bTimersDisabled) { // BASIC timers not disabled?
-			for (i = this.iTimerCount - 1; i >= 0; i -= 1) { // check timers starting with highest priority first
-				oTimer = this.aTimer[i];
-				if (oTimer.bActive && !oTimer.bHandlerRunning && iTime > oTimer.iNextTimeMs) { // timer expired?
-					this.gosub(this.iLine, oTimer.iLine);
-					oTimer.bHandlerRunning = true;
-					oTimer.iStackIndexReturn = this.aGosubStack.length;
-					if (!oTimer.bRepeat) { // not repeating
-						oTimer.bActive = false;
-					} else {
-						iDelta = iTime - oTimer.iNextTimeMs;
-						oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
-					}
-					bTimerExpired = true;
+		for (i = this.iTimerCount - 1; i > this.iTimerPriority; i -= 1) { // check timers starting with highest priority first
+			oTimer = this.aTimer[i];
+			if (oTimer.bActive && !oTimer.bHandlerRunning && iTime > oTimer.iNextTimeMs) { // timer expired?
+				this.gosub(this.iLine, oTimer.iLine);
+				oTimer.bHandlerRunning = true;
+				oTimer.iStackIndexReturn = this.aGosubStack.length;
+				oTimer.iSavedPriority = this.iTimerPriority;
+				this.iTimerPriority = i;
+				if (!oTimer.bRepeat) { // not repeating
+					oTimer.bActive = false;
+				} else {
+					iDelta = iTime - oTimer.iNextTimeMs;
+					oTimer.iNextTimeMs += oTimer.iIntervalMs * Math.ceil(iDelta / oTimer.iIntervalMs);
+				}
+				bTimerExpired = true;
+				break; // found expired timer
+			} else if (i === 2) { // for priority 2 we check the sq timers which also have priority 2
+				if (this.fnCheckSqTimer()) {
 					break; // found expired timer
-				} else if (i === 2) { // for priority 2 we check the sq timers which also have priority 2
-					if (this.fnCheckSqTimer()) {
-						break; // found expired timer
-					}
 				}
 			}
 		}
@@ -544,6 +547,7 @@ CpcVm.prototype = {
 			if (oTimer.bHandlerRunning) {
 				if (oTimer.iStackIndexReturn > this.aGosubStack.length) {
 					oTimer.bHandlerRunning = false;
+					this.iTimerPriority = oTimer.iSavedPriority; // restore priority
 					oTimer.iStackIndexReturn = 0;
 				}
 			}
@@ -559,6 +563,7 @@ CpcVm.prototype = {
 			if (oTimer.bHandlerRunning) {
 				if (oTimer.iStackIndexReturn > this.aGosubStack.length) {
 					oTimer.bHandlerRunning = false;
+					this.iTimerPriority = oTimer.iSavedPriority; // restore priority
 					oTimer.iStackIndexReturn = 0;
 					if (!oTimer.bRepeat) { // not reloaded
 						oTimer.bActive = false;
@@ -1133,6 +1138,7 @@ CpcVm.prototype = {
 
 	clear: function () {
 		this.vmResetTimers();
+		this.ei();
 		this.vmSetStartLine(0);
 		this.iErr = 0;
 		this.iBreakGosubLine = 0;
@@ -1360,7 +1366,8 @@ CpcVm.prototype = {
 	},
 
 	di: function () {
-		this.bTimersDisabled = true;
+		//this.bTimersDisabled = true;
+		this.iTimerPriority = 3; // increase priority
 	},
 
 	dim: function (sVarName) { // varargs
@@ -1389,7 +1396,8 @@ CpcVm.prototype = {
 	},
 
 	ei: function () {
-		this.bTimersDisabled = false;
+		//this.bTimersDisabled = false;
+		this.iTimerPriority = -1; // decrease priority
 	},
 
 	// else
@@ -1597,8 +1605,10 @@ CpcVm.prototype = {
 	},
 
 	graphicsPen: function (iGPen, iTransparentMode) {
-		iGPen = this.vmInRangeRound(iGPen, 0, 15, "GRAPHICS PEN");
-		this.oCanvas.setGPen(iGPen);
+		if (iGPen !== null) {
+			iGPen = this.vmInRangeRound(iGPen, 0, 15, "GRAPHICS PEN");
+			this.oCanvas.setGPen(iGPen);
+		}
 
 		if (iTransparentMode !== undefined) {
 			iTransparentMode = this.vmInRangeRound(iTransparentMode, 0, 1, "GRAPHICS PEN");
@@ -2412,8 +2422,17 @@ CpcVm.prototype = {
 
 		iStream = this.vmInRangeRound(iStream, 0, 9, "POS");
 		if (iStream < 8) {
-			this.vmMoveCursor2AllowedPos(iStream);
+			this.vmMoveCursor2AllowedPos(iStream, true); // do not scroll
 			iPos = this.aWindow[iStream].iPos + 1;
+			/*
+			iPos = oWin.iPos; // just get position, do not move cursor
+			if (iPos > (oWin.iRight - oWin.iLeft)) {
+				iPos = oWin.iRight - oWin.iLeft;
+			} else if (iPos < 0) {
+				iPos = 0;
+			}
+			iPos += 1;
+			*/
 		} else if (iStream === 8) { // printer position
 			iPos = 1; // TODO
 		} else { // stream 9: number of characters written since last CR (\r)
@@ -2422,7 +2441,7 @@ CpcVm.prototype = {
 		return iPos;
 	},
 
-	vmMoveCursor2AllowedPos: function (iStream) {
+	vmMoveCursor2AllowedPos: function (iStream, bNoScroll) {
 		var oWin = this.aWindow[iStream],
 			iLeft = oWin.iLeft,
 			iRight = oWin.iRight,
@@ -2444,14 +2463,14 @@ CpcVm.prototype = {
 
 		if (y < 0) {
 			y = 0;
-			if (iStream < 8) {
+			if (iStream < 8 && !bNoScroll) {
 				this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom, oWin.iPaper);
 			}
 		}
 
 		if (y > (iBottom - iTop)) {
 			y = iBottom - iTop;
-			if (iStream < 8) {
+			if (iStream < 8 && !bNoScroll) {
 				this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom, oWin.iPaper);
 			}
 		}
@@ -3397,7 +3416,6 @@ CpcVm.prototype = {
 	},
 
 	using: function (sFormat) { // varargs
-		//var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?#+,?\.?#*(?:\^\^\^\^)?[+-]?)/g,
 		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?(?:#|,)+\.?#*(?:\^\^\^\^)?[+-]?)/g,
 			s = "",
 			aFormat = [],
@@ -3476,9 +3494,20 @@ CpcVm.prototype = {
 	},
 
 	vpos: function (iStream) {
+		var iVpos;
+
 		iStream = this.vmInRangeRound(iStream, 0, 7, "VPOS");
-		this.vmMoveCursor2AllowedPos(iStream);
-		return this.aWindow[iStream].iVpos + 1;
+		this.vmMoveCursor2AllowedPos(iStream, true); // do not scroll
+		iVpos = this.aWindow[iStream].iVpos + 1;
+		/*
+		iVpos = oWin.iVpos; // just get position, do not move cursor
+		if (iVpos < 0) {
+			iVpos = 0;
+		} else if (iVpos > (oWin.iBottom - oWin.iTop)) {
+			iVpos = oWin.iBottom - oWin.iTop;
+		}
+		*/
+		return iVpos;
 	},
 
 	wait: function (iPort, iMask, iInv) { // optional iInv

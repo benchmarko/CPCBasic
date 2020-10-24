@@ -753,6 +753,7 @@ Canvas.prototype = {
 			iMaskBit = this.iMaskBit,
 			iMaskFirst = this.iMaskFirst,
 			iGColMode = this.iGColMode,
+			bTransparent = this.bGTransparent,
 			x, y, t, dx, dy, incx, incy, pdx, pdy, ddx, ddy, deltaslowdirection, deltafastdirection, err, iBit;
 
 		// we have to add origin before modifying coordinates to match CPC pixel
@@ -809,7 +810,9 @@ Canvas.prototype = {
 
 		if (iMaskFirst) { // draw first pixel?
 			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
-			this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			if (!(bTransparent && !iBit)) { // do not set background pixel in transparent mode
+				this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			}
 			// rotate bitpos right
 			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
 		}
@@ -826,7 +829,9 @@ Canvas.prototype = {
 			}
 
 			iBit = iMask & iMaskBit; // eslint-disable-line no-bitwise
-			this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			if (!(bTransparent && !iBit)) { // do not set background pixel in transparent mode
+				this.setPixelOriginIncluded(x, y, iBit ? iGPen : iGPaper, iGColMode); // we expect integers
+			}
 			// rotate bitpos right
 			iMaskBit = (iMaskBit >> 1) | ((iMaskBit << 7) & 0xff); // eslint-disable-line no-bitwise
 		}

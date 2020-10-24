@@ -6,6 +6,8 @@ cpcBasic.addItem("", function () { /*
 1 rem energy1 - Energy Collectors 1
 2 rem (c) Marco Vieth, 1985
 3 rem
+4 rem first version in MODE 1 and cursor keys control
+5 rem
 10 REM ENERGIESAMMLER
 20 MODE 2
 30 PRINT"                 S P I E L R E G E L N :":PRINT:PRINT
@@ -39,7 +41,7 @@ cpcBasic.addItem("", function () { /*
 280 IF INKEY(2)=0 THEN y=y+1:GOSUB 320 :GOTO 280
 290 IF INKEY(8)=0 THEN x=x-1: GOSUB 450 :GOTO 290
 300 IF INKEY(9)=0 THEN GOSUB 560
-310 GOTO 260
+310 call &bd19:GOTO 260
 320 GOSUB 500
 330 IF ver(x,y)=1 THEN y=y-1:SOUND 2,600,10 :PU=PU-50:GOSUB 600
 340 IF y-1<1 OR ver(x,y-1)=1 THEN 440
@@ -58,7 +60,8 @@ cpcBasic.addItem("", function () { /*
 470 IF x+1<1 THEN 490
 480 LOCATE x+1,y:PRINT" ";:LOCATE x,y:PRINT CHR$(242);
 490 RETURN
-500 IF x=20 AND y=0 THEN y=24 :LOCATE 20,1:PRINT" ";: GOTO 510
+500 t!=time+40:while time<t!:call &bd19:wend
+502 IF x=20 AND y=0 THEN y=24 :LOCATE 20,1:PRINT" ";: GOTO 510
 505 IF x=20 AND y=25 THEN y=1 :LOCATE 20,24:PRINT" ";
 510 IF y>=24 THEN y=24
 520 IF x>40 THEN x=40

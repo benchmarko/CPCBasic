@@ -97,7 +97,7 @@ BasicParser.mKeywords = {
 	"goto": "c l", // GOTO <line number>
 	graphics: "c", // => graphicsPaper or graphicsPen
 	graphicsPaper: "x n", // GRAPHICS PAPER <ink>  / (special)
-	graphicsPen: "x n n?", // GRAPHICS PEN <ink>[,<background mode>]  / (special)
+	graphicsPen: "x n0? n?", // GRAPHICS PEN [<ink>][,<background mode>]  / (either of the parameters may be omitted, but not both)
 	hex$: "f n n?", // HEX$(<unsigned integer expression>[,<field width>])
 	himem: "f", // HIMEM
 	"if": "c", // IF <logical expression> THEN <option part> [ELSE <option part>]
@@ -1005,7 +1005,7 @@ BasicParser.prototype = {
 			oValue.args = [];
 
 			// data is special: it can have empty parameters, also the last parameter, and also if no parameters
-			if (oToken.type !== "," && oToken.type !== "(eol)") {
+			if (oToken.type !== "," && oToken.type !== "(eol)" && oToken.type !== "(end)") {
 				oValue.args.push(expression(0)); // take first argument
 				bParameterFound = true;
 			}
@@ -1016,7 +1016,7 @@ BasicParser.prototype = {
 				}
 				advance(",");
 				bParameterFound = false;
-				if (oToken.type === "(eol)") {
+				if (oToken.type === "(eol)" || oToken.type === "(end)") {
 					break;
 				} else if (oToken.type !== ",") {
 					oValue.args.push(expression(0));

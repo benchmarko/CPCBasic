@@ -3,20 +3,22 @@
 "use strict";
 
 cpcBasic.addItem("", function () { /*
-1 rem hopper - Hopper
+1 rem hopper - Hopper (Hüpfer)
 2 rem (c) Marco Vieth, 1986
-3 rem TODO...
+3 rem
+4 rem
 100 REM Huepfer.Lader
 110 ENV 1,1,10,2,10,-1,5
 120 MODE 0:mi=10:w=3:RESTORE 500:GOSUB 170
 130 t$="":WHILE t$<>"J" AND t$<>"N":t$=UPPER$(INKEY$):WEND
 140 IF t$="J" THEN MODE 1:RESTORE 520:mi=20:w=1:GOSUB 170
 150 RESTORE 700:GOSUB 170
-160 PEN 1:RUN"!HUEPFER2.BAS"
+160 PEN 1:RUN"!HOPPER2" :'"!HUEPFER2.BAS"
 170 READ t$:IF t$="" THEN RETURN
 180 LOCATE mi-LEN(t$)/2,VPOS(#0)+w:READ p:PEN p
 190 FOR i=1 TO LEN(t$):PRINT MID$(t$,i,1);
-200 SOUND 4,60,w*3,0,1:WHILE SQ(4)<>4:WEND
+195 if skip=0 then if inkey$="" then SOUND 4,60,w*3,0,1 else skip=1
+200 WHILE SQ(4)<>4:call &bd19:WEND
 210 NEXT i:GOTO 170
 500 DATA Huepfer,1,von Marco Vieth,3,August 1986,8
 510 DATA " ",0,Spielregeln(J/N)?,15,

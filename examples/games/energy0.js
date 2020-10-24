@@ -6,6 +6,8 @@ cpcBasic.addItem("", function () { /*
 1 rem energy0 - Energy Collectors 0
 2 rem (c) Marco Vieth, 1985
 3 rem
+4 rem second version in MODE 0 and Joystick control
+5 rem
 10 REM ENERGIESAMMLER
 20 MODE 2
 30 PRINT"                 S P I E L R E G E L N :":PRINT:PRINT
@@ -39,8 +41,9 @@ cpcBasic.addItem("", function () { /*
 280 IF JOY(0)=4 AND x>1 THEN a=x:x=x-1:cr=242:GOSUB 500:GOTO 280
 290 IF JOY(0)=8 AND x<20 THEN a=x:x=x+1:cr=243:GOSUB 500:GOTO 290
 300 IF JOY(0)>15 THEN GOSUB 560
-310 GOTO 260
-500 DI:IF x=10 AND y=1 THEN y=24 :LOCATE 10,1:PRINT" ";: GOTO 510
+310 call &bd19:GOTO 260
+500 t!=time+40:while time<t!:call &bd19:wend
+502 DI:IF x=10 AND y=1 THEN y=24 :LOCATE 10,1:PRINT" ";: GOTO 510
 505 IF x=10 AND y=25 THEN y=1 :LOCATE 10,24:PRINT" ";
 510 IF ver(x,y)=1 THEN x=a:y=b:SOUND 2,500,10 :PU=PU-50:GOSUB 600
 530 LOCATE a,b:PRINT" ";
@@ -75,7 +78,7 @@ cpcBasic.addItem("", function () { /*
 800 REM VERLOREN
 810 nichts=REMAIN(3)
 820 LOCATE X,Y:PRINT CHR$(253);" BOMM"
-830 FOR M=6 TO 2 STEP -1 : SOUND 2,0,38,M,0,0,5 : FOR P=1 TO 240:NEXT P : NEXT M
+830 FOR M=6 TO 2 STEP -1 : SOUND 2,0,38,M,0,0,5 : FOR P=1 TO 240/10:call &bd19:NEXT P : NEXT M
 840 LOCATE 1,1
 850 t$=INKEY$:IF t$<>"" THEN 850
 860 STOP

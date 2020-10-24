@@ -38,7 +38,7 @@ cpcBasic.addItem("", function () { /*
 1520 IF INKEY(2)=0 THEN y=y+1:GOSUB 1600 :GOTO 1520
 1530 IF INKEY(8)=0 THEN x=x-1: GOSUB 2200 :GOTO 1530
 1535 IF INKEY(9)=0 THEN GOSUB 4000
-1540 GOTO 1500
+1540 call &bd19:GOTO 1500
 1600 REM
 1610 GOSUB 2400
 1620 IF ver(x,y)=1 THEN y=y-1:SOUND 2,600,10:PU=PU-5
@@ -69,7 +69,8 @@ cpcBasic.addItem("", function () { /*
 2240 LOCATE x,y:PRINT CHR$(242);
 2250 RETURN
 2400 REM
-2410 IF y>=24 THEN y=24
+2410 t!=time+40:while time<t!:call &bd19:wend
+2415 IF y>=24 THEN y=24
 2420 IF x>40 THEN x=40
 2430 IF y<1 THEN y=1
 2440 IF x<1 THEN x=1

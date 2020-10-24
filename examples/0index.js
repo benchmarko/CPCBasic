@@ -105,7 +105,15 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
 		"key": "games/hopper",
-		"title": "Hopper"
+		"title": "Hopper (Hüpfer)"
+	},
+	{
+		"key": "games/hopper2",
+		"title": "Hopper: Main Part (Hüpfer)"
+	},
+	{
+		"key": "games/joker",
+		"title": "Black Joker (Der Schwarze Joker)"
 	},
 	{
 		"key": "games/shot",
