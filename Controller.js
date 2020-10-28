@@ -171,7 +171,10 @@ Controller.prototype = {
 		var sInput, oExample;
 
 		sInput = input.replace(/^\n/, ""); // remove preceding newline
-		sInput = Utils.stringTrimRight(sInput);
+		sInput = sInput.replace(/\n$/, ""); // remove trailing newline
+		// beware of data files ending with newlines!
+
+		//sInput = Utils.stringTrimRight(sInput);// no!
 
 		if (!sKey) {
 			sKey = this.model.getProperty("example");
@@ -687,7 +690,8 @@ Controller.prototype = {
 	fnFileDir: function (oParas) {
 		var iStream = oParas.iStream,
 			sFileMask = oParas.sFileMask,
-			aDir, aDir2, sExample, iLastSlash, sPath, i;
+			sPath = "",
+			aDir, aDir2, sExample, iLastSlash, i;
 
 		if (sFileMask) {
 			sFileMask =	this.fnLocalStorageName(sFileMask);
@@ -698,14 +702,14 @@ Controller.prototype = {
 		sExample = this.model.getProperty("example");
 		iLastSlash = sExample.lastIndexOf("/");
 		if (iLastSlash >= 0) {
-			sPath = sExample.substr(0, iLastSlash);
-			sFileMask = sPath + "/" + sFileMask; // only in same directory
-			aDir2 = this.fnGetExampleDirectoryEntries(sFileMask); // also from examples
-			for (i = 0; i < aDir2.length; i += 1) {
-				aDir2[i] = aDir2[i].substr(sPath.length + 1); // remove preceding path; +1 because of "/"
-			}
-			aDir = aDir2.concat(aDir); // combine
+			sPath = sExample.substr(0, iLastSlash) + "/";
+			sFileMask = sPath + sFileMask; // only in same directory
 		}
+		aDir2 = this.fnGetExampleDirectoryEntries(sFileMask); // also from examples
+		for (i = 0; i < aDir2.length; i += 1) {
+			aDir2[i] = aDir2[i].substr(sPath.length); // remove preceding path including "/"
+		}
+		aDir = aDir2.concat(aDir); // combine
 
 		this.fnPrintDirectoryEntries(iStream, aDir, false);
 		this.oVm.vmStop("", 0, true);

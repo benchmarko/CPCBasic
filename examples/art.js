@@ -5,7 +5,7 @@
 cpcBasic.addItem("", function () { /*
 100 REM art - Computer Art
 102 REM Computerkunst+Kreativitaet
-103 REM (c) Olaf Hartwig
+103 REM (c) Olaf Hartwig, 1985
 104 REM Experimente zur Künstlichen Intelligenz in Basic auf CPC 464/664/6128, page 112
 105 REM http://www.cpcwiki.eu/imgs/1/1e/Hartwig%2C_Experimente_zur_KI.pdf
 110 'Modifications by Marco Vieth, 16.6.1988

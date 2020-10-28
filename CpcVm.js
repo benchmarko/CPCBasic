@@ -176,6 +176,8 @@ CpcVm.prototype = {
 		for (i = 0; i < this.iSqTimerCount; i += 1) {
 			this.aSqTimer[i] = {};
 		}
+
+		this.aCrtcData = [];
 	},
 
 	vmReset: function () {
@@ -220,6 +222,9 @@ CpcVm.prototype = {
 		this.iRamSelect = 0; // for banking with 16K banks in the range 0x4000-0x7fff (0=default; 1...=additional)
 		this.iScreenPage = 3; // 16K screen page, 3=0xc000..0xffff
 
+		this.iCrtcReg = 0;
+		this.aCrtcData.length = 0;
+
 		this.iMinCharHimem = this.iMaxHimem;
 		this.iMaxCharHimem = this.iMaxHimem;
 		this.iHimem = this.iMaxHimem;
@@ -227,7 +232,6 @@ CpcVm.prototype = {
 		this.symbolAfter(240); // set also iMinCustomChar
 
 		this.vmResetTimers();
-		//this.bTimersDisabled = false; // flag if timers are disabled
 		this.iTimerPriority = -1; // priority of running task: -1=low (min priority to start new timers)
 
 		this.iZone = 13; // print tab zone value
@@ -340,7 +344,6 @@ CpcVm.prototype = {
 
 		this.vmResetInks();
 		this.clearInput();
-		//this.ei();
 		this.closein();
 		this.closeout();
 		this.cursor(iStream, 0);
@@ -492,7 +495,7 @@ CpcVm.prototype = {
 		var bTimerExpired = false,
 			oTimer, i;
 
-		if (this.iTimerPriority < 2) { //TTT
+		if (this.iTimerPriority < 2) {
 			for (i = 0; i < this.iSqTimerCount; i += 1) {
 				oTimer = this.aSqTimer[i];
 
@@ -826,6 +829,10 @@ CpcVm.prototype = {
 		}
 	},
 
+	vmSetScreenOffset: function (iOffset) {
+		this.oCanvas.setScreenOffset(iOffset);
+	},
+
 	// could be also set vmSetScreenViewBase? thisiScreenViewPage?  We always draw on visible canvas?
 
 	vmSetTransparentMode: function (iStream, iTransparent) {
@@ -1045,7 +1052,8 @@ CpcVm.prototype = {
 		case 0xbc02: // SCR Reset (ROM &0AB1)
 			this.vmResetInks();
 			break;
-		case 0xbc06: // SCR SET BASE (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E
+		case 0xbc06: // SCR SET BASE (&BC08, ROM &0B45); We use &BC06 to load reg A from reg E (not for CPC 664!)
+		case 0xbc07: // Works on all CPC 464/664/6128
 			this.vmSetScreenBase(arguments[1]);
 			break;
 		case 0xbc0e: // SCR SET MODE (ROM &0ACE), depending on number of args
@@ -1366,7 +1374,6 @@ CpcVm.prototype = {
 	},
 
 	di: function () {
-		//this.bTimersDisabled = true;
 		this.iTimerPriority = 3; // increase priority
 	},
 
@@ -1396,7 +1403,6 @@ CpcVm.prototype = {
 	},
 
 	ei: function () {
-		//this.bTimersDisabled = false;
 		this.iTimerPriority = -1; // decrease priority
 	},
 
@@ -2237,7 +2243,7 @@ CpcVm.prototype = {
 		if (sInput !== null) {
 			sInput = sInput.replace(/\r\n/g, "\n"); // remove CR (maybe from ASCII file in "binary" form)
 			if (Utils.stringEndsWith(sInput, "\n")) {
-				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n"
+				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n" (TTT: also for data files?)
 			}
 			oInFile.aFileData = sInput.split("\n");
 		} else {
@@ -2302,15 +2308,36 @@ CpcVm.prototype = {
 		}
 	},
 
+	vmSetCrtcData: function (iByte) {
+		var iCrtcReg = this.iCrtcReg,
+			aCrtcData = this.aCrtcData,
+			iOffset;
+
+		aCrtcData[iCrtcReg] = iByte;
+		if (iCrtcReg === 12 || iCrtcReg === 13) { // screen offset changed
+			iOffset = (((aCrtcData[12] || 0) & 0x03) << 9) | ((aCrtcData[13] || 0) << 1); // eslint-disable-line no-bitwise
+			this.vmSetScreenOffset(iOffset);
+		}
+	},
+
 	out: function (iPort, iByte) {
+		var iPortHigh;
+
 		iPort = this.vmInRangeRound(iPort, -32768, 65535, "OUT");
 		if (iPort < 0) { // 2nd complement of 16 bit address?
 			iPort += 65536;
 		}
 		iByte = this.vmInRangeRound(iByte, 0, 255, "OUT");
-		// 7Fxx = RAM select
-		if (iPort >> 8 === 0x7f) { // eslint-disable-line no-bitwise
+		iPortHigh = iPort >> 8; // eslint-disable-line no-bitwise
+
+
+		if (iPortHigh === 0x7f) { // 7Fxx = RAM select
 			this.vmSetRamSelect(iByte - 0xc0);
+		} else if (iPortHigh === 0xbc) { // limited support for CRTC 12, 13
+			this.iCrtcReg = iByte % 14;
+		} else if (iPortHigh === 0xbd) {
+			this.vmSetCrtcData(iByte);
+			this.aCrtcData[this.iCrtcReg] = iByte;
 		} else if (Utils.debug > 0) {
 			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte, ": unknown port");
 		}
@@ -2422,17 +2449,7 @@ CpcVm.prototype = {
 
 		iStream = this.vmInRangeRound(iStream, 0, 9, "POS");
 		if (iStream < 8) {
-			this.vmMoveCursor2AllowedPos(iStream, true); // do not scroll
-			iPos = this.aWindow[iStream].iPos + 1;
-			/*
-			iPos = oWin.iPos; // just get position, do not move cursor
-			if (iPos > (oWin.iRight - oWin.iLeft)) {
-				iPos = oWin.iRight - oWin.iLeft;
-			} else if (iPos < 0) {
-				iPos = 0;
-			}
-			iPos += 1;
-			*/
+			iPos = this.vmGetAllowedPosOrVpos(iStream, false) + 1; // get allowed pos
 		} else if (iStream === 8) { // printer position
 			iPos = 1; // TODO
 		} else { // stream 9: number of characters written since last CR (\r)
@@ -2441,7 +2458,40 @@ CpcVm.prototype = {
 		return iPos;
 	},
 
-	vmMoveCursor2AllowedPos: function (iStream, bNoScroll) {
+	vmGetAllowedPosOrVpos: function (iStream, bVpos) {
+		var oWin = this.aWindow[iStream],
+			iLeft = oWin.iLeft,
+			iRight = oWin.iRight,
+			iTop = oWin.iTop,
+			iBottom = oWin.iBottom,
+			x = oWin.iPos,
+			y = oWin.iVpos;
+
+		if (x > (iRight - iLeft)) {
+			y += 1;
+			x = 0;
+		}
+
+		if (x < 0) {
+			y -= 1;
+			x = iRight - iLeft;
+		}
+
+		if (!bVpos) {
+			return x;
+		}
+
+		if (y < 0) {
+			y = 0;
+		}
+
+		if (y > (iBottom - iTop)) {
+			y = iBottom - iTop;
+		}
+		return y;
+	},
+
+	vmMoveCursor2AllowedPos: function (iStream) {
 		var oWin = this.aWindow[iStream],
 			iLeft = oWin.iLeft,
 			iRight = oWin.iRight,
@@ -2463,14 +2513,14 @@ CpcVm.prototype = {
 
 		if (y < 0) {
 			y = 0;
-			if (iStream < 8 && !bNoScroll) {
+			if (iStream < 8) {
 				this.oCanvas.windowScrollDown(iLeft, iRight, iTop, iBottom, oWin.iPaper);
 			}
 		}
 
 		if (y > (iBottom - iTop)) {
 			y = iBottom - iTop;
-			if (iStream < 8 && !bNoScroll) {
+			if (iStream < 8) {
 				this.oCanvas.windowScrollUp(iLeft, iRight, iTop, iBottom, oWin.iPaper);
 			}
 		}
@@ -3497,16 +3547,7 @@ CpcVm.prototype = {
 		var iVpos;
 
 		iStream = this.vmInRangeRound(iStream, 0, 7, "VPOS");
-		this.vmMoveCursor2AllowedPos(iStream, true); // do not scroll
-		iVpos = this.aWindow[iStream].iVpos + 1;
-		/*
-		iVpos = oWin.iVpos; // just get position, do not move cursor
-		if (iVpos < 0) {
-			iVpos = 0;
-		} else if (iVpos > (oWin.iBottom - oWin.iTop)) {
-			iVpos = oWin.iBottom - oWin.iTop;
-		}
-		*/
+		iVpos = this.vmGetAllowedPosOrVpos(iStream, true) + 1; // get allowed vpos
 		return iVpos;
 	},
 

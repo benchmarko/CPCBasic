@@ -42,6 +42,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Landscape"
 	},
 	{
+		"key": "morse",
+		"title": "Morse Code (Morsen)"
+	},
+	{
 		"key": "mouse",
 		"title": "Mouse escaping from a maze"
 	},
@@ -57,6 +61,15 @@ cpcBasic.addIndex("./examples", function () { /*
 		"key": "simple",
 		"title": "Simple Labyrinth"
 	},
+    {
+		"key": "scrudu",
+		"title": "Scrudu (Gedichte)"
+	},
+    {
+		"key": "scrudu.vok",
+		"title": "Scrudu Vokabular",
+		"meta": "D"
+	},
 	{
 		"key": "soundtest1",
 		"title": "Sound Test 1"
@@ -64,6 +77,97 @@ cpcBasic.addIndex("./examples", function () { /*
     {
 		"key": "sphere",
 		"title": "Sphere"
+	},
+	{
+    	"key": "advent/advedit",
+		"title": "Adventure Editor"
+	},
+	{
+    	"key": "advent/advint",
+		"title": "Adventure Interpreter"
+	},
+	{
+    	"key": "advent/home.adv",
+		"title": "Our Home Adventure",
+		"meta": "D"
+	},
+	{
+    	"key": "advent/goldrush.adv",
+		"title": "Goldrush Adventure",
+		"meta": "D"
+	},
+	{
+    	"key": "advent/tunnel.adv",
+		"title": "Forest Tunnel Adventure",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/anibas",
+		"title": "Animator BASIC Viewer"
+	},
+	{
+    	"key": "animator/animator",
+		"title": "Animator"
+	},
+	{
+    	"key": "animator/biplane.anc",
+		"title": "Biplane Model",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/biplane.and",
+		"title": "Biplane Animation",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/blimp.anc",
+		"title": "Blimp Model",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/blimp.and",
+		"title": "Blimp Animation",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/box3d.anc",
+		"title": "Box 3D Model",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/box3d.and",
+		"title": "Box 3D Animation",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/copymate.anc",
+		"title": "Copymate Model",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/copymate.and",
+		"title": "Copymate Animation",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/me109.anc",
+		"title": "ME-109 Model",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/me109.and",
+		"title": "ME-109 Animation",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/rg1.anc",
+		"title": "RG-1 Model",
+		"meta": "D"
+	},
+	{
+    	"key": "animator/rg1.and",
+		"title": "RG-1 Animation",
+		"meta": "D"
 	},
 	{
     	"key": "archi/archidr",
@@ -246,7 +350,7 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
 	{
     	"key": "test/testpage.dat",
-		"title": "testpage.dat - Test data for Test Page",
+		"title": "Test data for Test Page",
 		"meta": "D"
 	},
 	{

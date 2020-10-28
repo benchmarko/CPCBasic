@@ -1106,21 +1106,30 @@ Keyboard.prototype = {
 
 	createButtonRow: function (sId, aOptions) {
 		var place = document.getElementById(sId),
-			buttonList, i, oItem, button;
+			buttonList, i, oItem, button, sHtml;
 
-		buttonList = document.createElement("div");
-		buttonList.className = "displayFlex";
-		for (i = 0; i < aOptions.length; i += 1) {
-			oItem = aOptions[i];
-			button = document.createElement("button");
-			button.innerText = oItem.text;
-			button.setAttribute("title", oItem.title);
-			button.className = oItem.className;
-			button.setAttribute("data-key", oItem.key);
-			buttonList.insertAdjacentElement("beforeEnd", button);
+		if (place.insertAdjacentElement) {
+			buttonList = document.createElement("div");
+			buttonList.className = "displayFlex";
+			for (i = 0; i < aOptions.length; i += 1) {
+				oItem = aOptions[i];
+				button = document.createElement("button");
+				button.innerText = oItem.text;
+				button.setAttribute("title", oItem.title);
+				button.className = oItem.className;
+				button.setAttribute("data-key", oItem.key);
+				buttonList.insertAdjacentElement("beforeEnd", button);
+			}
+			place.insertAdjacentElement("beforeEnd", buttonList);
+		} else { // Polyfill for old browsers
+			sHtml = "<div class=displayFlex>\n";
+			for (i = 0; i < aOptions.length; i += 1) {
+				oItem = aOptions[i];
+				sHtml += '<button title="' + oItem.title + '" class="' + oItem.className + '" data-key="' + oItem.key + '">' + oItem.text + "</button>\n";
+			}
+			sHtml += "</div>";
+			place.innerHTML += sHtml;
 		}
-
-		place.insertAdjacentElement("beforeEnd", buttonList);
 		return this;
 	},
 

@@ -498,6 +498,18 @@ if (!window.AudioContext) { // ? not for IE
 	}
 }
 
+if (!window.JSON) { // simple polyfill for JSON.parse only
+	// for a better implementation, see https://github.com/douglascrockford/JSON-js/blob/master/json2.js
+	Utils.console.debug("Polyfill: window.JSON.parse");
+	window.JSON = {
+		parse: function (sText) {
+			var oJson = eval("(" + sText + ")"); // eslint-disable-line no-eval
+
+			return oJson;
+		}
+	};
+}
+
 if (!window.requestAnimationFrame) { // IE9, SliTaz tazweb browser
 	// https://wiki.selfhtml.org/wiki/JavaScript/Window/requestAnimationFrame
 	window.requestAnimationFrame = window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;

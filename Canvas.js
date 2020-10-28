@@ -117,6 +117,8 @@ Canvas.prototype = {
 		this.iMaskBit = 128;
 		this.iMaskFirst = 1;
 
+		this.iOffset = 0; // screen offset
+
 		canvas = document.getElementById("cpcCanvas");
 		this.canvas = canvas;
 
@@ -152,14 +154,16 @@ Canvas.prototype = {
 			this.imageData = ctx.getImageData(0, 0, iWidth, iHeight);
 
 			if (typeof Uint32Array !== "undefined" && this.imageData.data.buffer) {	// imageData.data.buffer not available on IE10
-				this.fnCopy2Canvas = this.copy2Canvas32bit;
+				this.fnCopy2Canvas = this.iOffset ? this.copy2Canvas32bitWithOffset : this.copy2Canvas32bit;
 				this.bLittleEndian = this.isLittleEndian();
 				this.aPen2Color32 = new Uint32Array(new ArrayBuffer(this.aModeData[3].iPens * 4));
 				this.aData32 = new Uint32Array(this.imageData.data.buffer);
+				this.bUse32BitCopy = true;
 				Utils.console.log("Canvas: using optimized copy2Canvas32bit, littleEndian:", this.bLittleEndian);
 			} else {
-				this.fnCopy2Canvas = this.copy2Canvas8bit;
+				this.fnCopy2Canvas = this.iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; //TODO
 				this.setAlpha(255);
+				this.bUse32BitCopy = false;
 				Utils.console.log("Canvas: using copy2Canvas8bit");
 			}
 		} else {
@@ -312,6 +316,47 @@ Canvas.prototype = {
 		}
 
 		ctx.putImageData(this.imageData, 0, 0);
+	},
+
+	copy2Canvas32bitWithOffset: function () {
+		var ctx = this.canvas.getContext("2d"),
+			dataset8 = this.dataset8,
+			aData32 = this.aData32,
+			aPen2Color32 = this.aPen2Color32,
+			iOffset = this.iOffset,
+			i;
+
+		for (i = 0; i < aData32.length - iOffset; i += 1) {
+			aData32[i + iOffset] = aPen2Color32[dataset8[i]];
+		}
+
+		for (i = aData32.length - iOffset; i < aData32.length; i += 1) {
+			aData32[i + iOffset - aData32.length] = aPen2Color32[dataset8[i]];
+		}
+
+		ctx.putImageData(this.imageData, 0, 0);
+	},
+
+	setScreenOffset: function (iOffset) {
+		if (iOffset) {
+			//iOffset = (iOffset % 40) * 8 + ((iOffset / 40) | 0) * 8 * 8 * 8; // eslint-disable-line no-bitwise
+			iOffset = (iOffset % 80) * 8 + ((iOffset / 80) | 0) * 80 * 16 * 8; // eslint-disable-line no-bitwise
+			iOffset = 640 * 400 - iOffset;
+			//iOffset %= 640 * 400;
+			//this.t1 = (this.t1 ||0) + 1;
+		}
+
+		if (iOffset !== this.iOffset) {
+			this.iOffset = iOffset;
+
+			if (this.bUse32BitCopy) {
+				this.fnCopy2Canvas = iOffset ? this.copy2Canvas32bitWithOffset : this.copy2Canvas32bit;
+			} else {
+				this.fnCopy2Canvas = iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; //TODO
+			}
+
+			this.setNeedUpdate();
+		}
 	},
 
 	updateTextWindow: function () {
@@ -1327,6 +1372,7 @@ Canvas.prototype = {
 	},
 
 	setMode: function (iMode) { // set mode without clear screen
+		this.setScreenOffset(0);
 		this.changeMode(iMode);
 		this.setOrigin(0, 0);
 		this.setGWindow(0, this.iWidth - 1, this.iHeight - 1, 0);

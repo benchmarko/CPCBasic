@@ -158,12 +158,15 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 - *CALL &BBE4*: GRA Set Paper (set *GRAPHICS PAPER* depending on number of arguments)
 - *CALL &BBFC*: GRA WR Char (*PRINT* graphics char depending on number of arguments)
 - *CALL &BBFF*: SCR Initialize (set *MODE* 1, reset inks, clear screen)
-- *CALL &BC06,nn*: SCR SET BASE (really &BC08; set screen start high byte: &00, &40, &80 or &C0)
+- *CALL &BC02*: SCR Reset
+- *CALL &BC06,nn*: SCR SET BASE (really &BC08; set screen start high byte: &00, &40, &80 or &C0; not for CPC 664)
+- *CALL &BC07,nn*: SCR SET BASE (really &BC08; compatible with all CPC 464/664/6128)
 - *CALL &BC0E*: SCR Set Mode (set *MODE* depending on number of arguments)
 - *CALL &BCA7*: SOUND Reset
 - *CALL &BCB6*: SOUND Hold (TODO)
 - *CALL &BCB9*: SOUND Continue (TODO)
 - *CALL &BD19*: MC Wait Flyback (wait for screen beam flyback; same as *FRAME*)
+- *CALL &BD1C*: MC Set Mode (set view *MODE* depending on number of arguments)
 - *CALL &BD3D*: KM Flush (*CLEAR INPUT*; CPC 664/6128 only)
 - *CALL &BD49*: GRA Set First (set *MASK* first pixel, depending on number of arguments; CPC 664/6128 only)
 - *CALL &BD4C*: GRA Set Mask (set *MASK*, depending on number of arguments; CPC 664/6128 only)

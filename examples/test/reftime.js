@@ -18,6 +18,7 @@ cpcBasic.addItem("", function () { /*
 130 ON m% GOSUB 260,280,300,320,340,360,380
 140 NEXT
 150 t=TIME-t
+155 if t<1 then t=1
 160 sec=t/300
 170 lps=300*l%/t
 180 fac=lps/lpsr
