@@ -45,6 +45,9 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   - The **Reload** button reloads the page with the current settings. (Please note that changes to the BASIC program are not saved.)
   - The **Check** button checks the syntax of the program. It compiles the program to JavaScript.
   - The **Renum** button renumbers the line numbers starting with 10 and increasing by 10 (see also *RENUM*)
+  - The **Pretty** button performs a pretty print on the input (currently it has a fixed style)
+  - The **Undo** button reverts the last renum or pretty print
+  - The **Redo** button activates the last renum or pretty print
 - The *CPC* window shows the output on a CPC screen.
   - If you change the BASIC program, press the **Run** button to compile the BASIC program to JavaScript and run it.
   - If the focus is on the CPC screen, keystrokes will be detected by a running program. (An alternative way of input is the *virtual keyboard* below.)
@@ -77,7 +80,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - Resulting JavaScript looks ugly because there is no *GOTO* in JavaScript.
   Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block.
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
-- That is CPC BASIC: `a(3]=6: ?a[3)`. Do we really want to allow that?
 - Maybe something more...
 
 ## Fixed Restrictions
@@ -105,6 +107,8 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic]
 - [done: DSK images support, for reading]
 - [done: *MASK*]
+- [done: Mixed parentheses and brackets for arrays, e.g. `a(3]=6: ?a[3)`]
+
 
 ## Extensions and Features
 
@@ -208,6 +212,7 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 
 QUnit test [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/testsuite.qunit.html) runs:
 
+- [BasicParser.qunit.html](https://benchmarko.github.io/CPCBasic/test/BasicParser.qunit.html)
 - [Model.qunit.html](https://benchmarko.github.io/CPCBasic/test/Model.qunit.html)
 - To be done
 
@@ -255,4 +260,4 @@ QUnit test [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/tes
 
 - [Locomotive Software](https://www.cpcwiki.eu/index.php/Locomotive_Software) - The developer of CPCs BASIC and operating system
 
-### **mv, 04/2020**
+### **mv, 11/2020**

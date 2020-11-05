@@ -30,8 +30,25 @@ function BasicParser(options) {
 	this.init(options);
 }
 
+BasicParser.mParameterTypes = {
+	c: "command",
+	f: "function",
+	o: "operator",
+
+	n: "number",
+	s: "string",
+	l: "line number", // checked
+	q: "line number range",
+	v: "variable", // checked,
+	r: "letter or range",
+	a: "any parameter",
+	"n0?": "optional parameter with default null",
+	"#": "stream"
+	//"*": "any number of parameters"
+};
+
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
-// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), r=letter or range, a=any, n0?=optional papameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
+// following are arguments: n=number, s=string, l=line number (checked), v=variable (checked), r=letter or range, a=any, n0?=optional parameter with default null, #=stream, #0?=optional stream with default 0; suffix ?=optional (optionals must be last); last *=any number of arguments may follow
 BasicParser.mKeywords = {
 	abs: "f n", // ABS(<numeric expression>)
 	after: "c", // => afterGosub
@@ -54,7 +71,7 @@ BasicParser.mKeywords = {
 	clg: "c n?", // CLG[<ink>]
 	closein: "c", // CLOSEIN
 	closeout: "c", // CLOSEOUT
-	cls: "c #?", // CLS[#<stream expression>]
+	cls: "c #0?", // CLS[#<stream expression>]
 	cont: "c", // CONT
 	copychr$: "f #", // COPYCHR$(#<stream expression>)
 	cos: "f n", // COS(<numeric expression>)
@@ -116,7 +133,7 @@ BasicParser.mKeywords = {
 	let: "c", // LET <variable>=<expression>
 	line: "c", // => lineInput / (not checked from this)
 	lineInput: "c #0? *", // INPUT INPUT[#<stream expression>,][;][<quoted string><separator>]<string variable> (not checked from this)
-	list: "c q?", // LIST <line number range>[,#<stream expression>] (not checked from this)
+	list: "c q0? #0?", // LIST [<line number range>][,#<stream expression>] (not checked from this, we cannot check multiple optional args; here we have stream as last parameter)
 	load: "c s n?", // LOAD <filename>[,<address expression>]
 	locate: "c #0? n n", // LOCATE [#<stream expression>,]<x coordinate>,<y coordinate>
 	log: "f n", // LOG(<numeric expression>)
@@ -127,7 +144,7 @@ BasicParser.mKeywords = {
 	memory: "c n", // MEMORY <address expression>
 	merge: "c s", // MERGE <filename>
 	mid$: "f s n n?", // MID$(<string expression>,<start position>[,<sub-string length>])  / (start position=1..255, sub-string length=0..255)
-	mid$Assign: "c s n n?", // MID$(<string variable>,<insertion point>[,<new string length>])=<new string expression>  / (mid$ as assign, not really a command because it has parenthesis)
+	mid$Assign: "f s n n?", // MID$(<string variable>,<insertion point>[,<new string length>])=<new string expression>  / (mid$ as assign)
 	min: "f n *", // MIN(<list of: numeric expression>)
 	mod: "o", // <argument> MOD <argument>
 	mode: "c n", // MODE <integer expression>
@@ -178,7 +195,7 @@ BasicParser.mKeywords = {
 	sin: "f n", // SIN(<numeric expression>)
 	sound: "c n n n? n0? n0? n0? n?", // SOUND <channel status>,<tone period>[,<duration>[,<volume>[,<valume envelope>[,<tone envelope>[,<noise period>]]]]]
 	space$: "f n", // SPACE$(<integer expression>)
-	spc: "x n", // SPC(<integer expression)  / see: PRINT SPC
+	spc: "f n", // SPC(<integer expression)  / see: PRINT SPC
 	speed: "c", // => speedInk, speedKey, speedWrite
 	speedInk: "c n n", // SPEED INK <period1>,<period2>  / (special)
 	speedKey: "c n n", // SPEED KEY <start delay>,<repeat period>  / (special)
@@ -192,7 +209,7 @@ BasicParser.mKeywords = {
 	swap: "x n n?", // => windowSwap
 	symbol: "c n n *", // SYMBOL <character number>,<list of: rows>   or => symbolAfter  / character number=0..255, list of 1..8 rows=0..255
 	symbolAfter: "c n", // SYMBOL AFTER <integer expression>  / integer expression=0..256 (special)
-	tab: "x n", // TAB(<integer expression)  / see: PRINT TAB
+	tab: "f n", // TAB(<integer expression)  / see: PRINT TAB
 	tag: "c #?", // TAG[#<stream expression>]
 	tagoff: "c #?", // TAGOFF[#<stream expression>]
 	tan: "f n", // TAN(<numeric expression>)
@@ -287,7 +304,7 @@ BasicParser.prototype = {
 
 				oPreviousToken = oToken;
 				if (id && oToken.type !== id) {
-					throw that.composeError(Error(), "Token expected", id, oToken.pos);
+					throw that.composeError(Error(), "Expected " + id, (oToken.value === "") ? oToken.type : oToken.value, oToken.pos);
 				}
 				if (iIndex >= aTokens.length) {
 					oToken = oSymbols["(end)"];
@@ -313,7 +330,7 @@ BasicParser.prototype = {
 				if (Utils.debug > 3) {
 					Utils.console.debug("parse: expression rbp=" + rbp + " type=" + t.type + " t=%o", t);
 				}
-				advance();
+				advance(t.type);
 				if (!s.nud) {
 					if (t.type === "(end)") {
 						throw that.composeError(Error(), "Unexpected end of file", "", t.pos);
@@ -325,7 +342,7 @@ BasicParser.prototype = {
 				while (rbp < oSymbols[oToken.type].lbp) { // as long as the right binding power is less than the left binding power of the next token...
 					t = oToken;
 					s = oSymbols[t.type];
-					advance();
+					advance(t.type);
 					if (!s.led) {
 						throw that.composeError(Error(), "Unexpected token", t.type, t.pos); //TTT how to get this error?
 					}
@@ -338,7 +355,7 @@ BasicParser.prototype = {
 				var oValue, oLeft;
 
 				if (oToken.type !== "identifier") {
-					throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
+					throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
 				}
 				oLeft = expression(90); // take it (can also be an array) and stop
 				oValue = oToken;
@@ -453,10 +470,10 @@ BasicParser.prototype = {
 				return x;
 			},
 
-			fnCreateDummyArg = function () {
+			fnCreateDummyArg = function (value) {
 				return {
-					type: "null",
-					value: null,
+					type: String(value), // e.g. "null"
+					value: value, // e.g. null
 					len: 0
 				};
 			},
@@ -465,14 +482,23 @@ BasicParser.prototype = {
 				var oValue;
 
 				if (oToken.type === "#") { // stream?
-					advance("#");
 					oValue = expression(0);
 				} else { // create dummy
-					oValue = fnCreateDummyArg();
+					/*
+					oValue = {
+						type: "#",
+						value: "#",
+						right: fnCreateDummyArg(null),
+						len: 0
+					};
+					*/
+					oValue = fnCreateDummyArg("#"); // dummy stream
+					oValue.right = fnCreateDummyArg(null); // ...with dummy parameter
 				}
 				return oValue;
 			},
 
+			/*
 			fnGetLineRange = function () { // l1 or l1-l2 or l1- or -l2 or nothing
 				var oValue = oPreviousToken,
 					oRange, oLeft, oRight;
@@ -496,11 +522,11 @@ BasicParser.prototype = {
 
 				if (oRange) {
 					if (!oLeft && !oRight) {
-						throw that.composeError(Error(), "Invalid range at", oRange.type, oRange.pos);
+						throw that.composeError(Error(), "Invalid range", oRange.type, oRange.pos);
 					}
 					oRange.type = "linerange"; // change "-" => "linerange"
-					oRange.left = oLeft || fnCreateDummyArg(); // insert dummy for left
-					oRange.right = oRight || fnCreateDummyArg(); // insert dummy for right (do not skip it)
+					oRange.left = oLeft || fnCreateDummyArg(null); // insert dummy for left
+					oRange.right = oRight || fnCreateDummyArg(null); // insert dummy for right (do not skip it)
 					oValue.args.push(oRange);
 				} else if (oLeft) {
 					oValue.args.push(oLeft); // single line number
@@ -508,22 +534,86 @@ BasicParser.prototype = {
 
 				return oValue;
 			},
+			*/
 
-			fnCheckRemainingTypes = function (aTypes) {
-				var sType;
+			fnGetLineRange = function (sTypeFirstChar) { // l1 or l1-l2 or l1- or -l2 or nothing
+				var oRange, oLeft, oRight;
 
-				if (aTypes && aTypes.length) { // some more parameters expected?
-					do {
-						sType = aTypes.shift();
-					} while (sType && (Utils.stringEndsWith(sType, "*") || Utils.stringEndsWith(sType, "?")));
-					if (sType && !Utils.stringEndsWith(sType, "?")) {
-						throw that.composeError(Error(), "Expected parameter " + sType + " for arguments after", oPreviousToken.value, oToken.pos);
-					}
+				if (oToken.type === "number") {
+					oLeft = oToken;
+					advance("number");
 				}
+
+				if (oToken.type === "-") {
+					oRange = oToken;
+					advance("-");
+				}
+
+				if (oRange) {
+					if (oToken.type === "number") {
+						oRight = oToken;
+						advance("number");
+					}
+					if (!oLeft && !oRight) {
+						//throw that.composeError(Error(), "Invalid range", oRange.type, oRange.pos);
+						throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oPreviousToken.value, oPreviousToken.pos);
+					}
+					oRange.type = "linerange"; // change "-" => "linerange"
+					oRange.left = oLeft || fnCreateDummyArg(null); // insert dummy for left
+					oRange.right = oRight || fnCreateDummyArg(null); // insert dummy for right (do not skip it)
+				} else if (oLeft) {
+					oRange = oLeft; // single line number
+				}
+
+				return oRange;
 			},
 
 			fnIsSingleLetterIdentifier = function (oValue) {
 				return oValue.type === "identifier" && !oValue.args && oValue.value.length === 1;
+			},
+
+			fnGetLetterRange = function (sTypeFirstChar) { // l1 or l1-l2 or l1- or -l2 or nothing
+				var oExpression;
+
+				if (oToken.type !== "identifier") {
+					throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oToken.value, oToken.pos);
+				}
+				oExpression = expression(0); // n or n-n
+				if (fnIsSingleLetterIdentifier(oExpression)) { // ok
+					oExpression.type = "letter"; // change type: identifier -> letter
+				} else if (oExpression.type === "-" && fnIsSingleLetterIdentifier(oExpression.left) && fnIsSingleLetterIdentifier(oExpression.right)) { // also ok
+					oExpression.type = "range"; // change type: "-" => range
+					oExpression.left.type = "letter"; // change type: identifier -> letter
+					oExpression.right.type = "letter"; // change type: identifier -> letter
+				} else {
+					throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
+				}
+				return oExpression;
+			},
+
+			fnCheckRemainingTypes = function (aTypes) {
+				var sType, i, sText;
+
+				for (i = 0; i < aTypes.length; i += 1) { // some more parameters expected?
+					sType = aTypes[i];
+					if (!sType.endsWith("?") && !sType.endsWith("*")) { // mandatory?
+						sText = BasicParser.mParameterTypes[sType] || ("parameter " + sType);
+						throw that.composeError(Error(), "Expected " + sText + " for " + oPreviousToken.type, oToken.value, oToken.pos);
+					}
+				}
+
+				/*
+				if (aTypes && aTypes.length) { // some more parameters expected?
+					do {
+						sType = aTypes.shift();
+					} while (sType && (sType.endsWith("*") || sType.endsWith("?")));
+
+					if (sType && !sType.endsWith("?")) {
+						sText = BasicParser.mParameterTypes[sType] || ("parameter " + sType);
+						throw that.composeError(Error(), "Expected " + sText + " for " + oPreviousToken.type, oToken.value, oToken.pos);
+					}
+				}
+				*/
 			},
 
 			fnGetArgs = function (sKeyword) { // eslint-disable-line complexity
@@ -531,26 +621,40 @@ BasicParser.prototype = {
 					sSeparator = ",",
 					mCloseTokens = BasicParser.mCloseTokens,
 					bNeedMore = false,
-					sType = "ok",
-					aTypes, sKeyOpts, oExpression;
+					sType = "xxx",
+					sTypeFirstChar, aTypes, sKeyOpts, oExpression;
 
 				if (sKeyword) {
 					sKeyOpts = BasicParser.mKeywords[sKeyword];
 					if (sKeyOpts) {
-						aTypes = sKeyOpts.substr(2).split(" ");
+						//aTypes = sKeyOpts.substr(2).split(" ");
+						aTypes = sKeyOpts.split(" ");
+						aTypes.shift(); // remove keyword type
 					} else {
 						Utils.console.warn("fnGetArgs: No options for keyword", sKeyword);
 					}
 				}
 
 				while (bNeedMore || (sType && !mCloseTokens[oToken.type])) {
+					bNeedMore = false;
 					if (aTypes && sType.slice(-1) !== "*") { // "*"= any number of parameters
 						sType = aTypes.shift();
 						if (!sType) {
 							throw that.composeError(Error(), "Expected end of arguments", oPreviousToken.type, oPreviousToken.pos);
 						}
 					}
+					sTypeFirstChar = sType.charAt(0); //sType.substr(0, 1);
 					if (sType === "#0?") { // optional stream?
+						if (oToken.type === "#") { // stream?
+							oExpression = fnGetOptionalStream();
+							if (oToken.type === ",") {
+								advance(",");
+								bNeedMore = true; //TTT
+							}
+						} else {
+							oExpression = fnGetOptionalStream();
+						}
+						/*
 						if (oToken.type === "#") { // stream?
 							advance("#");
 							oExpression = expression(0); // keep just number or expression without "#"
@@ -559,28 +663,33 @@ BasicParser.prototype = {
 								bNeedMore = true;
 							}
 						} else { // insert default stream parameter
-							oExpression = fnCreateDummyArg();
+							oExpression = fnCreateDummyArg(null);
 						}
+						*/
 					} else {
-						if (sType.substr(0, 1) === "#") { // stream expected? (for functions)
-							advance("#");
-							oExpression = expression(0); // keep just number or expression without "#"
+						if (sTypeFirstChar === "#") { // stream expected? (for functions)
+							oExpression = expression(0);
+							if (oExpression.type !== "#") { // maybe a number
+								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
+							}
 						} else if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
-							oExpression = fnCreateDummyArg();
-						} else if (sType.substr(0, 1) === "l") {
+							oExpression = fnCreateDummyArg(null);
+						} else if (sTypeFirstChar === "l") {
 							oExpression = expression(0);
 							if (oExpression.type !== "number") { // maybe an expression and no plain number
-								throw that.composeError(Error(), "Line number expected at", oExpression.value, oExpression.pos);
+								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
 							}
 							oExpression.type = "linenumber"; // change type: number => linenumber
-						} else if (sType.substr(0, 1) === "v") { // variable (identifier)
+						} else if (sTypeFirstChar === "v") { // variable (identifier)
 							oExpression = expression(0);
 							if (oExpression.type !== "identifier") {
-								throw that.composeError(Error(), "Variable expected at", oExpression.value, oExpression.pos);
+								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
 							}
-						} else if (sType.substr(0, 1) === "r") { // character or range of characters (defint, defreal, defstr)
+						} else if (sTypeFirstChar === "r") { // letter or range of letters (defint, defreal, defstr)
+							oExpression = fnGetLetterRange(sTypeFirstChar);
+							/*
 							if (oToken.type !== "identifier") {
-								throw that.composeError(Error(), "Letter expected at", oToken.value, oToken.pos);
+								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oToken.value, oToken.pos);
 							}
 							oExpression = expression(0);
 							if (fnIsSingleLetterIdentifier(oExpression)) { // ok
@@ -590,26 +699,46 @@ BasicParser.prototype = {
 								oExpression.left.type = "letter"; // change type: identifier -> letter
 								oExpression.right.type = "letter"; // change type: identifier -> letter
 							} else {
-								throw that.composeError(Error(), "Letter or range expected at", oExpression.value, oExpression.pos);
+								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
+							}
+							*/
+						} else if (sTypeFirstChar === "q") { // line number range
+							if (sType === "q0?") { // optional line number range
+								if (oToken.type === "number" || oToken.type === "-") {
+									oExpression = fnGetLineRange(sTypeFirstChar);
+								} else {
+									oExpression = fnCreateDummyArg(null);
+									if (aTypes.length) {
+										bNeedMore = true; // maybe take it as next parameter
+									}
+								}
+							} else {
+								oExpression = fnGetLineRange(sTypeFirstChar);
 							}
 						} else {
 							oExpression = expression(0);
 							if (oExpression.type === "#") { // got stream?
-								throw that.composeError(Error(), "Unexpected stream at", oExpression.value, oExpression.pos);
+								throw that.composeError(Error(), "Unexpected stream", oExpression.value, oExpression.pos);
 							}
 						}
 						if (oToken.type === sSeparator) {
 							advance(sSeparator);
 							bNeedMore = true;
-						} else {
-							bNeedMore = false;
+						} else if (!bNeedMore) {
+							//bNeedMore = false;
 							sType = ""; // stop
 						}
 					}
 					aArgs.push(oExpression);
 				}
 				if (aTypes && aTypes.length) { // some more parameters expected?
-					fnCheckRemainingTypes(aTypes);
+					fnCheckRemainingTypes(aTypes); // error if remaining mandatory args
+					sType = aTypes[0];
+					if (sType === "#0?") { // null stream to add?
+						oExpression = fnCreateDummyArg("#"); // dummy stream with dummy arg
+						oExpression.right = fnCreateDummyArg(null);
+						aArgs.push(oExpression);
+					}
 				}
 				return aArgs;
 			},
@@ -621,7 +750,7 @@ BasicParser.prototype = {
 				while (!mCloseTokens[oToken.type]) {
 					aArgs.push(expression(0));
 					if (oToken.type === "," || oToken.type === ";") {
-						advance();
+						advance(oToken.type);
 					} else {
 						break;
 					}
@@ -634,22 +763,53 @@ BasicParser.prototype = {
 
 				advance("(");
 				aArgs = fnGetArgs(null, ")");
+				/*
 				if (oToken.type !== ")") {
 					throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
 				}
+				*/
 				advance(")");
 				return aArgs;
 			},
 
+			/*
 			fnGetArgsInBrackets = function () {
 				var aArgs;
 
 				advance("[");
 				aArgs = fnGetArgs(null, "]");
+				/ *
 				if (oToken.type !== "]") {
 					throw that.composeError(Error(), "Expected closing brackets for argument list after", oPreviousToken.value, oToken.pos);
 				}
+				* /
 				advance("]");
+				return aArgs;
+			},
+			*/
+			fnGetArgsInParenthesesOrBrackets = function () {
+				var oBrackets = {
+						"(": ")",
+						"[": "]"
+					},
+					aArgs, oBracketOpen, oBracketClose;
+
+				if (oToken.type === "(" || oToken.type === "[") { // oBrackets[oToken.type]
+					oBracketOpen = oToken;
+				}
+
+				advance(oBracketOpen ? oBracketOpen.type : "(");
+				aArgs = fnGetArgs(null); // (until "]" or ")")
+				aArgs.unshift(oBracketOpen);
+
+				if (oToken.type === ")" || oToken.type === "]") {
+					oBracketClose = oToken;
+				}
+				advance(oBracketClose ? oBracketClose.type : ")");
+				aArgs.push(oBracketClose);
+				if (oBrackets[oBracketOpen.type] !== oBracketClose.type) {
+					Utils.console.warn(that.composeError(Error(), "Inconsistent bracket style", oPreviousToken.value, oToken.pos));
+				}
 				return aArgs;
 			},
 
@@ -666,7 +826,7 @@ BasicParser.prototype = {
 
 			fnCreateFuncCall = function (sType) { // optional sType
 				var oValue = oPreviousToken,
-					sKeyOpts;
+					sKeyOpts, aTypes;
 
 				if (sType) {
 					oValue.type = sType;
@@ -685,7 +845,9 @@ BasicParser.prototype = {
 					// if we have a check, make sure there are no non-optional parameters left
 					sKeyOpts = BasicParser.mKeywords[oValue.type];
 					if (sKeyOpts) {
-						fnCheckRemainingTypes(sKeyOpts.substr(2).split(" "));
+						aTypes = sKeyOpts.split(" ");
+						aTypes.shift(); // remove key
+						fnCheckRemainingTypes(aTypes);
 					}
 				}
 
@@ -713,8 +875,7 @@ BasicParser.prototype = {
 				}
 			},
 			fnInputOrLineInput = function (oValue) {
-				var sText = "",
-					oValue2, oStream;
+				var oValue2, oStream;
 
 				oValue.args = [];
 
@@ -724,6 +885,7 @@ BasicParser.prototype = {
 					advance(",");
 				}
 
+				/*
 				oValue.args.push({ // create
 					type: "string",
 					value: (oToken.type === ";") ? ";" : "",
@@ -732,17 +894,25 @@ BasicParser.prototype = {
 				if (oToken.type === ";") { // no newline after input?
 					advance(";");
 				}
+				*/
+				if (oToken.type === ";") { // no newline after input?
+					oValue.args.push(oToken);
+					advance(";");
+				} else {
+					oValue.args.push(fnCreateDummyArg(null));
+				}
 
+				/*
 				if (oToken.type === "string") {
 					sText += oToken.value;
-					advance();
+					advance("string");
 					if (oToken.type === ";") { // ";" => append prompt "? "
 						sText += "? ";
 						advance(";");
 					} else if (oToken.type === ",") {
 						advance(",");
 					} else {
-						throw that.composeError(Error(), "Expected ; or , at", oToken.type, oToken.pos);
+						throw that.composeError(Error(), "Expected ; or ,", oToken.type, oToken.pos);
 					}
 				} else { // no string => also append prompt "? "
 					sText = "? ";
@@ -752,23 +922,49 @@ BasicParser.prototype = {
 					type: "string",
 					value: sText
 				});
+				*/
+
+				if (oToken.type === "string") { // message
+					oValue.args.push(oToken);
+					advance("string");
+					if (oToken.type === ";" || oToken.type === ",") { // ";" => need to append prompt "? " , "," = no prompt
+						oValue.args.push(oToken);
+						advance(oToken.type);
+					} else {
+						throw that.composeError(Error(), "Expected ; or ,", oToken.type, oToken.pos);
+					}
+				} else {
+					oValue.args.push(fnCreateDummyArg(null)); // dummy message
+					oValue.args.push(fnCreateDummyArg(null)); // dummy prompt
+				}
 
 				do { // we need loop for input
+					/*
 					if (oToken.type !== "identifier") {
-						throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
+						throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
 					}
-					oValue2 = oToken; // identifier
-					advance();
+					*/
+
+					oValue2 = expression(90); // we expect "identifier", no fnxx
+
+					if (oValue2.type !== "identifier") {
+						throw that.composeError(Error(), "Expected identifier", oPreviousToken.type, oPreviousToken.pos);
+					}
+
+					/*
+					oValue2 = oToken; // we expect "identifier"
+					advance("identifier");
 					if (oToken.type === "(") {
 						oValue2.args = fnGetArgsInParenthesis();
 					} else if (oToken.type === "[") {
 						oValue2.args = fnGetArgsInBrackets();
 					}
+					*/
 					oValue.args.push(oValue2);
 					if (oValue.type === "lineInput") {
 						break; // no loop for lineInput (only one arg)
 					}
-				} while ((oToken.type === ",") && advance());
+				} while ((oToken.type === ",") && advance(","));
 				return oValue;
 			};
 
@@ -813,11 +1009,13 @@ BasicParser.prototype = {
 		symbol("string", function (s) {
 			return s;
 		});
+
+		/*
 		symbol("identifier", function (oName) {
 			var sName = oName.value,
 				oValue;
 
-			if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
+			if (sName.toLowerCase().startsWith("fn")) {
 				if (oToken.type !== "(") { // Fnxxx name without ()?
 					oValue = {
 						type: "fn",
@@ -832,15 +1030,58 @@ BasicParser.prototype = {
 
 			if (oToken.type === "(" || oToken.type === "[") {
 				oValue = oPreviousToken;
-				oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : fnGetArgsInBrackets();
+				//oValue.bracketOpen = oToken.type; // special parameter: "(" or "["
+				//oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : fnGetArgsInBrackets();
+				oValue.args = fnGetArgsInParenthesesOrBrackets();
 
-				if (Utils.stringStartsWith(sName.toLowerCase(), "fn")) {
+				if (sName.toLowerCase().startsWith("fn")) {
 					oValue.type = "fn"; // FNxxx in e.g. print
 					oValue.left = {
 						type: "identifier",
 						value: oValue.value,
 						pos: oValue.pos
 					};
+				}
+			} else {
+				oValue = oName;
+			}
+			return oValue;
+		});
+		*/
+
+		symbol("identifier", function (oName) {
+			var sName = oName.value,
+				bStartsWithFn = sName.toLowerCase().startsWith("fn"),
+				oValue;
+
+			if (bStartsWithFn) {
+				if (oToken.type !== "(") { // Fnxxx name without ()?
+					oValue = {
+						type: "fn",
+						value: sName.substr(0, 2), // fn
+						args: [],
+						left: oName, // identifier
+						pos: oName.pos // same pos as identifier?
+					};
+					return oValue;
+				}
+			}
+
+			if (oToken.type === "(" || oToken.type === "[") {
+				oValue = oPreviousToken;
+				//oValue.bracketOpen = oToken.type; // special parameter: "(" or "["
+				//oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : fnGetArgsInBrackets();
+
+				if (bStartsWithFn) {
+					oValue.args = fnGetArgsInParenthesis();
+					oValue.type = "fn"; // FNxxx in e.g. print
+					oValue.left = {
+						type: "identifier",
+						value: oValue.value,
+						pos: oValue.pos
+					};
+				} else {
+					oValue.args = fnGetArgsInParenthesesOrBrackets();
 				}
 			} else {
 				oValue = oName;
@@ -879,6 +1120,7 @@ BasicParser.prototype = {
 		infix("+", 40);
 		infix("-", 40);
 
+		infixr("=", 30); // equal for comparison
 		infixr("<>", 30);
 		infixr("<", 30);
 		infixr("<=", 30);
@@ -890,19 +1132,18 @@ BasicParser.prototype = {
 		infixr("or", 21);
 		infixr("xor", 20);
 
-		symbol("#"); // stream
+		prefix("#", 10); //TTT priority ok?
 
-		infixr("=", 30); // equal for comparison
 
 		symbol("fn", function () { // separate fn
 			var oValue = oPreviousToken;
 
-			if (oToken.type === "identifier") {
+			if (oToken.type === "identifier") { // maybe simplify by separating in lexer
 				oToken.value = "fn" + oToken.value;
 				oValue.left = oToken;
-				advance();
+				advance("identifier");
 			} else {
-				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
+				throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
 			}
 
 			if (oToken.type !== "(") { // FN xxx name without ()?
@@ -935,7 +1176,7 @@ BasicParser.prototype = {
 				aLine;
 
 			if (oValue.args.length < 2) { // add default timer 0
-				oValue.args.push(fnCreateDummyArg());
+				oValue.args.push(fnCreateDummyArg(null));
 			}
 			advance("gosub");
 			aLine = fnGetArgs("gosub"); // line number
@@ -975,12 +1216,12 @@ BasicParser.prototype = {
 						advance("delete");
 
 						if (!bNumber) {
-							oValue2 = fnCreateDummyArg(); // insert dummy arg for line
+							oValue2 = fnCreateDummyArg(null); // insert dummy arg for line
 							oValue.args.push(oValue2);
 						}
 
-						oValue2 = fnGetLineRange();
-						oValue2 = oValue2.args[0]; // we only want the line range and not the delete token
+						oValue2 = fnGetLineRange("q"); //TTT
+						//TTT oValue2 = oValue2.args[0]; // we only want the line range and not the delete token
 						oValue.args.push(oValue2);
 					}
 				}
@@ -1012,7 +1253,7 @@ BasicParser.prototype = {
 
 			while (oToken.type === ",") {
 				if (!bParameterFound) {
-					oValue.args.push(fnCreateDummyArg()); // insert null parameter
+					oValue.args.push(fnCreateDummyArg(null)); // insert null parameter
 				}
 				advance(",");
 				bParameterFound = false;
@@ -1025,7 +1266,7 @@ BasicParser.prototype = {
 			}
 
 			if (!bParameterFound) {
-				oValue.args.push(fnCreateDummyArg()); // insert null parameter
+				oValue.args.push(fnCreateDummyArg(null)); // insert null parameter
 			}
 
 			return oValue;
@@ -1040,12 +1281,12 @@ BasicParser.prototype = {
 					oToken.value = "FN" + oToken.value;
 					oValue.left = oToken;
 				} else {
-					throw that.composeError(Error(), "Invalid DEF at", oToken.type, oToken.pos);
+					throw that.composeError(Error(), "Invalid DEF", oToken.type, oToken.pos);
 				}
-			} else if (oToken.type === "identifier" && Utils.stringStartsWith(oToken.value.toLowerCase(), "fn")) { // fn<identifier>
+			} else if (oToken.type === "identifier" && oToken.value.toLowerCase().startsWith("fn")) { // fn<identifier>
 				oValue.left = oToken;
 			} else {
-				throw that.composeError(Error(), "Invalid DEF at", oToken.type, oToken.pos);
+				throw that.composeError(Error(), "Invalid DEF", oToken.type, oToken.pos);
 			}
 			advance();
 
@@ -1056,11 +1297,15 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
 		stmt("delete", function () {
-			var oValue = fnGetLineRange();
+			var oValue = oPreviousToken;
+
+			oValue.args = [fnGetLineRange()];
 
 			return oValue;
 		});
+		*/
 
 		stmt("else", function () {
 			var oValue = oPreviousToken,
@@ -1080,7 +1325,7 @@ BasicParser.prototype = {
 				if (oToken.value) {
 					oString.value += " " + oToken.value;
 				}
-				advance();
+				advance(oToken.type);
 			}
 
 			oValue.args.push(oString);
@@ -1101,7 +1346,7 @@ BasicParser.prototype = {
 				advance(",");
 				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
 					advance("=");
-					oExpression = fnCreateDummyArg(); // insert null parameter
+					oExpression = fnCreateDummyArg(null); // insert null parameter
 					oValue.args.push(oExpression);
 					iCount += 1;
 				}
@@ -1126,7 +1371,7 @@ BasicParser.prototype = {
 				advance(",");
 				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
 					advance("=");
-					oExpression = fnCreateDummyArg(); // insert null parameter
+					oExpression = fnCreateDummyArg(null); // insert null parameter
 					oValue.args.push(oExpression);
 					iCount += 1;
 				}
@@ -1143,7 +1388,7 @@ BasicParser.prototype = {
 				aLine;
 
 			if (oValue.args.length < 2) { // add default timer
-				oValue.args.push(fnCreateDummyArg());
+				oValue.args.push(fnCreateDummyArg(null));
 			}
 			advance("gosub");
 			aLine = fnGetArgs("gosub"); // line number
@@ -1156,13 +1401,13 @@ BasicParser.prototype = {
 				oName;
 
 			if (oToken.type !== "identifier") {
-				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
+				throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
 			}
 			oName = expression(90); // take simple identifier, nothing more
-			oValue.args = [oName];
 			if (oName.type !== "identifier") {
-				throw that.composeError(Error(), "Expected simple identifier at", oToken.type, oToken.pos);
+				throw that.composeError(Error(), "Expected simple identifier", oToken.type, oToken.pos);
 			}
+			oValue.args = [oName];
 			advance("=");
 			oValue.args.push(expression(0));
 
@@ -1173,7 +1418,7 @@ BasicParser.prototype = {
 				advance("step");
 				oValue.args.push(expression(0));
 			} else {
-				oValue.args.push(fnCreateDummyArg()); // created
+				oValue.args.push(fnCreateDummyArg(null)); //TTT created (not really needed)
 			}
 			return oValue;
 		});
@@ -1186,11 +1431,12 @@ BasicParser.prototype = {
 				advance(oToken.type);
 				oValue = fnCreateCmdCall(sName);
 			} else {
-				throw that.composeError(Error(), "Expected PEN or PAPER at", oToken.type, oToken.pos);
+				throw that.composeError(Error(), "Expected PEN or PAPER", oToken.type, oToken.pos);
 			}
 			return oValue;
 		});
 
+		/*
 		stmt("if", function () {
 			var oValue = oPreviousToken,
 				oValue2, oToken2;
@@ -1236,6 +1482,55 @@ BasicParser.prototype = {
 			}
 			return oValue;
 		});
+		*/
+
+		stmt("if", function () {
+			var oValue = oPreviousToken,
+				oValue2, oToken2;
+
+			oValue.args = [];
+
+			oValue.left = expression(0);
+			if (oToken.type === "goto") {
+				// skip "then"
+				oValue.right = statements("else");
+			} else {
+				advance("then");
+				if (oToken.type === "number") {
+					oValue2 = fnCreateCmdCall("goto"); // take "then" as "goto", checks also for line number
+					oValue2.len = 0; // mark it as inserted
+					oToken2 = oToken;
+					oValue.right = statements("else");
+					if (oValue.right.length && oValue.right[0].type !== "rem") {
+						Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
+					}
+					oValue.right.unshift(oValue2);
+				} else {
+					oValue.right = statements("else");
+				}
+			}
+
+			if (oToken.type === "else") {
+				advance("else");
+				if (oToken.type === "number") {
+					oValue2 = fnCreateCmdCall("goto"); // take "then" as "goto", checks also for line number
+					oValue2.len = 0; // mark it as inserted
+					oToken2 = oToken;
+					oValue.third = statements("else");
+					if (oValue.third.length) {
+						Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
+					}
+					oValue.third.unshift(oValue2);
+				} else if (oToken.type === "if") {
+					oValue.third = [statement()];
+				} else {
+					oValue.third = statements("else");
+				}
+			} else {
+				oValue.third = null;
+			}
+			return oValue;
+		});
 
 		stmt("input", function () {
 			var oValue = oPreviousToken;
@@ -1258,7 +1553,7 @@ BasicParser.prototype = {
 			var oValue = oPreviousToken;
 
 			if (oToken.type !== "identifier") {
-				throw that.composeError(Error(), "Expected identifier at", oToken.type, oToken.pos);
+				throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
 			}
 			oValue.left = expression(90); // take it (can also be an array) and stop
 			advance("="); // equal as assignment
@@ -1276,6 +1571,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
 		stmt("list", function () {
 			var oValue = fnGetLineRange(),
 				oStream;
@@ -1289,7 +1585,33 @@ BasicParser.prototype = {
 
 			return oValue;
 		});
+		*/
 
+		/*
+		stmt("list", function () { // two optional args
+			var oValue = oPreviousToken,
+				aTypes = BasicParser.mKeywords[oPreviousToken.type].substr(2).split(" "),
+				oStream;
+
+			if (oToken.type !== "#") { // first parameter no stream? => range
+				oValue.args = fnGetLineRange();
+			} else { // just a stream (or nothing)
+				oValue.args = [fnGetOptionalStream()];
+			}
+
+			if (oToken.type === ",") {
+				advance(",");
+			}
+
+			oStream = fnGetOptionalStream();
+			//oValue.args.unshift(oStream); // set as first parameter
+			oValue.args.push(oStream);
+
+			return oValue;
+		});
+		*/
+
+		/*
 		stmt("mid$", function () { // mid$Assign
 			var oValue = { // create
 					type: "assign",
@@ -1300,11 +1622,11 @@ BasicParser.prototype = {
 
 			oMid = fnCreateFuncCall("mid$Assign");
 			if (oMid.args[0].type !== "identifier") {
-				throw that.composeError(Error(), "Expected identifier at", oMid.args[0].type, oMid.args[0].pos);
+				throw that.composeError(Error(), "Expected identifier", oMid.args[0].type, oMid.args[0].pos);
 			}
 
 			if (oMid.args.length < 3) {
-				oMid.args.push(fnCreateDummyArg()); // add dummy parameter for iLen
+				oMid.args.push(fnCreateDummyArg(null)); // add dummy parameter for iLen
 			}
 
 			oValue.left = Object.assign({}, oMid.args[0]); // set identifier also on left side
@@ -1314,6 +1636,22 @@ BasicParser.prototype = {
 
 			oMid.args.push(oRight);
 			oValue.right = oMid; // put it on right side
+
+			return oValue;
+		});
+		*/
+
+		stmt("mid$", function () { // mid$Assign
+			var oValue = fnCreateFuncCall("mid$Assign"),
+				oRight;
+
+			if (oValue.args[0].type !== "identifier") {
+				throw that.composeError(Error(), "Expected identifier", oValue.args[0].value, oValue.args[0].pos);
+			}
+
+			advance("="); // equal as assignment
+			oRight = expression(0);
+			oValue.right = oRight;
 
 			return oValue;
 		});
@@ -1378,6 +1716,7 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
+		/*
 		stmt("print", function () {
 			var oValue = oPreviousToken,
 				mCloseTokens = BasicParser.mCloseTokens,
@@ -1441,6 +1780,65 @@ BasicParser.prototype = {
 					value: "\\r\\n"
 				});
 			}
+			return oValue;
+		});
+		*/
+
+		stmt("print", function () {
+			var oValue = oPreviousToken,
+				mCloseTokens = BasicParser.mCloseTokens,
+				bCommaAfterStream = false,
+				oValue2, t, oStream;
+
+			oValue.args = [];
+
+			oStream = fnGetOptionalStream();
+			oValue.args.push(oStream);
+			if (oStream.len !== 0) { // not an inserted stream?
+				bCommaAfterStream = true;
+			}
+
+			while (!mCloseTokens[oToken.type]) {
+				if (bCommaAfterStream) {
+					advance(",");
+					bCommaAfterStream = false;
+				}
+
+				if (oToken.type === "spc" || oToken.type === "tab") {
+					advance(oToken.type);
+					oValue2 = fnCreateFuncCall();
+				} else if (oToken.type === "using") {
+					oValue2 = oToken;
+					advance("using");
+					t = expression(0); // format
+					advance(";"); // after the format there must be a ";"
+
+					oValue2.args = fnGetArgsSepByCommaSemi();
+					oValue2.args.unshift(t);
+					if (oPreviousToken.type === ";") { // using closed by ";"?
+						oValue.args.push(oValue2);
+						oValue2 = oPreviousToken; // keep it for print
+					}
+				} else if (BasicParser.mKeywords[oToken.type] && (BasicParser.mKeywords[oToken.type].charAt(0) === "c" || BasicParser.mKeywords[oToken.type].charAt(0) === "x")) { // stop also at keyword which is c=command or x=command addition
+					break;
+				} else if (oToken.type === ";" || oToken.type === ",") { // separator ";" or comma tab separator ","
+					oValue2 = oToken;
+					advance(oToken.type);
+				} else {
+					oValue2 = expression(0);
+				}
+				oValue.args.push(oValue2);
+			}
+
+			/*
+			bTrailingSemicolon = (oPreviousToken.type === ";" || oPreviousToken.type === "commaTab");
+			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
+				oValue.args.push({ // create
+					type: "string",
+					value: "\\r\\n"
+				});
+			}
+			*/
 			return oValue;
 		});
 

@@ -280,15 +280,29 @@ if (!Object.keys) { // IE8
 	};
 }
 
+if (!String.prototype.endsWith) {
+	Utils.console.debug("Polyfill: String.prototype.endsWith");
+	String.prototype.endsWith = function (sSearch, iPosition) { // eslint-disable-line no-extend-native
+		var iLastIndex;
+
+		if (iPosition === undefined) {
+			iPosition = this.length;
+		}
+		iPosition -= sSearch.length;
+		iLastIndex = this.indexOf(sSearch, iPosition);
+		return iLastIndex !== -1 && iLastIndex === iPosition;
+	};
+}
+
 if (!String.prototype.includes) { // IE11
 	Utils.console.debug("Polyfill: String.prototype.includes");
-	String.prototype.includes = function (search, start) { // eslint-disable-line no-extend-native
+	String.prototype.includes = function (sSearch, iStart) { // eslint-disable-line no-extend-native
 		var bRet;
 
-		if (start + search.length > this.length) {
+		if (iStart + sSearch.length > this.length) {
 			bRet = false;
 		} else {
-			bRet = this.indexOf(search, start) !== -1;
+			bRet = this.indexOf(sSearch, iStart) !== -1;
 		}
 		return bRet;
 	};
@@ -345,10 +359,25 @@ if (!String.prototype.repeat) { // IE11
 	};
 }
 
+if (!String.prototype.startsWith) {
+	Utils.console.debug("Polyfill: String.prototype.startsWith");
+	String.prototype.startsWith = function (sSearch, iPosition) { // eslint-disable-line no-extend-native
+		iPosition = iPosition || 0;
+		return this.indexOf(sSearch, iPosition) === iPosition;
+	};
+}
+
 if (!String.prototype.trim) { // IE8
 	Utils.console.debug("Polyfill: String.prototype.trim");
 	String.prototype.trim = function () { // eslint-disable-line no-extend-native
 		return this.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "");
+	};
+}
+
+if (!String.prototype.trimEnd) {
+	Utils.console.debug("Polyfill: String.prototype.trimEnd");
+	String.prototype.trimEnd = function () { // eslint-disable-line no-extend-native
+		return this.replace(/[\s\uFEFF\xA0]+$/, "");
 	};
 }
 

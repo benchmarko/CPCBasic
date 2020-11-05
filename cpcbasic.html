@@ -4,7 +4,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="cpcbasic.css" />
-<title id="title">CPC Basic v0.9.16</title>
+<title id="title">CPC Basic v0.9.17</title>
 </head>
 
 <body id="pageBody">
@@ -27,6 +27,9 @@
 			<div>
 				<button id="parseButton" title="Check BASIC script (compile to JavaScript)">Check</button>
 				<button id="renumButton" title="Renumber lines">Renum</button>
+				<button id="prettyButton" title="Pretty print (experimental)">Pretty</button>
+				<button id="undoButton" title="Undo changes" disabled>Undo</button>
+				<button id="redoButton" title="Redo changes" disabled>Redo</button>
 			</div>
 		</div>
 	</fieldset>
@@ -142,12 +145,15 @@
 <script src="BasicParser.js"></script>
 <script src="BasicTokenizer.js"></script>
 <script src="Canvas.js"></script>
+<script src="CodeGeneratorBasic.js"></script>
 <script src="CodeGeneratorJs.js"></script>
 <script src="CommonEventHandler.js"></script>
 <script src="Controller.js"></script>
 <script src="CpcVm.js"></script>
 <script src="CpcVmRsx.js"></script>
+<script src="Diff.js"></script>
 <script src="DiskImage.js"></script>
+<script src="InputStack.js"></script>
 <script src="Keyboard.js"></script>
 <script src="Model.js"></script>
 <script src="Random.js"></script>

@@ -148,7 +148,7 @@ BasicLexer.prototype = {
 			},
 			hexEscape = function (str) {
 				return str.replace(/[\x00-\x1f]/g, function (sChar2) { // eslint-disable-line no-control-regex
-					return "\\x" + ("00" + sChar2.charCodeAt().toString(16)).slice(-2);
+					return "\\x" + ("00" + sChar2.charCodeAt(0).toString(16)).slice(-2);
 				});
 			},
 			fnParseNumber = function (bStartsWithDot) { // special handling for number
@@ -184,8 +184,8 @@ BasicLexer.prototype = {
 				}
 				sToken = sToken.trim(); // remove trailing spaces
 				iNumber = parseFloat(sToken);
-				if (!isFinite(sToken)) {
-					throw that.composeError(Error(), "Number is too large or too small", iNumber, iStartPos); // for a 64-bit double
+				if (!isFinite(sToken)) { // Infnity?
+					throw that.composeError(Error(), "Number is too large or too small", sToken, iStartPos); // for a 64-bit double
 				}
 				addToken("number", iNumber, iStartPos, sToken);
 				if (that.bTakeNumberAsLine) {
@@ -270,7 +270,7 @@ BasicLexer.prototype = {
 			if (isWhiteSpace(sChar)) {
 				sChar = advance();
 			} else if (isNewLine(sChar)) {
-				addToken("(eol)", 0, iStartPos);
+				addToken("(eol)", "", iStartPos);
 				sChar = advance();
 				this.bTakeNumberAsLine = true;
 			} else if (isComment(sChar)) {
@@ -295,13 +295,14 @@ BasicLexer.prototype = {
 					addToken("binnumber", sToken, iStartPos);
 				} else { // hex
 					if (sChar.toLowerCase() === "h") { // optional h
+						sToken += sChar;
 						sChar = advance();
 					}
 					if (isHex2(sChar)) {
 						sToken += advanceWhile(isHex2);
 						addToken("hexnumber", sToken, iStartPos);
 					} else {
-						throw this.composeError(Error(), "Number expected", sToken, iStartPos);
+						throw this.composeError(Error(), "Expected number", sToken, iStartPos);
 					}
 				}
 			} else if (isQuotes(sChar)) {
@@ -355,7 +356,7 @@ BasicLexer.prototype = {
 				throw this.composeError(Error(), "Unrecognized token", sChar, iStartPos);
 			}
 		}
-		addToken("(end)", 0, iIndex);
+		addToken("(end)", "", iIndex);
 		return aTokens;
 	}
 };

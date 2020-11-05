@@ -2242,7 +2242,7 @@ CpcVm.prototype = {
 
 		if (sInput !== null) {
 			sInput = sInput.replace(/\r\n/g, "\n"); // remove CR (maybe from ASCII file in "binary" form)
-			if (Utils.stringEndsWith(sInput, "\n")) {
+			if (sInput.endsWith("\n")) {
 				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n" (TTT: also for data files?)
 			}
 			oInFile.aFileData = sInput.split("\n");
@@ -3516,13 +3516,13 @@ CpcVm.prototype = {
 		var iNum = 0;
 
 		s = s.trim().toLowerCase();
-		if (Utils.stringStartsWith(s, "&x")) { // binary &x
+		if (s.startsWith("&x")) { // binary &x
 			s = s.slice(2);
 			iNum = parseInt(s, 2);
-		} else if (Utils.stringStartsWith(s, "&h")) { // hex &h
+		} else if (s.startsWith("&h")) { // hex &h
 			s = s.slice(2);
 			iNum = parseInt(s, 16);
-		} else if (Utils.stringStartsWith(s, "&")) { // hex &
+		} else if (s.startsWith("&")) { // hex &
 			s = s.slice(1);
 			iNum = parseInt(s, 16);
 		} else if (s !== "") { // not empty string?

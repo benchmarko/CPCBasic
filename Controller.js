@@ -7,7 +7,7 @@
 
 "use strict";
 
-var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorJs, CommonEventHandler, CpcVm, DiskImage, Keyboard, Sound, Variables, ZipFile;
+var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorBasic, CodeGeneratorJs, CommonEventHandler, CpcVm, Diff, DiskImage, InputStack, Keyboard, Sound, Variables, ZipFile;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -17,10 +17,13 @@ if (typeof require !== "undefined") {
 	BasicParser = require("./BasicParser.js");
 	BasicTokenizer = require("./BasicTokenizer.js");
 	Canvas = require("./Canvas.js");
+	CodeGeneratorBasic = require("./CodeGeneratorBasic.js");
 	CodeGeneratorJs = require("./CodeGeneratorJs.js");
 	CommonEventHandler = require("./CommonEventHandler.js");
 	CpcVm = require("./CpcVm.js");
+	Diff = require("./Diff.js"); //TTT Test
 	DiskImage = require("./DiskImage.js");
+	InputStack = require("./InputStack.js");
 	Keyboard = require("./Keyboard.js");
 	Sound = require("./Sound.js");
 	Variables = require("./Variables.js");
@@ -79,6 +82,8 @@ Controller.prototype = {
 		sKbdLayout = oModel.getProperty("kbdLayout");
 		oView.setSelectValue("kbdLayoutSelect", sKbdLayout);
 		this.commonEventHandler.onKbdLayoutSelectChange();
+
+		this.inputStack = new InputStack();
 
 		this.oKeyboard = new Keyboard({
 			fnOnEscapeHandler: this.fnOnEscapeHandler
@@ -174,7 +179,7 @@ Controller.prototype = {
 		sInput = sInput.replace(/\n$/, ""); // remove trailing newline
 		// beware of data files ending with newlines!
 
-		//sInput = Utils.stringTrimRight(sInput);// no!
+		//sInput = sInput.trimEnd();// no!
 
 		if (!sKey) {
 			sKey = this.model.getProperty("example");
@@ -315,6 +320,15 @@ Controller.prototype = {
 
 		if (sDatabase === "storage") {
 			this.setExampleSelectOptions();
+		}
+	},
+
+	setInputText: function (sInput, bKeepStack) {
+		this.view.setAreaValue("inputText", sInput);
+		if (!bKeepStack) {
+			this.fnInitUndoRedoButtons();
+		} else {
+			this.fnUpdateUndoRedoButtons();
 		}
 	},
 
@@ -543,8 +557,8 @@ Controller.prototype = {
 
 	// merge two scripts with sorted line numbers, lines from script2 overwrite lines from script1
 	mergeScripts: function (sScript1, sScript2) {
-		var aLines1 = Utils.stringTrimRight(sScript1).split("\n"),
-			aLines2 = Utils.stringTrimRight(sScript2).split("\n"),
+		var aLines1 = sScript1.trimEnd().split("\n"),
+			aLines2 = sScript2.trimEnd().split("\n"),
 			aResult = [],
 			iLine1, sLine2, iLine2, sResult;
 
@@ -575,7 +589,7 @@ Controller.prototype = {
 		}
 		sResult = aResult.join("\n");
 		/*
-		if (sResult !== "" && !Utils.stringEndsWith(sResult, "\n")) { // not really needed
+		if (sResult !== "" && !sResult.endsWith("\n")) { // not really needed
 			sResult += "\n";
 		}
 		*/
@@ -857,7 +871,7 @@ Controller.prototype = {
 			break;
 		case "chainMerge":
 			sInput = this.mergeScripts(this.view.getAreaValue("inputText"), sInput);
-			this.view.setAreaValue("inputText", sInput);
+			this.setInputText(sInput);
 			this.view.setAreaValue("resultText", "");
 			iStartLine = oInFile.iLine || 0;
 			this.fnReset();
@@ -865,7 +879,7 @@ Controller.prototype = {
 			break;
 		case "load":
 			if (!bPutInMemory) {
-				this.view.setAreaValue("inputText", sInput);
+				this.setInputText(sInput);
 				this.view.setAreaValue("resultText", "");
 				this.invalidateScript();
 				this.oVm.vmStop("end", 90);
@@ -873,7 +887,7 @@ Controller.prototype = {
 			break;
 		case "merge":
 			sInput = this.mergeScripts(this.view.getAreaValue("inputText"), sInput);
-			this.view.setAreaValue("inputText", sInput);
+			this.setInputText(sInput);
 			this.view.setAreaValue("resultText", "");
 			this.invalidateScript();
 			this.oVm.vmStop("end", 90);
@@ -881,7 +895,7 @@ Controller.prototype = {
 		case "chain": // TODO: run through... : if we have a line number, make sure it is not optimized away when compiling!
 		case "run":
 			if (!bPutInMemory) {
-				this.view.setAreaValue("inputText", sInput);
+				this.setInputText(sInput);
 				this.view.setAreaValue("resultText", "");
 				iStartLine = oInFile.iLine || 0;
 				this.fnReset();
@@ -1143,7 +1157,7 @@ Controller.prototype = {
 			if (!oError) {
 				sInput = aLines.join("\n");
 				sInput = this.mergeScripts(sInputText, sInput); // delete sInput lines
-				this.view.setAreaValue("inputText", sInput);
+				this.setInputText(sInput);
 			}
 		}
 
@@ -1152,7 +1166,9 @@ Controller.prototype = {
 	},
 
 	fnNew: function (/* oParas */) {
-		this.view.setAreaValue("inputText", "");
+		var sInput = "";
+
+		this.setInputText(sInput);
 		this.oVariables.removeAllVariables();
 
 		this.oVm.vmGotoLine(0); // reset current line
@@ -1223,7 +1239,9 @@ Controller.prototype = {
 			Utils.console.warn(oOutput.error);
 			this.outputError(oOutput.error);
 		} else {
-			this.view.setAreaValue("inputText", oOutput.text);
+			this.fnPutChangedInputOnStack();
+			this.setInputText(oOutput.text, true);
+			this.fnPutChangedInputOnStack();
 		}
 		this.oVm.vmGotoLine(0); // reset current line
 		oVm.vmStop("end", 0, true);
@@ -1236,7 +1254,7 @@ Controller.prototype = {
 			sInputText = this.view.getAreaValue("inputText");
 
 		sInput = this.mergeScripts(sInputText, sInput);
-		this.view.setAreaValue("inputText", sInput);
+		this.setInputText(sInput);
 		this.oVm.vmSetStartLine(0);
 		this.oVm.vmGotoLine(0); // to be sure
 		this.view.setDisabled("continueButton", true);
@@ -1306,6 +1324,44 @@ Controller.prototype = {
 		this.setVarSelectOptions("varSelect", this.oVariables);
 		this.commonEventHandler.onVarSelectChange();
 		return oOutput;
+	},
+
+	fnPretty: function () {
+		var sInput = this.view.getAreaValue("inputText"),
+			oCodeGeneratorBasic, oOutput, sOutput, sDiff;
+
+		oCodeGeneratorBasic = new CodeGeneratorBasic({
+			lexer: new BasicLexer(),
+			parser: new BasicParser()
+		});
+
+		oCodeGeneratorBasic.reset();
+		oOutput = oCodeGeneratorBasic.generate(sInput, this.oVariables);
+
+		if (oOutput.error) {
+			sOutput = this.outputError(oOutput.error);
+		} else {
+			sOutput = oOutput.text;
+
+			//sDiff = Diff.testDiff(sInput, sOutput); //TTT
+			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); //TTT
+			//Utils.console.log(sDiff); //TTT
+
+			this.fnPutChangedInputOnStack();
+			//this.view.setAreaValue("outputText", sOutput); //TTT
+			this.setInputText(sOutput, true);
+			this.fnPutChangedInputOnStack();
+			this.view.setAreaValue("outputText", sDiff); //TTT
+
+			/*
+			this.setInputText(sOutput);
+			this.view.setAreaValue("outputText", oOutput.diff); //TTT
+		*/
+
+		}
+		if (sOutput && sOutput.length > 0) {
+			sOutput += "\n";
+		}
 	},
 
 	selectJsError: function (sScript, e) {
@@ -1417,7 +1473,7 @@ Controller.prototype = {
 					Utils.console.debug("fnDirectInput: insert line=" + sInput);
 				}
 				sInput = this.mergeScripts(sInputText, sInput);
-				this.view.setAreaValue("inputText", sInput);
+				this.setInputText(sInput, true);
 
 				this.oVm.vmSetStartLine(0);
 				this.oVm.vmGotoLine(0); // to be sure
@@ -1705,7 +1761,7 @@ Controller.prototype = {
 			i;
 
 		sInput = sInput.replace("\n", "\r"); // LF => CR
-		if (!Utils.stringEndsWith(sInput, "\r")) {
+		if (!sInput.endsWith("\r")) {
 			sInput += "\r";
 		}
 		for (i = 0; i < sInput.length; i += 1) {
@@ -1983,6 +2039,26 @@ Controller.prototype = {
 		this.oCanvas.canvas.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
 
 		document.getElementById("fileInput").addEventListener("change", this.fnHandleFileSelect.bind(this), false);
+	},
+
+	fnUpdateUndoRedoButtons: function () {
+		this.view.setDisabled("undoButton", !this.inputStack.canUndoKeepOne());
+		this.view.setDisabled("redoButton", !this.inputStack.canRedo());
+	},
+
+	fnInitUndoRedoButtons: function () {
+		this.inputStack.init();
+		this.fnUpdateUndoRedoButtons();
+	},
+
+	fnPutChangedInputOnStack: function () {
+		var sInput = this.view.getAreaValue("inputText"),
+			sStackInput = this.inputStack.getInput();
+
+		if (sStackInput !== sInput) {
+			this.inputStack.save(sInput);
+			this.fnUpdateUndoRedoButtons();
+		}
 	},
 
 	// currently not used. Can be called manually: cpcBasic.controller.exportAsBase64(file);

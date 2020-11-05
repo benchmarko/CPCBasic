@@ -22,7 +22,7 @@ cpcBasic.addItem("", function () { /*
 220 PRINT TAB(10)"4 - Startpositionen"
 230 PRINT TAB(10)"5 - Raeume verbinden"
 240 PRINT TAB(10)"6 - Daten ausdrucken"
-250 PRINT TAB(10)"7 - Bedingungen & Aktionen" 
+250 PRINT TAB(10)"7 - Bedingungen & Aktionen"
 260 PRINT TAB(10)"8 - Datentraeger"
 270 PRINT TAB(10)"9 - Programmende"
 280 PRINT:PRINT m3$
@@ -74,7 +74,7 @@ cpcBasic.addItem("", function () { /*
 730 '
 740 'Startpositionen:
 750 WINDOW#1,1,40,19,25:WINDOW#2,1,40,1,18
-760 lp=l3 
+760 lp=l3
 770 ip=1:GOSUB 2300
 780 FOR i=lp TO ao
 790 CLS#1:PRINT#1,m3$"RETURN=weiter / E=Ende / W,Z=Liste"

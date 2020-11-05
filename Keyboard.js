@@ -2,9 +2,14 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
-/* globals Utils */
 
 "use strict";
+
+var Utils;
+
+if (typeof require !== "undefined") {
+	Utils = require("./Utils.js"); // eslint-disable-line global-require
+}
 
 function Keyboard(options) {
 	this.init(options);
@@ -1118,9 +1123,9 @@ Keyboard.prototype = {
 				button.setAttribute("title", oItem.title);
 				button.className = oItem.className;
 				button.setAttribute("data-key", oItem.key);
-				buttonList.insertAdjacentElement("beforeEnd", button);
+				buttonList.insertAdjacentElement("beforeend", button);
 			}
-			place.insertAdjacentElement("beforeEnd", buttonList);
+			place.insertAdjacentElement("beforeend", buttonList);
 		} else { // Polyfill for old browsers
 			sHtml = "<div class=displayFlex>\n";
 			for (i = 0; i < aOptions.length; i += 1) {

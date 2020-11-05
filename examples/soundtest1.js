@@ -9,23 +9,30 @@ cpcBasic.addItem("", function () { /*
 130 ?"1) Richard Wagner: Brautchor aus 'Lohengrin'"
 140 ?"2) Franz Schubert: Die Forelle"
 142 ?"3) Marc-Antoine Charpentiers: Te Deum"
+143 ?"4) August Heinrich Hoffmann von Fallersleben: Winter ade"
 150 ?
 160 ?"Your choice ";
 170 x=pos(#0):y=vpos(#0)
 172 ?:?:?"(Or wait for random sound...)"
-175 pMax=3:p=-1:gosub 500:every 50*2 gosub 500
-180 t$=inkey$:if t$="" and p<pMax*2 then 180
-190 if t$=chr$(13) or t$=" " or p>=pMax*2 then t$=hex$((p mod pMax)+1)
-200 t=val(t$):if t<1 or t>pMax then 180
-205 r=remain(0)
-210 ?t$;
-220 on t gosub 1000,1100,1800
+175 pMax=4:p=0
+176 gosub 505
+177 every 50*2 gosub 500
+180 t$=inkey$:if t$="" and p<pMax then 180
+182 r=remain(0)
+185 if t$<>"" then t=asc(t$) else t=0
+190 if t$=chr$(13) or t$=" " or t$="X" or t=224 or p>=pMax*2 then t$=hex$((p mod pMax)+1):goto 200
+193 if (t=240 or t=242 or t=8 or t=11) and p>0 then p=p-1:goto 176
+194 if (t=241 or t=243 or t=9 or t=10) and p<pMax-1 then p=p+1:goto 176
+200 t=val(t$):if t<1 or t>pMax then 176
+210 p=t-1:gosub 510:?t$;
+220 on t gosub 1000,1100,1800,3030
 222 ink 0,1,1:speed ink 10,10
 225 ?" stopping...";
 227 WHILE SQ(4)<>4:call &bd19:WEND
 230 ?chr$(17);chr$(13);:goto 160
 490 '
-500 p=p+1:if p>=pMax*2 then p=p+int(rnd*pMax)
+500 p=p+1
+505 if p>=pMax then p=p+int(rnd*pMax)
 510 locate x,y:?"[";(p mod pMax)+1;"]: ";:return
 970 '
 980 '
@@ -44,7 +51,7 @@ cpcBasic.addItem("", function () { /*
 1087 '
 1090 REM Franz Schubert: Die Forelle
 1100 ENV 2,10,-1,10
-1105 ink 0,0,3:speed ink 25,5
+1105 call &bd19:ink 0,0,3:speed ink 25,5
 1110 RESTORE 1150:laut1=12:laut2=10
 1120 READ ton,dauer:IF ton=-1 or inkey$<>"" THEN return
 1130 IF ton=0 THEN SOUND 1,ton,dauer:SOUND 2,ton,dauer:SOUND 4,ton,dauer:GOTO 1120
@@ -58,7 +65,7 @@ cpcBasic.addItem("", function () { /*
 1780 '
 1790 REM Marc-Antoine Charpentiers: Te Deum
 1800 RESTORE 2000:la=40:la1=la
-1805 ink 0,0,3:speed ink 40,5
+1805 call &bd19:ink 0,0,3:speed ink 40,5
 1810 READ note:if note<0 then 1816
 1812 SOUND 1,note,la1-2,10:SOUND 2,note,la1,8:SOUND 4,note,la1,6
 1814 goto 1810
@@ -75,4 +82,22 @@ cpcBasic.addItem("", function () { /*
 2040 DATA -4,213,-3,253,-2,253,-2,239,-2,213
 2050 DATA -2,253,-2,239,-3,284,319,-4,319
 2060 DATA -1
+2070 '
+3020 REM Winter Ade - Lied
+3030 restore 3130:g=50
+3035 call &bd19:ink 0,0,3:speed ink 55,5
+3040 READ note:d=g:IF note=-1 or inkey$<>"" THEN return
+3050 IF note=-2 THEN d=g/2:READ note:GOTO 3080
+3060 IF note=2 THEN d=g*2:READ note:GOTO 3080
+3070 IF note=0 THEN FOR i=1 TO d*2:NEXT i:GOTO 3090
+3080 SOUND 1,note,d,10
+3090 'PRINT note,d
+3100 IF (SQ(1) AND 128)=128 THEN call &bd19:goto 3100
+3110 GOTO 3040
+3130 DATA 253,253,284,2,319,0
+3140 DATA 253,253,284,2,319,0
+3150 DATA 253,239,213,213,-2,239,-2,253,239,0
+3160 DATA 284,253,239,239,-2,253,-2,284,253,0
+3170 DATA 253,253,239,2,213,0,253,253,284,2,319,-1
+3180 '
 */ });
