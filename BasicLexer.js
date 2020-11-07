@@ -55,11 +55,6 @@ BasicLexer.prototype = {
 			isDigit = function (c) {
 				return (/[0-9]/).test(c);
 			},
-			/*
-			isDigitOrSpace = function (c) {
-				return (/[0-9 ]/).test(c);
-			},
-			*/
 			isDot = function (c) {
 				return (/[.]/).test(c);
 			},

@@ -152,8 +152,6 @@ CommonEventHandler.prototype = {
 	},
 
 	fnUpdateAreaText: function (sInput) {
-		//this.view.setAreaValue("inputText", sInput);
-		//this.controller.fnUpdateUndoRedoButtons();
 		this.controller.setInputText(sInput, true);
 		this.view.setAreaValue("outputText", "");
 	},
@@ -251,7 +249,6 @@ CommonEventHandler.prototype = {
 				that.controller.setExampleSelectOptions();
 				if (oDatabase.error) {
 					Utils.console.error("fnDatabaseLoaded: database contains errors: " + sDatabase + ": " + sUrl);
-					//that.view.setAreaValue("inputText", oDatabase.script);
 					that.controller.setInputText(oDatabase.script);
 					that.view.setAreaValue("resultText", oDatabase.error);
 				} else {
@@ -263,7 +260,6 @@ CommonEventHandler.prototype = {
 				Utils.console.error("fnDatabaseError: database error: " + sDatabase + ": " + sUrl);
 				that.controller.setExampleSelectOptions();
 				that.onExampleSelectChange();
-				//that.view.setAreaValue("inputText", "");
 				that.controller.setInputText("");
 				that.view.setAreaValue("resultText", "Cannot load database: " + sDatabase);
 			};
@@ -285,7 +281,6 @@ CommonEventHandler.prototype = {
 			this.controller.setExampleSelectOptions();
 			this.onExampleSelectChange();
 		} else {
-			//this.view.setAreaValue("inputText", "#loading database " + sDatabase + "...");
 			that.controller.setInputText("#loading database " + sDatabase + "...");
 			sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
 			Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);

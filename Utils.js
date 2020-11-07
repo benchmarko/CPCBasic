@@ -109,23 +109,9 @@ var Utils = {
 		return d.getFullYear() + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + ("0" + d.getDate()).slice(-2) + " "
 			+ ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2) + "." + ("0" + d.getMilliseconds()).slice(-3);
 	},
-	/*
-	stringStartsWith: function (sStr, sFind, iPos) {
-		iPos = iPos || 0;
-		return sStr.indexOf(sFind, iPos) === iPos;
-	},
-	stringEndsWith: function (str, find) {
-		return str.indexOf(find, str.length - find.length) !== -1;
-	},
-	*/
 	stringCapitalize: function (str) { // capitalize first letter
 		return str.charAt(0).toUpperCase() + str.substring(1);
 	},
-	/*
-	stringTrimRight: function (str) { // trimEnd
-		return str.replace(/[\s\uFEFF\xA0]+$/, "");
-	},
-	*/
 	numberWithCommas: function (x) {
 		// https://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
 		var aParts = String(x).split(".");

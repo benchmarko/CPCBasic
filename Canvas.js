@@ -161,7 +161,7 @@ Canvas.prototype = {
 				this.bUse32BitCopy = true;
 				Utils.console.log("Canvas: using optimized copy2Canvas32bit, littleEndian:", this.bLittleEndian);
 			} else {
-				this.fnCopy2Canvas = this.iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; //TODO
+				this.fnCopy2Canvas = this.iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; // TODO
 				this.setAlpha(255);
 				this.bUse32BitCopy = false;
 				Utils.console.log("Canvas: using copy2Canvas8bit");
@@ -339,11 +339,9 @@ Canvas.prototype = {
 
 	setScreenOffset: function (iOffset) {
 		if (iOffset) {
-			//iOffset = (iOffset % 40) * 8 + ((iOffset / 40) | 0) * 8 * 8 * 8; // eslint-disable-line no-bitwise
+			// TODO
 			iOffset = (iOffset % 80) * 8 + ((iOffset / 80) | 0) * 80 * 16 * 8; // eslint-disable-line no-bitwise
 			iOffset = 640 * 400 - iOffset;
-			//iOffset %= 640 * 400;
-			//this.t1 = (this.t1 ||0) + 1;
 		}
 
 		if (iOffset !== this.iOffset) {
@@ -352,7 +350,7 @@ Canvas.prototype = {
 			if (this.bUse32BitCopy) {
 				this.fnCopy2Canvas = iOffset ? this.copy2Canvas32bitWithOffset : this.copy2Canvas32bit;
 			} else {
-				this.fnCopy2Canvas = iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; //TODO
+				this.fnCopy2Canvas = iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; // TODO: for older browsers
 			}
 
 			this.setNeedUpdate();

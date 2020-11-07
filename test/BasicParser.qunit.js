@@ -36,15 +36,7 @@ QUnit.module("BasicParser: Tests", function (hooks) {
 		*/
 	});
 
-	/*
-	QUnit.test("init without options", function (assert) {
-		var oBasicParser = this.oBasicParser, // eslint-disable-line no-invalid-this
-
-		assert.ok(oBasicParser, "defined");
-	});
-	*/
-
-	var mAllTests = {// eslint-disable-line vars-on-top
+	var mAllTests = { // eslint-disable-line vars-on-top
 		LIST: {
 			"1 LIST": '[{"type":"label","value":1,"pos":0,"args":[{"type":"list","value":"LIST","pos":2,"args":[]}]}]',
 			"2 LIST 10": '[{"type":"label","value":2,"pos":0,"args":[{"type":"list","value":"LIST","pos":2,"args":[{"type":"number","value":10,"pos":7},{"type":"#","value":"#","len":0,"right":{"type":"null","value":null,"len":0}}]}]}]',
@@ -88,9 +80,11 @@ QUnit.module("BasicParser: Tests", function (hooks) {
 
 		for (sCategory in oAllTests) {
 			if (oAllTests.hasOwnProperty(sCategory)) {
-				QUnit.test(sCategory, function (assert) { // eslint-disable-line no-loop-func
-					runTestsFor(assert, oAllTests[sCategory]);
-				});
+				(function (sCat) {
+					QUnit.test(sCat, function (assert) {
+						runTestsFor(assert, oAllTests[sCat]);
+					});
+				}(sCategory));
 			}
 		}
 	}
@@ -98,7 +92,7 @@ QUnit.module("BasicParser: Tests", function (hooks) {
 	generateTests(mAllTests);
 
 
-	// generate result list
+	// generate result list (not used during the test, just for debugging)
 
 	function generateCategoryResults(oTests) {
 		var oBasicLexer = new BasicLexer(),

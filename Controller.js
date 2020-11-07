@@ -588,11 +588,6 @@ Controller.prototype = {
 			}
 		}
 		sResult = aResult.join("\n");
-		/*
-		if (sResult !== "" && !sResult.endsWith("\n")) { // not really needed
-			sResult += "\n";
-		}
-		*/
 		return sResult;
 	},
 
@@ -1343,21 +1338,12 @@ Controller.prototype = {
 		} else {
 			sOutput = oOutput.text;
 
-			//sDiff = Diff.testDiff(sInput, sOutput); //TTT
-			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); //TTT
-			//Utils.console.log(sDiff); //TTT
-
 			this.fnPutChangedInputOnStack();
-			//this.view.setAreaValue("outputText", sOutput); //TTT
 			this.setInputText(sOutput, true);
 			this.fnPutChangedInputOnStack();
-			this.view.setAreaValue("outputText", sDiff); //TTT
 
-			/*
-			this.setInputText(sOutput);
-			this.view.setAreaValue("outputText", oOutput.diff); //TTT
-		*/
-
+			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); //TTT
+			this.view.setAreaValue("outputText", sDiff);
 		}
 		if (sOutput && sOutput.length > 0) {
 			sOutput += "\n";

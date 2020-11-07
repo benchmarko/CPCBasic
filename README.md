@@ -109,7 +109,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - [done: *MASK*]
 - [done: Mixed parentheses and brackets for arrays, e.g. `a(3]=6: ?a[3)`]
 
-
 ## Extensions and Features
 
 - File operations work on Browser local storage memory (check in Browser: e.g. Developement tools, Application).

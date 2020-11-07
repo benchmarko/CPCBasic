@@ -44,7 +44,6 @@ BasicParser.mParameterTypes = {
 	a: "any parameter",
 	"n0?": "optional parameter with default null",
 	"#": "stream"
-	//"*": "any number of parameters"
 };
 
 // first letter: c=command, f=function, o=operator, x=additional keyword for command
@@ -56,7 +55,7 @@ BasicParser.mKeywords = {
 	and: "o", // <argument> AND <argument>
 	asc: "f s", // ASC(<string expression>)
 	atn: "f n", // ATN(<numeric expression>)
-	auto: "c", // TODO: AUTO [<line number>][,<increment>]
+	auto: "c n0? n0?", // AUTO [<line number>][,<increment>]
 	bin$: "f n n?", // BIN$(<unsigned integer expression>[,<integer expression>])
 	border: "c n n?", // BORDER <color>[,<color>]
 	"break": "x", // see: ON BREAK...
@@ -484,57 +483,11 @@ BasicParser.prototype = {
 				if (oToken.type === "#") { // stream?
 					oValue = expression(0);
 				} else { // create dummy
-					/*
-					oValue = {
-						type: "#",
-						value: "#",
-						right: fnCreateDummyArg(null),
-						len: 0
-					};
-					*/
 					oValue = fnCreateDummyArg("#"); // dummy stream
 					oValue.right = fnCreateDummyArg(null); // ...with dummy parameter
 				}
 				return oValue;
 			},
-
-			/*
-			fnGetLineRange = function () { // l1 or l1-l2 or l1- or -l2 or nothing
-				var oValue = oPreviousToken,
-					oRange, oLeft, oRight;
-
-				oValue.args = [];
-
-				if (oToken.type === "number") {
-					oLeft = oToken;
-					advance("number");
-				}
-
-				if (oToken.type === "-") {
-					oRange = oToken;
-					advance("-");
-				}
-
-				if (oToken.type === "number") {
-					oRight = oToken;
-					advance("number");
-				}
-
-				if (oRange) {
-					if (!oLeft && !oRight) {
-						throw that.composeError(Error(), "Invalid range", oRange.type, oRange.pos);
-					}
-					oRange.type = "linerange"; // change "-" => "linerange"
-					oRange.left = oLeft || fnCreateDummyArg(null); // insert dummy for left
-					oRange.right = oRight || fnCreateDummyArg(null); // insert dummy for right (do not skip it)
-					oValue.args.push(oRange);
-				} else if (oLeft) {
-					oValue.args.push(oLeft); // single line number
-				}
-
-				return oValue;
-			},
-			*/
 
 			fnGetLineRange = function (sTypeFirstChar) { // l1 or l1-l2 or l1- or -l2 or nothing
 				var oRange, oLeft, oRight;
@@ -555,7 +508,6 @@ BasicParser.prototype = {
 						advance("number");
 					}
 					if (!oLeft && !oRight) {
-						//throw that.composeError(Error(), "Invalid range", oRange.type, oRange.pos);
 						throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oPreviousToken.value, oPreviousToken.pos);
 					}
 					oRange.type = "linerange"; // change "-" => "linerange"
@@ -601,19 +553,6 @@ BasicParser.prototype = {
 						throw that.composeError(Error(), "Expected " + sText + " for " + oPreviousToken.type, oToken.value, oToken.pos);
 					}
 				}
-
-				/*
-				if (aTypes && aTypes.length) { // some more parameters expected?
-					do {
-						sType = aTypes.shift();
-					} while (sType && (sType.endsWith("*") || sType.endsWith("?")));
-
-					if (sType && !sType.endsWith("?")) {
-						sText = BasicParser.mParameterTypes[sType] || ("parameter " + sType);
-						throw that.composeError(Error(), "Expected " + sText + " for " + oPreviousToken.type, oToken.value, oToken.pos);
-					}
-				}
-				*/
 			},
 
 			fnGetArgs = function (sKeyword) { // eslint-disable-line complexity
@@ -627,7 +566,6 @@ BasicParser.prototype = {
 				if (sKeyword) {
 					sKeyOpts = BasicParser.mKeywords[sKeyword];
 					if (sKeyOpts) {
-						//aTypes = sKeyOpts.substr(2).split(" ");
 						aTypes = sKeyOpts.split(" ");
 						aTypes.shift(); // remove keyword type
 					} else {
@@ -643,29 +581,17 @@ BasicParser.prototype = {
 							throw that.composeError(Error(), "Expected end of arguments", oPreviousToken.type, oPreviousToken.pos);
 						}
 					}
-					sTypeFirstChar = sType.charAt(0); //sType.substr(0, 1);
+					sTypeFirstChar = sType.charAt(0);
 					if (sType === "#0?") { // optional stream?
 						if (oToken.type === "#") { // stream?
 							oExpression = fnGetOptionalStream();
 							if (oToken.type === ",") {
 								advance(",");
-								bNeedMore = true; //TTT
+								bNeedMore = true;
 							}
 						} else {
 							oExpression = fnGetOptionalStream();
 						}
-						/*
-						if (oToken.type === "#") { // stream?
-							advance("#");
-							oExpression = expression(0); // keep just number or expression without "#"
-							if (oToken.type === ",") {
-								advance(",");
-								bNeedMore = true;
-							}
-						} else { // insert default stream parameter
-							oExpression = fnCreateDummyArg(null);
-						}
-						*/
 					} else {
 						if (sTypeFirstChar === "#") { // stream expected? (for functions)
 							oExpression = expression(0);
@@ -687,28 +613,13 @@ BasicParser.prototype = {
 							}
 						} else if (sTypeFirstChar === "r") { // letter or range of letters (defint, defreal, defstr)
 							oExpression = fnGetLetterRange(sTypeFirstChar);
-							/*
-							if (oToken.type !== "identifier") {
-								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oToken.value, oToken.pos);
-							}
-							oExpression = expression(0);
-							if (fnIsSingleLetterIdentifier(oExpression)) { // ok
-								oExpression.type = "letter"; // change type: identifier -> letter
-							} else if (oExpression.type === "-" && fnIsSingleLetterIdentifier(oExpression.left) && fnIsSingleLetterIdentifier(oExpression.right)) { // also ok
-								oExpression.type = "range"; // change type: "-" => range
-								oExpression.left.type = "letter"; // change type: identifier -> letter
-								oExpression.right.type = "letter"; // change type: identifier -> letter
-							} else {
-								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
-							}
-							*/
 						} else if (sTypeFirstChar === "q") { // line number range
 							if (sType === "q0?") { // optional line number range
-								if (oToken.type === "number" || oToken.type === "-") {
+								if (oToken.type === "number" || oToken.type === "-") { // eslint-disable-line max-depth
 									oExpression = fnGetLineRange(sTypeFirstChar);
 								} else {
 									oExpression = fnCreateDummyArg(null);
-									if (aTypes.length) {
+									if (aTypes.length) { // eslint-disable-line max-depth
 										bNeedMore = true; // maybe take it as next parameter
 									}
 								}
@@ -725,7 +636,6 @@ BasicParser.prototype = {
 							advance(sSeparator);
 							bNeedMore = true;
 						} else if (!bNeedMore) {
-							//bNeedMore = false;
 							sType = ""; // stop
 						}
 					}
@@ -763,30 +673,10 @@ BasicParser.prototype = {
 
 				advance("(");
 				aArgs = fnGetArgs(null, ")");
-				/*
-				if (oToken.type !== ")") {
-					throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
-				}
-				*/
 				advance(")");
 				return aArgs;
 			},
 
-			/*
-			fnGetArgsInBrackets = function () {
-				var aArgs;
-
-				advance("[");
-				aArgs = fnGetArgs(null, "]");
-				/ *
-				if (oToken.type !== "]") {
-					throw that.composeError(Error(), "Expected closing brackets for argument list after", oPreviousToken.value, oToken.pos);
-				}
-				* /
-				advance("]");
-				return aArgs;
-			},
-			*/
 			fnGetArgsInParenthesesOrBrackets = function () {
 				var oBrackets = {
 						"(": ")",
@@ -885,44 +775,12 @@ BasicParser.prototype = {
 					advance(",");
 				}
 
-				/*
-				oValue.args.push({ // create
-					type: "string",
-					value: (oToken.type === ";") ? ";" : "",
-					len: 0
-				});
-				if (oToken.type === ";") { // no newline after input?
-					advance(";");
-				}
-				*/
 				if (oToken.type === ";") { // no newline after input?
 					oValue.args.push(oToken);
 					advance(";");
 				} else {
 					oValue.args.push(fnCreateDummyArg(null));
 				}
-
-				/*
-				if (oToken.type === "string") {
-					sText += oToken.value;
-					advance("string");
-					if (oToken.type === ";") { // ";" => append prompt "? "
-						sText += "? ";
-						advance(";");
-					} else if (oToken.type === ",") {
-						advance(",");
-					} else {
-						throw that.composeError(Error(), "Expected ; or ,", oToken.type, oToken.pos);
-					}
-				} else { // no string => also append prompt "? "
-					sText = "? ";
-				}
-
-				oValue.args.push({
-					type: "string",
-					value: sText
-				});
-				*/
 
 				if (oToken.type === "string") { // message
 					oValue.args.push(oToken);
@@ -939,27 +797,12 @@ BasicParser.prototype = {
 				}
 
 				do { // we need loop for input
-					/*
-					if (oToken.type !== "identifier") {
-						throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
-					}
-					*/
-
 					oValue2 = expression(90); // we expect "identifier", no fnxx
 
 					if (oValue2.type !== "identifier") {
 						throw that.composeError(Error(), "Expected identifier", oPreviousToken.type, oPreviousToken.pos);
 					}
 
-					/*
-					oValue2 = oToken; // we expect "identifier"
-					advance("identifier");
-					if (oToken.type === "(") {
-						oValue2.args = fnGetArgsInParenthesis();
-					} else if (oToken.type === "[") {
-						oValue2.args = fnGetArgsInBrackets();
-					}
-					*/
 					oValue.args.push(oValue2);
 					if (oValue.type === "lineInput") {
 						break; // no loop for lineInput (only one arg)
@@ -1010,45 +853,6 @@ BasicParser.prototype = {
 			return s;
 		});
 
-		/*
-		symbol("identifier", function (oName) {
-			var sName = oName.value,
-				oValue;
-
-			if (sName.toLowerCase().startsWith("fn")) {
-				if (oToken.type !== "(") { // Fnxxx name without ()?
-					oValue = {
-						type: "fn",
-						value: sName.substr(0, 2), // fn
-						args: [],
-						left: oName, // identifier
-						pos: oName.pos // same pos as identifier?
-					};
-					return oValue;
-				}
-			}
-
-			if (oToken.type === "(" || oToken.type === "[") {
-				oValue = oPreviousToken;
-				//oValue.bracketOpen = oToken.type; // special parameter: "(" or "["
-				//oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : fnGetArgsInBrackets();
-				oValue.args = fnGetArgsInParenthesesOrBrackets();
-
-				if (sName.toLowerCase().startsWith("fn")) {
-					oValue.type = "fn"; // FNxxx in e.g. print
-					oValue.left = {
-						type: "identifier",
-						value: oValue.value,
-						pos: oValue.pos
-					};
-				}
-			} else {
-				oValue = oName;
-			}
-			return oValue;
-		});
-		*/
-
 		symbol("identifier", function (oName) {
 			var sName = oName.value,
 				bStartsWithFn = sName.toLowerCase().startsWith("fn"),
@@ -1069,8 +873,6 @@ BasicParser.prototype = {
 
 			if (oToken.type === "(" || oToken.type === "[") {
 				oValue = oPreviousToken;
-				//oValue.bracketOpen = oToken.type; // special parameter: "(" or "["
-				//oValue.args = (oToken.type === "(") ? fnGetArgsInParenthesis() : fnGetArgsInBrackets();
 
 				if (bStartsWithFn) {
 					oValue.args = fnGetArgsInParenthesis();
@@ -1132,14 +934,15 @@ BasicParser.prototype = {
 		infixr("or", 21);
 		infixr("xor", 20);
 
-		prefix("#", 10); //TTT priority ok?
+		prefix("#", 10); // priority ok?
 
 
 		symbol("fn", function () { // separate fn
 			var oValue = oPreviousToken;
 
 			if (oToken.type === "identifier") { // maybe simplify by separating in lexer
-				oToken.value = "fn" + oToken.value;
+				oToken.value = oPreviousToken.value + oToken.value; // "fn" + identifier
+				oToken.bSpace = true; //fast hack: set space for CodeGeneratorBasic
 				oValue.left = oToken;
 				advance("identifier");
 			} else {
@@ -1186,7 +989,7 @@ BasicParser.prototype = {
 
 		stmt("chain", function () {
 			var sName = "chain",
-				bNumber = false, // line number found
+				bNumberExpression = false, // line number (expression) found
 				oValue, oValue2;
 
 			if (oToken.type !== "merge") { // not chain merge?
@@ -1204,24 +1007,22 @@ BasicParser.prototype = {
 				if (oToken.type === ",") {
 					advance(",");
 
-					if (oToken.type === "number") {
-						oValue2 = expression(0); // line number
-						oValue2.type = "linenumber"; // number -> linenumber
+					if (oToken.type !== "," && oToken.type !== "(eol)" && oToken.type !== "(eof)") {
+						oValue2 = expression(0); // line number or expression
 						oValue.args.push(oValue2);
-						bNumber = true;
+						bNumberExpression = true;
 					}
 
 					if (oToken.type === ",") {
 						advance(",");
 						advance("delete");
 
-						if (!bNumber) {
+						if (!bNumberExpression) {
 							oValue2 = fnCreateDummyArg(null); // insert dummy arg for line
 							oValue.args.push(oValue2);
 						}
 
-						oValue2 = fnGetLineRange("q"); //TTT
-						//TTT oValue2 = oValue2.args[0]; // we only want the line range and not the delete token
+						oValue2 = fnGetLineRange("q");
 						oValue.args.push(oValue2);
 					}
 				}
@@ -1278,7 +1079,8 @@ BasicParser.prototype = {
 			if (oToken.type === "fn") { // fn <identifier> separate?
 				advance("fn");
 				if (oToken.type === "identifier") {
-					oToken.value = "FN" + oToken.value;
+					oToken.value = oPreviousToken.value + oToken.value;
+					oToken.bSpace = true; //fast hack: set space for CodeGeneratorBasic
 					oValue.left = oToken;
 				} else {
 					throw that.composeError(Error(), "Invalid DEF", oToken.type, oToken.pos);
@@ -1298,15 +1100,6 @@ BasicParser.prototype = {
 		});
 
 		/*
-		stmt("delete", function () {
-			var oValue = oPreviousToken;
-
-			oValue.args = [fnGetLineRange()];
-
-			return oValue;
-		});
-		*/
-
 		stmt("else", function () {
 			var oValue = oPreviousToken,
 				oString = {
@@ -1329,6 +1122,23 @@ BasicParser.prototype = {
 			}
 
 			oValue.args.push(oString);
+
+			return oValue;
+		});
+		*/
+
+		stmt("else", function () { // simular to a comment, normally not used
+			var oValue = oPreviousToken;
+
+			oValue.args = [];
+
+			Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oPreviousToken.type, oPreviousToken.pos).message);
+
+			// TODO: data line as separate statement is taken
+			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
+				oValue.args.push(oToken); // collect tokens unchecked, may contain syntax error
+				advance(oToken.type);
+			}
 
 			return oValue;
 		});
@@ -1418,7 +1228,7 @@ BasicParser.prototype = {
 				advance("step");
 				oValue.args.push(expression(0));
 			} else {
-				oValue.args.push(fnCreateDummyArg(null)); //TTT created (not really needed)
+				oValue.args.push(fnCreateDummyArg(null));
 			}
 			return oValue;
 		});
@@ -1435,54 +1245,6 @@ BasicParser.prototype = {
 			}
 			return oValue;
 		});
-
-		/*
-		stmt("if", function () {
-			var oValue = oPreviousToken,
-				oValue2, oToken2;
-
-			oValue.args = [];
-
-			oValue.left = expression(0);
-			if (oToken.type === "goto") {
-				// skip "then"
-				oValue.right = statements("else");
-			} else {
-				advance("then");
-				if (oToken.type === "number") {
-					oValue2 = fnCreateCmdCall("goto");
-					oToken2 = oToken;
-					oValue.right = statements("else");
-					if (oValue.right.length && oValue.right[0].type !== "rem") {
-						Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
-					}
-					oValue.right.unshift(oValue2);
-				} else {
-					oValue.right = statements("else");
-				}
-			}
-
-			if (oToken.type === "else") {
-				advance("else");
-				if (oToken.type === "number") {
-					oValue2 = fnCreateCmdCall("goto");
-					oToken2 = oToken;
-					oValue.third = statements("else");
-					if (oValue.third.length) {
-						Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
-					}
-					oValue.third.unshift(oValue2);
-				} else if (oToken.type === "if") {
-					oValue.third = [statement()];
-				} else {
-					oValue.third = statements("else");
-				}
-			} else {
-				oValue.third = null;
-			}
-			return oValue;
-		});
-		*/
 
 		stmt("if", function () {
 			var oValue = oPreviousToken,
@@ -1552,12 +1314,7 @@ BasicParser.prototype = {
 		stmt("let", function () {
 			var oValue = oPreviousToken;
 
-			if (oToken.type !== "identifier") {
-				throw that.composeError(Error(), "Expected identifier", oToken.type, oToken.pos);
-			}
-			oValue.left = expression(90); // take it (can also be an array) and stop
-			advance("="); // equal as assignment
-			oValue.right = expression(0);
+			oValue.right = assignment();
 			return oValue;
 		});
 
@@ -1570,76 +1327,6 @@ BasicParser.prototype = {
 			fnInputOrLineInput(oValue);
 			return oValue;
 		});
-
-		/*
-		stmt("list", function () {
-			var oValue = fnGetLineRange(),
-				oStream;
-
-			if (oToken.type === ",") {
-				advance(",");
-			}
-
-			oStream = fnGetOptionalStream();
-			oValue.args.unshift(oStream); // set as first parameter
-
-			return oValue;
-		});
-		*/
-
-		/*
-		stmt("list", function () { // two optional args
-			var oValue = oPreviousToken,
-				aTypes = BasicParser.mKeywords[oPreviousToken.type].substr(2).split(" "),
-				oStream;
-
-			if (oToken.type !== "#") { // first parameter no stream? => range
-				oValue.args = fnGetLineRange();
-			} else { // just a stream (or nothing)
-				oValue.args = [fnGetOptionalStream()];
-			}
-
-			if (oToken.type === ",") {
-				advance(",");
-			}
-
-			oStream = fnGetOptionalStream();
-			//oValue.args.unshift(oStream); // set as first parameter
-			oValue.args.push(oStream);
-
-			return oValue;
-		});
-		*/
-
-		/*
-		stmt("mid$", function () { // mid$Assign
-			var oValue = { // create
-					type: "assign",
-					pos: oToken.pos,
-					len: 0
-				},
-				oMid, oRight;
-
-			oMid = fnCreateFuncCall("mid$Assign");
-			if (oMid.args[0].type !== "identifier") {
-				throw that.composeError(Error(), "Expected identifier", oMid.args[0].type, oMid.args[0].pos);
-			}
-
-			if (oMid.args.length < 3) {
-				oMid.args.push(fnCreateDummyArg(null)); // add dummy parameter for iLen
-			}
-
-			oValue.left = Object.assign({}, oMid.args[0]); // set identifier also on left side
-
-			advance("="); // equal as assignment
-			oRight = expression(0);
-
-			oMid.args.push(oRight);
-			oValue.right = oMid; // put it on right side
-
-			return oValue;
-		});
-		*/
 
 		stmt("mid$", function () { // mid$Assign
 			var oValue = fnCreateFuncCall("mid$Assign"),
@@ -1716,74 +1403,6 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		/*
-		stmt("print", function () {
-			var oValue = oPreviousToken,
-				mCloseTokens = BasicParser.mCloseTokens,
-				bTrailingSemicolon = false,
-				iSpcOrTabEnd = 0,
-				bCommaAfterStream = false,
-				oValue2, t, oStream;
-
-			oValue.args = [];
-
-			oStream = fnGetOptionalStream();
-			oValue.args.push(oStream);
-			if (oStream.len !== 0) { // not an inserted stream?
-				bCommaAfterStream = true;
-			}
-
-			while (!mCloseTokens[oToken.type]) {
-				if (bCommaAfterStream) {
-					advance(",");
-					bCommaAfterStream = false;
-				}
-				if (oToken.type === "spc") {
-					advance("spc");
-					oValue2 = fnCreateFuncCall();
-					oValue.args.push(oValue2);
-					iSpcOrTabEnd = iIndex; // save index so we can ignore newline if spc or tab is printed last
-				} else if (oToken.type === "tab") {
-					advance("tab");
-					oValue2 = fnCreateFuncCall();
-					oValue.args.push(oValue2);
-					iSpcOrTabEnd = iIndex;
-				} else if (oToken.type === "using") {
-					oValue2 = oToken;
-					advance("using");
-					t = expression(0); // format
-					advance(";");
-
-					oValue2.args = fnGetArgsSepByCommaSemi();
-					oValue2.args.unshift(t);
-					oValue.args.push(oValue2);
-				} else if (BasicParser.mKeywords[oToken.type] && (BasicParser.mKeywords[oToken.type].charAt(0) === "c" || BasicParser.mKeywords[oToken.type].charAt(0) === "x")) { // stop also at keyword which is c=command or x=command addition
-					break;
-				} else if (oToken.type === ";") {
-					advance(";");
-				} else if (oToken.type === ",") { // comma tabulator
-					oValue2 = oToken;
-					advance(",");
-					oValue2.type = "commaTab";
-					oValue2.args = [];
-					oValue.args.push(oValue2);
-				} else {
-					t = expression(0);
-					oValue.args.push(t);
-				}
-			}
-
-			bTrailingSemicolon = (oPreviousToken.type === ";" || oPreviousToken.type === "commaTab");
-			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
-				oValue.args.push({ // create
-					type: "string",
-					value: "\\r\\n"
-				});
-			}
-			return oValue;
-		});
-		*/
-
 		stmt("print", function () {
 			var oValue = oPreviousToken,
 				mCloseTokens = BasicParser.mCloseTokens,
@@ -1829,16 +1448,6 @@ BasicParser.prototype = {
 				}
 				oValue.args.push(oValue2);
 			}
-
-			/*
-			bTrailingSemicolon = (oPreviousToken.type === ";" || oPreviousToken.type === "commaTab");
-			if (!bTrailingSemicolon && iSpcOrTabEnd !== iIndex) {
-				oValue.args.push({ // create
-					type: "string",
-					value: "\\r\\n"
-				});
-			}
-			*/
 			return oValue;
 		});
 

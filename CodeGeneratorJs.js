@@ -511,18 +511,6 @@ CodeGeneratorJs.prototype = {
 
 					if (node.args) { // array?
 						aNodeArgs = fnParseArgRange(node.args, 1, node.args.length - 2); // we skip open and close bracket
-
-						/*
-						aArgs = node.args;
-						for (i = 1; i < aArgs.length - 1; i += 1) { // we skip open and close bracket
-							aNodeArgs.push(fnParseOneArg(aArgs[i]));
-						}
-						*/
-						/*
-						aNodeArgs = fnParseArgs(node.args);
-						aNodeArgs.shift(); // remove open bracket
-						aNodeArgs.pop(); // remove close bracket
-						*/
 					}
 					sName = fnAdaptVariableName(node.value, aNodeArgs.length); // here we use node.value
 
@@ -674,14 +662,6 @@ CodeGeneratorJs.prototype = {
 					node.pv = this.fnCommandWithGoto(node);
 					return node.pv;
 				},
-				/*
-				commaTab: function (node) {
-					var aNodeArgs = fnParseArgs(node.args);
-
-					node.pv = "{type: \"commaTab\", args: [" + aNodeArgs.join(", ") + "]}"; // we must delay the commaTab() call until print() is called
-					return node.pv;
-				},
-				*/
 				cont: function (node) {
 					node.pv = "o." + node.type + "(); break;"; // append break
 					return node.pv;
@@ -739,7 +719,6 @@ CodeGeneratorJs.prototype = {
 							throw that.composeError(Error(), "Expected identifier in DIM", node.type, node.pos);
 						}
 						aArgs = fnParseArgRange(oNodeArg.args, 1, oNodeArg.args.length - 2); // we skip open and close bracket
-						//aArgs = fnParseArgs(oNodeArg.args);
 
 						sFullExpression = fnParseOneArg(oNodeArg);
 						sName = sFullExpression;
@@ -757,6 +736,20 @@ CodeGeneratorJs.prototype = {
 						sName = Utils.bSupportReservedNames ? "o.delete" : 'o["delete"]';
 
 					node.pv = sName + "(" + aNodeArgs.join(", ") + "); break;";
+					return node.pv;
+				},
+				"else": function (node) { // similar to a comment, with unchecked tokens
+					var aArgs = node.args,
+						sValue = node.type,
+						oToken, i;
+
+					for (i = 0; i < aArgs.length; i += 1) {
+						oToken = aArgs[i];
+						if (oToken.value) {
+							sValue += " " + oToken.value;
+						}
+					}
+					node.pv = "// " + sValue + "\n";
 					return node.pv;
 				},
 				end: function (node) {
@@ -788,12 +781,6 @@ CodeGeneratorJs.prototype = {
 				fn: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
 						sName = fnParseOneArg(node.left);
-
-					/*
-					if (node.args.length) {
-						aNodeArgs = fnParseArgRange(node.args, 1, node.args.length - 2); // we skip open and close bracket
-					}
-					*/
 
 					if (node.left.pt) {
 						node.pt = node.left.pt;
@@ -923,11 +910,6 @@ CodeGeneratorJs.prototype = {
 					value = "if (" + fnParseOneArg(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
 					if (node.third) {
 						aNodeArgs = fnParseArgs(node.third);
-						/*
-						if (node.third.args && node.third.args[0].type === "number") {
-							aNodeArgs[0] = ...
-						}
-						*/
 						sPart = aNodeArgs.join("; ");
 						value += "/* else */ " + sPart + "; ";
 					}
@@ -978,40 +960,9 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				let: function (node) {
-					node.pv = this.assign(node);
+					node.pv = this.assign(node.right);
 					return node.pv;
 				},
-				/*
-				lineInput: function (node) {
-					var aNodeArgs = fnParseArgs(node.args),
-						aVarTypes = [],
-						sLabel, value, i, sStream, sNoCRLF, sMsg;
-
-					sLabel = that.iLine + "s" + that.iStopCount;
-					that.iStopCount += 1;
-
-					sStream = aNodeArgs.shift();
-					sNoCRLF = aNodeArgs.shift();
-					sMsg = aNodeArgs.shift();
-
-					// we should have just one variable name
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						aVarTypes[i] = fnDetermineStaticVarType(aNodeArgs[i]);
-					}
-
-					value = "o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // also before input
-					sLabel = that.iLine + "s" + that.iStopCount;
-					that.iStopCount += 1;
-
-					value += "o." + node.type + "(" + sStream + ", " + sNoCRLF + ", " + sMsg + ", \"" + aVarTypes.join('", "') + "\"); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":";
-					for (i = 0; i < aNodeArgs.length; i += 1) {
-						value += "; " + aNodeArgs[i] + " = o.vmGetNextInput()";
-					}
-
-					node.pv = value;
-					return node.pv;
-				},
-				*/
 				lineInput: function (node) {
 					return this.input(node); // similar to input but with one arg of type string only
 				},
@@ -1145,7 +1096,7 @@ CodeGeneratorJs.prototype = {
 
 				print: function (node) {
 					var aArgs = node.args,
-						aNodeArgs = [], //fnParseArgs(node.args),
+						aNodeArgs = [],
 						bNewLine = true,
 						oArg, sArg, i;
 
@@ -1153,7 +1104,6 @@ CodeGeneratorJs.prototype = {
 						oArg = aArgs[i];
 						sArg = fnParseOneArg(oArg);
 						if (i === aArgs.length - 1) {
-							//if (oArg.type === ";" || (i && (aArgs[i - 1].type === "spc" || aArgs[i - 1].type === "tab"))) {
 							if (oArg.type === ";" || oArg.type === "," || oArg.type === "spc" || oArg.type === "tab") {
 								bNewLine = false;
 							}

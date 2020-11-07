@@ -27,8 +27,6 @@ BasicFormatter.prototype = {
 
 	reset: function () {
 		this.iLine = 0; // current line (label)
-
-		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
 	},
 
 	composeError: function () { // varargs
@@ -43,7 +41,6 @@ BasicFormatter.prototype = {
 			oLines = {}, // line numbers
 			aRefs = [], // references
 			oChanges = {},
-			//bMergeFound = false, //TODO
 
 			fnCreateLineNumbersMap = function () { // create line numbers map
 				var iLastLine = 0,
@@ -157,25 +154,6 @@ BasicFormatter.prototype = {
 
 		return sInput;
 	},
-
-	/*
-	format: function (sInput) {
-		var oOut = {
-				text: ""
-			},
-			aTokens, aParseTree, sOutput;
-
-		try {
-			aTokens = this.lexer.lex(sInput);
-			aParseTree = this.parser.parse(aTokens);
-			sOutput = sInput; // this.doFormat(aParseTree);
-			oOut.text = sOutput;
-		} catch (e) {
-			oOut.error = e;
-		}
-		return oOut;
-	},
-	*/
 
 	renumber: function (sInput, iNew, iOld, iStep, iKeep) {
 		var oOut = {

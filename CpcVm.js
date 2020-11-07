@@ -261,7 +261,7 @@ CpcVm.prototype = {
 				iNextTimeMs: 0, // next expiration time
 				bHandlerRunning: false, // flag if handler (subroutine) is running
 				iStackIndexReturn: 0, // index in gosub stack with return, if handler is running
-				iSavedPriority: 0 //TTT
+				iSavedPriority: 0 // priority befora calling the handler
 			},
 			aTimer = this.aTimer,
 			aSqTimer = this.aSqTimer,
@@ -929,7 +929,7 @@ CpcVm.prototype = {
 			this.oCanvas.changeMode(iMode); // change mode and interpretation of bytes
 			this.vmCopyToScreen(iAddr, iAddr); // write bytes back to screen memory
 			this.oCanvas.changeMode(iCanvasMode); // keep moe
-			// TODO: new content should still written in old mode but interpreted in new mode
+			// TODO: new content should still be written in old mode but interpreted in new mode
 		}
 	},
 
