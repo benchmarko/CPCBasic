@@ -28,6 +28,10 @@
 
 [![Cryptology 1](./img/crypto1.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=crypto1)
 
+### geogra - Geographics (Erkunde)
+
+[![geogra](./img/geogra.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=geogra) TODO
+
 ### labyrinth - Labyrinth
 
 [![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=labyrinth)
@@ -69,6 +73,10 @@
 ### sphere - Sphere
 
 [![Sphere](./img/sphere.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=sphere)
+
+### Vocabulary Test (Vokabeltest)
+
+[![vocabula](./img/vocabula.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=vocabula) TODO
 
 ## Adventure
 
@@ -205,6 +213,10 @@
 ### ninedig2 - Nine Digits 2 (tokenized BASIC)
 
 [![Nine Digits 2](./img/ninedig2.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=math/ninedig2)
+
+### Quadratic Function
+
+[![Quadratic Function](./img/quadfunc.png)](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=quadfunc) TODO
 
 ### regress - Regression (Ausgleich)
 

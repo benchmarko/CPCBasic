@@ -34,6 +34,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"title": "Cryptology 1"
 	},
 	{
+		"key": "geogra",
+		"title": "Geographics (Erkunde)"
+	},
+	{
 		"key": "labyrinth",
 		"title": "Labyrinth"
 	},
@@ -56,7 +60,11 @@ cpcBasic.addIndex("./examples", function () { /*
 	   {
     	"key": "rastercircle",
 		"title": "Raster Circle"
-    },
+	},
+	    {
+		"key": "rotatio",
+		"title": "Rotatio"
+	},
     {
 		"key": "simple",
 		"title": "Simple Labyrinth"
@@ -67,7 +75,7 @@ cpcBasic.addIndex("./examples", function () { /*
 	},
     {
 		"key": "scrudu.vok",
-		"title": "Scrudu Vokabular",
+		"title": "Scrudu Vocabulary",
 		"meta": "D"
 	},
 	{
@@ -77,6 +85,10 @@ cpcBasic.addIndex("./examples", function () { /*
     {
 		"key": "sphere",
 		"title": "Sphere"
+	},
+    {
+		"key": "vocabula",
+		"title": "Vocabulary Test (Vokabeltest)"
 	},
 	{
     	"key": "advent/advedit",
@@ -271,6 +283,10 @@ cpcBasic.addIndex("./examples", function () { /*
 	{
     	"key": "math/ninedig2",
 		"title": "Nine Digits 2 (tokenized BASIC)"
+	},
+	{
+    	"key": "math/quadfunc",
+		"title": "Quadratic Function (Quadratische Funktion)"
 	},
 	{
     	"key": "math/regress",

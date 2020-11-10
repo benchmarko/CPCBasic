@@ -444,6 +444,9 @@ Controller.prototype = {
 				break;
 			case "\r": // cr (\x0c)
 				break;
+			case "\x10": // DLE (clear character under cursor)
+				sKey = "\x07"; // currently ignore (BEL)
+				break;
 			case "\x7f": // del
 				if (sInput.length) {
 					sInput = sInput.slice(0, -1);
@@ -514,9 +517,8 @@ Controller.prototype = {
 				sKey = ""; // currently ignore
 				break;
 			default:
-				if (sKey >= "\x20") { // no control codes in buffer
-					sInput += sKey;
-				} else {
+				sInput += sKey;
+				if (sKey < "\x20") { // control code
 					sKey = "\x01" + sKey; // print control code (do not execute)
 				}
 				break;
@@ -869,7 +871,9 @@ Controller.prototype = {
 			this.setInputText(sInput);
 			this.view.setAreaValue("resultText", "");
 			iStartLine = oInFile.iLine || 0;
-			this.fnReset();
+			//this.fnReset(); // no!
+			//TTT this.view.setAreaValue("outputText", "");
+			this.invalidateScript();
 			this.fnParseRun();
 			break;
 		case "load":
@@ -887,7 +891,13 @@ Controller.prototype = {
 			this.invalidateScript();
 			this.oVm.vmStop("end", 90);
 			break;
-		case "chain": // TODO: run through... : if we have a line number, make sure it is not optimized away when compiling!
+		case "chain": // TODO: if we have a line number, make sure it is not optimized away when compiling
+			this.setInputText(sInput);
+			this.view.setAreaValue("resultText", "");
+			iStartLine = oInFile.iLine || 0;
+			this.invalidateScript();
+			this.fnParseRun();
+			break;
 		case "run":
 			if (!bPutInMemory) {
 				this.setInputText(sInput);
@@ -1204,14 +1214,15 @@ Controller.prototype = {
 	outputError: function (oError, bNoSelection) {
 		var iStream = 0,
 			sShortError = oError.shortMessage || oError.message,
-			iEndPos;
+			sEscapedShortError, iEndPos;
 
 		if (!bNoSelection) {
 			iEndPos = oError.pos + ((oError.value !== undefined) ? String(oError.value).length : 0);
 			this.view.setAreaSelection("inputText", oError.pos, iEndPos);
 		}
 
-		this.oVm.print(iStream, sShortError + "\r\n");
+		sEscapedShortError = sShortError.replace(/([\x00-\x1f])/g, "\x01$1"); // eslint-disable-line no-control-regex
+		this.oVm.print(iStream, sEscapedShortError + "\r\n");
 		return sShortError;
 	},
 
