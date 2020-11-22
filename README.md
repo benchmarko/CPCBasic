@@ -207,13 +207,44 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
   An example with a large BASIC program:
 [sultans2 parsing](https://benchmarko.github.io/CPCBasic/cpcbasic.html?bench=5&database=apps&example=games/sultan2) (Check the console in the browser developer tools).
 
+## URL parameters
+
+- bench=0 (only for debugging: number of parse bench loops)
+- debug=0 (debug level)
+- databaseDirs=examples (example base directories, comma separated)
+- database=examples
+- example=cpcbasic
+- exampleIndex=0index.js (example index file in every entry of exampleDirs)
+- input= (keyboard input when starting the app, use %0D for return)
+- kbdLayout=alphanum (virtual keyboard layout: alphanum, alpha, num)
+- showInput=true
+- showInp2=alse
+- showCpc=true
+- showKbd=false
+- showKbdLayout=false
+- showOutput=false
+- showResult=false
+- showText=false
+- showVariable=false
+- showConsole=false
+- sound=true
+- tron=false (if set to true, allows to use *TRON*, *TROFF*)
+
+(Some URL parameters are experimental and may change.)
+
 ## Development, Testing
 
-QUnit test [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/testsuite.qunit.html) runs:
+QUnit tests:
 
 - [BasicParser.qunit.html](https://benchmarko.github.io/CPCBasic/test/BasicParser.qunit.html)
+- [CodeGeneratorBasic.qunit.html](https://benchmarko.github.io/CPCBasic/test/CodeGeneratorBasic.qunit.html)
 - [Model.qunit.html](https://benchmarko.github.io/CPCBasic/test/Model.qunit.html)
-- To be done
+- [testParseExamples.qunit.html](https://benchmarko.github.io/CPCBasic/test/testParseExamples.qunit.html) (parse all examples)
+- [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/testsuite.qunit.html) (run all tests)
+
+IFrames test:
+
+- [testIFrames.qunit.html](https://benchmarko.github.io/CPCBasic/test/testIFrames.qunit.html) (CPCBasic in IFrames)
 
 ## Possible Future Enhancements
 

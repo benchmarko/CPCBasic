@@ -391,7 +391,7 @@ DiskImage.prototype = {
 		for (sName in oDir) {
 			if (oDir.hasOwnProperty(sName)) {
 				aFileExtents = oDir[sName];
-				aFileExtents = aFileExtents.sort(fnSortByExtentNumber);
+				aFileExtents.sort(fnSortByExtentNumber);
 			}
 		}
 	},

@@ -357,6 +357,14 @@ CpcVm.prototype = {
 		this.iStartLine = iLine;
 	},
 
+	vmOnBreakContSet: function () {
+		return this.iBreakGosubLine < 0; // on break cont
+	},
+
+	vmOnBreakHandlerActive: function () {
+		return this.iBreakResumeLine;
+	},
+
 	vmEscape: function () {
 		var bStop = true;
 

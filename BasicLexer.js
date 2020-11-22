@@ -21,7 +21,7 @@ function BasicLexer(options) {
 
 BasicLexer.prototype = {
 	init: function (options) {
-		this.options = options || {};
+		this.options = options || {}; // e.g. bQuiet
 		this.reset();
 	},
 
@@ -210,7 +210,9 @@ BasicLexer.prototype = {
 						sChar = "";
 						sToken = advanceWhile(isNotQuotes);
 						if (!isQuotes(sChar)) {
-							Utils.console.log(that.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
+							if (!that.options.bQuiet) {
+								Utils.console.log(that.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
+							}
 						}
 						sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes
 						sToken = hexEscape(sToken);
@@ -305,7 +307,9 @@ BasicLexer.prototype = {
 
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					Utils.console.log(this.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
+					if (!that.options.bQuiet) {
+						Utils.console.log(this.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
+					}
 					sToken += fnTryContinueString(); // heuristic to detect an LF in the string
 				}
 				sToken = sToken.replace(/\\/g, "\\\\"); // escape backslashes

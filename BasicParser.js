@@ -248,7 +248,7 @@ BasicParser.mCloseTokens = {
 
 BasicParser.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. tron
+		this.options = options || {}; // e.g. tron, bQuiet
 
 		this.reset();
 	},
@@ -698,7 +698,9 @@ BasicParser.prototype = {
 				advance(oBracketClose ? oBracketClose.type : ")");
 				aArgs.push(oBracketClose);
 				if (oBrackets[oBracketOpen.type] !== oBracketClose.type) {
-					Utils.console.warn(that.composeError(Error(), "Inconsistent bracket style", oPreviousToken.value, oToken.pos));
+					if (!that.options.bQuiet) {
+						Utils.console.warn(that.composeError({}, "Inconsistent bracket style", oPreviousToken.value, oPreviousToken.pos).message);
+					}
 				}
 				return aArgs;
 			},
@@ -1099,40 +1101,14 @@ BasicParser.prototype = {
 			return oValue;
 		});
 
-		/*
-		stmt("else", function () {
-			var oValue = oPreviousToken,
-				oString = {
-					type: "string",
-					value: "else",
-					pos: oToken.pos
-				};
-
-			oValue.type = "rem"; // create a comment form else
-			oValue.args = [];
-
-			Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oToken.type, oToken.pos).message);
-
-			// TODO: data line as separate statement is taken
-			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
-				if (oToken.value) {
-					oString.value += " " + oToken.value;
-				}
-				advance(oToken.type);
-			}
-
-			oValue.args.push(oString);
-
-			return oValue;
-		});
-		*/
-
 		stmt("else", function () { // simular to a comment, normally not used
 			var oValue = oPreviousToken;
 
 			oValue.args = [];
 
-			Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oPreviousToken.type, oPreviousToken.pos).message);
+			if (!that.options.bQuiet) {
+				Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oPreviousToken.type, oPreviousToken.pos).message);
+			}
 
 			// TODO: data line as separate statement is taken
 			while (oToken.type !== "(eol)" && oToken.type !== "(end)") {
@@ -1264,7 +1240,9 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.right = statements("else");
 					if (oValue.right.length && oValue.right[0].type !== "rem") {
-						Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
+						if (!that.options.bQuiet) {
+							Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
+						}
 					}
 					oValue.right.unshift(oValue2);
 				} else {
@@ -1280,7 +1258,9 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					oValue.third = statements("else");
 					if (oValue.third.length) {
-						Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
+						if (!that.options.bQuiet) {
+							Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
+						}
 					}
 					oValue.third.unshift(oValue2);
 				} else if (oToken.type === "if") {

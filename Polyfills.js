@@ -1,6 +1,8 @@
 // Polyfills.js - Some Polyfills for old browsers, e.g. IE8
 //
 
+/* globals globalThis */
+
 "use strict";
 
 var Utils;
@@ -31,6 +33,10 @@ if (!Utils.console.debug) { // IE8 has no console.debug
 	Utils.console.debug("Polyfill: window.console.debug");
 }
 
+if ((typeof globalThis !== "undefined") && !globalThis.window) { // nodeJS
+	Utils.console.debug("Polyfill: window");
+	globalThis.window = {};
+}
 
 if (!Array.prototype.indexOf) { // IE8
 	Array.prototype.indexOf = function (element, iFrom) { // eslint-disable-line no-extend-native
@@ -75,30 +81,34 @@ if (!Array.prototype.map) { // IE8
 	};
 }
 
-if (!Element.prototype.addEventListener) { // IE8
-	Utils.console.debug("Polyfill: Element.prototype.addEventListener");
-	Element.prototype.addEventListener = function (e, callback) {
-		e = "on" + e;
-		return this.attachEvent(e, callback);
-	};
+if (window.Element) {
+	if (!Element.prototype.addEventListener) { // IE8
+		Utils.console.debug("Polyfill: Element.prototype.addEventListener");
+		Element.prototype.addEventListener = function (e, callback) {
+			e = "on" + e;
+			return this.attachEvent(e, callback);
+		};
+	}
+
+	if (!Element.prototype.removeEventListener) { // IE8
+		Utils.console.debug("Polyfill: Element.prototype.removeEventListener");
+		Element.prototype.removeEventListener = function (e, callback) {
+			e = "on" + e;
+			return this.detachEvent(e, callback);
+		};
+	}
 }
 
-if (!Element.prototype.removeEventListener) { // IE8
-	Utils.console.debug("Polyfill: Element.prototype.removeEventListener");
-	Element.prototype.removeEventListener = function (e, callback) {
-		e = "on" + e;
-		return this.detachEvent(e, callback);
-	};
-}
+if (window.Event) {
+	if (!Event.prototype.preventDefault) { // IE8
+		Utils.console.debug("Polyfill: Event.prototype.preventDefault");
+		Event.prototype.preventDefault = function () {	}; // eslint-disable-line no-empty-function
+	}
 
-if (!Event.prototype.preventDefault) { // IE8
-	Utils.console.debug("Polyfill: Event.prototype.preventDefault");
-	Event.prototype.preventDefault = function () {	}; // eslint-disable-line no-empty-function
-}
-
-if (!Event.prototype.stopPropagation) { // IE8
-	Utils.console.debug("Polyfill: Event.prototype.stopPropagation");
-	Event.prototype.stopPropagation = function () {	}; // eslint-disable-line no-empty-function
+	if (!Event.prototype.stopPropagation) { // IE8
+		Utils.console.debug("Polyfill: Event.prototype.stopPropagation");
+		Event.prototype.stopPropagation = function () {	}; // eslint-disable-line no-empty-function
+	}
 }
 
 if (!Date.now) { // IE8
@@ -109,83 +119,85 @@ if (!Date.now) { // IE8
 }
 
 
-if (!document.addEventListener) {
-	// or check: https://gist.github.com/fuzzyfox/6762206
-	Utils.console.debug("Polyfill: document.addEventListener, removeEventListener");
-	if (document.attachEvent) {
-		(function () {
-			var eventListeners = [];
+if (window.document) {
+	if (!document.addEventListener) {
+		// or check: https://gist.github.com/fuzzyfox/6762206
+		Utils.console.debug("Polyfill: document.addEventListener, removeEventListener");
+		if (document.attachEvent) {
+			(function () {
+				var eventListeners = [];
 
-			document.addEventListener = function (sEvent, fnHandler) {
-				var fnFindCaret = function (event) {
-						var oRange, oRange2;
+				document.addEventListener = function (sEvent, fnHandler) {
+					var fnFindCaret = function (event) {
+							var oRange, oRange2;
 
-						if (document.selection) {
-							event.target.focus();
-							oRange = document.selection.createRange();
-							oRange2 = oRange.duplicate();
-							if (oRange2.moveToElementTxt) { // not on IE8
-								oRange2.moveToElementTxt(event.target);
+							if (document.selection) {
+								event.target.focus();
+								oRange = document.selection.createRange();
+								oRange2 = oRange.duplicate();
+								if (oRange2.moveToElementTxt) { // not on IE8
+									oRange2.moveToElementTxt(event.target);
+								}
+								oRange2.setEndPoint("EndToEnd", oRange);
+								event.target.selectionStart = oRange2.text.length - oRange.text.length;
+								event.target.selectionEnd = event.target.selectionStart + oRange.text.length;
 							}
-							oRange2.setEndPoint("EndToEnd", oRange);
-							event.target.selectionStart = oRange2.text.length - oRange.text.length;
-							event.target.selectionEnd = event.target.selectionStart + oRange.text.length;
-						}
-					},
-					fnOnEvent = function (event) {
-						event = event || window.event;
-						event.target = event.target || event.srcElement;
-						if (event.type === "click" && event.target && event.target.tagName === "TEXTAREA") {
-							fnFindCaret(event);
-						}
-						fnHandler(event);
-						return false;
-					},
-					aElements, i;
+						},
+						fnOnEvent = function (event) {
+							event = event || window.event;
+							event.target = event.target || event.srcElement;
+							if (event.type === "click" && event.target && event.target.tagName === "TEXTAREA") {
+								fnFindCaret(event);
+							}
+							fnHandler(event);
+							return false;
+						},
+						aElements, i;
 
-				// The change event is not bubbled and fired on document for old IE8. So attach it to every select tag
-				if (sEvent === "change") {
-					aElements = document.getElementsByTagName("select");
-					for (i = 0; i < aElements.length; i += 1) {
-						aElements[i].attachEvent("on" + sEvent, fnOnEvent);
-						eventListeners.push({ //TTT does this work?
+					// The change event is not bubbled and fired on document for old IE8. So attach it to every select tag
+					if (sEvent === "change") {
+						aElements = document.getElementsByTagName("select");
+						for (i = 0; i < aElements.length; i += 1) {
+							aElements[i].attachEvent("on" + sEvent, fnOnEvent);
+							eventListeners.push({ //TTT does this work?
+								object: this,
+								sEvent: sEvent,
+								fnHandler: fnHandler,
+								fnOnEvent: fnOnEvent
+							});
+						}
+					} else { // e.g. "Click"
+						document.attachEvent("on" + sEvent, fnOnEvent);
+						eventListeners.push({
 							object: this,
 							sEvent: sEvent,
 							fnHandler: fnHandler,
 							fnOnEvent: fnOnEvent
 						});
 					}
-				} else { // e.g. "Click"
-					document.attachEvent("on" + sEvent, fnOnEvent);
-					eventListeners.push({
-						object: this,
-						sEvent: sEvent,
-						fnHandler: fnHandler,
-						fnOnEvent: fnOnEvent
-					});
-				}
-			};
+				};
 
-			document.removeEventListener = function (sEvent, fnHandler) {
-				var counter = 0,
-					eventListener;
+				document.removeEventListener = function (sEvent, fnHandler) {
+					var counter = 0,
+						eventListener;
 
-				while (counter < eventListeners.length) {
-					eventListener = eventListeners[counter];
-					if (eventListener.object === this && eventListener.sEvent === sEvent && eventListener.fnHandler === fnHandler) {
-						this.detachEvent("on" + sEvent, eventListener.fnOnEvent);
-						eventListeners.splice(counter, 1);
-						break;
+					while (counter < eventListeners.length) {
+						eventListener = eventListeners[counter];
+						if (eventListener.object === this && eventListener.sEvent === sEvent && eventListener.fnHandler === fnHandler) {
+							this.detachEvent("on" + sEvent, eventListener.fnOnEvent);
+							eventListeners.splice(counter, 1);
+							break;
+						}
+						counter += 1;
 					}
-					counter += 1;
-				}
-			};
-		}());
-	} else {
-		Utils.console.log("No document.attachEvent found."); // will be ignored
-		// debug: trying to fix
-		if (document.__proto__.addEventListener) { // eslint-disable-line no-proto
-			document.addEventListener = document.__proto__.addEventListener; // eslint-disable-line no-proto
+				};
+			}());
+		} else {
+			Utils.console.log("No document.attachEvent found."); // will be ignored
+			// debug: trying to fix
+			if (document.__proto__.addEventListener) { // eslint-disable-line no-proto
+				document.addEventListener = document.__proto__.addEventListener; // eslint-disable-line no-proto
+			}
 		}
 	}
 }

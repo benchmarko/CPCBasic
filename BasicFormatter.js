@@ -135,7 +135,7 @@ BasicFormatter.prototype = {
 				var aKeys = Object.keys(oChanges),
 					i, oLine;
 
-				aKeys = aKeys.sort(fnSorter);
+				aKeys.sort(fnSorter);
 
 				// apply changes to input in reverse order
 				for (i = aKeys.length - 1; i >= 0; i -= 1) {

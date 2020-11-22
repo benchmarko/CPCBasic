@@ -479,3 +479,8 @@ BasicTokenizer.prototype = {
 		return fnParseProgram();
 	}
 };
+
+
+if (typeof module !== "undefined" && module.exports) {
+	module.exports = BasicTokenizer;
+}

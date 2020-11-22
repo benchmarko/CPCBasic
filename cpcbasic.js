@@ -17,6 +17,7 @@ cpcBasic = {
 		database: "examples", // examples, apps, saved
 		example: "cpcbasic",
 		exampleIndex: "0index.js", // example index for every exampleDir
+		input: "", // keyboard input when starting the app
 		kbdLayout: "alphanum", // alphanum, alpha, num
 		showInput: true,
 		showInp2: false,

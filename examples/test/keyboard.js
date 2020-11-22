@@ -19,7 +19,7 @@ cpcBasic.addItem("", function () { /*
 230 if x<>0 or x<>joys(i) then print "joy";i,x:joys(i)=x
 240 next
 250 t$=inkey$
-260 if t$<>"" then print #1,"char=";chr$(1);t$;" ";asc(t$)
+260 if t$<>"" then print #1,"char=";chr$(1);t$;" ";asc(t$); " &";hex$(asc(t$),2)
 270 call &bd19
 280 goto 170
 */ });

@@ -18,7 +18,7 @@ function CodeGeneratorJs(options) {
 
 CodeGeneratorJs.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. tron, rsx
+		this.options = options || {}; // e.g. tron (trace on flag), rsx (optional RSX names to check), bQuiet
 
 		this.lexer = this.options.lexer;
 		this.parser = this.options.parser;
@@ -457,14 +457,16 @@ CodeGeneratorJs.prototype = {
 					var sRsxName, bRsxAvailable, aNodeArgs, sLabel, oError;
 
 					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_");
-					bRsxAvailable = that.options.rsx.rsxIsAvailable(sRsxName);
+					bRsxAvailable = that.options.rsx && that.options.rsx.rsxIsAvailable(sRsxName);
 					aNodeArgs = fnParseArgs(node.args);
 					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
 					that.iStopCount += 1;
 
 					if (!bRsxAvailable) { // if RSX not available, we delay the error until it is executed (or catched by on error goto)
-						oError = that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
-						Utils.console.warn(oError);
+						if (!that.options.bQuiet) {
+							oError = that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
+							Utils.console.warn(oError);
+						}
 						aNodeArgs.unshift('"' + sRsxName + '"'); // put as first arg
 						sRsxName = "rsxExec"; // and call special handler which triggers error if not available
 					}

@@ -1,4 +1,3 @@
-/* eslint-disable spaced-comment */
 // Controller.js - Controller
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
@@ -53,6 +52,8 @@ Controller.prototype = {
 
 		this.bTimeoutHandlerActive = false;
 		this.iNextLoopTimeOut = 0; // next timeout for the main loop
+
+		this.bInputSet = false;
 
 		this.oVariables = new Variables();
 
@@ -177,9 +178,7 @@ Controller.prototype = {
 
 		sInput = input.replace(/^\n/, ""); // remove preceding newline
 		sInput = sInput.replace(/\n$/, ""); // remove trailing newline
-		// beware of data files ending with newlines!
-
-		//sInput = sInput.trimEnd();// no!
+		// beware of data files ending with newlines! (no trimEnd)
 
 		if (!sKey) {
 			sKey = this.model.getProperty("example");
@@ -281,7 +280,7 @@ Controller.prototype = {
 			oItem.text = oItem.title;
 			aItems.push(oItem);
 		}
-		aItems = aItems.sort(fnSortByStringProperties);
+		aItems.sort(fnSortByStringProperties);
 		this.view.setSelectOptions(sSelect, aItems);
 	},
 
@@ -308,7 +307,6 @@ Controller.prototype = {
 					oExample = {
 						key: sKey,
 						title: "", // or set sKey?
-						//meta: sData.charAt(this.sMetaIdent.length + 1) // currently we take only the type
 						meta: oData.oMeta.sType // currently we take only the type
 					};
 					this.model.setExample(oExample);
@@ -354,9 +352,9 @@ Controller.prototype = {
 			iStream = 0,
 			sMsg, oSavedStop;
 
-		if (this.oVm.iBreakGosubLine < 0) { //TTT on break cont?  fast hack to access iBreakGosubLine
+		if (this.oVm.vmOnBreakContSet()) {
 			// ignore break
-		} else if (oStop.sReason === "direct" || this.oVm.iBreakResumeLine) { //TTT fast hack to access iBreakResumeLine
+		} else if (oStop.sReason === "direct" || this.oVm.vmOnBreakHandlerActive()) {
 			if (!oStop.oParas) {
 				oStop.oParas = {};
 			}
@@ -420,7 +418,6 @@ Controller.prototype = {
 			Utils.console.log("Wait for key:", sKey);
 			this.oVm.vmStop("", 0, true);
 			this.oKeyboard.setKeyDownHandler(null);
-			//this.startMainLoop();
 		} else {
 			this.fnWaitSound(); // sound and blinking events
 			this.oKeyboard.setKeyDownHandler(this.fnWaitKeyHandler); // wait until keypress handler (for call &bb18)
@@ -544,7 +541,7 @@ Controller.prototype = {
 				if (oStop.sReason === "waitInput") { // only for this reason
 					this.oVm.vmStop("", 0, true); // no more wait
 				} else {
-					this.startContinue(); //TTT
+					this.startContinue();
 				}
 			}
 		}
@@ -679,7 +676,7 @@ Controller.prototype = {
 		}
 
 		if (bSort) {
-			aDir = aDir.sort();
+			aDir.sort();
 		}
 
 		this.oVm.print(iStream, "\r\n");
@@ -871,8 +868,6 @@ Controller.prototype = {
 			this.setInputText(sInput);
 			this.view.setAreaValue("resultText", "");
 			iStartLine = oInFile.iLine || 0;
-			//this.fnReset(); // no!
-			//TTT this.view.setAreaValue("outputText", "");
 			this.invalidateScript();
 			this.fnParseRun();
 			break;
@@ -932,7 +927,6 @@ Controller.prototype = {
 				}
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
-				//TTT we no not use oExample.meta any more
 				that.oVm.vmStop("", 0, true);
 				that.loadFileContinue(sInput);
 			},
@@ -990,7 +984,7 @@ Controller.prototype = {
 			} else {
 				this.model.setProperty("example", sExample);
 				this.oVm.vmStop("", 0, true);
-				this.loadFileContinue(""); //TTT empty input?
+				this.loadFileContinue(""); // empty input?
 			}
 		}
 	},
@@ -1353,7 +1347,7 @@ Controller.prototype = {
 			this.setInputText(sOutput, true);
 			this.fnPutChangedInputOnStack();
 
-			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); //TTT
+			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); //TTT: for testing
 			this.view.setAreaValue("outputText", sDiff);
 		}
 		if (sOutput && sOutput.length > 0) {
@@ -1408,6 +1402,10 @@ Controller.prototype = {
 			oVm.clear(); // we do a clear as well here
 		}
 		oVm.vmReset4Run();
+		if (!this.bInputSet) {
+			this.bInputSet = true;
+			this.oKeyboard.putKeysInBuffer(this.model.getProperty("input"));
+		}
 
 		if (this.fnScript) {
 			oVm.sOut = this.view.getAreaValue("resultText");
@@ -1634,7 +1632,7 @@ Controller.prototype = {
 			this[sHandler](oStop.oParas);
 		} else {
 			Utils.console.warn("runLoop: Unknown run mode:", oStop.sReason);
-			this.oVm.vmStop("error", 55); //TTT
+			this.oVm.vmStop("error", 55);
 		}
 
 		if (oStop.sReason && oStop.sReason !== "waitSound" && oStop.sReason !== "waitKey" && oStop.sReason !== "waitInput") {
@@ -1717,7 +1715,7 @@ Controller.prototype = {
 		this.view.setDisabled("runButton", true);
 		this.view.setDisabled("stopButton", false);
 		this.view.setDisabled("continueButton", true);
-		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop" || oStop.sReason === "direct" /*TTT || oStop.sReason === "waitInput" */) {
+		if (oStop.sReason === "break" || oStop.sReason === "escape" || oStop.sReason === "stop" || oStop.sReason === "direct") {
 			if (!oSavedStop.fnInputCallback) { // no keyboard callback? make sure no handler is set (especially for direct->continue)
 				this.oKeyboard.setKeyDownHandler(null);
 			}
@@ -2059,7 +2057,7 @@ Controller.prototype = {
 	},
 
 	// currently not used. Can be called manually: cpcBasic.controller.exportAsBase64(file);
-	exportAsBase64: function (sStorageName) {
+	exportAsBase64: function (sStorageName) { //TTT
 		var oStorage = Utils.localStorage,
 			sData = oStorage.getItem(sStorageName),
 			sOut = "",
@@ -2078,7 +2076,7 @@ Controller.prototype = {
 				sOut = "base64," + sData;
 			}
 		}
-		Utils.console.log(sOut); //TTT
+		Utils.console.log(sOut);
 		return sOut;
 	}
 };

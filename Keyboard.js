@@ -826,7 +826,7 @@ Keyboard.prototype = {
 					}
 				} else { // ascii code
 					sKey = String.fromCharCode(iExpKey);
-					this.putKeyInBuffer(sKey.charAt(i));
+					this.putKeyInBuffer(sKey.charAt(0));
 				}
 				sKey = ""; // already done, ignore sKey form keyboard
 			}
@@ -986,6 +986,15 @@ Keyboard.prototype = {
 
 	putKeyInBuffer: function (sKey) {
 		this.aKeyBuffer.push(sKey);
+	},
+
+	putKeysInBuffer: function (sInput) {
+		var i, sKey;
+
+		for (i = 0; i < sInput.length; i += 1) {
+			sKey = sInput.charAt(i);
+			this.aKeyBuffer.push(sKey);
+		}
 	},
 
 	getKeyState: function (iCpcKey) {
