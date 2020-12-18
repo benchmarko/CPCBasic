@@ -574,8 +574,8 @@ DiskImage.prototype = {
 			if (iComputed === iSum) {
 				oHeader = {
 					iUser: sData.charCodeAt(0),
-					iName: sData.substr(1, 8),
-					iExt: sData.substr(9, 2),
+					sName: sData.substr(1, 8),
+					sExt: sData.substr(9, 2),
 					iType: sData.charCodeAt(18),
 					iStart: sData.charCodeAt(21) + sData.charCodeAt(22) * 256,
 					iPseudoLen: sData.charCodeAt(24) + sData.charCodeAt(25) * 256,

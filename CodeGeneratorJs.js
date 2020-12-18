@@ -579,6 +579,7 @@ CodeGeneratorJs.prototype = {
 					if (node.pt) {
 						if (node.left.pt === "I" && node.right.pt === "R") {
 							sValue = "o.vmRound(" + value + ")";
+							node.pt = "I"; // "R" => "I"
 						} else {
 							sValue = value;
 						}
@@ -688,10 +689,15 @@ CodeGeneratorJs.prototype = {
 					sExpression = fnParseOneArg(node.right);
 					oDevScopeArgs = null;
 
-					fnPropagateStaticTypes(node, node.left, node.value, "II RR IR RI $$");
+					fnPropagateStaticTypes(node, node.left, node.right, "II RR IR RI $$");
 					sVarType = fnDetermineStaticVarType(sName);
 					if (node.pt) {
-						sValue = sExpression;
+						if (node.left.pt === "I" && node.right.pt === "R") { // special handing for IR: rounding needed
+							sValue = "o.vmRound(" + sExpression + ")";
+							node.pt = "I"; // "R" => "I"
+						} else {
+							sValue = sExpression;
+						}
 					} else {
 						sValue = "o.vmAssign(\"" + sVarType + "\", " + sExpression + ")";
 					}
@@ -1401,7 +1407,8 @@ CodeGeneratorJs.prototype = {
 				return sData;
 			},
 			oOut = {
-				text: ""
+				text: "",
+				error: undefined
 			},
 			aTokens, aParseTree, sOutput;
 

@@ -9,6 +9,10 @@ CPCBasic Links:
 [Source code](https://github.com/benchmarko/CPCBasic/),
 [HTML Readme](https://github.com/benchmarko/CPCBasic/#readme),
 
+There is also a TypeScript implementation of CPCBasic:
+[CPCBasicTS Demo](https://benchmarko.github.io/CPCBasicTS/?example=cpcbasic),
+[CPCBasicTS Source](https://github.com/benchmarko/CPCBasicTS/)
+
 ## Features
 
 - Run old an new BASIC programs in a browser
@@ -249,7 +253,7 @@ IFrames test:
 ## Possible Future Enhancements
 
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
-- Save and restore snapshot of variables, also system varaibles
+- Save and restore snapshot of variables, including system variables
 - RSX extension libraries / plugins programmed in JavaScript
 - Can we detect busy loops and insert *FRAME* automatically?
 - Shall we support hardware scrolling with *OUT* or is it already a hardware emulation feature?

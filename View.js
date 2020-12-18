@@ -2,15 +2,20 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
-/* globals Utils */
 
 "use strict";
+
+var Utils;
+
+if (typeof require !== "undefined") {
+	Utils = require("./Utils.js"); // eslint-disable-line global-require
+}
 
 function View(options) {
 	this.init(options);
 }
 
-View.fnEventHandler = null;
+//View.fnEventHandler = null;
 
 View.prototype = {
 	init: function (/* options */) {

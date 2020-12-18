@@ -60,7 +60,7 @@ var Utils = {
 						iTimeout = 200; // some delay
 						Utils.console.error("onScriptReadyStateChange: Still loading: " + (node.src || node.href) + " Waiting " + iTimeout + "ms (count=" + iIEtimeoutCount + ")");
 						setTimeout(function () {
-							onScriptReadyStateChange(); // check again
+							onScriptReadyStateChange(null); // check again
 						}, iTimeout);
 					} else {
 						// iIEtimeoutCount = 3;

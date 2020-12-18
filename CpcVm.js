@@ -704,7 +704,7 @@ CpcVm.prototype = {
 				aFormat = sFormat.split(".", 2);
 				iDecimals = aFormat[1].length;
 				// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
-				arg = Number(Math.round(arg + "e" + iDecimals) + "e-" + iDecimals);
+				arg = Number(Math.round(Number(arg + "e" + iDecimals)) + "e-" + iDecimals);
 				arg = arg.toFixed(iDecimals);
 			}
 			if (sFormat.indexOf(",") >= 0) { // contains comma => insert thousands separator
@@ -910,7 +910,7 @@ CpcVm.prototype = {
 	bin$: function (n, iPad) {
 		n = this.vmInRangeRound(n, -32768, 65535, "BIN$");
 		iPad = this.vmInRangeRound(iPad || 0, 0, 16, "BIN$");
-		return n.toString(2).padStart(iPad || 16, 0);
+		return n.toString(2).padStart(iPad || 16, "0");
 	},
 
 	border: function (iInk1, iInk2) { // ink2 optional
@@ -1876,7 +1876,7 @@ CpcVm.prototype = {
 			iToken -= 128;
 		}
 		iToken = this.vmInRangeRound(iToken, 0, 31, "KEY"); // round again, but we want the check
-		this.vmAssertString(s);
+		this.vmAssertString(s, "KEY");
 		this.oKeyboard.setExpansionToken(iToken, s);
 	},
 
@@ -1900,7 +1900,7 @@ CpcVm.prototype = {
 	},
 
 	left$: function (s, iLen) {
-		this.vmAssertString(s);
+		this.vmAssertString(s, "LEFT$");
 		iLen = this.vmInRangeRound(iLen, 0, 255, "LEFT$");
 		return s.substr(0, iLen);
 	},
@@ -2347,7 +2347,7 @@ CpcVm.prototype = {
 			this.vmSetCrtcData(iByte);
 			this.aCrtcData[this.iCrtcReg] = iByte;
 		} else if (Utils.debug > 0) {
-			Utils.console.debug("OUT", Number(iPort).toString(16, 4), iByte, ": unknown port");
+			Utils.console.debug("OUT", Number(iPort).toString(16), iByte, ": unknown port");
 		}
 	},
 
@@ -3053,7 +3053,7 @@ CpcVm.prototype = {
 	},
 
 	right$: function (s, iLen) {
-		this.vmAssertString(s);
+		this.vmAssertString(s, "RIGHT$");
 		iLen = this.vmInRangeRound(iLen, 0, 255, "RIGHT$");
 		return s.slice(-iLen);
 	},
@@ -3081,7 +3081,7 @@ CpcVm.prototype = {
 		iDecimals = this.vmInRangeRound(iDecimals || 0, -39, 39, "ROUND");
 
 		// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
-		return Number(Math.round(n + "e" + iDecimals) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
+		return Number(Math.round(Number(n + "e" + iDecimals)) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
 	},
 
 	vmRunCallback: function (sInput, oMeta) {
@@ -3364,7 +3364,7 @@ CpcVm.prototype = {
 		this.oCanvas.resetCustomChars();
 		if (iChar === 256) { // maybe move up again
 			iMinCharHimem = this.iMaxHimem;
-			this.MaxCharHimem = iMinCharHimem;
+			this.iMaxCharHimem = iMinCharHimem; //TTT corrected
 		}
 		// TODO: Copy char data to screen memory, if screen starts at 0x4000 and chardata is in that range (and ram 0 is selected)
 		this.iMinCustomChar = iChar;

@@ -128,14 +128,14 @@ BasicFormatter.prototype = {
 					}
 				}
 			},
-			fnSorter = function (a, b) {
-				return a.pos >= b.pos;
+			fnSortNumbers = function (a, b) {
+				return a - b;
 			},
 			fnApplyChanges = function () {
-				var aKeys = Object.keys(oChanges),
+				var aKeys = Object.keys(oChanges).map(Number),
 					i, oLine;
 
-				aKeys.sort(fnSorter);
+				aKeys.sort(fnSortNumbers);
 
 				// apply changes to input in reverse order
 				for (i = aKeys.length - 1; i >= 0; i -= 1) {
@@ -157,7 +157,8 @@ BasicFormatter.prototype = {
 
 	renumber: function (sInput, iNew, iOld, iStep, iKeep) {
 		var oOut = {
-				text: ""
+				text: "",
+				error: undefined
 			},
 			aTokens, aParseTree, sOutput;
 

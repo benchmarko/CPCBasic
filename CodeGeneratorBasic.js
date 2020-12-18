@@ -656,7 +656,8 @@ CodeGeneratorBasic.prototype = {
 
 	generate: function (sInput, oVariables, bAllowDirect) {
 		var oOut = {
-				text: ""
+				text: "",
+				error: undefined
 			},
 			aTokens, aParseTree, sOutput;
 

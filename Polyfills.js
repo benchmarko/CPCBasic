@@ -231,7 +231,8 @@ if (!Function.prototype.bind) { // IE8
 if (!Math.sign) { // IE11
 	Utils.console.debug("Polyfill: Math.sign");
 	Math.sign = function (x) {
-		return ((x > 0) - (x < 0)) || +x; // eslint-disable-line no-implicit-coercion
+		//return ((x > 0) - (x < 0)) || +x; // eslint-disable-line no-implicit-coercion
+		return (Number(x > 0) - Number(x < 0)) || Number(x);
 	};
 }
 
@@ -547,6 +548,10 @@ if (!window.JSON) { // simple polyfill for JSON.parse only
 			var oJson = eval("(" + sText + ")"); // eslint-disable-line no-eval
 
 			return oJson;
+		},
+		stringify: function (o) {
+			Utils.console.error("Not implemented: window.JSON.stringify");
+			return String(o);
 		}
 	};
 }

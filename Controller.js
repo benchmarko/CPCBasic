@@ -156,7 +156,7 @@ Controller.prototype = {
 
 	onUserAction: function (/* event, sId */) {
 		this.commonEventHandler.fnDeactivateUserAction();
-		this.oSound.setActivatedByUser(true);
+		this.oSound.setActivatedByUser();
 		this.setSoundActive();
 	},
 
@@ -943,7 +943,7 @@ Controller.prototype = {
 					that.oVm.vmStop("", 0, true); // clear onError
 				}
 				that.outputError(oError, true);
-				that.loadFileContinue(null, oError);
+				that.loadFileContinue(null);
 			};
 
 		sName = oInFile.sName;
@@ -1047,7 +1047,7 @@ Controller.prototype = {
 				this.loadExample(sName);
 			}
 		} else {
-			Utils.console.error("fnFileLoad:", sName, "File not open!");
+			Utils.console.error("fnFileLoad:", oInFile.sName, "File not open!"); // hopefully isName is defined
 		}
 		this.iNextLoopTimeOut = this.oVm.vmGetTimeUntilFrame(); // wait until next frame
 	},
@@ -1076,9 +1076,9 @@ Controller.prototype = {
 
 				oMeta = {
 					sType: aMeta[1],
-					iStart: aMeta[2],
-					iLength: aMeta[3],
-					iEntry: aMeta[4],
+					iStart: Number(aMeta[2]),
+					iLength: Number(aMeta[3]),
+					iEntry: Number(aMeta[4]),
 					sEncoding: aMeta[5]
 				};
 			}
@@ -1151,7 +1151,7 @@ Controller.prototype = {
 					this.outputError(oError, true);
 					break;
 				}
-				aLines[i] = iLine; // keep just the line numbers
+				aLines[i] = String(iLine); // keep just the line numbers
 			}
 			if (!oError) {
 				sInput = aLines.join("\n");
@@ -1766,6 +1766,32 @@ Controller.prototype = {
 		this.view.setAreaValue("inp2Text", "");
 	},
 
+	generateFunction: function (sPar, sFunction) {
+		var aArgs = [],
+			iFirstIndex, iLastIndex, aMatch, fnFunction;
+
+		if (sFunction.startsWith("function anonymous(")) { // already a modified function (inside an anonymous function)?
+			iFirstIndex = sFunction.indexOf("{");
+			iLastIndex = sFunction.lastIndexOf("}");
+			if (iFirstIndex >= 0 && iLastIndex >= 0) {
+				sFunction = sFunction.substring(iFirstIndex + 1, iLastIndex - 1); // remove anonymous function
+			}
+			sFunction = sFunction.trim();
+		} else {
+			sFunction = "var o=cpcBasic.controller.oVm, v=o.vmGetAllVariables(); v." + sPar + " = " + sFunction;
+		}
+
+		aMatch = (/function \(([^)]*)/).exec(sFunction);
+		if (aMatch) {
+			aArgs = aMatch[1].split(",");
+		}
+
+		fnFunction = new Function(aArgs[0], aArgs[1], aArgs[2], aArgs[3], aArgs[4], sFunction); // eslint-disable-line no-new-func
+		// we support at most 5 arguments
+
+		return fnFunction;
+	},
+
 	changeVariable: function () {
 		var sPar = this.view.getSelectValue("varSelect"),
 			sValue = this.view.getSelectValue("varText"),
@@ -1773,9 +1799,14 @@ Controller.prototype = {
 			sVarType, sType, value, value2;
 
 		value = oVariables.getVariable(sPar);
-		if (typeof value === "function") { // TODO
+		if (typeof value === "function") {
+			value = this.generateFunction(sPar, sValue);
+			/*
 			value = sValue;
-			value = new Function("o", value); // eslint-disable-line no-new-func
+			value = "var o=cpcBasic.controller.oVm, v=o.vmGetAllVariables(); v." + sPar + " = " + sValue;
+			value = new Function("xR", value); // eslint-disable-line no-new-func
+			// new function must be called later with this.oVm, ...
+			*/
 			oVariables.setVariable(sPar, value);
 		} else {
 			sVarType = this.oVariables.determineStaticVarType(sPar);

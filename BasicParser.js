@@ -426,7 +426,7 @@ BasicParser.prototype = {
 					oValue.type = "label"; // number => label
 				}
 				that.iLine = oValue.value; // set line number for error messages
-				oValue.args = statements();
+				oValue.args = statements(null);
 
 				if (oToken.type === "(eol)") {
 					advance("(eol)");
@@ -672,7 +672,7 @@ BasicParser.prototype = {
 				var aArgs;
 
 				advance("(");
-				aArgs = fnGetArgs(null, ")");
+				aArgs = fnGetArgs(null); //until ")"
 				advance(")");
 				return aArgs;
 			},
@@ -705,7 +705,7 @@ BasicParser.prototype = {
 				return aArgs;
 			},
 
-			fnCreateCmdCall = function (sType) { // optional sType
+			fnCreateCmdCall = function (sType) {
 				var oValue = oPreviousToken;
 
 				if (sType) {
@@ -716,7 +716,7 @@ BasicParser.prototype = {
 				return oValue;
 			},
 
-			fnCreateFuncCall = function (sType) { // optional sType
+			fnCreateFuncCall = function (sType) {
 				var oValue = oPreviousToken,
 					sKeyOpts, aTypes;
 
@@ -726,9 +726,9 @@ BasicParser.prototype = {
 
 				if (oToken.type === "(") { // args in parenthesis?
 					advance("(");
-					oValue.args = fnGetArgs(oValue.type, ")");
+					oValue.args = fnGetArgs(oValue.type); //until ")"
 					if (oToken.type !== ")") {
-						throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
+						throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos); //TTT
 					}
 					advance(")");
 				} else { // no parenthesis?
@@ -749,10 +749,10 @@ BasicParser.prototype = {
 			fnGenerateKeywordSymbols = function () {
 				var sKey, sValue,
 					fnFunc = function () {
-						return fnCreateFuncCall();
+						return fnCreateFuncCall(null);
 					},
 					fnCmd = function () {
-						return fnCreateCmdCall();
+						return fnCreateCmdCall(null);
 					};
 
 				for (sKey in BasicParser.mKeywords) {
@@ -972,7 +972,7 @@ BasicParser.prototype = {
 			if (oToken.type === ",") { // arguments starting with comma
 				advance(",");
 			}
-			oValue.args = fnGetArgs();
+			oValue.args = fnGetArgs(null);
 			return oValue;
 		});
 
@@ -1309,7 +1309,7 @@ BasicParser.prototype = {
 		});
 
 		stmt("mid$", function () { // mid$Assign
-			var oValue = fnCreateFuncCall("mid$Assign"),
+			var oValue = fnCreateFuncCall("mid$Assign"), // change type mid$ => mid$Assign
 				oRight;
 
 			if (oValue.args[0].type !== "identifier") {
@@ -1405,7 +1405,7 @@ BasicParser.prototype = {
 
 				if (oToken.type === "spc" || oToken.type === "tab") {
 					advance(oToken.type);
-					oValue2 = fnCreateFuncCall();
+					oValue2 = fnCreateFuncCall(null);
 				} else if (oToken.type === "using") {
 					oValue2 = oToken;
 					advance("using");
