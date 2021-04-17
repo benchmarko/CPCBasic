@@ -3167,8 +3167,8 @@ CpcVm.prototype = {
 
 		oOutFile.sType = sType;
 		oOutFile.iStart = iStart;
-		oOutFile.iLength = iLength;
-		oOutFile.iEntry = iEntry;
+		oOutFile.iLength = iLength || 0;
+		oOutFile.iEntry = iEntry || 0;
 
 		oOutFile.aFileData = aFileData;
 		oOutFile.fnFileCallback = this.fnCloseoutHandler; // we use closeout handler to reset out file handling

@@ -289,6 +289,10 @@ Controller.prototype = {
 			oStorage = Utils.localStorage,
 			aDir, i, oExample, sData, oData; //
 
+		if (sDatabase !== "storage") {
+			this.model.setProperty("database", "storage"); // switch to storage database
+		}
+
 		if (!sKey) { // no sKey => get all
 			aDir = this.fnGetDirectoryEntries();
 		} else {
@@ -318,6 +322,8 @@ Controller.prototype = {
 
 		if (sDatabase === "storage") {
 			this.setExampleSelectOptions();
+		} else {
+			this.model.setProperty("database", sDatabase); // restore database
 		}
 	},
 
@@ -1460,7 +1466,7 @@ Controller.prototype = {
 
 		sInput = sInput.trim();
 		oInput.sInput = "";
-		if (sInput !== "") {
+		if (sInput !== "") { // direct input
 			this.oVm.cursor(iStream, 0);
 			sInputText = this.view.getAreaValue("inputText");
 			if ((/^\d+($| )/).test(sInput)) { // start with number?
@@ -1481,7 +1487,7 @@ Controller.prototype = {
 
 			Utils.console.log("fnDirectInput: execute:", sInput);
 
-			if (sInputText) { // do we have a program?
+			if (sInputText && (/^\d+($| )/).test(sInputText)) { // do we have a program starting with a line number?
 				oOutput = this.oCodeGeneratorJs.reset().generate(sInput + "\n" + sInputText, this.oVariables, true); // compile both; allow direct command
 				if (oOutput.error) {
 					if (oOutput.error.pos >= sInput.length + 1) { // error not in direct?
