@@ -15,7 +15,7 @@ There is also a TypeScript implementation of CPCBasic:
 
 ## Features
 
-- Run old an new BASIC programs in a browser
+- Run old and new BASIC programs in a browser
 - "Wrap factor" Speed: Frame Fly and other events in real-time, calculations as fast as possible
 - CPC Basic Unchained: Less restrictions, extended by new features, breaking out of the CPC box
 - BASIC compiler and not just interpreter
@@ -85,33 +85,6 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   Control structures need to be converted to *GOTO* because for some commands and events it is necessary to jump out of a block.
 - Interpreted CPC BASIC may contain lines of arbitrary content if they are not executed, e.g. comments without marking them as comments. The CPCBasic compiler does not allow this.
 - Maybe something more...
-
-## Fixed Restrictions
-
-- [fixed: *TEST*, *TESTR* can not distinguish between pens of the same color]
-- [fixed: Changing the color with *INK*, existing drawings will not be changed and the colors will
-  not blink. Currently you have to redraw the screen with another color to get a blinking effect.]
-- [fixed: Comparison with equal in assignment is possible now: `a=0: x=(a=0): ?x`, returns -1 for true as on the CPC]
-- [fixed: No sound]
-- [fixed: *ENT* (tone envelopes); hardware volume envelopes with sepcial *ENV* syntax "="]
-- [fixed: *RESTORE* for lines without *DATA*: search next *DATA* line]
-- [done: Separate sample library; sample category]
-- [fixed: Almost no type checking]
-- [fixed: Access screen memory in the range &c000-&ffff with *PEEK&POKE*]
-- [done: Pause key: Use ESC, and then any key to continue]
-- [done: *COPYCHR$*]
-- [done: *SPEED INK*]
-- [done: *FILL*]
-- [done: *RENUM*]
-- [done: *SAVE* ASCII, *OPENOUT*, *PRINT #9*, *WRITE #9*]
-- [done: *CURSOR*, *CONT*]
-- [done: Edit and direct input and execution mode; cursor]
-- [done: *DELETE*, *EDIT*, *LIST*, *NEW*]
-- [done: *CAT*, *|DIR*, *|ERA*, *|REN*]
-- [done: Drag and drop BASIC programs (tokenized or ASCII) into CPCBasic]
-- [done: DSK images support, for reading]
-- [done: *MASK*]
-- [done: Mixed parentheses and brackets for arrays, e.g. `a(3]=6: ?a[3)`]
 
 ## Extensions and Features
 
@@ -197,8 +170,16 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
     - This is not true for the *INKEY* function. Use *CALL &BD19* again. An example on how to wait 5 seconds or the SPACE key: `t!=TIME+300*5:WHILE TIME<t! AND INKEY(47)<0:CALL &BD19:WEND :?"Done."`
 - Use URL parameter "tron=true" to activate line tracing mode with *TRON* and *TROFF*
 - Use *OPENIN* and *INPUT#9* to load data from a file in the current "directory" or from Browser local storage
-- If the program is complete (that means, no *MERGE* or *CHAIN MERGE* inside), line number destinations are checked for existence. For example, if the *line number* in *GOTO line* does not exist, the compilation fails.
+- If the program is complete (that means, no *MERGE* or *CHAIN MERGE* inside), line number destinations are checked for existence. For example, if the line number in *GOTO line* does not exist, the compilation fails.
 - The commands and functions are checked for number of arguments but not always for argument types.
+
+## BASIC Features
+
+Did you know?
+
+- Comparison with equal in assignment, e.g. `a=0: x=(a=0): ?x`, returns -1 for true
+- *ENV*: Special syntax with "=" to define hardware volume envelopes
+- Mixed parentheses and brackets in arrays, e.g. `a(3]=6: ?a[3)`
 
 ## Debugging
 
@@ -222,7 +203,7 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 - input= (keyboard input when starting the app, use %0D for return)
 - kbdLayout=alphanum (virtual keyboard layout: alphanum, alpha, num)
 - showInput=true
-- showInp2=alse
+- showInp2=false
 - showCpc=true
 - showKbd=false
 - showKbdLayout=false
@@ -240,11 +221,18 @@ Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CP
 
 QUnit tests:
 
+- [BasicFormatter.qunit.html](https://benchmarko.github.io/CPCBasic/test/BasicFormatter.qunit.html)
+- [BasicLexer.qunit.html](https://benchmarko.github.io/CPCBasic/test/BasicLexer.qunit.html)
 - [BasicParser.qunit.html](https://benchmarko.github.io/CPCBasic/test/BasicParser.qunit.html)
+- [BasicTokenizer.qunit.html](https://benchmarko.github.io/CPCBasic/test/BasicTokenizer.qunit.html)
 - [CodeGeneratorBasic.qunit.html](https://benchmarko.github.io/CPCBasic/test/CodeGeneratorBasic.qunit.html)
+- [CodeGeneratorJs.qunit.html](https://benchmarko.github.io/CPCBasic/test/CodeGeneratorJs.qunit.html)
+- [Diff.qunit.html](https://benchmarko.github.io/CPCBasic/test/Diff.qunit.html)
+- [DiskImage.qunit.html](https://benchmarko.github.io/CPCBasic/test/DiskImage.qunit.html)
 - [Model.qunit.html](https://benchmarko.github.io/CPCBasic/test/Model.qunit.html)
+- [ZipFile.qunit.html](https://benchmarko.github.io/CPCBasic/test/ZipFile.qunit.html)
 - [testParseExamples.qunit.html](https://benchmarko.github.io/CPCBasic/test/testParseExamples.qunit.html) (parse all examples)
-- [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/testsuite.qunit.html) (run all tests)
+- [testsuite.qunit.html](https://benchmarko.github.io/CPCBasic/test/testsuite.qunit.html) (run all tests, without server only in IE)
 
 IFrames test:
 
@@ -277,7 +265,7 @@ IFrames test:
 
 - [The story of Amstrad’s amazing CPC 464](https://www.theregister.co.uk/2014/02/12/archaeologic_amstrad_cpc_464/)
 
-- [CPCemu](http://www.cpc-emu.org/) - CPC Emulator, currently version 1.7, hopefully there will be an update soon ...
+- [CPCemu](http://www.cpc-emu.org/) - CPC Emulator, since version 2.0 with very accurate emulation
 
 - [Arnold TNG - The Warp factor](http://www.yasara.org/cpc/index.html) - Modified Arnold CPC emulator at various speed levels.
 
@@ -294,4 +282,4 @@ IFrames test:
 
 - [Locomotive Software](https://www.cpcwiki.eu/index.php/Locomotive_Software) - The developer of CPCs BASIC and operating system
 
-### **mv, 11/2020**
+### **mv, 06/2021**

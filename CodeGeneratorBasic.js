@@ -44,14 +44,16 @@ CodeGeneratorBasic.prototype = {
 		this.lexer = this.options.lexer;
 		this.parser = this.options.parser;
 
-		this.reset();
+		//this.reset();
 	},
 
+	/*
 	reset: function () {
 		this.lexer.reset();
 		this.parser.reset();
 		return this;
 	},
+	*/
 
 	composeError: function () { // varargs
 		var aArgs = Array.prototype.slice.call(arguments);
@@ -368,18 +370,24 @@ CodeGeneratorBasic.prototype = {
 				"if": function (node) {
 					var sValue, oNodeBranch, aNodeArgs;
 
+					if (!node.left) {
+						throw this.composeError(Error(), "Programming error: Undefined left", node.type, node.pos); // should not occure
+					}
+					if (!node.args) {
+						throw this.composeError(Error(), "Programming error: Undefined args", node.type, node.pos); // should not occure
+					}
 					sValue = node.type.toUpperCase() + " " + fnParseOneArg(node.left) + " THEN ";
 
-					oNodeBranch = node.right;
+					oNodeBranch = node.args;
 					aNodeArgs = fnParseArgs(oNodeBranch); // args for "then"
 					if (oNodeBranch.length && oNodeBranch[0].type === "goto" && oNodeBranch[0].len === 0) { // inserted goto?
 						aNodeArgs[0] = fnParseOneArg(oNodeBranch[0].args[0]); // take just line number
 					}
 					sValue += aNodeArgs.join(":");
 
-					if (node.third) {
+					if (node.args2) {
 						sValue += " ELSE ";
-						oNodeBranch = node.third;
+						oNodeBranch = node.args2;
 						aNodeArgs = fnParseArgs(oNodeBranch); // args for "else"
 						if (oNodeBranch.length && oNodeBranch[0].type === "goto" && oNodeBranch[0].len === 0) { // inserted goto?
 							aNodeArgs[0] = fnParseOneArg(oNodeBranch[0].args[0]); // take just line number
@@ -541,11 +549,11 @@ CodeGeneratorBasic.prototype = {
 				if (node.right) {
 					sArgs += fnParseOneArg(node.right);
 				}
-				if (node.third) {
-					sArgs += fnParseOneArg(node.third);
-				}
 				if (node.args) {
 					sArgs += fnParseArgs(node.args).join(",");
+				}
+				if (node.args2) { // ELSE part already handled
+					throw that.composeError(Error(), "Programming error: args2", node.type, node.pos); // should not occur
 				}
 
 				if (sKeyType) {
@@ -591,6 +599,7 @@ CodeGeneratorBasic.prototype = {
 							}
 						}
 
+						//TODO oRight = node.right;
 						value2 = parseNode(node.right);
 						if (mOperators[node.right.type] && (node.right.left || node.right.right)) { // binary operator (or unary operator, e.g. not)
 							p = mPrecedence[node.type];
@@ -654,7 +663,7 @@ CodeGeneratorBasic.prototype = {
 		return fnEvaluate();
 	},
 
-	generate: function (sInput, oVariables, bAllowDirect) {
+	generate: function (sInput, bAllowDirect) {
 		var oOut = {
 				text: "",
 				error: undefined
@@ -664,7 +673,7 @@ CodeGeneratorBasic.prototype = {
 		try {
 			aTokens = this.lexer.lex(sInput);
 			aParseTree = this.parser.parse(aTokens, bAllowDirect);
-			sOutput = this.evaluate(aParseTree, oVariables);
+			sOutput = this.evaluate(aParseTree);
 			oOut.text = sOutput;
 		} catch (e) {
 			oOut.error = e;

@@ -1238,7 +1238,7 @@ Controller.prototype = {
 			});
 		}
 
-		this.oBasicFormatter.reset();
+		//this.oBasicFormatter.reset();
 		oOutput = this.oBasicFormatter.renumber(sInput, oParas.iNew, oParas.iOld, oParas.iStep, oParas.iKeep);
 
 		if (oOutput.error) {
@@ -1341,7 +1341,6 @@ Controller.prototype = {
 			parser: new BasicParser()
 		});
 
-		oCodeGeneratorBasic.reset();
 		oOutput = oCodeGeneratorBasic.generate(sInput, this.oVariables);
 
 		if (oOutput.error) {
@@ -1957,7 +1956,7 @@ Controller.prototype = {
 						iStart: 0,
 						iLength: sData.length
 					};
-				} else if (DiskImage.prototype.testDiskIdent(sData.substr(0, 8)) !== null) { // disk image file?
+				} else if (DiskImage.prototype.testDiskIdent(sData.substr(0, 8))) { // disk image file?
 					try {
 						oDsk = new DiskImage({
 							sData: sData,

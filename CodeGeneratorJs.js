@@ -24,7 +24,7 @@ CodeGeneratorJs.prototype = {
 		this.parser = this.options.parser;
 
 		this.reJsKeywords = this.createJsKeywordRegex();
-		this.reset();
+		//this.reset();
 	},
 
 	reset: function () {
@@ -543,13 +543,22 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				linerange: function (node) { // for delete, list
-					var sLeft = fnParseOneArg(node.left),
-						sRight = fnParseOneArg(node.right);
+					var sLeft, sRight, iLeft, iRight, sRightSpecified;
 
-					if (sLeft > sRight) {
+					if (!node.left || !node.right) {
+						throw this.composeError(Error(), "Programming error: Undefined left or right", node.type, node.pos); // should not occure
+					}
+					sLeft = fnParseOneArg(node.left);
+					sRight = fnParseOneArg(node.right);
+					iLeft = Number(sLeft); // "undefined" gets NaN (should we check node.left.type for null?)
+					iRight = Number(sRight);
+
+					if (iLeft > iRight) { // comparison with NaN and number is always false
 						throw that.composeError(Error(), "Decreasing line range", node.value, node.pos);
 					}
-					node.pv = !sRight ? sLeft : sLeft + ", " + sRight;
+					sRightSpecified = (sRight === "undefined") ? "65535" : sRight; // make sure we set a missing right range parameter
+
+					node.pv = !sRight ? sLeft : sLeft + ", " + sRightSpecified;
 					return node.pv;
 				},
 				string: function (node) {
@@ -558,7 +567,7 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				"null": function (node) { // means: no parameter specified
-					node.pv = "null";
+					node.pv = node.value !== "null" ? node.value : "undefined"; // use explicit value or convert "null" to "undefined"
 					return node.pv;
 				},
 				assign: function (node) {
@@ -596,7 +605,7 @@ CodeGeneratorJs.prototype = {
 						label, aNodeArgs, value2, i;
 
 					label = node.value;
-					that.iLine = label; // set line before parsing args
+					that.iLine = Number(label); // set line before parsing args
 
 					that.resetCountsPerLine(); // we want to have "stable" counts, even if other lines change, e.g. direct
 
@@ -608,7 +617,11 @@ CodeGeneratorJs.prototype = {
 						label = '"' + label + '"'; // for "direct"
 					}
 
-					value += "case " + label + ":";
+					if (!that.options.bNoCodeFrame) {
+						value += "case " + label + ":";
+					} else {
+						value = "";
+					}
 
 					aNodeArgs = fnParseArgs(node.args);
 
@@ -627,7 +640,7 @@ CodeGeneratorJs.prototype = {
 						}
 					}
 
-					if (bDirect) {
+					if (bDirect && !that.options.bNoCodeFrame) {
 						value += "\n o.goto(\"end\"); break;\ncase \"directEnd\":"; // put in next line because of possible "rem"
 					}
 
@@ -672,7 +685,7 @@ CodeGeneratorJs.prototype = {
 				data: function (node) {
 					var aNodeArgs = fnParseArgs(node.args);
 
-					aNodeArgs.unshift(that.iLine); // prepend line number
+					aNodeArgs.unshift(String(that.iLine)); // prepend line number
 					that.aData.push("o.data(" + aNodeArgs.join(", ") + ")"); // will be set at the beginning of the script
 					node.pv = "/* data */";
 					return node.pv;
@@ -743,7 +756,17 @@ CodeGeneratorJs.prototype = {
 					var aNodeArgs = fnParseArgs(node.args),
 						sName = Utils.bSupportReservedNames ? "o.delete" : 'o["delete"]';
 
+					if (!aNodeArgs.length) { // no arguments? => complete range
+						aNodeArgs.push("1");
+						aNodeArgs.push("65535");
+					}
 					node.pv = sName + "(" + aNodeArgs.join(", ") + "); break;";
+					return node.pv;
+				},
+				edit: function (node) {
+					var aNodeArgs = fnParseArgs(node.args);
+
+					node.pv = "o.edit(" + aNodeArgs.join(", ") + "); break;"; // we need break
 					return node.pv;
 				},
 				"else": function (node) { // similar to a comment, with unchecked tokens
@@ -807,16 +830,17 @@ CodeGeneratorJs.prototype = {
 					that.oStack.forVarName.push(sVarName);
 					that.iForCount += 1;
 
-					startValue = aNodeArgs[1];
-					endValue = aNodeArgs[2];
-					stepValue = aNodeArgs[3];
-					if (stepValue === "null") {
-						stepValue = 1;
-					}
-
 					startNode = node.args[1];
 					endNode = node.args[2];
 					stepNode = node.args[3];
+
+					startValue = aNodeArgs[1];
+					endValue = aNodeArgs[2];
+					stepValue = aNodeArgs[3];
+
+					if (stepNode.type === "null") { // value not available?
+						stepValue = "1";
+					}
 
 					// optimization for integer constants (check value and not type, because we also want to accept e.g. -<number>)
 					bStartIsIntConst = fnIsIntConst(startValue);
@@ -915,14 +939,17 @@ CodeGeneratorJs.prototype = {
 					sLabel = that.iLine + "i" + that.iIfCount;
 					that.iIfCount += 1;
 
+					if (!node.left) {
+						throw this.composeError(Error(), "Programming error: Undefined left", node.type, node.pos); // should not occure
+					}
 					value = "if (" + fnParseOneArg(node.left) + ') { o.goto("' + sLabel + '"); break; } ';
-					if (node.third) {
-						aNodeArgs = fnParseArgs(node.third);
+					if (node.args2) {
+						aNodeArgs = fnParseArgs(node.args2);
 						sPart = aNodeArgs.join("; ");
 						value += "/* else */ " + sPart + "; ";
 					}
 					value += 'o.goto("' + sLabel + 'e"); break;';
-					aNodeArgs = fnParseArgs(node.right);
+					aNodeArgs = fnParseArgs(node.args); // "then" statements
 					sPart = aNodeArgs.join("; ");
 					value += '\ncase "' + sLabel + '": ' + sPart + ";";
 					value += '\ncase "' + sLabel + 'e": ';
@@ -947,7 +974,7 @@ CodeGeneratorJs.prototype = {
 						sMsg = '""';
 					}
 					sPrompt = aNodeArgs.shift();
-					if (sPrompt === ";" || sPrompt === "null") { // ";" => insert prompt "? " in quoted string
+					if (sPrompt === ";" || node.args[3].type === "null") { // ";" => insert prompt "? " in quoted string
 						sMsg = sMsg.substr(0, sMsg.length - 1) + "? " + sMsg.substr(-1, 1);
 					}
 
@@ -978,8 +1005,8 @@ CodeGeneratorJs.prototype = {
 					var aNodeArgs = fnParseArgs(node.args), // or: fnCommandWithGoto
 						stream;
 
-					if (node.args.length && node.args[node.args.length - 1].type === "#") { // last parameter stream?
-						stream = aNodeArgs.pop();
+					if (!node.args.length || node.args[node.args.length - 1].type === "#") { // last parameter stream? or no parameters?
+						stream = aNodeArgs.pop() || "0";
 						aNodeArgs.unshift(stream); // put it first
 					}
 
@@ -1003,7 +1030,7 @@ CodeGeneratorJs.prototype = {
 					sVarType = fnDetermineStaticVarType(sName);
 
 					if (aNodeArgs.length < 3) {
-						aNodeArgs.push("null"); // empty length
+						aNodeArgs.push("undefined"); // empty length
 					}
 					right = fnParseOneArg(node.right);
 					aNodeArgs.push(right);
@@ -1047,20 +1074,20 @@ CodeGeneratorJs.prototype = {
 				},
 				onBreakGosub: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						iLine = aNodeArgs[0];
+						sLine = aNodeArgs[0];
 
-					this.fnAddReferenceLabel(iLine, node.args[0]);
-					node.pv = "o." + node.type + "(" + iLine + ")";
+					this.fnAddReferenceLabel(sLine, node.args[0]);
+					node.pv = "o." + node.type + "(" + sLine + ")";
 					return node.pv;
 				},
 				onErrorGoto: function (node) {
 					var aNodeArgs = fnParseArgs(node.args),
-						iLine = aNodeArgs[0];
+						sLine = aNodeArgs[0];
 
-					if (iLine) { // only for lines > 0
-						this.fnAddReferenceLabel(iLine, node.args[0]);
+					if (Number(sLine)) { // only for lines > 0
+						this.fnAddReferenceLabel(sLine, node.args[0]);
 					}
-					node.pv = "o." + node.type + "(" + iLine + ")";
+					node.pv = "o." + node.type + "(" + sLine + ")";
 					return node.pv;
 				},
 				onGosub: function (node) {
@@ -1412,17 +1439,24 @@ CodeGeneratorJs.prototype = {
 			},
 			aTokens, aParseTree, sOutput;
 
+		this.reset();
 		try {
 			aTokens = this.lexer.lex(sInput);
 			aParseTree = this.parser.parse(aTokens, bAllowDirect);
 			sOutput = this.evaluate(aParseTree, oVariables);
-			oOut.text = '"use strict"\n'
+
+			if (!this.options.bNoCodeFrame) {
+				sOutput = '"use strict"\n'
 				+ "var v=o.vmGetAllVariables();\n"
 				+ "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"
 				+ fnCombineData(this.aData)
 				+ " o.goto(o.iStartLine ? o.iStartLine : \"start\"); break;\ncase \"start\":\n"
 				+ sOutput
 				+ "\ncase \"end\": o.vmStop(\"end\", 90); break;\ndefault: o.error(8); o.goto(\"end\"); break;\n}}\n";
+			} else {
+				sOutput = fnCombineData(this.aData) + sOutput;
+			}
+			oOut.text = sOutput;
 		} catch (e) {
 			oOut.error = e;
 			if ("pos" in e) {

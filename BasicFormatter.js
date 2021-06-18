@@ -22,12 +22,14 @@ BasicFormatter.prototype = {
 
 		this.lexer = this.options.lexer;
 		this.parser = this.options.parser;
-		this.reset();
+		this.iLine = 0; // current line (label)
 	},
 
+	/*
 	reset: function () {
 		this.iLine = 0; // current line (label)
 	},
+	*/
 
 	composeError: function () { // varargs
 		var aArgs = Array.prototype.slice.call(arguments);
@@ -72,6 +74,8 @@ BasicFormatter.prototype = {
 					}
 				}
 			},
+
+			/*
 			fnAddReferences = function (aNodes) {
 				var i, oNode;
 
@@ -102,6 +106,50 @@ BasicFormatter.prototype = {
 					}
 				}
 			},
+			*/
+
+			fnAddSingleReference = function (oNode) {
+				if (oNode.type === "linenumber") {
+					if (oNode.value in oLines) {
+						aRefs.push({
+							value: Number(oNode.value),
+							pos: oNode.pos,
+							len: String(oNode.orig || oNode.value).length
+						});
+					} else {
+						throw that.composeError(Error(), "Line does not exist", oNode.value, oNode.pos);
+					}
+				}
+			},
+
+			fnAddReferences = function (aNodes) {
+				var i, oNode;
+
+				for (i = 0; i < aNodes.length; i += 1) {
+					oNode = aNodes[i];
+
+					if (oNode.type === "label") {
+						//TTT this.iLine = Number(oNode.value); // for error messages
+					} else {
+						fnAddSingleReference(oNode);
+					}
+
+					if (oNode.left) {
+						fnAddSingleReference(oNode.left);
+						//fnAddReferences(oNode.left); // recursive for e.g. lineRange ?
+					}
+					if (oNode.right) {
+						fnAddSingleReference(oNode.right);
+					}
+					if (oNode.args) {
+						fnAddReferences(oNode.args); // recursive
+					}
+					if (oNode.args2) { // for "ELSE"
+						fnAddReferences(oNode.args2); // recursive
+					}
+				}
+			},
+
 			fnRenumberLines = function () {
 				var aKeys = Object.keys(oLines),
 					i, oLine, oRef;

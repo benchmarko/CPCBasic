@@ -1,6 +1,6 @@
 // test1.js - ...
 //
-/* globals QUnit */
+/* globals QUnit, globalThis */
 
 // qunit testParseExamples.qunit.js
 // node  testParseExamples.qunit.js
@@ -8,7 +8,7 @@
 
 "use strict";
 
-var Utils, Polyfills, BasicLexer, BasicParser, BasicTokenizer, CodeGeneratorJs, Model, Variables, fs, path, cpcBasic;
+var Utils, Polyfills, BasicLexer, BasicParser, BasicTokenizer, CodeGeneratorJs, Model, Variables, fs, path, cpcBasic, oGlobalThis, bNodeJsAvail;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -24,6 +24,24 @@ if (typeof require !== "undefined") {
 	path = require("path");
 	/* eslint-enable global-require */
 }
+
+// eslint-disable-next-line no-new-func
+oGlobalThis = (typeof globalThis !== "undefined") ? globalThis : Function("return this")(); // for old IE
+bNodeJsAvail = (function () {
+	var bNodeJs = false;
+
+	// https://www.npmjs.com/package/detect-node
+	// Only Node.JS has a process variable that is of [[Class]] process
+	try {
+		if (Object.prototype.toString.call(oGlobalThis.process) === "[object process]") {
+			bNodeJs = true;
+		}
+	} catch (e) {
+		// empty
+	}
+	return bNodeJs;
+}());
+
 
 cpcBasic = {
 	sRelativeDir: "../",
@@ -289,6 +307,8 @@ function fnIndexErrorUtils(sUrl) {
 
 function testLoadIndex() {
 	var sUrl = cpcBasic.sRelativeDir + "./examples/0index.js";
+
+	Utils.console.log("testLoadIndex: bNodeJs:", bNodeJsAvail);
 
 	cpcBasic.model.setProperty("databaseDirs", "examples");
 	cpcBasic.model.setProperty("database", "examples");

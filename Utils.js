@@ -125,6 +125,7 @@ var Utils = {
 	toDegrees: function (rad) {
 		return rad * 180 / Math.PI;
 	},
+	/*
 	getChangedParameters: function (current, initial) {
 		var oChanged = {},
 			sName;
@@ -138,6 +139,7 @@ var Utils = {
 		}
 		return oChanged;
 	},
+	*/
 	bSupportsBinaryLiterals: (function () { // does the browser support binary literals?
 		try {
 			Function("0b01"); // eslint-disable-line no-new-func
@@ -194,7 +196,7 @@ var Utils = {
 
 		iEndPos = (oError.pos || 0) + ((oError.value !== undefined) ? String(oError.value).length : 0);
 		oError.shortMessage = oError.message + (oError.line !== undefined ? " in " + oError.line : " at pos " + (oError.pos || 0) + "-" + iEndPos) + ": " + oError.value;
-		oError.message += " in " + oError.line + " at pos " + (oError.pos || 0) + "-" + iEndPos + ": " + oError.value;
+		oError.message += (oError.line !== undefined ? " in " + oError.line : "") + " at pos " + (oError.pos || 0) + "-" + iEndPos + ": " + oError.value;
 		return oError;
 	}
 };

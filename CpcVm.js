@@ -769,7 +769,7 @@ CpcVm.prototype = {
 	vmDrawMovePlot: function (sType, x, y, iGPen, iGColMode) {
 		x = this.vmInRangeRound(x, -32768, 32767, sType);
 		y = this.vmInRangeRound(y, -32768, 32767, sType);
-		if (iGPen !== undefined && iGPen !== null) {
+		if (iGPen !== undefined) {
 			iGPen = this.vmInRangeRound(iGPen, 0, 15, sType);
 			this.oCanvas.setGPen(iGPen);
 		}
@@ -1308,7 +1308,7 @@ CpcVm.prototype = {
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 7, "CURSOR");
 		oWin = this.aWindow[iStream];
-		if (iCursorOn !== null) { // system
+		if (iCursorOn !== undefined) { // system
 			iCursorOn = this.vmInRangeRound(iCursorOn, 0, 1, "CURSOR");
 			this.vmDrawUndrawCursor(iStream); // undraw
 			oWin.bCursorOn = Boolean(iCursorOn);
@@ -1360,19 +1360,21 @@ CpcVm.prototype = {
 	},
 
 	"delete": function (iFirst, iLast) { // varargs
-		if (iFirst !== undefined && iFirst !== null) {
+		if (iFirst === undefined) {
+			iFirst = 1;
+		} else {
 			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "DELETE");
 		}
 
-		if (iLast === null) { // range with missing last?
+		if (iLast === undefined) { // range with missing last?
 			iLast = 65535;
-		} else if (iLast !== undefined) {
+		} else { // range
 			iLast = this.vmInRangeRound(iLast, 1, 65535, "DELETE");
 		}
 
 		this.vmStop("deleteLines", 90, false, {
-			iFirst: iFirst || 1,
-			iLast: iLast || iFirst,
+			iFirst: iFirst,
+			iLast: iLast,
 			sCommand: "DELETE"
 		});
 	},
@@ -1434,7 +1436,7 @@ CpcVm.prototype = {
 
 		if (iToneEnv) { // not 0
 			for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
-				if (arguments[i] !== null) {
+				if (arguments[i] !== undefined) {
 					oArg = {
 						steps: this.vmInRangeRound(arguments[i], 0, 239, "ENT"), // number of steps: 0..239
 						diff: this.vmInRangeRound(arguments[i + 1], -128, 127, "ENT"), // size (period change) of steps: -128..+127
@@ -1465,7 +1467,7 @@ CpcVm.prototype = {
 		iVolEnv = this.vmInRangeRound(iVolEnv, 1, 15, "ENV");
 
 		for (i = 1; i < arguments.length; i += 3) { // starting with 1: 3 parameters per section
-			if (arguments[i] !== null) {
+			if (arguments[i] !== undefined) {
 				oArg = {
 					steps: this.vmInRangeRound(arguments[i], 0, 127, "ENV"), // number of steps: 0..127
 					/* eslint-disable no-bitwise */
@@ -1619,7 +1621,7 @@ CpcVm.prototype = {
 	},
 
 	graphicsPen: function (iGPen, iTransparentMode) {
-		if (iGPen !== null) {
+		if (iGPen !== undefined) {
 			iGPen = this.vmInRangeRound(iGPen, 0, 15, "GRAPHICS PEN");
 			this.oCanvas.setGPen(iGPen);
 		}
@@ -1886,13 +1888,13 @@ CpcVm.prototype = {
 			iRepeat: this.vmInRangeRound(iRepeat, 0, 1, "KEY DEF")
 		};
 
-		if (iNormal !== undefined && iNormal !== null) {
+		if (iNormal !== undefined) {
 			oOptions.iNormal = this.vmInRangeRound(iNormal, 0, 255, "KEY DEF");
 		}
-		if (iShift !== undefined && iShift !== null) {
+		if (iShift !== undefined) {
 			oOptions.iShift = this.vmInRangeRound(iShift, 0, 255, "KEY DEF");
 		}
-		if (iCtrl !== undefined && iCtrl !== null) {
+		if (iCtrl !== undefined) {
 			oOptions.iCtrl = this.vmInRangeRound(iCtrl, 0, 255, "KEY DEF");
 		}
 
@@ -1955,15 +1957,16 @@ CpcVm.prototype = {
 	},
 
 	list: function (iStream, iFirst, iLast) { // varargs
-		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "LIST");
-
-		if (iFirst !== undefined && iFirst !== null) {
+		iStream = this.vmInRangeRound(iStream, 0, 9, "LIST");
+		if (iFirst === undefined) {
+			iFirst = 1;
+		} else {
 			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "LIST");
 		}
 
-		if (iLast === null) { // range with missing last?
+		if (iLast === undefined) { // range with missing last?
 			iLast = 65535;
-		} else if (iLast !== undefined) {
+		} else { // range
 			iLast = this.vmInRangeRound(iLast, 1, 65535, "LIST");
 		}
 
@@ -1975,8 +1978,8 @@ CpcVm.prototype = {
 
 		this.vmStop("list", 90, false, {
 			iStream: iStream,
-			iFirst: iFirst || 1,
-			iLast: iLast || iFirst
+			iFirst: iFirst,
+			iLast: iLast
 		});
 	},
 
@@ -2064,7 +2067,7 @@ CpcVm.prototype = {
 	},
 
 	mask: function (iMask, iFirst) { // one of iMask, iFirst is optional
-		if (iMask !== null) {
+		if (iMask !== undefined) {
 			iMask = this.vmInRangeRound(iMask, 0, 255, "MASK");
 			this.oCanvas.setMask(iMask);
 		}
@@ -2118,7 +2121,7 @@ CpcVm.prototype = {
 		this.vmAssertString(s, "MID$");
 		this.vmAssertString(sNew, "MID$");
 		iStart = this.vmInRangeRound(iStart, 1, 255, "MID$") - 1;
-		iLen = (iLen !== null) ? this.vmInRangeRound(iLen, 0, 255, "MID$") : sNew.length;
+		iLen = (iLen !== undefined) ? this.vmInRangeRound(iLen, 0, 255, "MID$") : sNew.length;
 		if (iLen > sNew.length) {
 			iLen = sNew.length;
 		}
@@ -2405,14 +2408,14 @@ CpcVm.prototype = {
 	pen: function (iStream, iPen, iTransparent) {
 		var oWin;
 
-		if (iPen !== null) {
+		if (iPen !== undefined) {
 			iStream = this.vmInRangeRound(iStream || 0, 0, 7, "PEN");
 			oWin = this.aWindow[iStream];
 			iPen = this.vmInRangeRound(iPen, 0, 15, "PEN");
 			oWin.iPen = iPen;
 		}
 
-		if (iTransparent !== null && iTransparent !== undefined) {
+		if (iTransparent !== undefined) {
 			iTransparent = this.vmInRangeRound(iTransparent, 0, 1, "PEN");
 			this.vmSetTransparentMode(iStream, iTransparent);
 		}
@@ -2934,11 +2937,11 @@ CpcVm.prototype = {
 			item = this.aData[this.iData];
 			this.iData += 1;
 
-			if (item === null) { // empty arg?
+			if (item === undefined) { // empty arg?
 				item = sType === "$" ? "" : 0; // set arg depending on expected type
 			} else if (sType !== "$") { // not string expected? => convert to number (also binary, hex)
 				// Note : Using a number variable to read a string would cause a syntax error on a real CPC. We cannot detect it since we get always strings.
-				item = this.val(item);
+				item = this.val(String(item));
 			}
 			item = this.vmAssign(sVarType, item); // maybe rounding for type I
 		} else {
@@ -2969,10 +2972,10 @@ CpcVm.prototype = {
 	},
 
 	renum: function (iNew, iOld, iStep, iKeep) { // varargs: new number, old number, step, keep line (only for |renum)
-		if (iNew !== null && iNew !== undefined) {
+		if (iNew !== undefined) {
 			iNew = this.vmInRangeRound(iNew, 1, 65535, "RENUM");
 		}
-		if (iOld !== null && iOld !== undefined) {
+		if (iOld !== undefined) {
 			iOld = this.vmInRangeRound(iOld, 1, 65535, "RENUM");
 		}
 		if (iStep !== undefined) {
@@ -3192,35 +3195,14 @@ CpcVm.prototype = {
 		iState = this.vmInRangeRound(iState, 1, 255, "SOUND");
 		iPeriod = this.vmInRangeRound(iPeriod, 0, 4095, "SOUND ,");
 
-		if (iDuration !== undefined) {
-			iDuration = this.vmInRangeRound(iDuration, -32768, 32767, "SOUND ,,");
-		} else {
-			iDuration = 20;
-		}
-
-		if (iVolume !== undefined && iVolume !== null) {
-			iVolume = this.vmInRangeRound(iVolume, 0, 15, "SOUND ,,,");
-		} else {
-			iVolume = 12;
-		}
-
-		if (iVolEnv !== undefined && iVolEnv !== null) {
-			iVolEnv = this.vmInRangeRound(iVolEnv, 0, 15, "SOUND ,,,,");
-		}
-		if (iToneEnv !== undefined && iToneEnv !== null) {
-			iToneEnv = this.vmInRangeRound(iToneEnv, 0, 15, "SOUND ,,,,,");
-		}
-		if (iNoise !== undefined && iNoise !== null) {
-			iNoise = this.vmInRangeRound(iNoise, 0, 31, "SOUND ,,,,,,");
-		}
 		oSoundData = {
 			iState: iState,
 			iPeriod: iPeriod,
-			iDuration: iDuration,
-			iVolume: iVolume,
-			iVolEnv: iVolEnv,
-			iToneEnv: iToneEnv,
-			iNoise: iNoise
+			iDuration: (iDuration !== undefined) ? this.vmInRangeRound(iDuration, -32768, 32767, "SOUND ,,") : 20,
+			iVolume: (iVolume !== undefined) ? this.vmInRangeRound(iVolume, 0, 15, "SOUND ,,,") : 12,
+			iVolEnv: (iVolEnv !== undefined) ? this.vmInRangeRound(iVolEnv, 0, 15, "SOUND ,,,,") : 0,
+			iToneEnv: (iToneEnv !== undefined) ? this.vmInRangeRound(iToneEnv, 0, 15, "SOUND ,,,,,") : 0,
+			iNoise: (iNoise !== undefined) ? this.vmInRangeRound(iNoise, 0, 31, "SOUND ,,,,,,") : 0
 		};
 
 		if (this.oSound.testCanQueue(iState)) {

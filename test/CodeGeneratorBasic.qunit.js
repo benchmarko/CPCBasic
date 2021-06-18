@@ -4,9 +4,11 @@
 
 "use strict";
 
-var BasicLexer, BasicParser, CodeGeneratorBasic;
+var bGenerateAllResults = false,
+	Utils, BasicLexer, BasicParser, CodeGeneratorBasic;
 
 if (typeof require !== "undefined") {
+	Utils = require("../Utils.js"); // eslint-disable-line global-require
 	BasicLexer = require("../BasicLexer.js"); // eslint-disable-line global-require
 	BasicParser = require("../BasicParser.js"); // eslint-disable-line global-require
 	CodeGeneratorBasic = require("../CodeGeneratorBasic.js"); // eslint-disable-line global-require
@@ -661,20 +663,28 @@ QUnit.module("CodeGeneratorBasic: Tests", function (/* hooks */) {
 		}
 	};
 
-	function runTestsFor(assert, oTests) {
+	function runTestsFor(assert, oTests, aResults) {
 		var oCodeGeneratorBasic = new CodeGeneratorBasic({
 				lexer: new BasicLexer(),
-				parser: new BasicParser()
+				parser: new BasicParser({
+					bQuiet: true
+				})
 			}),
 			sKey, sExpected, oOutput, sResult;
 
 		for (sKey in oTests) {
 			if (oTests.hasOwnProperty(sKey)) {
 				sExpected = oTests[sKey];
-				oCodeGeneratorBasic.reset();
-				oOutput = oCodeGeneratorBasic.generate(sKey, null, true);
-				sResult = oOutput.error ? oOutput.error : oOutput.text;
-				assert.strictEqual(sResult, sExpected, sKey);
+				oOutput = oCodeGeneratorBasic.generate(sKey, true);
+				sResult = oOutput.error ? String(oOutput.error) : oOutput.text;
+
+				if (aResults) {
+					aResults.push('"' + sKey.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/"/g, '\\"') + '": "' + sResult.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/"/g, '\\"') + '"');
+				}
+
+				if (assert) {
+					assert.strictEqual(sResult, sExpected, sKey);
+				}
 			}
 		}
 	}
@@ -694,6 +704,33 @@ QUnit.module("CodeGeneratorBasic: Tests", function (/* hooks */) {
 	}
 
 	generateTests(mAllTests);
+
+	// generate result list (not used during the test, just for debugging)
+
+	function generateAllResults(oAllTests) {
+		var sResult = "",
+			sCategory, aResults, bContainsSpace, sMarker;
+
+		for (sCategory in oAllTests) {
+			if (oAllTests.hasOwnProperty(sCategory)) {
+				aResults = [];
+				bContainsSpace = sCategory.indexOf(" ") >= 0;
+				sMarker = bContainsSpace ? '"' : "";
+
+				sResult += sMarker + sCategory + sMarker + ": {\n";
+
+				runTestsFor(undefined, oAllTests[sCategory], aResults);
+				sResult += aResults.join(",\n");
+				sResult += "\n},\n";
+			}
+		}
+		Utils.console.log(sResult);
+		return sResult;
+	}
+
+	if (bGenerateAllResults) {
+		generateAllResults(mAllTests);
+	}
 });
 
 // end

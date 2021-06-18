@@ -27,6 +27,10 @@ ZipFile.prototype = {
 		this.oEntryTable = this.readZipDirectory();
 	},
 
+	getZipDirectory: function () {
+		return this.oEntryTable;
+	},
+
 	composeError: function () { // varargs
 		var aArgs = Array.prototype.slice.call(arguments);
 

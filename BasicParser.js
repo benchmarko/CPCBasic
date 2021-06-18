@@ -209,8 +209,8 @@ BasicParser.mKeywords = {
 	symbol: "c n n *", // SYMBOL <character number>,<list of: rows>   or => symbolAfter  / character number=0..255, list of 1..8 rows=0..255
 	symbolAfter: "c n", // SYMBOL AFTER <integer expression>  / integer expression=0..256 (special)
 	tab: "f n", // TAB(<integer expression)  / see: PRINT TAB
-	tag: "c #?", // TAG[#<stream expression>]
-	tagoff: "c #?", // TAGOFF[#<stream expression>]
+	tag: "c #0?", // TAG[#<stream expression>]
+	tagoff: "c #0?", // TAGOFF[#<stream expression>]
 	tan: "f n", // TAN(<numeric expression>)
 	test: "f n n", // TEST(<x coordinate>,<y coordinate>)
 	testr: "f n n", // TESTR(<x offset>,<y offset>)
@@ -418,6 +418,7 @@ BasicParser.prototype = {
 					oValue = { // insert "direct" label
 						type: "label",
 						value: "direct",
+						pos: 0,
 						len: 0
 					};
 				} else {
@@ -469,10 +470,11 @@ BasicParser.prototype = {
 				return x;
 			},
 
-			fnCreateDummyArg = function (value) {
+			fnCreateDummyArg = function (sType, sValue) {
 				return {
-					type: String(value), // e.g. "null"
-					value: value, // e.g. null
+					type: sType, // e.g. "null"
+					value: sValue || sType, // e.g. "null"
+					pos: 0,
 					len: 0
 				};
 			},
@@ -484,9 +486,17 @@ BasicParser.prototype = {
 					oValue = expression(0);
 				} else { // create dummy
 					oValue = fnCreateDummyArg("#"); // dummy stream
-					oValue.right = fnCreateDummyArg(null); // ...with dummy parameter
+					oValue.right = fnCreateDummyArg("null", "0"); // ...with dummy parameter
 				}
 				return oValue;
+			},
+
+			fnChangeNumber2LineNumber = function (oNode) {
+				if (oNode.type === "number") {
+					oNode.type = "linenumber"; // change type: number => linenumber
+				} else {
+					throw that.composeError(Error(), "Expected number type", oNode.type, oNode.pos);
+				}
 			},
 
 			fnGetLineRange = function (sTypeFirstChar) { // l1 or l1-l2 or l1- or -l2 or nothing
@@ -495,6 +505,7 @@ BasicParser.prototype = {
 				if (oToken.type === "number") {
 					oLeft = oToken;
 					advance("number");
+					fnChangeNumber2LineNumber(oLeft);
 				}
 
 				if (oToken.type === "-") {
@@ -506,15 +517,17 @@ BasicParser.prototype = {
 					if (oToken.type === "number") {
 						oRight = oToken;
 						advance("number");
+						fnChangeNumber2LineNumber(oRight);
 					}
 					if (!oLeft && !oRight) {
 						throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oPreviousToken.value, oPreviousToken.pos);
 					}
 					oRange.type = "linerange"; // change "-" => "linerange"
-					oRange.left = oLeft || fnCreateDummyArg(null); // insert dummy for left
-					oRange.right = oRight || fnCreateDummyArg(null); // insert dummy for right (do not skip it)
+					oRange.left = oLeft || fnCreateDummyArg("null"); // insert dummy for left
+					oRange.right = oRight || fnCreateDummyArg("null"); // insert dummy for right (do not skip it)
 				} else if (oLeft) {
 					oRange = oLeft; // single line number
+					oRange.type = "linenumber"; // change type: number => linenumber //TTT
 				}
 
 				return oRange;
@@ -599,7 +612,7 @@ BasicParser.prototype = {
 								throw that.composeError(Error(), "Expected " + BasicParser.mParameterTypes[sTypeFirstChar], oExpression.value, oExpression.pos);
 							}
 						} else if (oToken.type === sSeparator && sType.substr(0, 2) === "n0") { // n0 or n0?: if parameter not specified, insert default value null?
-							oExpression = fnCreateDummyArg(null);
+							oExpression = fnCreateDummyArg("null");
 						} else if (sTypeFirstChar === "l") {
 							oExpression = expression(0);
 							if (oExpression.type !== "number") { // maybe an expression and no plain number
@@ -618,7 +631,7 @@ BasicParser.prototype = {
 								if (oToken.type === "number" || oToken.type === "-") { // eslint-disable-line max-depth
 									oExpression = fnGetLineRange(sTypeFirstChar);
 								} else {
-									oExpression = fnCreateDummyArg(null);
+									oExpression = fnCreateDummyArg("null");
 									if (aTypes.length) { // eslint-disable-line max-depth
 										bNeedMore = true; // maybe take it as next parameter
 									}
@@ -646,7 +659,7 @@ BasicParser.prototype = {
 					sType = aTypes[0];
 					if (sType === "#0?") { // null stream to add?
 						oExpression = fnCreateDummyArg("#"); // dummy stream with dummy arg
-						oExpression.right = fnCreateDummyArg(null);
+						oExpression.right = fnCreateDummyArg("null", "0");
 						aArgs.push(oExpression);
 					}
 				}
@@ -781,7 +794,7 @@ BasicParser.prototype = {
 					oValue.args.push(oToken);
 					advance(";");
 				} else {
-					oValue.args.push(fnCreateDummyArg(null));
+					oValue.args.push(fnCreateDummyArg("null"));
 				}
 
 				if (oToken.type === "string") { // message
@@ -794,8 +807,8 @@ BasicParser.prototype = {
 						throw that.composeError(Error(), "Expected ; or ,", oToken.type, oToken.pos);
 					}
 				} else {
-					oValue.args.push(fnCreateDummyArg(null)); // dummy message
-					oValue.args.push(fnCreateDummyArg(null)); // dummy prompt
+					oValue.args.push(fnCreateDummyArg("null")); // dummy message
+					oValue.args.push(fnCreateDummyArg("null")); // dummy prompt
 				}
 
 				do { // we need loop for input
@@ -981,7 +994,7 @@ BasicParser.prototype = {
 				aLine;
 
 			if (oValue.args.length < 2) { // add default timer 0
-				oValue.args.push(fnCreateDummyArg(null));
+				oValue.args.push(fnCreateDummyArg("null"));
 			}
 			advance("gosub");
 			aLine = fnGetArgs("gosub"); // line number
@@ -1020,7 +1033,7 @@ BasicParser.prototype = {
 						advance("delete");
 
 						if (!bNumberExpression) {
-							oValue2 = fnCreateDummyArg(null); // insert dummy arg for line
+							oValue2 = fnCreateDummyArg("null"); // insert dummy arg for line
 							oValue.args.push(oValue2);
 						}
 
@@ -1056,7 +1069,7 @@ BasicParser.prototype = {
 
 			while (oToken.type === ",") {
 				if (!bParameterFound) {
-					oValue.args.push(fnCreateDummyArg(null)); // insert null parameter
+					oValue.args.push(fnCreateDummyArg("null")); // insert null parameter
 				}
 				advance(",");
 				bParameterFound = false;
@@ -1069,7 +1082,7 @@ BasicParser.prototype = {
 			}
 
 			if (!bParameterFound) {
-				oValue.args.push(fnCreateDummyArg(null)); // insert null parameter
+				oValue.args.push(fnCreateDummyArg("null")); // insert null parameter
 			}
 
 			return oValue;
@@ -1132,7 +1145,7 @@ BasicParser.prototype = {
 				advance(",");
 				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
 					advance("=");
-					oExpression = fnCreateDummyArg(null); // insert null parameter
+					oExpression = fnCreateDummyArg("null"); // insert null parameter
 					oValue.args.push(oExpression);
 					iCount += 1;
 				}
@@ -1157,7 +1170,7 @@ BasicParser.prototype = {
 				advance(",");
 				if (oToken.type === "=" && iCount % 3 === 0) { // special handling for parameter "number of steps"
 					advance("=");
-					oExpression = fnCreateDummyArg(null); // insert null parameter
+					oExpression = fnCreateDummyArg("null"); // insert null parameter
 					oValue.args.push(oExpression);
 					iCount += 1;
 				}
@@ -1174,7 +1187,7 @@ BasicParser.prototype = {
 				aLine;
 
 			if (oValue.args.length < 2) { // add default timer
-				oValue.args.push(fnCreateDummyArg(null));
+				oValue.args.push(fnCreateDummyArg("null"));
 			}
 			advance("gosub");
 			aLine = fnGetArgs("gosub"); // line number
@@ -1204,7 +1217,7 @@ BasicParser.prototype = {
 				advance("step");
 				oValue.args.push(expression(0));
 			} else {
-				oValue.args.push(fnCreateDummyArg(null));
+				oValue.args.push(fnCreateDummyArg("null"));
 			}
 			return oValue;
 		});
@@ -1224,52 +1237,54 @@ BasicParser.prototype = {
 
 		stmt("if", function () {
 			var oValue = oPreviousToken,
+				aArgs = [],
 				oValue2, oToken2;
-
-			oValue.args = [];
 
 			oValue.left = expression(0);
 			if (oToken.type === "goto") {
 				// skip "then"
-				oValue.right = statements("else");
+				aArgs = statements("else");
 			} else {
 				advance("then");
 				if (oToken.type === "number") {
 					oValue2 = fnCreateCmdCall("goto"); // take "then" as "goto", checks also for line number
 					oValue2.len = 0; // mark it as inserted
 					oToken2 = oToken;
-					oValue.right = statements("else");
-					if (oValue.right.length && oValue.right[0].type !== "rem") {
+					aArgs = statements("else");
+					if (aArgs.length && aArgs[0].type !== "rem") {
 						if (!that.options.bQuiet) {
 							Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
 						}
 					}
-					oValue.right.unshift(oValue2);
+					aArgs.unshift(oValue2);
 				} else {
-					oValue.right = statements("else");
+					aArgs = statements("else");
 				}
 			}
+			oValue.args = aArgs; // then statements
 
+			aArgs = undefined;
 			if (oToken.type === "else") {
 				advance("else");
 				if (oToken.type === "number") {
 					oValue2 = fnCreateCmdCall("goto"); // take "then" as "goto", checks also for line number
 					oValue2.len = 0; // mark it as inserted
 					oToken2 = oToken;
-					oValue.third = statements("else");
-					if (oValue.third.length) {
+					aArgs = statements("else");
+					if (aArgs.length) {
 						if (!that.options.bQuiet) {
 							Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
 						}
 					}
-					oValue.third.unshift(oValue2);
+					aArgs.unshift(oValue2);
 				} else if (oToken.type === "if") {
-					oValue.third = [statement()];
+					aArgs = [statement()];
 				} else {
-					oValue.third = statements("else");
+					aArgs = statements("else");
 				}
-			} else {
-				oValue.third = null;
+			}
+			if (aArgs !== undefined) {
+				oValue.args2 = aArgs; // else statements
 			}
 			return oValue;
 		});

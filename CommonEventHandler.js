@@ -231,7 +231,7 @@ CommonEventHandler.prototype = {
 	},
 
 	onReloadButtonClick: function () {
-		var oChanged = Utils.getChangedParameters(this.model.getAllProperties(), this.model.getAllInitialProperties()),
+		var oChanged = this.model.getChangedProperties(),
 			sParas = this.encodeUriParam(oChanged);
 
 		sParas = sParas.replace(/%2[Ff]/g, "/"); // unescape %2F -> /

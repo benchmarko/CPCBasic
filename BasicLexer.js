@@ -178,14 +178,14 @@ BasicLexer.prototype = {
 					}
 				}
 				sToken = sToken.trim(); // remove trailing spaces
-				iNumber = parseFloat(sToken);
 				if (!isFinite(sToken)) { // Infnity?
 					throw that.composeError(Error(), "Number is too large or too small", sToken, iStartPos); // for a 64-bit double
 				}
-				addToken("number", iNumber, iStartPos, sToken);
+				iNumber = parseFloat(sToken);
+				addToken("number", String(iNumber), iStartPos, sToken);
 				if (that.bTakeNumberAsLine) {
 					that.bTakeNumberAsLine = false;
-					that.iLine = iNumber; // save just for error message
+					that.iLine = String(iNumber); //TTT save just for error message
 				}
 			},
 			fnParseCompleteLineForRem = function () { // special handling for line comment

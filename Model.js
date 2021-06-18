@@ -26,13 +26,28 @@ Model.prototype = {
 	},
 	setProperty: function (sProperty, sValue) {
 		this.config[sProperty] = sValue;
-		return this;
 	},
 	getAllProperties: function () {
 		return this.config;
 	},
 	getAllInitialProperties: function () {
 		return this.initialConfig;
+	},
+
+	getChangedProperties: function () {
+		var oCurrent = this.config,
+			oInitial = this.initialConfig,
+			oChanged = {},
+			sName;
+
+		for (sName in oCurrent) {
+			if (oCurrent.hasOwnProperty(sName)) {
+				if (oCurrent[sName] !== oInitial[sName]) {
+					oChanged[sName] = oCurrent[sName];
+				}
+			}
+		}
+		return oChanged;
 	},
 
 	addDatabases: function (oDb) {
@@ -76,7 +91,6 @@ Model.prototype = {
 			}
 		}
 		this.examples[selectedDatabase][sKey] = oExample;
-		return this;
 	},
 	removeExample: function (sKey) {
 		var selectedDatabase = this.getProperty("database");
@@ -85,7 +99,6 @@ Model.prototype = {
 			Utils.console.warn("removeExample: example does not exist: " + sKey);
 		}
 		delete this.examples[selectedDatabase][sKey];
-		return this;
 	}
 };
 
