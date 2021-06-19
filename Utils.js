@@ -125,21 +125,6 @@ var Utils = {
 	toDegrees: function (rad) {
 		return rad * 180 / Math.PI;
 	},
-	/*
-	getChangedParameters: function (current, initial) {
-		var oChanged = {},
-			sName;
-
-		for (sName in current) {
-			if (current.hasOwnProperty(sName)) {
-				if (current[sName] !== initial[sName]) {
-					oChanged[sName] = current[sName];
-				}
-			}
-		}
-		return oChanged;
-	},
-	*/
 	bSupportsBinaryLiterals: (function () { // does the browser support binary literals?
 		try {
 			Function("0b01"); // eslint-disable-line no-new-func

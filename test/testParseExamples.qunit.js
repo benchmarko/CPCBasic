@@ -1,6 +1,6 @@
 // test1.js - ...
 //
-/* globals QUnit, globalThis */
+/* globals globalThis */
 
 // qunit testParseExamples.qunit.js
 // node  testParseExamples.qunit.js
@@ -8,7 +8,7 @@
 
 "use strict";
 
-var Utils, Polyfills, BasicLexer, BasicParser, BasicTokenizer, CodeGeneratorJs, Model, Variables, fs, path, cpcBasic, oGlobalThis, bNodeJsAvail;
+var Utils, Polyfills, BasicLexer, BasicParser, BasicTokenizer, CodeGeneratorJs, Model, Variables, DiskImage, cpcconfig, https, fs, path, cpcBasic, oGlobalThis, bNodeJsAvail;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -20,6 +20,8 @@ if (typeof require !== "undefined") {
 	CodeGeneratorJs = require("../CodeGeneratorJs.js");
 	Model = require("../Model.js");
 	Variables = require("../Variables.js");
+	DiskImage = require("../DiskImage.js");
+	cpcconfig = require("../cpcconfig");
 	fs = require("fs");
 	path = require("path");
 	/* eslint-enable global-require */
@@ -42,10 +44,79 @@ bNodeJsAvail = (function () {
 	return bNodeJs;
 }());
 
+function isUrl(s) {
+	return s.startsWith("http"); // http or https
+}
+
+function fnEval(sCode) {
+	return eval(sCode); // eslint-disable-line no-eval
+}
+
+function nodeReadUrl(sUrl, fnDataLoaded) {
+	if (!https) {
+		fnEval('https = require("https");'); // to trick TypeScript
+	}
+	https.get(sUrl, function (resp) {
+		var sData = "";
+
+		// A chunk of data has been received.
+		resp.on("data", function (sChunk) {
+			sData += sChunk;
+		});
+
+		// The whole response has been received. Print out the result.
+		resp.on("end", function () {
+			fnDataLoaded(undefined, sData);
+		});
+	}).on("error", function (err) {
+		Utils.console.log("Error: " + err.message);
+		fnDataLoaded(err);
+	});
+}
+
+function nodeReadFile(sName, fnDataLoaded) {
+	if (!fs) {
+		fnEval('fs = require("fs");'); // to trick TypeScript
+	}
+	fs.readFile(sName, "utf8", fnDataLoaded);
+}
+
+function nodeGetAbsolutePath(sName) {
+	var sAbsolutePath;
+
+	if (!path) {
+		fnEval('path = require("path");'); // to trick TypeScript
+	}
+	sAbsolutePath = path.resolve(__dirname, sName);
+
+	return sAbsolutePath;
+}
+
+
+function createModel() {
+	var oStartConfig = {},
+		oInitialConfig, oModel;
+
+	Object.assign(oStartConfig, cpcconfig || {}); // merge external config from cpcconfig.js
+	oInitialConfig = Object.assign({}, oStartConfig); // save config
+	oModel = new Model(oStartConfig, oInitialConfig);
+
+	return oModel;
+}
 
 cpcBasic = {
-	sRelativeDir: "../",
-	model: new Model(),
+	iTotalExamples: 0,
+
+	sBaseDir: "../", // base test directory (relative to dist)
+	sDataBaseDirOrUrl: "",
+	model: createModel(),
+
+	aDatabaseNames: [],
+	iDatabaseIndex: 0,
+
+	aTestExamples: [],
+	iTestIndex: 0,
+
 	oCodeGeneratorJs: new CodeGeneratorJs({
 		lexer: new BasicLexer({
 			bQuiet: true
@@ -53,9 +124,10 @@ cpcBasic = {
 		parser: new BasicParser({
 			bQuiet: true
 		}),
+		tron: false,
 		rsx: {
 			rsxIsAvailable: function (sRsx) { // not needed to suppress warnings when using bQuiet
-				return (/^dir|disc|era|tape$/).test(sRsx);
+				return (/^a|b|basic|cpm|dir|disc|disc\.in|disc\.out|drive|era|ren|tape|tape\.in|tape\.out|user|mode|renum$/).test(sRsx);
 			}
 		}
 	}),
@@ -64,6 +136,7 @@ cpcBasic = {
 	initDatabases: function () {
 		var oModel = this.model,
 			oDatabases = {},
+			aDatabaseNames = [],
 			aDatabaseDirs, i, sDatabaseDir, aParts, sName;
 
 		aDatabaseDirs = oModel.getProperty("databaseDirs").split(",");
@@ -76,8 +149,10 @@ cpcBasic = {
 				title: sDatabaseDir,
 				src: sDatabaseDir
 			};
+			aDatabaseNames.push(sName);
 		}
 		this.model.addDatabases(oDatabases);
+		return aDatabaseNames;
 	},
 
 	addIndex2: function (sDir, input) { // optional sDir
@@ -92,14 +167,16 @@ cpcBasic = {
 	},
 
 	// Also called from example files xxxxx.js
-	addItem2: function (sKey, input) { // optional sKey
-		var sInput, oExample;
+	addItem2: function (sKey, sInput) { // optional sKey
+		var oExample;
 
-		sInput = input.replace(/^\n/, ""); // remove preceding newline
-		sInput = sInput.replace(/\n$/, ""); // remove trailing newline
 		if (!sKey) {
 			sKey = this.model.getProperty("example");
 		}
+
+		sInput = sInput.replace(/^\n/, "").replace(/\n$/, ""); // remove preceding and trailing newlines
+		// beware of data files ending with newlines! (do not use trimEnd)
+
 		oExample = this.model.getExample(sKey);
 		oExample.key = sKey; // maybe changed
 		oExample.script = sInput;
@@ -157,8 +234,9 @@ function splitMeta(sInput) {
 	};
 }
 
-function asmGena3Convert(/* sInput */) {
-	throw new Error("asmGena3Convert: not implemented for test");
+function asmGena3Convert(sInput) {
+	throw new Error("asmGena3Convert: not implemented for test: " + sInput);
+	//return sInput;
 }
 
 // taken from Controller.js
@@ -192,16 +270,19 @@ function testParseExample(oExample) {
 	var oCodeGeneratorJs = cpcBasic.oCodeGeneratorJs,
 		sScript = oExample.script,
 		oVariables = new Variables(),
-		sInput, oOutput;
+		sInput = testCheckMeta(sScript),
+		oOutput;
 
-	sInput = testCheckMeta(sScript);
 	if (oExample.meta !== "D") { // skip data files
-		oCodeGeneratorJs.reset();
 		oOutput = oCodeGeneratorJs.generate(sInput, oVariables, true);
 	} else {
 		oOutput = {
 			text: "UNPARSED DATA FILE: " + oExample.key
 		};
+	}
+
+	if (Utils.debug > 0) {
+		Utils.console.debug("testParseExample:", oExample.key, "inputLen:", sInput.length, "outputLen:", oOutput.text.length);
 	}
 
 	if (cpcBasic.assert) {
@@ -211,33 +292,31 @@ function testParseExample(oExample) {
 	return oOutput;
 }
 
-function fnEval(sCode) {
-	return eval(sCode);
-}
-
-function fnExampleLoaded(err, sCode) {
+function fnExampleLoaded(oError, sCode) {
 	var sKey, oExample, oOutput;
 
-	if (err) {
-		throw err;
+	if (oError) {
+		throw oError;
 	}
 	cpcBasic.fnExampleDone1();
 
-	fnEval(sCode); // load example
+	if (sCode) {
+		fnEval(sCode); // load example
+	}
 
 	sKey = cpcBasic.model.getProperty("example");
 	oExample = cpcBasic.model.getExample(sKey);
 	oOutput = testParseExample(oExample);
 
-	if (!oOutput.error) { //TTT
-		if (cpcBasic.iTestIndex < cpcBasic.aTestExamples.length) {
-			testNextExample();
-		}
+	if (!oOutput.error) {
+		//if (cpcBasic.iTestIndex < cpcBasic.aTestExamples.length) {
+		testNextExample(); // eslint-disable-line no-use-before-define
+		//}
 	}
 }
 
 function fnExampleLoadedUtils(/* sUrl */) {
-	return fnExampleLoaded(null, "");
+	return fnExampleLoaded(undefined, "");
 }
 
 function fnExampleErrorUtils(sUrl) {
@@ -246,17 +325,29 @@ function fnExampleErrorUtils(sUrl) {
 
 function testLoadExample(oExample) {
 	var sExample = oExample.key,
-		sUrl = cpcBasic.sRelativeDir + oExample.dir + "/" + sExample + ".js";
+		//sUrl = cpcBasic.sRelativeDir + oExample.dir + "/" + sExample + ".js";
+		sFileOrUrl = cpcBasic.sDataBaseDirOrUrl + "/" + sExample + ".js";
 
 	if (cpcBasic.assert) {
 		cpcBasic.fnExampleDone1 = cpcBasic.assert.async();
 	}
 
+	/*
 	if (fs) {
 		sUrl = path.resolve(__dirname, sUrl); // to get it working also for "npm test" and not only for node ...
 		fs.readFile(sUrl, "utf8", fnExampleLoaded);
 	} else {
 		Utils.loadScript(sUrl, fnExampleLoadedUtils, fnExampleErrorUtils);
+	}
+	*/
+	if (bNodeJsAvail) {
+		if (isUrl(sFileOrUrl)) {
+			nodeReadUrl(sFileOrUrl, fnExampleLoaded);
+		} else {
+			nodeReadFile(sFileOrUrl, fnExampleLoaded);
+		}
+	} else {
+		Utils.loadScript(sFileOrUrl, fnExampleLoadedUtils, fnExampleErrorUtils, sExample);
 	}
 }
 
@@ -271,41 +362,83 @@ function testNextExample() {
 		cpcBasic.model.setProperty("example", sKey);
 		oExample = cpcBasic.model.getExample(sKey);
 		testLoadExample(oExample);
+	} else { // another database?
+		testNextIndex(); // eslint-disable-line no-use-before-define
 	}
 }
 
 
-function fnIndexLoaded(err, sCode) {
+function fnIndexLoaded(oError, sCode) {
 	var oAllExamples;
 
-	cpcBasic.fnIndexDone1();
-	if (err) {
-		throw err;
+	if (oError) {
+		throw oError;
 	}
 
-	fnEval(sCode); // load index
+	cpcBasic.fnIndexDone1();
+
+	if (sCode) {
+		fnEval(sCode); // load index (for nodeJs)
+	}
 
 	oAllExamples = cpcBasic.model.getAllExamples();
 
 	cpcBasic.aTestExamples = Object.keys(oAllExamples);
 	cpcBasic.iTestIndex = 0;
 
+	cpcBasic.iTotalExamples += cpcBasic.aTestExamples.length;
 	if (cpcBasic.assert) {
-		cpcBasic.assert.expect(cpcBasic.aTestExamples.length);
+		cpcBasic.assert.expect(cpcBasic.iTotalExamples);
 	}
 
 	testNextExample();
 }
 
 function fnIndexLoadedUtils(/* sUrl */) {
-	return fnIndexLoaded(null, "");
+	return fnIndexLoaded(undefined, "");
 }
 
 function fnIndexErrorUtils(sUrl) {
-	return fnIndexLoaded(new Error("fnIndexErrorUtils: " + sUrl), null);
+	return fnIndexLoaded(new Error("fnIndexErrorUtils: " + sUrl));
 }
 
-function testLoadIndex() {
+function testLoadIndex(oExampeDb) {
+	var sDir = oExampeDb.src,
+		sFileOrUrl;
+
+	if (!isUrl(sDir)) {
+		sDir = cpcBasic.sBaseDir + sDir;
+	}
+
+	if (cpcBasic.assert) {
+		cpcBasic.fnIndexDone1 = cpcBasic.assert.async();
+	}
+
+	if (bNodeJsAvail) {
+		if (!isUrl(sDir)) {
+			if (Utils.debug > 0) {
+				Utils.console.debug("testParseExamples: __dirname=", __dirname, " sDir=", sDir);
+			}
+			sDir = nodeGetAbsolutePath(sDir); // convert to absolute path to get it working also for "npm test" and not only for node
+		}
+	}
+	cpcBasic.sDataBaseDirOrUrl = sDir;
+
+	sFileOrUrl = cpcBasic.sDataBaseDirOrUrl + "/0index.js"; // "./examples/0index.js";
+
+	Utils.console.log("testParseExamples: Using Database index:", sFileOrUrl);
+
+	if (bNodeJsAvail) {
+		if (isUrl(sDir)) {
+			nodeReadUrl(sFileOrUrl, fnIndexLoaded);
+		} else {
+			nodeReadFile(sFileOrUrl, fnIndexLoaded);
+		}
+	} else {
+		Utils.loadScript(sFileOrUrl, fnIndexLoadedUtils, fnIndexErrorUtils, oExampeDb.text);
+	}
+
+	/*
 	var sUrl = cpcBasic.sRelativeDir + "./examples/0index.js";
 
 	Utils.console.log("testLoadIndex: bNodeJs:", bNodeJsAvail);
@@ -320,11 +453,106 @@ function testLoadIndex() {
 	} else {
 		Utils.loadScript(sUrl, fnIndexLoadedUtils, fnIndexErrorUtils);
 	}
+	*/
 }
 
-if (typeof QUnit !== "undefined") {
+function testNextIndex() {
+	var aDatabaseNames = cpcBasic.aDatabaseNames,
+		iDatabaseIndex = cpcBasic.iDatabaseIndex,
+		bNextIndex = false,
+		sKey, oExampeDb;
+
+	if (iDatabaseIndex < aDatabaseNames.length) {
+		sKey = aDatabaseNames[iDatabaseIndex]; // e.g. "examples";
+
+		if (sKey !== "storage") { // ignore "storage"
+			cpcBasic.iDatabaseIndex += 1;
+			cpcBasic.model.setProperty("database", sKey);
+			oExampeDb = cpcBasic.model.getDatabase();
+
+			bNextIndex = true;
+			testLoadIndex(oExampeDb);
+		}
+	}
+
+	if (!bNextIndex) {
+		Utils.console.log("testParseExamples: Total examples:", cpcBasic.iTotalExamples);
+	}
+}
+
+function testStart() {
+	Utils.console.log("testParseExamples: bNodeJs:", bNodeJsAvail, " Polyfills.iCount=", Polyfills.iCount);
+
+	cpcBasic.iTotalExamples = 0;
+	cpcBasic.aDatabaseNames = cpcBasic.initDatabases();
+	cpcBasic.iDatabaseIndex = 0;
+	testNextIndex();
+}
+
+function fnParseArgs(aArgs) {
+	var oSettings = {
+			debug: 0
+		},
+		i = 0,
+		sName;
+
+	while (i < aArgs.length) {
+		sName = aArgs[i];
+
+		i += 1;
+		if (sName in oSettings) {
+			oSettings[sName] = parseInt(aArgs[i], 10);
+			i += 1;
+		}
+	}
+	return oSettings;
+}
+
+// https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/process.d.ts
+
+if (typeof process !== "undefined") { // nodeJs
+	(function () {
+		var oSettings = fnParseArgs(process.argv.slice(2));
+
+		if (oSettings.debug) {
+			Utils.debug = oSettings.debug;
+		}
+	}());
+}
+
+if (typeof oGlobalThis.QUnit !== "undefined") {
+	// eslint-disable-next-line vars-on-top
+	var QUnit = oGlobalThis.QUnit; // eslint-disable-line one-var
+
+	Utils.console.log("Using QUnit");
+
 	QUnit.config.testTimeout = 5 * 1000;
 	QUnit.module("testParseExamples: Tests", function (/* hooks */) {
+		QUnit.test("testParseExamples", function (assert) {
+			cpcBasic.assert = assert;
+
+			/*
+			cpcBasic.fnIndexDone1 = assert.async();
+			assert.expect(1);
+			*/
+			testStart();
+		});
+	});
+} else {
+	cpcBasic.fnIndexDone1 = function () {
+		// empty
+	};
+	cpcBasic.fnExampleDone1 = function () {
+		// empty
+	};
+
+	testStart();
+}
+
+/*
+if (typeof QUnit !== "undefined") {
+	QUnit.config.testTimeout = 5 * 1000;
+	QUnit.module("testParseExamples: Tests", function (/ * hooks * /) {
 		QUnit.test("testParseExamples", function (assert) {
 			cpcBasic.assert = assert;
 
@@ -342,5 +570,6 @@ if (typeof QUnit !== "undefined") {
 	};
 	testLoadIndex();
 }
+*/
 
 // end

@@ -39,28 +39,13 @@ CodeGeneratorBasic.mCombinedKeywords = {
 
 CodeGeneratorBasic.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. tron, rsx
-
-		this.lexer = this.options.lexer;
-		this.parser = this.options.parser;
-
-		//this.reset();
+		this.lexer = options.lexer;
+		this.parser = options.parser;
 	},
 
-	/*
-	reset: function () {
-		this.lexer.reset();
-		this.parser.reset();
-		return this;
-	},
-	*/
 
-	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments);
-
-		aArgs.unshift("CodeGeneratorBasic");
-		aArgs.push(this.iLine);
-		return Utils.composeError.apply(null, aArgs);
+	composeError: function (oError, message, value, pos) {
+		return Utils.composeError("CodeGeneratorBasic", oError, message, value, pos);
 	},
 
 	//
@@ -240,12 +225,12 @@ CodeGeneratorBasic.prototype = {
 					return sValue;
 				},
 				data: function (node) {
-					var aNodeArgs = [],
+					var aNodeArgs = fnParseArgs(node.args),
 						regExp = new RegExp(",|^ +| +$"),
 						i, sValue, sName;
 
-					for (i = 0; i < node.args.length; i += 1) {
-						sValue = fnParseOneArg(node.args[i]);
+					for (i = 0; i < aNodeArgs.length; i += 1) {
+						sValue = aNodeArgs[i];
 
 						if (sValue) {
 							sValue = sValue.substr(1, sValue.length - 2); // remove surrounding quotes
@@ -257,7 +242,7 @@ CodeGeneratorBasic.prototype = {
 								}
 							}
 						}
-						aNodeArgs.push(sValue);
+						aNodeArgs[i] = sValue;
 					}
 
 					sName = node.type.toUpperCase();
@@ -577,7 +562,7 @@ CodeGeneratorBasic.prototype = {
 			parseNode = function (node) { // eslint-disable-line complexity
 				var sType = node.type,
 					mPrecedence = mOperatorPrecedence,
-					value, value2, p, pl, pr;
+					value, value2, oRight, p, pl, pr;
 
 				if (Utils.debug > 3) {
 					Utils.console.debug("evaluate: parseNode node=%o type=" + node.type + " value=" + node.value + " left=%o right=%o args=%o", node, node.left, node.right, node.args);
@@ -599,14 +584,14 @@ CodeGeneratorBasic.prototype = {
 							}
 						}
 
-						//TODO oRight = node.right;
-						value2 = parseNode(node.right);
-						if (mOperators[node.right.type] && (node.right.left || node.right.right)) { // binary operator (or unary operator, e.g. not)
+						oRight = node.right;
+						value2 = parseNode(oRight);
+						if (mOperators[oRight.type] && (oRight.left || oRight.right)) { // binary operator (or unary operator, e.g. not)
 							p = mPrecedence[node.type];
-							if (node.right.left) { // right is binary
-								pr = mPrecedence[node.right.type] || 0;
+							if (oRight.left) { // right is binary
+								pr = mPrecedence[oRight.type] || 0;
 							} else {
-								pr = mPrecedence["p" + node.right.type] || mPrecedence[node.right.type] || 0;
+								pr = mPrecedence["p" + oRight.type] || mPrecedence[oRight.type] || 0;
 							}
 
 							if ((pr < p) || ((pr === p) && node.type === "-")) { // "-" is special
@@ -615,12 +600,13 @@ CodeGeneratorBasic.prototype = {
 						}
 						value = value + mOperators[sType].toUpperCase() + value2;
 					} else { // unary operator
-						value = parseNode(node.right);
+						oRight = node.right;
+						value = parseNode(oRight);
 						p = mPrecedence["p" + node.type] || mPrecedence[node.type] || 0; // check unary operator first
-						if (node.right.left) { // was binary op?
-							pr = mPrecedence[node.right.type] || 0; // no special prio
+						if (oRight.left) { // was binary op?
+							pr = mPrecedence[oRight.type] || 0; // no special prio
 						} else {
-							pr = mPrecedence["p" + node.right.type] || mPrecedence[node.right.type] || 0; // check unary operator first
+							pr = mPrecedence["p" + oRight.type] || mPrecedence[oRight.type] || 0; // check unary operator first
 						}
 						if (p && pr && (pr < p)) {
 							value = "(" + value + ")";

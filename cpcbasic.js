@@ -7,7 +7,7 @@
 
 "use strict";
 
-var cpcBasicExternalConfig, cpcBasic;
+var cpcconfig, cpcBasic;
 
 cpcBasic = {
 	config: {
@@ -158,7 +158,7 @@ cpcBasic = {
 			oStartConfig = this.config,
 			sCpcBasicLog, oInitialConfig, iDebug;
 
-		Object.assign(oStartConfig, cpcBasicExternalConfig || {}); // merge external config from cpcconfig.js
+		Object.assign(oStartConfig, cpcconfig || {}); // merge external config from cpcconfig.js
 		oInitialConfig = Object.assign({}, oStartConfig); // save config
 		this.fnParseUri(oStartConfig); // modify config with URL parameters
 		this.model = new Model(oStartConfig, oInitialConfig);

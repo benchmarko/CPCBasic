@@ -248,21 +248,14 @@ BasicParser.mCloseTokens = {
 
 BasicParser.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. tron, bQuiet
+		this.bQuiet = options ? Boolean(options.bQuiet) : false;
 
-		this.reset();
+		// reset:
+		this.sLine = "0"; // for error messages
 	},
 
-	reset: function () {
-		this.iLine = 0; // for error messages
-	},
-
-	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments);
-
-		aArgs.unshift("BasicParser");
-		aArgs.push(this.iLine);
-		return Utils.composeError.apply(null, aArgs);
+	composeError: function (oError, message, value, pos) {
+		return Utils.composeError("BasicParser", oError, message, value, pos, this.sLine);
 	},
 
 	// http://crockford.com/javascript/tdop/tdop.html (old: http://javascript.crockford.com/tdop/tdop.html)
@@ -426,7 +419,7 @@ BasicParser.prototype = {
 					oValue = oPreviousToken; // number token
 					oValue.type = "label"; // number => label
 				}
-				that.iLine = oValue.value; // set line number for error messages
+				that.sLine = oValue.value; // set line number for error messages
 				oValue.args = statements(null);
 
 				if (oToken.type === "(eol)") {
@@ -711,7 +704,7 @@ BasicParser.prototype = {
 				advance(oBracketClose ? oBracketClose.type : ")");
 				aArgs.push(oBracketClose);
 				if (oBrackets[oBracketOpen.type] !== oBracketClose.type) {
-					if (!that.options.bQuiet) {
+					if (!that.bQuiet) {
 						Utils.console.warn(that.composeError({}, "Inconsistent bracket style", oPreviousToken.value, oPreviousToken.pos).message);
 					}
 				}
@@ -1119,7 +1112,7 @@ BasicParser.prototype = {
 
 			oValue.args = [];
 
-			if (!that.options.bQuiet) {
+			if (!that.bQuiet) {
 				Utils.console.warn(that.composeError({}, "ELSE: Weird use of ELSE", oPreviousToken.type, oPreviousToken.pos).message);
 			}
 
@@ -1252,7 +1245,7 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					aArgs = statements("else");
 					if (aArgs.length && aArgs[0].type !== "rem") {
-						if (!that.options.bQuiet) {
+						if (!that.bQuiet) {
 							Utils.console.warn(that.composeError({}, "IF: Unreachable code after THEN", oToken2.type, oToken2.pos).message);
 						}
 					}
@@ -1272,7 +1265,7 @@ BasicParser.prototype = {
 					oToken2 = oToken;
 					aArgs = statements("else");
 					if (aArgs.length) {
-						if (!that.options.bQuiet) {
+						if (!that.bQuiet) {
 							Utils.console.warn(that.composeError({}, "IF: Unreachable code after ELSE", oToken2.type, oToken2.pos).message);
 						}
 					}
@@ -1509,6 +1502,7 @@ BasicParser.prototype = {
 
 
 		// line
+		this.sLine = "0"; // for error messages
 		iIndex = 0;
 		advance();
 		while (oToken.type !== "(end)") {

@@ -5,12 +5,16 @@
 
 "use strict";
 
-var Utils;
+var Utils, Polyfills;
 
 if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
 
+Polyfills = { // eslint-disable-line no-unused-vars
+	iCount: 0
+	// empty
+};
 
 // IE: window.console is only available when Dev Tools are open
 if (!Utils.console) {

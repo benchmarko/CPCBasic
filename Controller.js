@@ -6,7 +6,7 @@
 
 "use strict";
 
-var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorBasic, CodeGeneratorJs, CommonEventHandler, CpcVm, Diff, DiskImage, InputStack, Keyboard, Sound, Variables, ZipFile;
+var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorBasic, CodeGeneratorJs, CommonEventHandler, CpcVm, Diff, DiskImage, InputStack, Keyboard, VirtualKeyboard, Sound, Variables, ZipFile;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -20,10 +20,11 @@ if (typeof require !== "undefined") {
 	CodeGeneratorJs = require("./CodeGeneratorJs.js");
 	CommonEventHandler = require("./CommonEventHandler.js");
 	CpcVm = require("./CpcVm.js");
-	Diff = require("./Diff.js"); //TTT Test
+	Diff = require("./Diff.js");
 	DiskImage = require("./DiskImage.js");
 	InputStack = require("./InputStack.js");
 	Keyboard = require("./Keyboard.js");
+	VirtualKeyboard = require("./VirtualKeyboard.js");
 	Sound = require("./Sound.js");
 	Variables = require("./Variables.js");
 	ZipFile = require("./ZipFile.js");
@@ -75,7 +76,6 @@ Controller.prototype = {
 		oView.setHidden("cpcArea", false); // make sure canvas is not hidden (allows to get width, height)
 		this.oCanvas = new Canvas({
 			aCharset: cpcBasicCharset,
-			cpcDivId: "cpcArea",
 			onClickKey: this.fnPutKeyInBufferHandler
 		});
 		oView.setHidden("cpcArea", !oModel.getProperty("showCpc"));
@@ -90,7 +90,7 @@ Controller.prototype = {
 			fnOnEscapeHandler: this.fnOnEscapeHandler
 		});
 		if (this.model.getProperty("showKbd")) { // maybe we need to draw virtual keyboard
-			this.oKeyboard.virtualKeyboardCreate();
+			this.virtualKeyboardCreate();
 		}
 
 		this.oSound = new Sound();
@@ -119,7 +119,7 @@ Controller.prototype = {
 			rsx: this.oVm.rsx // just to check the names
 		});
 
-		this.oBasicTokenizer = new BasicTokenizer(); // for tokenized BASIC
+		this.oBasicTokenizer = undefined; // for tokenized BASIC
 
 		this.initDatabases();
 		if (oModel.getProperty("sound")) { // activate sound needs user action
@@ -815,6 +815,13 @@ Controller.prototype = {
 		return sOut;
 	},
 
+	decodeTokenizedBasic: function (sInput) {
+		if (!this.oBasicTokenizer) {
+			this.oBasicTokenizer = new BasicTokenizer();
+		}
+		return this.oBasicTokenizer.decode(sInput);
+	},
+
 	loadFileContinue: function (sInput) { // eslint-disable-line complexity
 		var oInFile = this.oVm.vmGetInFileObject(),
 			sCommand = oInFile.sCommand,
@@ -833,10 +840,10 @@ Controller.prototype = {
 
 			sType = oData.oMeta.sType;
 			if (sType === "T") { // tokenized basic?
-				sInput = this.oBasicTokenizer.decode(sInput);
+				sInput = this.decodeTokenizedBasic(sInput);
 			} else if (sType === "P") { // protected BASIC?
 				sInput = DiskImage.prototype.unOrProtectData(sInput);
-				sInput = this.oBasicTokenizer.decode(sInput);
+				sInput = this.decodeTokenizedBasic(sInput);
 			} else if (sType === "B") { // binary?
 			} else if (sType === "A") { // ASCII?
 				// remove EOF character(s) (0x1a) from the end of file
@@ -1205,6 +1212,10 @@ Controller.prototype = {
 
 		this.oVariables.removeAllVariables();
 		oVm.vmReset();
+		if (this.oVirtualKeyboard) {
+			this.oVirtualKeyboard.reset();
+		}
+
 		oVm.vmStop("end", 0, true); // set "end" with priority 0, so that "compile only" still works
 		oVm.sOut = "";
 		this.view.setAreaValue("outputText", "");
@@ -1238,7 +1249,6 @@ Controller.prototype = {
 			});
 		}
 
-		//this.oBasicFormatter.reset();
 		oOutput = this.oBasicFormatter.renumber(sInput, oParas.iNew, oParas.iOld, oParas.iStep, oParas.iKeep);
 
 		if (oOutput.error) {
@@ -1301,11 +1311,9 @@ Controller.prototype = {
 
 		this.oVariables.removeAllVariables();
 		if (!iBench) {
-			this.oCodeGeneratorJs.reset();
 			oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
 		} else {
 			for (i = 0; i < iBench; i += 1) {
-				this.oCodeGeneratorJs.reset();
 				iTime = Date.now();
 				oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables);
 				iTime = Date.now() - iTime;
@@ -1487,7 +1495,7 @@ Controller.prototype = {
 			Utils.console.log("fnDirectInput: execute:", sInput);
 
 			if (sInputText && (/^\d+($| )/).test(sInputText)) { // do we have a program starting with a line number?
-				oOutput = this.oCodeGeneratorJs.reset().generate(sInput + "\n" + sInputText, this.oVariables, true); // compile both; allow direct command
+				oOutput = this.oCodeGeneratorJs.generate(sInput + "\n" + sInputText, this.oVariables, true); // compile both; allow direct command
 				if (oOutput.error) {
 					if (oOutput.error.pos >= sInput.length + 1) { // error not in direct?
 						oOutput.error.pos -= (sInput.length + 1);
@@ -1502,7 +1510,7 @@ Controller.prototype = {
 			}
 
 			if (!oOutput) {
-				oOutput = this.oCodeGeneratorJs.reset().generate(sInput, this.oVariables, true); // compile direct input only
+				oOutput = this.oCodeGeneratorJs.generate(sInput, this.oVariables, true); // compile direct input only
 			}
 
 			if (oOutput.error) {
@@ -1806,12 +1814,6 @@ Controller.prototype = {
 		value = oVariables.getVariable(sPar);
 		if (typeof value === "function") {
 			value = this.generateFunction(sPar, sValue);
-			/*
-			value = sValue;
-			value = "var o=cpcBasic.controller.oVm, v=o.vmGetAllVariables(); v." + sPar + " = " + sValue;
-			value = new Function("xR", value); // eslint-disable-line no-new-func
-			// new function must be called later with this.oVm, ...
-			*/
 			oVariables.setVariable(sPar, value);
 		} else {
 			sVarType = this.oVariables.determineStaticVarType(sPar);
@@ -2089,6 +2091,15 @@ Controller.prototype = {
 		if (sStackInput !== sInput) {
 			this.inputStack.save(sInput);
 			this.fnUpdateUndoRedoButtons();
+		}
+	},
+
+	virtualKeyboardCreate: function () {
+		if (!this.oVirtualKeyboard) {
+			this.oVirtualKeyboard = new VirtualKeyboard({
+				fnPressCpcKey: this.oKeyboard.fnPressCpcKey.bind(this.oKeyboard),
+				fnReleaseCpcKey: this.oKeyboard.fnReleaseCpcKey.bind(this.oKeyboard)
+			});
 		}
 	},
 

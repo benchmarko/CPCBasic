@@ -19,13 +19,15 @@ function BasicTokenizer(options) {
 
 BasicTokenizer.prototype = {
 	init: function (/* options */) {
+		// empty
 	},
 
+	/*
 	reset: function () {
-		this.sData = "";
 		this.iPos = 0;
 		this.iLine = 0;
 	},
+	*/
 
 	decode: function (sProgram) { // decode tokenized BASIC to ASCII
 		// based on lbas2ascii.pl, 28.06.2006
@@ -42,16 +44,16 @@ BasicTokenizer.prototype = {
 				return fnNum8Dec() + fnNum8Dec() * 256;
 			},
 
-			fnNum16Hex = function () {
-				return "&" + fnNum16Dec().toString(16).toUpperCase();
+			fnNum32Dec = function () { // used for FLoating Point
+				return fnNum16Dec() + fnNum16Dec() * 65536;
 			},
 
 			fnNum16Bin = function () {
 				return "&X" + fnNum16Dec().toString(2);
 			},
 
-			fnNum32Dec = function () { // used for FLoating Point
-				return fnNum16Dec() + fnNum16Dec() * 65536;
+			fnNum16Hex = function () {
+				return "&" + fnNum16Dec().toString(16).toUpperCase();
 			},
 
 			// floating point numbers (little endian byte order)
@@ -120,19 +122,13 @@ BasicTokenizer.prototype = {
 			},
 
 			fnVar = function () {
-				var sOut;
-
 				fnNum16Dec(); // ignore offset
-				sOut = fnGetBit7TerminatedString();
-				return sOut;
+				return fnGetBit7TerminatedString();
 			},
 
 			fnRsx = function () {
-				var sOut = "";
-
 				fnNum8Dec(); // ignore length
-				sOut = fnGetBit7TerminatedString();
-				return "|" + sOut;
+				return "|" + fnGetBit7TerminatedString();
 			},
 
 			fnStringUntilEol = function () {
@@ -409,7 +405,7 @@ BasicTokenizer.prototype = {
 				var sInput = that.sInput,
 					sOut = "",
 					bSpace = false,
-					iLineLength, iToken, iNextToken, bOldSpace, tstr;
+					iLineLength, iToken, iNextToken, bOldSpace, token, tstr;
 
 				iLineLength = fnNum16Dec();
 				if (!iLineLength) {
@@ -436,14 +432,16 @@ BasicTokenizer.prototype = {
 
 					if (iToken === 0xff) { // extended token?
 						iToken = fnNum8Dec(); // get it
-						tstr = mTokensFF[iToken];
+						token = mTokensFF[iToken];
 					} else {
-						tstr = mTokens[iToken];
+						token = mTokens[iToken];
 					}
 
-					if (tstr !== undefined) {
-						if (typeof tstr === "function") {
-							tstr = tstr();
+					if (token !== undefined) {
+						if (typeof token === "function") {
+							tstr = token();
+						} else { // string
+							tstr = token;
 						}
 
 						if ((/[a-zA-Z0-9.]$/).test(tstr) && iToken !== 0xe4) { // last character char, number, dot? (not for token "FN")
@@ -468,6 +466,7 @@ BasicTokenizer.prototype = {
 					sLine;
 
 				that.iPos = 0;
+				that.iLine = 0;
 				while ((sLine = fnParseNextLine()) !== null) {
 					sOut += sLine + "\n";
 					// CPC uses "\r\n" line breaks, JavaScript uses "\n", textArea cannot contain "\r"

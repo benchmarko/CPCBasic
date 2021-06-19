@@ -127,7 +127,7 @@ CommonEventHandler.prototype = {
 			if (this.view.getHidden("kbdArea")) { // on old browsers, display "flex" is not available, so set "block" if still hidden
 				this.view.setHidden("kbdArea", false);
 			}
-			this.controller.oKeyboard.virtualKeyboardCreate(); // maybe draw it
+			this.controller.virtualKeyboardCreate(); // maybe draw it
 		}
 	},
 

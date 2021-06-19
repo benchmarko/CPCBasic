@@ -18,34 +18,46 @@ function CodeGeneratorJs(options) {
 
 CodeGeneratorJs.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. tron (trace on flag), rsx (optional RSX names to check), bQuiet
-
-		this.lexer = this.options.lexer;
-		this.parser = this.options.parser;
-
-		this.reJsKeywords = this.createJsKeywordRegex();
-		//this.reset();
-	},
-
-	reset: function () {
-		this.iLine = 0; // current line (label)
+		this.lexer = options.lexer;
+		this.parser = options.parser;
+		this.tron = options.tron; // tron (trace on flag)
+		this.rsx = options.rsx; // optional RSX names to check
+		this.bQuiet = options.bQuiet || false;
+		this.bNoCodeFrame = options.bNoCodeFrame || false;
 
 		this.oStack = {
 			forLabel: [],
 			forVarName: [],
 			whileLabel: []
 		};
+		this.aData = []; // collected data from data lines
+		this.reJsKeywords = this.createJsKeywordRegex();
+	},
+
+	reset: function () {
+		var oStack = this.oStack;
+
+		oStack.forLabel.length = 0;
+		oStack.forVarName.length = 0;
+		oStack.whileLabel.length = 0;
+
+		this.iLine = 0; // current line (label)
+
+		/*
+		this.oStack = {
+			forLabel: [],
+			forVarName: [],
+			whileLabel: []
+		};
+		*/
 
 		this.resetCountsPerLine();
 
-		this.aData = []; // collected data from data lines
+		//this.aData = []; // collected data from data lines
+		this.aData.length = 0;
 
 		this.oLabels = {}; // labels or line numbers
 		this.bMergeFound = false; // if we find chain or chain merge, the program is not complete and we cannot check for existing line numbers during compile time (or do a renumber)
-
-		this.lexer.reset();
-		this.parser.reset();
-		return this;
 	},
 
 	resetCountsPerLine: function () {
@@ -56,12 +68,8 @@ CodeGeneratorJs.prototype = {
 		this.iWhileCount = 0; // stack needed
 	},
 
-	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments);
-
-		aArgs.unshift("CodeGeneratorJs");
-		aArgs.push(this.iLine);
-		return Utils.composeError.apply(null, aArgs);
+	composeError: function (oError, message, value, pos) {
+		return Utils.composeError("CodeGeneratorJs", oError, message, value, pos, this.iLine);
 	},
 
 	// ECMA 3 JS Keywords which must be avoided in dot notation for properties when using IE8
@@ -128,9 +136,8 @@ CodeGeneratorJs.prototype = {
 	],
 
 	createJsKeywordRegex: function () {
-		var reJsKeywords;
+		var reJsKeywords = new RegExp("^(" + this.aJsKeywords.join("|") + ")$");
 
-		reJsKeywords = new RegExp("^(" + this.aJsKeywords.join("|") + ")$");
 		return reJsKeywords;
 	},
 
@@ -146,14 +153,13 @@ CodeGeneratorJs.prototype = {
 				}
 			},
 
-			oDevScopeArgs = null,
-			bDevScopeArgsCollect = false,
+			oDefScopeArgs = undefined, // eslint-disable-line no-undef-init
 
 			fnAdaptVariableName = function (sName, iArrayIndices) {
 				sName = sName.toLowerCase();
 				sName = sName.replace(/\./g, "_");
 
-				if (oDevScopeArgs || !Utils.bSupportReservedNames) { // avoid keywords as def fn parameters; and for IE8 avoid keywords in dot notation
+				if (oDefScopeArgs || !Utils.bSupportReservedNames) { // avoid keywords as def fn parameters; and for IE8 avoid keywords in dot notation
 					if (that.reJsKeywords.test(sName)) { // IE8: avoid keywords in dot notation
 						sName = "_" + sName; // prepend underscore
 					}
@@ -167,13 +173,13 @@ CodeGeneratorJs.prototype = {
 				if (iArrayIndices) {
 					sName += "A".repeat(iArrayIndices);
 				}
-				if (oDevScopeArgs) {
+				if (oDefScopeArgs) {
 					if (sName === "o") { // we must not use format parameter "o" since this is our vm object
 						sName = "oNo"; // change variable name to something we cannot set in BASIC
 					}
-					if (bDevScopeArgsCollect) {
-						oDevScopeArgs[sName] = 1; // declare devscope variable
-					} else if (!(sName in oDevScopeArgs)) {
+					if (!oDefScopeArgs.bCollectDone) { // in collection mode?
+						oDefScopeArgs[sName] = true; // declare DEF scope variable
+					} else if (!(sName in oDefScopeArgs)) {
 						// variable
 						fnDeclareVariable(sName);
 						sName = "v." + sName; // access with "v."
@@ -406,11 +412,9 @@ CodeGeneratorJs.prototype = {
 				fnParseErase: function (node) {
 					var aNodeArgs, i;
 
-					oDevScopeArgs = {};
-					bDevScopeArgsCollect = true;
+					oDefScopeArgs = {}; // collect DEF scope args
 					aNodeArgs = fnParseArgs(node.args);
-					bDevScopeArgsCollect = false;
-					oDevScopeArgs = null;
+					oDefScopeArgs = undefined;
 
 					for (i = 0; i < aNodeArgs.length; i += 1) {
 						aNodeArgs[i] = '"' + aNodeArgs[i] + '"'; // put in quotes
@@ -457,13 +461,13 @@ CodeGeneratorJs.prototype = {
 					var sRsxName, bRsxAvailable, aNodeArgs, sLabel, oError;
 
 					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_");
-					bRsxAvailable = that.options.rsx && that.options.rsx.rsxIsAvailable(sRsxName);
+					bRsxAvailable = that.rsx && that.rsx.rsxIsAvailable(sRsxName);
 					aNodeArgs = fnParseArgs(node.args);
 					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
 					that.iStopCount += 1;
 
 					if (!bRsxAvailable) { // if RSX not available, we delay the error until it is executed (or catched by on error goto)
-						if (!that.options.bQuiet) {
+						if (!that.bQuiet) {
 							oError = that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
 							Utils.console.warn(oError);
 						}
@@ -617,7 +621,7 @@ CodeGeneratorJs.prototype = {
 						label = '"' + label + '"'; // for "direct"
 					}
 
-					if (!that.options.bNoCodeFrame) {
+					if (!that.bNoCodeFrame) {
 						value += "case " + label + ":";
 					} else {
 						value = "";
@@ -625,7 +629,7 @@ CodeGeneratorJs.prototype = {
 
 					aNodeArgs = fnParseArgs(node.args);
 
-					if (that.options.tron) {
+					if (that.tron) {
 						value += " o.vmTrace(\"" + that.iLine + "\");";
 					}
 					for (i = 0; i < aNodeArgs.length; i += 1) {
@@ -640,7 +644,7 @@ CodeGeneratorJs.prototype = {
 						}
 					}
 
-					if (bDirect && !that.options.bNoCodeFrame) {
+					if (bDirect && !that.bNoCodeFrame) {
 						value += "\n o.goto(\"end\"); break;\ncase \"directEnd\":"; // put in next line because of possible "rem"
 					}
 
@@ -695,13 +699,14 @@ CodeGeneratorJs.prototype = {
 
 					sName = fnParseOneArg(node.left);
 
-					oDevScopeArgs = {};
-					bDevScopeArgsCollect = true;
+					oDefScopeArgs = {}; // collect DEF scope args
 					aNodeArgs = fnParseArgs(node.args);
-					bDevScopeArgsCollect = false;
-					sExpression = fnParseOneArg(node.right);
-					oDevScopeArgs = null;
 
+					oDefScopeArgs.bCollectDone = true; // collection done => now use them
+
+					sExpression = fnParseOneArg(node.right);
+
+					oDefScopeArgs = undefined;
 					fnPropagateStaticTypes(node, node.left, node.right, "II RR IR RI $$");
 					sVarType = fnDetermineStaticVarType(sName);
 					if (node.pt) {
@@ -1247,12 +1252,10 @@ CodeGeneratorJs.prototype = {
 						sFileName = fnParseOneArg(node.args[0]);
 						aNodeArgs.push(sFileName);
 						if (node.args.length > 1) {
-							oDevScopeArgs = {};
-							bDevScopeArgsCollect = true;
+							oDefScopeArgs = {}; // collect DEF scope args
 							sType = '"' + fnParseOneArg(node.args[1]) + '"';
 							aNodeArgs.push(sType);
-							bDevScopeArgsCollect = false;
-							oDevScopeArgs = null;
+							oDefScopeArgs = undefined;
 							aNodeArgs2 = node.args.slice(2); // get remaining args
 							aNodeArgs2 = fnParseArgs(aNodeArgs2);
 							aNodeArgs = aNodeArgs.concat(aNodeArgs2);
@@ -1392,6 +1395,11 @@ CodeGeneratorJs.prototype = {
 				var sOutput = "",
 					i, sNode;
 
+				that.oDefScopeArgs = undefined;
+
+				// create labels map
+				fnCreateLabelsMap(that.oLabels);
+
 				for (i = 0; i < parseTree.length; i += 1) {
 					if (Utils.debug > 2) {
 						Utils.console.debug("evaluate: parseTree i=%d, node=%o", i, parseTree[i]);
@@ -1416,9 +1424,6 @@ CodeGeneratorJs.prototype = {
 				}
 				return sOutput;
 			};
-
-		// create labels map
-		fnCreateLabelsMap(this.oLabels);
 
 		return fnEvaluate();
 	},
@@ -1445,7 +1450,7 @@ CodeGeneratorJs.prototype = {
 			aParseTree = this.parser.parse(aTokens, bAllowDirect);
 			sOutput = this.evaluate(aParseTree, oVariables);
 
-			if (!this.options.bNoCodeFrame) {
+			if (!this.bNoCodeFrame) {
 				sOutput = '"use strict"\n'
 				+ "var v=o.vmGetAllVariables();\n"
 				+ "while (o.vmLoopCondition()) {\nswitch (o.iLine) {\ncase 0:\n"

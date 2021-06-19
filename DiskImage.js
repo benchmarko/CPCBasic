@@ -10,8 +10,9 @@ if (typeof require !== "undefined") {
 	Utils = require("./Utils.js"); // eslint-disable-line global-require
 }
 
-// http://www.cpctech.org.uk/docs/extdsk.html
 // Extended DSK image definition
+// https://www.cpcwiki.eu/index.php/Format:DSK_disk_image_file_format
+// http://www.cpctech.org.uk/docs/extdsk.html
 
 function DiskImage(oConfig) {
 	this.init(oConfig);
@@ -38,12 +39,8 @@ DiskImage.prototype = {
 		return this;
 	},
 
-	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments);
-
-		aArgs[1] = this.oConfig.sDiskName + ": " + aArgs[1]; // put DiskName in message
-		aArgs.unshift("DiskImage");
-		return Utils.composeError.apply(null, aArgs);
+	composeError: function (oError, message, value, pos) {
+		return Utils.composeError("DiskImage", oError, this.oConfig.sDiskName + ": " + message, value, pos || 0);
 	},
 
 	testDiskIdent: function (sIdent) {
@@ -97,7 +94,9 @@ DiskImage.prototype = {
 		oDiskInfo.sIdent = sIdent + this.readUtf(iPos + 8, 34 - 8); // read remaining ident
 
 		if (oDiskInfo.sIdent.substr(34 - 11, 9) !== "Disk-Info") { // some tools use "Disk-Info  " instead of "Disk-Info\r\n", so compare without "\r\n"
-			throw this.composeError(Error(), "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos);
+			//throw this.composeError(Error(), "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos);
+			// "Disk-Info" string is optional
+			Utils.console.warn(this.composeError({}, "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos + 34 - 11).message);
 		}
 
 		oDiskInfo.sCreator = this.readUtf(iPos + 34, 14);
@@ -131,7 +130,9 @@ DiskImage.prototype = {
 
 		oTrackInfo.sIdent = this.readUtf(iPos, 12);
 		if (oTrackInfo.sIdent.substr(0, 10) !== "Track-Info") { // some tools use ""Track-Info  " instead of ""Track-Info\r\n", so compare without "\r\n"
-			throw this.composeError(Error(), "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos);
+			//throw this.composeError(Error(), "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos);
+			// "Track-Info" string is optional
+			Utils.console.warn(this.composeError({}, "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos).message);
 		}
 		// 4 unused bytes
 		oTrackInfo.iTrack = this.readUInt8(iPos + 16);
@@ -606,19 +607,6 @@ DiskImage.prototype = {
 				};
 
 				oHeader.sType = mTypeMap[oHeader.iType] || mTypeMap[16]; // default: ASCII
-				/*
-				if (oHeader.iType === 0) { // tokenized BASIC (T=not official)
-					oHeader.sType = "T";
-				} else if (oHeader.iType === 1) { // protected BASIC
-					oHeader.sType = "P";
-				} else if (oHeader.iType === 2) { // Binary
-					oHeader.sType = "B";
-				} else if (oHeader.iType === 8) { // GENA3 Assember (G=not official)
-					oHeader.sType = "G";
-				} else { // assume ASCII
-					oHeader.sType = "A";
-				}
-				*/
 			}
 		}
 		return oHeader;

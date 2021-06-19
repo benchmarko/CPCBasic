@@ -21,21 +21,15 @@ function BasicLexer(options) {
 
 BasicLexer.prototype = {
 	init: function (options) {
-		this.options = options || {}; // e.g. bQuiet
-		this.reset();
+		this.bQuiet = options ? Boolean(options.bQuiet) : false;
+
+		// reset:
+		this.sLine = "0"; // for error messages
+		this.bTakeNumberAsLine = true; // first number in a line is assumed to be a line number
 	},
 
-	reset: function () {
-		this.iLine = 0; // for error messages
-		this.bTakeNumberAsLine = true;
-	},
-
-	composeError: function () { // varargs
-		var aArgs = Array.prototype.slice.call(arguments);
-
-		aArgs.unshift("BasicLexer");
-		aArgs.push(this.iLine);
-		return Utils.composeError.apply(null, aArgs);
+	composeError: function (oError, message, value, pos) {
+		return Utils.composeError("BasicLexer", oError, message, value, pos, this.sLine);
 	},
 
 	lex: function (input) { // eslint-disable-line complexity
@@ -185,7 +179,7 @@ BasicLexer.prototype = {
 				addToken("number", String(iNumber), iStartPos, sToken);
 				if (that.bTakeNumberAsLine) {
 					that.bTakeNumberAsLine = false;
-					that.iLine = String(iNumber); //TTT save just for error message
+					that.sLine = String(iNumber); // save just for error message
 				}
 			},
 			fnParseCompleteLineForRem = function () { // special handling for line comment
@@ -210,7 +204,7 @@ BasicLexer.prototype = {
 						sChar = "";
 						sToken = advanceWhile(isNotQuotes);
 						if (!isQuotes(sChar)) {
-							if (!that.options.bQuiet) {
+							if (!that.bQuiet) {
 								Utils.console.log(that.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
 							}
 						}
@@ -260,6 +254,8 @@ BasicLexer.prototype = {
 				return sOut;
 			};
 
+		this.sLine = "0"; // for error messages
+		this.bTakeNumberAsLine = true;
 
 		while (iIndex < input.length) {
 			iStartPos = iIndex;
@@ -307,7 +303,7 @@ BasicLexer.prototype = {
 
 				sToken = advanceWhile(isNotQuotes);
 				if (!isQuotes(sChar)) {
-					if (!that.options.bQuiet) {
+					if (!that.bQuiet) {
 						Utils.console.log(this.composeError({}, "Unterminated string", sToken, iStartPos + 1).message);
 					}
 					sToken += fnTryContinueString(); // heuristic to detect an LF in the string
