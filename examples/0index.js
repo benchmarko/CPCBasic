@@ -17,6 +17,10 @@ cpcBasic.addIndex("./examples", function () { /*
 		"key": "blkedit",
 		"title": "Block Editor"
     },
+	{
+		"key": "circlewr",
+		"title": "Circle Writer"
+    },
     {
     	"key": "cpc464ch",
 		"title": "CPC 464 Character Art"

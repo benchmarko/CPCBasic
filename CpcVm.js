@@ -111,8 +111,8 @@ CpcVm.prototype = {
 		};
 		// special stop reasons and priorities:
 		// "timer": 20 (timer expired)
-		// "key": 30  (wait for key)
 		// "waitFrame": 40 (FRAME command: wait for frame fly)
+		// "waitKey": 41  (wait for key; higher priority that waitFrame)
 		// "waitSound": 43 (wait for sound queue)
 		// "waitInput": 45 (wait for input: INPUT, LINE INPUT, RANDOMIZE without parameter)
 		// "fileCat": 45 (CAT)
@@ -979,7 +979,7 @@ CpcVm.prototype = {
 		case 0xbb06: // KM Wait Char (ROM &1A3C)
 			// since we do not return a character, we do the same as call &bb18
 			if (this.inkey$() === "") { // no key?
-				this.vmStop("waitKey", 30); // wait for key
+				this.vmStop("waitKey", 41); // wait for key
 			}
 			break;
 		case 0xbb0c: // KM Char Return (ROM &1A77), depending on number of args
@@ -987,7 +987,7 @@ CpcVm.prototype = {
 			break;
 		case 0xbb18: // KM Wait Key (ROM &1B56)
 			if (this.inkey$() === "") { // no key?
-				this.vmStop("waitKey", 30); // wait for key
+				this.vmStop("waitKey", 41); // wait for key
 			}
 			break;
 		case 0xbb4e: // TXT Initialize (ROM &1078)
@@ -1362,14 +1362,16 @@ CpcVm.prototype = {
 	"delete": function (iFirst, iLast) { // varargs
 		if (iFirst === undefined) {
 			iFirst = 1;
+			if (iLast === undefined) { // no first and last parameter?
+				iLast = 65535;
+			}
 		} else {
 			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "DELETE");
-		}
-
-		if (iLast === undefined) { // range with missing last?
-			iLast = 65535;
-		} else { // range
-			iLast = this.vmInRangeRound(iLast, 1, 65535, "DELETE");
+			if (iLast === undefined) { // just one parameter?
+				iLast = iFirst;
+			} else { // range
+				iLast = this.vmInRangeRound(iLast, 1, 65535, "DELETE");
+			}
 		}
 
 		this.vmStop("deleteLines", 90, false, {
@@ -1960,14 +1962,16 @@ CpcVm.prototype = {
 		iStream = this.vmInRangeRound(iStream, 0, 9, "LIST");
 		if (iFirst === undefined) {
 			iFirst = 1;
+			if (iLast === undefined) { // no first and last parameter?
+				iLast = 65535;
+			}
 		} else {
 			iFirst = this.vmInRangeRound(iFirst, 1, 65535, "LIST");
-		}
-
-		if (iLast === undefined) { // range with missing last?
-			iLast = 65535;
-		} else { // range
-			iLast = this.vmInRangeRound(iLast, 1, 65535, "LIST");
+			if (iLast === undefined) { // just one parameter?
+				iLast = iFirst;
+			} else { // range
+				iLast = this.vmInRangeRound(iLast, 1, 65535, "LIST");
+			}
 		}
 
 		if (iStream === 9) {

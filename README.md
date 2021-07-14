@@ -101,7 +101,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   Example: [Mouse Painting](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/mousepa)
 - *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character.
   This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
-Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/art), [Landscape](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/landscape), [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles).
+Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=art), [Landscape](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=landscape), [Rectangles](https://benchmarko.github.io/CPCBasic/cpcbasic.html?example=test/rectangles).
 - *|MODE,n*: Change mode without *CLS*, including mode 3 (experimental)
 - *|RENUM,...*: similar to *RENUM* but with a 4th parameter to keep line numbers starting with this line
 - Computations with numbers are not limited to 16 bit
@@ -241,7 +241,7 @@ IFrames test:
 ## Possible Future Enhancements
 
 - Create buttons for the keys that the BASIC program checks (useful for e.g. mobile devices)
-- Save and restore snapshot of variables, including system variables
+- Save and restore snapshot of variables, also system variables
 - RSX extension libraries / plugins programmed in JavaScript
 - Can we detect busy loops and insert *FRAME* automatically?
 - Shall we support hardware scrolling with *OUT* or is it already a hardware emulation feature?
