@@ -173,16 +173,17 @@ Controller.prototype = {
 	},
 
 	// Also called from example files xxxxx.js
-	addItem: function (sKey, input) { // optional sKey
-		var sInput, oExample;
+	addItem: function (sKey, sInput) { // optional sKey
+		var oExample;
 
-		sInput = input.replace(/^\n/, ""); // remove preceding newline
-		sInput = sInput.replace(/\n$/, ""); // remove trailing newline
-		// beware of data files ending with newlines! (no trimEnd)
-
-		if (!sKey) {
-			sKey = this.model.getProperty("example");
+		if (!sKey) { // maybe ""
+			sKey = (document.currentScript && document.currentScript.getAttribute("data-key")) || this.model.getProperty("example");
+			// on IE we can just get the current example
 		}
+
+		sInput = sInput.replace(/^\n/, "").replace(/\n$/, ""); // remove preceding and trailing newlines
+		// beware of data files ending with newlines! (do not use trimEnd)
+
 		oExample = this.model.getExample(sKey);
 		oExample.key = sKey; // maybe changed
 		oExample.script = sInput;
@@ -294,7 +295,7 @@ Controller.prototype = {
 		}
 
 		if (!sKey) { // no sKey => get all
-			aDir = this.fnGetDirectoryEntries();
+			aDir = this.fnGetStorageDirectoryEntries();
 		} else {
 			aDir = [sKey];
 		}
@@ -637,10 +638,7 @@ Controller.prototype = {
 			if (oAllExamples.hasOwnProperty(sKey)) {
 				oExample = oAllExamples[sKey];
 				sKey2 = oExample.key;
-				sMatchKey2 = sKey2;
-				if (sKey2.indexOf(".") < 0) {
-					sMatchKey2 = sKey2 + ".";
-				}
+				sMatchKey2 = sKey2 + ((sKey2.indexOf(".") < 0) ? "." : "");
 				if (!oRegExp || oRegExp.test(sMatchKey2)) {
 					aDir.push(sKey2);
 				}
@@ -649,7 +647,7 @@ Controller.prototype = {
 		return aDir;
 	},
 
-	fnGetDirectoryEntries: function (sMask) {
+	fnGetStorageDirectoryEntries: function (sMask) {
 		var oStorage = Utils.localStorage,
 			aDir = [],
 			oRegExp, i, sKey;
@@ -660,8 +658,11 @@ Controller.prototype = {
 
 		for (i = 0; i < oStorage.length; i += 1) {
 			sKey = oStorage.key(i);
-			if (!oRegExp || oRegExp.test(sKey)) {
-				aDir.push(sKey);
+
+			if (sKey !== null && oStorage[sKey].startsWith(this.sMetaIdent)) { // take only cpcBasic files
+				if (!oRegExp || oRegExp.test(sKey)) {
+					aDir.push(sKey);
+				}
 			}
 		}
 		return aDir;
@@ -676,8 +677,6 @@ Controller.prototype = {
 			aParts = sKey.split(".");
 			if (aParts.length === 2) {
 				aDir[i] = aParts[0].padEnd(8, " ") + "." + aParts[1].padEnd(3, " ");
-			} else {
-				Utils.console.warn("fnPrintDirectoryEntries: Wrong entry:", aDir[i]); // maybe other data, is using local page
 			}
 		}
 
@@ -695,7 +694,7 @@ Controller.prototype = {
 
 	fnFileCat: function (oParas) {
 		var iStream = oParas.iStream,
-			aDir = this.fnGetDirectoryEntries();
+			aDir = this.fnGetStorageDirectoryEntries();
 
 		this.fnPrintDirectoryEntries(iStream, aDir, true);
 		this.oVm.vmStop("", 0, true);
@@ -703,21 +702,16 @@ Controller.prototype = {
 
 	fnFileDir: function (oParas) {
 		var iStream = oParas.iStream,
-			sFileMask = oParas.sFileMask,
+			sExample = this.model.getProperty("example"),
+			iLastSlash = sExample.lastIndexOf("/"),
+			sFileMask = oParas.sFileMask ? this.fnLocalStorageName(oParas.sFileMask) : "",
+			aDir = this.fnGetStorageDirectoryEntries(sFileMask),
 			sPath = "",
-			aDir, aDir2, sExample, iLastSlash, i;
+			aDir2, i;
 
-		if (sFileMask) {
-			sFileMask =	this.fnLocalStorageName(sFileMask);
-		}
-		aDir = this.fnGetDirectoryEntries(sFileMask);
-
-		// if we have a fileMask, include also example names from same directory:
-		sExample = this.model.getProperty("example");
-		iLastSlash = sExample.lastIndexOf("/");
 		if (iLastSlash >= 0) {
 			sPath = sExample.substr(0, iLastSlash) + "/";
-			sFileMask = sPath + sFileMask; // only in same directory
+			sFileMask = sPath + (sFileMask ? sFileMask : "*.*"); // only in same directory
 		}
 		aDir2 = this.fnGetExampleDirectoryEntries(sFileMask); // also from examples
 		for (i = 0; i < aDir2.length; i += 1) {
@@ -736,7 +730,7 @@ Controller.prototype = {
 			aDir, i, sName;
 
 		sFileMask =	this.fnLocalStorageName(sFileMask);
-		aDir = this.fnGetDirectoryEntries(sFileMask);
+		aDir = this.fnGetStorageDirectoryEntries(sFileMask);
 
 		if (!aDir.length) {
 			this.oVm.print(iStream, sFileMask + " not found\r\n");
@@ -988,7 +982,7 @@ Controller.prototype = {
 			this.model.setProperty("example", sExample);
 			sDatabaseDir = this.model.getDatabase().src;
 			sUrl = sDatabaseDir + "/" + sExample + ".js";
-			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError);
+			Utils.loadScript(sUrl, fnExampleLoaded, fnExampleError, sExample);
 		} else { // keep original sExample in this error case
 			sUrl = sExample;
 			if (sExample !== "") { // only if not empty

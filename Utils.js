@@ -9,22 +9,28 @@ var Utils = {
 	debug: 0,
 	console: typeof window !== "undefined" ? window.console : global.console, // browser or node.js
 
-	fnLoadScriptOrStyle: function (script, sFullUrl, fnSuccess, fnError) {
+	fnLoadScriptOrStyle: function (script, fnSuccess, fnError) {
 		// inspired by https://github.com/requirejs/requirejs/blob/master/require.js
 		var iIEtimeoutCount = 3,
 			onScriptLoad = function (event) {
-				var node = event.currentTarget || event.srcElement;
+				var sType = event.type, // "load" or "error"
+					node = event.currentTarget || event.srcElement,
+					sFullUrl = node.src || node.href, // src for script, href for link
+					sKey = node.getAttribute("data-key");
 
 				if (Utils.debug > 1) {
 					Utils.console.debug("onScriptLoad:", node.src || node.href);
 				}
 				node.removeEventListener("load", onScriptLoad, false);
-				node.removeEventListener("error", onScriptError, false); // eslint-disable-line no-use-before-define
+				node.removeEventListener("error", onScriptLoad, false); // eslint-disable-line no-use-before-define
 
-				if (fnSuccess) {
-					fnSuccess(sFullUrl);
+				if (sType === "load") {
+					fnSuccess(sFullUrl, sKey);
+				} else {
+					fnError(sFullUrl, sKey);
 				}
 			},
+			/*
 			onScriptError = function (event) {
 				var node = event.currentTarget || event.srcElement;
 
@@ -38,39 +44,37 @@ var Utils = {
 					fnError(sFullUrl);
 				}
 			},
+			*/
 			onScriptReadyStateChange = function (event) { // for old IE8
-				var node, iTimeout;
+				var node = event ? (event.currentTarget || event.srcElement) : script,
+					sFullUrl = node.src || node.href, // src for script, href for link
+					sKey = node.getAttribute("data-key"),
+					node2 = node,
+					iTimeout = 200; // some delay
 
-				if (event) {
-					node = event.currentTarget || event.srcElement;
-				} else {
-					node = script;
-				}
 				if (node.detachEvent) {
 					node.detachEvent("onreadystatechange", onScriptReadyStateChange);
 				}
 
 				if (Utils.debug > 1) {
-					Utils.console.debug("onScriptReadyStateChange: " + node.src || node.href);
+					Utils.console.debug("onScriptReadyStateChange: " + sFullUrl);
 				}
 				// check also: https://stackoverflow.com/questions/1929742/can-script-readystate-be-trusted-to-detect-the-end-of-dynamic-script-loading
 				if (node.readyState !== "loaded" && node.readyState !== "complete") {
 					if (node.readyState === "loading" && iIEtimeoutCount) {
 						iIEtimeoutCount -= 1;
 						iTimeout = 200; // some delay
-						Utils.console.error("onScriptReadyStateChange: Still loading: " + (node.src || node.href) + " Waiting " + iTimeout + "ms (count=" + iIEtimeoutCount + ")");
+						Utils.console.error("onScriptReadyStateChange: Still loading: " + sFullUrl + " Waiting " + iTimeout + "ms (count=" + iIEtimeoutCount + ")");
 						setTimeout(function () {
-							onScriptReadyStateChange(null); // check again
+							onScriptReadyStateChange(undefined); // check again
 						}, iTimeout);
 					} else {
 						// iIEtimeoutCount = 3;
-						Utils.console.error("onScriptReadyStateChange: Cannot load file " + (node.src || node.href) + " readystate=" + node.readyState);
-						if (fnError) {
-							fnError(sFullUrl);
-						}
+						Utils.console.error("onScriptReadyStateChange: Cannot load file " + sFullUrl + " readystate=" + node.readyState);
+						fnError(sFullUrl, sKey);
 					}
-				} else if (fnSuccess) {
-					fnSuccess(sFullUrl);
+				} else {
+					fnSuccess(sFullUrl, sKey);
 				}
 			};
 
@@ -79,30 +83,30 @@ var Utils = {
 			script.attachEvent("onreadystatechange", onScriptReadyStateChange);
 		} else { // Others
 			script.addEventListener("load", onScriptLoad, false);
-			script.addEventListener("error", onScriptError, false);
+			script.addEventListener("error", onScriptLoad, false);
 		}
 		document.getElementsByTagName("head")[0].appendChild(script);
-		return sFullUrl;
 	},
-	loadScript: function (sUrl, fnSuccess, fnError) {
-		var script, sFullUrl;
+	loadScript: function (sUrl, fnSuccess, fnError, sKey) {
+		var script;
 
 		script = document.createElement("script");
 		script.type = "text/javascript";
 		script.charset = "utf-8";
 		script.async = true;
 		script.src = sUrl;
-		sFullUrl = script.src;
-		this.fnLoadScriptOrStyle(script, sFullUrl, fnSuccess, fnError);
+
+		script.setAttribute("data-key", sKey);
+
+		this.fnLoadScriptOrStyle(script, fnSuccess, fnError);
 	},
 	loadStyle: function (sUrl, fnSuccess, fnError) {
-		var link, sFullUrl;
+		var link;
 
 		link = document.createElement("link");
 		link.rel = "stylesheet";
 		link.href = sUrl;
-		sFullUrl = link.href;
-		this.fnLoadScriptOrStyle(link, sFullUrl, fnSuccess, fnError);
+		this.fnLoadScriptOrStyle(link, fnSuccess, fnError);
 	},
 
 	dateFormat: function (d) {

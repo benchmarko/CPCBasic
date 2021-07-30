@@ -283,7 +283,7 @@ CommonEventHandler.prototype = {
 		} else {
 			that.controller.setInputText("#loading database " + sDatabase + "...");
 			sUrl = oDatabase.src + "/" + this.model.getProperty("exampleIndex");
-			Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError);
+			Utils.loadScript(sUrl, fnDatabaseLoaded, fnDatabaseError, sDatabase);
 		}
 	},
 
