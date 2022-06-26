@@ -2460,15 +2460,16 @@ CpcVm.prototype = {
 	},
 
 	pos: function (iStream) {
-		var iPos;
+		var iPos, oWin;
 
 		iStream = this.vmInRangeRound(iStream, 0, 9, "POS");
 		if (iStream < 8) {
 			iPos = this.vmGetAllowedPosOrVpos(iStream, false) + 1; // get allowed pos
 		} else if (iStream === 8) { // printer position
 			iPos = 1; // TODO
-		} else { // stream 9: number of characters written since last CR (\r)
-			iPos = 1; // TODO
+		} else { // stream 9: number of characters written since last CR (\r), \n in CpcEmu, starting with one)
+			oWin = this.aWindow[iStream];
+			iPos = oWin.iPos + 1;
 		}
 		return iPos;
 	},
@@ -2802,9 +2803,10 @@ CpcVm.prototype = {
 		}
 	},
 
-	print: function (iStream) { // varargs
+	print: function (iStream) { // eslint-disable-line complexity
+		// varargs
 		var sBuf = this.sPrintControlBuf || "",
-			oWin, aSpecialArgs, sStr, i, arg;
+			oWin, aSpecialArgs, sStr, i, arg, lastCrPos;
 
 		iStream = this.vmInRangeRound(iStream || 0, 0, 9, "PRINT");
 		oWin = this.aWindow[iStream];
@@ -2842,7 +2844,14 @@ CpcVm.prototype = {
 				}
 				this.sOut += sStr; // console
 			} else { // iStream === 9
-				oWin.iPos += sStr.length;
+				lastCrPos = sBuf.lastIndexOf("\r");
+
+				if (lastCrPos >= 0) {
+					oWin.iPos = sStr.length - lastCrPos; // number of characters written since last CR (\r)
+				} else {
+					oWin.iPos += sStr.length;
+				}
+
 				if (sStr === "\r\n") { // for now we replace CRLF by LF
 					sStr = "\n";
 					oWin.iPos = 0;
