@@ -417,6 +417,14 @@ CpcVm.prototype = {
 		return n;
 	},
 
+	vmRound2Complement: function (n, err) {
+		n = this.vmInRangeRound(n, -32768, 65535, err);
+		if (n < 0) {
+			n += 65536;
+		}
+		return n;
+	},
+
 	vmDetermineVarType: function (sVarType) { // also used in controller
 		var sType = (sVarType.length > 1) ? sVarType.charAt(1) : this.oVariables.getVarType(sVarType.charAt(0));
 
@@ -900,7 +908,8 @@ CpcVm.prototype = {
 
 	atn: function (n) {
 		this.vmAssertNumber(n, "ATN");
-		return Math.atan((this.bDeg) ? Utils.toRadians(n) : n);
+		n = Math.atan(n);
+		return this.bDeg ? Utils.toDegrees(n) : n;
 	},
 
 	auto: function () {
@@ -908,9 +917,9 @@ CpcVm.prototype = {
 	},
 
 	bin$: function (n, iPad) {
-		n = this.vmInRangeRound(n, -32768, 65535, "BIN$");
+		n = this.vmRound2Complement(n, "BIN$");
 		iPad = this.vmInRangeRound(iPad || 0, 0, 16, "BIN$");
-		return n.toString(2).padStart(iPad || 16, "0");
+		return n.toString(2).padStart(iPad, "0");
 	},
 
 	border: function (iInk1, iInk2) { // ink2 optional
@@ -962,10 +971,7 @@ CpcVm.prototype = {
 
 	call: function (iAddr) { // eslint-disable-line complexity
 		// varargs (adr + parameters)
-		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "CALL");
-		if (iAddr < 0) { // 2nd complement of 16 bit address?
-			iAddr += 65536;
-		}
+		iAddr = this.vmRound2Complement(iAddr, "CALL");
 		switch (iAddr) {
 		case 0xbb00: // KM Initialize (ROM &19E0)
 			this.oKeyboard.resetCpcKeysExpansions();
@@ -1635,7 +1641,7 @@ CpcVm.prototype = {
 	},
 
 	hex$: function (n, iPad) {
-		n = this.vmInRangeRound(n, -32768, 65535, "HEX$");
+		n = this.vmRound2Complement(n, "HEX$");
 		iPad = this.vmInRangeRound(iPad || 0, 0, 16, "HEX$");
 		return n.toString(16).toUpperCase().padStart(iPad, "0");
 	},
@@ -1680,13 +1686,16 @@ CpcVm.prototype = {
 	},
 
 	inp: function (iPort) {
-		var iByte = 255;
+		var byte;
 
-		iPort = this.vmInRangeRound(iPort, -32768, 65535, "INP");
-		if (iPort < 0) { // 2nd complement of 16 bit address?
-			iPort += 65536;
-		}
-		return iByte;
+		iPort = this.vmRound2Complement(iPort, "INP"); // 2nd complement of 16 bit address
+		// eslint-disable-next-line no-bitwise
+		byte = (iPort & 0xff);
+
+		// eslint-disable-next-line no-bitwise
+		byte |= 0xff; // we return always the same 0xff
+
+		return byte;
 	},
 
 	vmSetInputValues: function (aInputValues) {
@@ -1860,8 +1869,8 @@ CpcVm.prototype = {
 			return p1.indexOf(p2) + 1;
 		}
 		p1 = this.vmInRangeRound(p1, 1, 255, "INSTR"); // p1=startpos
-		this.vmAssertString(p2, "INSTR");
-		return p2.indexOf(p3, p1) + 1; // p2=string, p3=search string
+		this.vmAssertString(p3, "INSTR");
+		return p2.indexOf(p3, p1 - 1) + 1; // p2=string, p3=search string
 	},
 
 	"int": function (n) {
@@ -2019,10 +2028,7 @@ CpcVm.prototype = {
 
 		sName = this.vmAdaptFilename(sName, "LOAD");
 		if (iStart !== undefined) {
-			iStart = this.vmInRangeRound(iStart, -32768, 65535, "LOAD");
-			if (iStart < 0) { // 2nd complement of 16 bit address
-				iStart += 65536;
-			}
+			iStart = this.vmRound2Complement(iStart, "LOAD");
 		}
 		this.closein();
 		oInFile.bOpen = true;
@@ -2092,7 +2098,7 @@ CpcVm.prototype = {
 	},
 
 	memory: function (n) {
-		n = this.vmInRangeRound(n, -32768, 65535, "MEMORY");
+		n = this.vmRound2Complement(n, "MEMORY");
 
 		if (n < this.iMinHimem || n > this.iMinCharHimem) {
 			throw this.vmComposeError(Error(), 7, "MEMORY " + n); // Memory full
@@ -2338,10 +2344,7 @@ CpcVm.prototype = {
 	out: function (iPort, iByte) {
 		var iPortHigh;
 
-		iPort = this.vmInRangeRound(iPort, -32768, 65535, "OUT");
-		if (iPort < 0) { // 2nd complement of 16 bit address?
-			iPort += 65536;
-		}
+		iPort = this.vmRound2Complement(iPort, "OUT");
 		iByte = this.vmInRangeRound(iByte, 0, 255, "OUT");
 		iPortHigh = iPort >> 8; // eslint-disable-line no-bitwise
 
@@ -2387,10 +2390,7 @@ CpcVm.prototype = {
 	peek: function (iAddr) {
 		var iByte, iPage;
 
-		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "PEEK");
-		if (iAddr < 0) { // 2nd complement of 16 bit address
-			iAddr += 65536;
-		}
+		iAddr = this.vmRound2Complement(iAddr, "PEEK");
 		// check two higher bits of 16 bit address to get 16K page
 		iPage = iAddr >> 14; // eslint-disable-line no-bitwise
 		if (iPage === this.iScreenPage) { // screen memory page?
@@ -2440,10 +2440,7 @@ CpcVm.prototype = {
 	poke: function (iAddr, iByte) {
 		var iPage;
 
-		iAddr = this.vmInRangeRound(iAddr, -32768, 65535, "POKE address");
-		if (iAddr < 0) { // 2nd complement of 16 bit address?
-			iAddr += 65536;
-		}
+		iAddr = this.vmRound2Complement(iAddr, "POKE address");
 		iByte = this.vmInRangeRound(iByte, 0, 255, "POKE byte");
 
 		// check two higher bits of 16 bit address to get 16K page
@@ -3148,21 +3145,11 @@ CpcVm.prototype = {
 		}
 
 		if (sType === "B") { // binary
-			iStart = this.vmInRangeRound(iStart, -32768, 65535, "SAVE");
-			if (iStart < 0) { // 2nd complement of 16 bit address
-				iStart += 65536;
-			}
-
-			iLength = this.vmInRangeRound(iLength, -32768, 65535, "SAVE");
-			if (iLength < 0) {
-				iLength += 65536;
-			}
+			iStart = this.vmRound2Complement(iStart, "SAVE");
+			iLength = this.vmRound2Complement(iLength, "SAVE");
 
 			if (iEntry !== undefined) {
-				iEntry = this.vmInRangeRound(iEntry, -32768, 65535, "SAVE");
-				if (iEntry < 0) {
-					iEntry += 65536;
-				}
+				iEntry = this.vmRound2Complement(iEntry, "SAVE");
 			}
 			aFileData = [];
 			for (i = 0; i < iLength; i += 1) {
@@ -3555,10 +3542,7 @@ CpcVm.prototype = {
 	},
 
 	wait: function (iPort, iMask, iInv) { // optional iInv
-		iPort = this.vmInRangeRound(iPort, -32768, 65535, "WAIT");
-		if (iPort < 0) { // 2nd complement of 16 bit address
-			iPort += 65536;
-		}
+		iPort = this.vmRound2Complement(iPort, "WAIT");
 		iMask = this.vmInRangeRound(iMask, 0, 255, "WAIT");
 		if (iInv !== undefined) {
 			iInv = this.vmInRangeRound(iInv, 0, 255, "WAIT");
@@ -3567,8 +3551,6 @@ CpcVm.prototype = {
 			if (iMask === 1) {
 				this.frame();
 			}
-		} else if (iPort === 0) {
-			debugger; // Testing
 		}
 	},
 

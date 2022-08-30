@@ -47,7 +47,7 @@ cpcBasic.addItem("", function () { /*
 620 RUN
 998 CALL &BB18:STOP
 999 REM Steuerung
-1000 j=0:j=JOY(0):IF j=0 THEN 1000
+1000 c.t!=time+40:while time<c.t!:call &bd19:wend:j=0:j=JOY(0):IF j=0 THEN 1000
 1005 IF j=16 THEN RETURN
 1010 IF j AND 8 THEN IF s1<br THEN s1=s1+1:RETURN
 1020 IF j AND 4 THEN IF s1>0 THEN s1=s1-1:RETURN

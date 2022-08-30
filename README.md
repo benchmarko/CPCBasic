@@ -9,7 +9,8 @@ CPCBasic Links:
 [Source code](https://github.com/benchmarko/CPCBasic/),
 [HTML Readme](https://github.com/benchmarko/CPCBasic/#readme),
 
-There is also a TypeScript implementation of CPCBasic:
+Please note:
+CpcBasic gets only bug fixes. Active development goes on with CpcBasicTS, the TypeScript implementation of CPCBasic:
 [CPCBasicTS Demo](https://benchmarko.github.io/CPCBasicTS/?example=cpcbasic),
 [CPCBasicTS Source](https://github.com/benchmarko/CPCBasicTS/)
 
