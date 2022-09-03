@@ -336,7 +336,7 @@ BasicParser.prototype = {
 					s = oSymbols[t.type];
 					advance(t.type);
 					if (!s.led) {
-						throw that.composeError(Error(), "Unexpected token", t.type, t.pos); //TTT how to get this error?
+						throw that.composeError(Error(), "Unexpected token", t.type, t.pos); // TODO: how to get this error?
 					}
 					left = s.led(left); // ...the led method is invoked on the following token (infix and suffix operators), can be recursive
 				}
@@ -520,7 +520,7 @@ BasicParser.prototype = {
 					oRange.right = oRight || fnCreateDummyArg("null"); // insert dummy for right (do not skip it)
 				} else if (oLeft) {
 					oRange = oLeft; // single line number
-					oRange.type = "linenumber"; // change type: number => linenumber //TTT
+					oRange.type = "linenumber"; // change type: number => linenumber
 				}
 
 				return oRange;
@@ -678,7 +678,7 @@ BasicParser.prototype = {
 				var aArgs;
 
 				advance("(");
-				aArgs = fnGetArgs(null); //until ")"
+				aArgs = fnGetArgs(null); // until ")"
 				advance(")");
 				return aArgs;
 			},
@@ -732,9 +732,9 @@ BasicParser.prototype = {
 
 				if (oToken.type === "(") { // args in parenthesis?
 					advance("(");
-					oValue.args = fnGetArgs(oValue.type); //until ")"
+					oValue.args = fnGetArgs(oValue.type); // until ")"
 					if (oToken.type !== ")") {
-						throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos); //TTT
+						throw that.composeError(Error(), "Expected closing parenthesis for argument list after", oPreviousToken.value, oToken.pos);
 					}
 					advance(")");
 				} else { // no parenthesis?
@@ -930,12 +930,12 @@ BasicParser.prototype = {
 		infix("+", 40);
 		infix("-", 40);
 
-		infixr("=", 30); // equal for comparison
-		infixr("<>", 30);
-		infixr("<", 30);
-		infixr("<=", 30);
-		infixr(">", 30);
-		infixr(">=", 30);
+		infix("=", 30); // equal for comparison, left associative
+		infix("<>", 30);
+		infix("<", 30);
+		infix("<=", 30);
+		infix(">", 30);
+		infix(">=", 30);
 
 		prefix("not", 23);
 		infixr("and", 22);

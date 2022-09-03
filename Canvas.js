@@ -103,7 +103,6 @@ Canvas.prototype = {
 		this.fnUpdateCanvas2Handler = this.updateCanvas2.bind(this);
 
 		this.iFps = 15; // FPS for canvas update
-		//this.iTextFpsCounter = 0;
 
 		this.cpcAreaBox = document.getElementById("cpcAreaBox"); // TODO: move to view
 		this.textText = document.getElementById("textText"); // TODO: move to view
@@ -111,7 +110,6 @@ Canvas.prototype = {
 		this.aCharset = this.options.aCharset;
 
 		this.iGColMode = 0; // 0=normal, 1=xor, 2=and, 3=or
-		//this.bClipped = false;
 
 		this.iMask = 255;
 		this.iMaskBit = 128;

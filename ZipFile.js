@@ -184,7 +184,7 @@ ZipFile.prototype = {
 			/* eslint-enable array-element-newline */
 			that = this,
 			aData = this.aData,
-			iBufEnd = iOffset + iCompressedSize, //TTT  -1?
+			iBufEnd = iOffset + iCompressedSize, // TODO: -1?
 			iInCnt = iOffset, // read position
 			iOutCnt = 0, // bytes written to outbuf
 			iBitCnt = 0, // helper to keep track of where we are in #bits
@@ -294,7 +294,7 @@ ZipFile.prototype = {
 				}
 			},
 
-			fnConstructFixedHuffman = function () { //TTT untested?
+			fnConstructFixedHuffman = function () { // TODO: untested?
 				var iSymbol;
 
 				for (iSymbol = 0; iSymbol < 0x90; iSymbol += 1) {
@@ -460,7 +460,7 @@ ZipFile.prototype = {
 		} else {
 			throw this.composeError(Error(), "Zip: readData: compression method not supported:" + oCdfh.iCompressionMethod, "", 0);
 		}
-		if (sDataUTF8.length !== oCdfh.iSize) { //TTT assert
+		if (sDataUTF8.length !== oCdfh.iSize) { // TODO: assert
 			Utils.console.error("Zip: readData: different length 2!");
 		}
 		return sDataUTF8;

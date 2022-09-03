@@ -204,7 +204,6 @@ Keyboard.prototype = {
 		this.aExpansionTokens = []; // expansion tokens 0..31 (in reality: 128..159)
 		this.oCpcKeyExpansions = {}; // cpc keys to expansion tokens for normal, shift, ctrl; also repeat
 
-		//this.reset();
 		this.bActive = false; // flag if keyboard is active/focused, set from outside
 
 		this.bCodeStringsRemoved = false;

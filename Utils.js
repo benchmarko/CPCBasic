@@ -30,26 +30,10 @@ var Utils = {
 					fnError(sFullUrl, sKey);
 				}
 			},
-			/*
-			onScriptError = function (event) {
-				var node = event.currentTarget || event.srcElement;
-
-				if (Utils.debug > 1) {
-					Utils.console.debug("onScriptError:", node.src || node.href);
-				}
-				node.removeEventListener("load", onScriptLoad, false);
-				node.removeEventListener("error", onScriptError, false);
-
-				if (fnError) {
-					fnError(sFullUrl);
-				}
-			},
-			*/
 			onScriptReadyStateChange = function (event) { // for old IE8
 				var node = event ? (event.currentTarget || event.srcElement) : script,
 					sFullUrl = node.src || node.href, // src for script, href for link
 					sKey = node.getAttribute("data-key"),
-					node2 = node,
 					iTimeout = 200; // some delay
 
 				if (node.detachEvent) {

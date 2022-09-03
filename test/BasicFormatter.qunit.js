@@ -4,7 +4,7 @@
 
 "use strict";
 
-var bGenerateAllResults = false,
+var bGenerateAllResults = (typeof window !== "undefined") && window.location.search.indexOf("generateAll=true") > 0,
 	BasicLexer, BasicParser, BasicFormatter, Utils;
 // we use BasicLexer here just for convenient input
 

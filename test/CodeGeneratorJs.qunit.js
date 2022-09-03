@@ -4,7 +4,7 @@
 
 "use strict";
 
-var bGenerateAllResults = false,
+var bGenerateAllResults = (typeof window !== "undefined") && window.location.search.indexOf("generateAll=true") > 0,
 	Utils, BasicLexer, BasicParser, CodeGeneratorJs, Variables;
 
 if (typeof require !== "undefined") {
@@ -83,7 +83,7 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"border 5,a": " o.border(5, v.a);"
 		},
 		"call, cat, chain, chain merge, chr$, cint, clg, closein, closeout, cls, cont, copychr$, cos, creal, cursor": {
-			"call&a7bc": " o.call(0xa7bc); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
+			"call&a7bc": " o.call(-0x5844); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"call 4711,1,2,3,4": " o.call(4711, 1, 2, 3, 4); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"cat ": " o.cat();",
 			"chain\"f1\"": " o.chain(\"f1\"); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
@@ -261,7 +261,7 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"ink a*2,b-1,c": " o.ink(v.a * 2, v.b - 1, v.c);",
 			"a=inkey(0)": " v.a = o.vmAssign(\"a\", o.inkey(0));",
 			"a$=inkey$": " v.a$ = o.inkey$();",
-			"a=inp(&ff77)": " v.a = o.vmAssign(\"a\", o.inp(0xff77));",
+			"a=inp(&ff77)": " v.a = o.vmAssign(\"a\", o.inp(-0x89));",
 			"input a$": " o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":o.input(0, undefined, \"? \", \"a$\"); o.goto(\"NaNs1\"); break;\ncase \"NaNs1\":; v.a$ = o.vmGetNextInput();",
 			"input a$,b": " o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":o.input(0, undefined, \"? \", \"a$\", \"b\"); o.goto(\"NaNs1\"); break;\ncase \"NaNs1\":; v.a$ = o.vmGetNextInput(); v.b = o.vmGetNextInput();",
 			"input ;a$,b": " o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":o.input(0, \";\", \"? \", \"a$\", \"b\"); o.goto(\"NaNs1\"); break;\ncase \"NaNs1\":; v.a$ = o.vmGetNextInput(); v.b = o.vmGetNextInput();",
@@ -312,7 +312,7 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"list -1,#3": " o.list(3, undefined, 1); break;",
 			"list 1-2,#3": " o.list(3, 1, 2); break;",
 			"load \"file\"": " o.load(\"file\"); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
-			"load \"file.scr\",&c000": " o.load(\"file.scr\", 0xc000); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
+			"load \"file.scr\",&c000": " o.load(\"file.scr\", -0x4000); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"load f$,adr": " o.load(v.f$, v.adr); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"locate 10,20": " o.locate(0, 10, 20);",
 			"locate#2,10,20": " o.locate(2, 10, 20);",
@@ -389,13 +389,13 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"origin 10,20": " o.origin(10, 20);",
 			"origin 10,20,5,200,50,15": " o.origin(10, 20, 5, 200, 50, 15);",
 			"origin x,y,left,right,top,bottom": " o.origin(v.x, v.y, v.left, v.right, v.top, v.bottom);",
-			"out &bc12,&12": " o.out(0xbc12, 0x12);",
+			"out &bc12,&12": " o.out(-0x43ee, 0x12);",
 			"out adr,by": " o.out(v.adr, v.by);"
 		},
 		"paper, peek, pen, pi, plot, plotr, poke, pos, print": {
 			"paper 2": " o.paper(0, 2);",
 			"paper#stream,p": " o.paper(v.stream, v.p);",
-			"a=peek(&c000)": " v.a = o.vmAssign(\"a\", o.peek(0xc000));",
+			"a=peek(&c000)": " v.a = o.vmAssign(\"a\", o.peek(-0x4000));",
 			"a=peek(adr+5)": " v.a = o.vmAssign(\"a\", o.peek(v.adr + 5));",
 			"pen 2": " o.pen(0, 2);",
 			"pen 2,1": " o.pen(0, 2, 1);",
@@ -412,7 +412,7 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"plotr 10,20,7,3": " o.plotr(10, 20, 7, 3);",
 			"plotr 10,20,,3": " o.plotr(10, 20, undefined, 3);",
 			"plotr x,y,m,g1": " o.plotr(v.x, v.y, v.m, v.g1);",
-			"poke &c000,23": " o.poke(0xc000, 23);",
+			"poke &c000,23": " o.poke(-0x4000, 23);",
 			"poke adr,by": " o.poke(v.adr, v.by);",
 			"a=pos(#0)": " v.a = o.vmAssign(\"a\", o.pos(0));",
 			"a=pos(#stream)": " v.a = o.vmAssign(\"a\", o.pos(v.stream));",
@@ -472,8 +472,8 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"save \"file\"": " o.save(\"file\"); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"save \"file\",p": " o.save(\"file\", \"p\"); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"save \"file\",a": " o.save(\"file\", \"a\"); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
-			"save \"file.scr\",b,&c000,&4000": " o.save(\"file.scr\", \"b\", 0xc000, 0x4000); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
-			"save \"file.bin\",b,&8000,&100,&8010": " o.save(\"file.bin\", \"b\", 0x8000, 0x100, 0x8010); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
+			"save \"file.scr\",b,&c000,&4000": " o.save(\"file.scr\", \"b\", -0x4000, 0x4000); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
+			"save \"file.bin\",b,&8000,&100,&8010": " o.save(\"file.bin\", \"b\", -0x8000, 0x100, -0x7ff0); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"save f$,b,adr,lg,entry": " o.save(v.f$, \"b\", v.adr, v.lg, v.entry); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
 			"a=sgn(5)": " v.a = o.vmAssign(\"a\", o.sgn(5));",
 			"a=sgn(0)": " v.a = o.vmAssign(\"a\", o.sgn(0));",
@@ -525,7 +525,7 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"tron ": " o.tron();"
 		},
 		"unt, upper$": {
-			"a=unt(&ff66)": " v.a = o.vmAssign(\"a\", o.unt(0xff66));",
+			"a=unt(&ff66)": " v.a = o.vmAssign(\"a\", o.unt(-0x9a));",
 			"a$=upper$(\"String\")": " v.a$ = o.upper$(\"String\");",
 			"a$=upper$(b$)": " v.a$ = o.upper$(v.b$);"
 		},
@@ -536,8 +536,8 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"a=vpos(#stream)": " v.a = o.vmAssign(\"a\", o.vpos(v.stream));"
 		},
 		"wait, wend, while, width, window, window swap, write": {
-			"wait &ff34,20": " o.wait(0xff34, 20);",
-			"wait &ff34,20,25": " o.wait(0xff34, 20, 25);",
+			"wait &ff34,20": " o.wait(-0xcc, 20);",
+			"wait &ff34,20,25": " o.wait(-0xcc, 20, 25);",
 			"while a=10: wend ": " \ncase \"NaNw0\": if (!(v.a === 10 ? -1 : 0)) { o.goto(\"NaNw0e\"); break; } /* o.wend() */ o.goto(\"NaNw0\"); break;\ncase \"NaNw0e\":",
 			"while a>0": " \ncase \"NaNw0\": if (!(v.a > 0 ? -1 : 0)) { o.goto(\"NaNw0e\"); break; }",
 			"width 40": " o.width(40);",

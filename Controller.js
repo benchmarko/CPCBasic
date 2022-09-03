@@ -1354,7 +1354,7 @@ Controller.prototype = {
 			this.setInputText(sOutput, true);
 			this.fnPutChangedInputOnStack();
 
-			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); //TTT: for testing
+			sDiff = Diff.testDiff(sInput.toUpperCase(), sOutput.toUpperCase()); // for testing
 			this.view.setAreaValue("outputText", sDiff);
 		}
 		if (sOutput && sOutput.length > 0) {
@@ -1593,7 +1593,7 @@ Controller.prototype = {
 	},
 
 	fnDirect: function () {
-		// TTT: break in direct mode?
+		// break in direct mode?
 	},
 
 	fnEnd: function () {
@@ -1613,7 +1613,7 @@ Controller.prototype = {
 		this.iNextLoopTimeOut = this.oVm.vmGetTimeUntilFrame(); // wait until next frame
 	},
 
-	fnOnError: function () { //TTT
+	fnOnError: function () {
 		this.oVm.vmStop("", 0, true); // continue
 	},
 
@@ -2062,7 +2062,7 @@ Controller.prototype = {
 		dropZone.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
 		dropZone.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
 
-		this.oCanvas.canvas.addEventListener("dragover", this.fnHandleDragOver.bind(this), false); //TTT fast hack
+		this.oCanvas.canvas.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
 		this.oCanvas.canvas.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
 
 		document.getElementById("fileInput").addEventListener("change", this.fnHandleFileSelect.bind(this), false);
@@ -2098,7 +2098,7 @@ Controller.prototype = {
 	},
 
 	// currently not used. Can be called manually: cpcBasic.controller.exportAsBase64(file);
-	exportAsBase64: function (sStorageName) { //TTT
+	exportAsBase64: function (sStorageName) {
 		var oStorage = Utils.localStorage,
 			sData = oStorage.getItem(sStorageName),
 			sOut = "",

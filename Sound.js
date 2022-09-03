@@ -213,7 +213,7 @@ Sound.prototype = {
 
 		bRepeat = aToneData[0];
 		if (bRepeat) {
-			iToneEnvRepeat = 5; // we use at most 5 //TTT
+			iToneEnvRepeat = 5; // we use at most 5
 		}
 
 		iTime = 0;
@@ -243,9 +243,8 @@ Sound.prototype = {
 					iToneTime = oGroup.time;
 					fFrequency = (iPeriod >= 3) ? 62500 / iPeriod : 0;
 					oFrequency.setValueAtTime(fFrequency, fTime + iTime / i100ms2sec);
-					// TODO
 					iTime += iToneTime;
-					// oFrequency.linearRampToValueAtTime(fXXX, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
+					// TODO: oFrequency.linearRampToValueAtTime(fXXX, fTime + iTime / i100ms2sec); // or: exponentialRampToValueAtTime?
 				}
 			}
 		}
@@ -270,7 +269,7 @@ Sound.prototype = {
 
 		oOscillator.connect(this.aGainNodes[iOscillator]);
 		if (fTime < ctx.currentTime) {
-			Utils.console.log("TTT: scheduleNote:", fTime, "<", ctx.currentTime);
+			Utils.console.log("scheduleNote:", fTime, "<", ctx.currentTime);
 		}
 
 		iDuration = oSoundData.iDuration;

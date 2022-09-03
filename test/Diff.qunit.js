@@ -4,7 +4,7 @@
 
 "use strict";
 
-var bGenerateAllResults = false,
+var bGenerateAllResults = (typeof window !== "undefined") && window.location.search.indexOf("generateAll=true") > 0,
 	Diff, Utils;
 
 if (typeof require !== "undefined") {

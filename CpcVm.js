@@ -1688,7 +1688,7 @@ CpcVm.prototype = {
 	inp: function (iPort) {
 		var byte;
 
-		iPort = this.vmRound2Complement(iPort, "INP"); // 2nd complement of 16 bit address
+		iPort = this.vmRound2Complement(iPort, "INP"); // two's complement of 16 bit address
 		// eslint-disable-next-line no-bitwise
 		byte = (iPort & 0xff);
 
@@ -1765,7 +1765,7 @@ CpcVm.prototype = {
 						aFileData.shift(); // remove line
 						sLine += "\n" + aFileData[0]; // combine lines
 					} else {
-						throw that.vmComposeError(Error(), 13, "INPUT #9: no closing quotes" + value); // TTT
+						throw that.vmComposeError(Error(), 13, "INPUT #9: no closing quotes" + value);
 					}
 				} else { // unquoted string
 					iIndex = sLine.indexOf(","); // multiple args?
@@ -1809,7 +1809,7 @@ CpcVm.prototype = {
 			sLine = sLine.replace(/^\s+/, ""); // remove preceding whitespace
 			if (sType === "$") {
 				value = fnGetString();
-			} else { // number type sLine.length TTT
+			} else { // number type sLine.length
 				value = fnGetNumber();
 			}
 
@@ -2264,7 +2264,7 @@ CpcVm.prototype = {
 		if (sInput !== null) {
 			sInput = sInput.replace(/\r\n/g, "\n"); // remove CR (maybe from ASCII file in "binary" form)
 			if (sInput.endsWith("\n")) {
-				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n" (TTT: also for data files?)
+				sInput = sInput.substr(0, sInput.length - 1); // remove last "\n" (TODO: also for data files?)
 			}
 			oInFile.aFileData = sInput.split("\n");
 		} else {
@@ -3346,7 +3346,7 @@ CpcVm.prototype = {
 		this.oCanvas.resetCustomChars();
 		if (iChar === 256) { // maybe move up again
 			iMinCharHimem = this.iMaxHimem;
-			this.iMaxCharHimem = iMinCharHimem; //TTT corrected
+			this.iMaxCharHimem = iMinCharHimem;
 		}
 		// TODO: Copy char data to screen memory, if screen starts at 0x4000 and chardata is in that range (and ram 0 is selected)
 		this.iMinCustomChar = iChar;
@@ -3512,9 +3512,15 @@ CpcVm.prototype = {
 		} else if (s.startsWith("&h")) { // hex &h
 			s = s.slice(2);
 			iNum = parseInt(s, 16);
+			if (iNum > 32767) { // two's complement
+				iNum -= 65536;
+			}
 		} else if (s.startsWith("&")) { // hex &
 			s = s.slice(1);
 			iNum = parseInt(s, 16);
+			if (iNum > 32767) { // two's complement
+				iNum -= 65536;
+			}
 		} else if (s !== "") { // not empty string?
 			iNum = parseFloat(s);
 		}

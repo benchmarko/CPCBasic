@@ -779,7 +779,7 @@ VirtualKeyboard.prototype = {
 
 		if (oKey) {
 			sPressedKey = oKey.keys;
-			if (sPressedKey.indexOf(",") >= 0) { // TTT maybe more
+			if (sPressedKey.indexOf(",") >= 0) { // maybe more
 				sPressedKey = sPressedKey.substring(0, sPressedKey.indexOf(",")); // take the first
 			}
 		}

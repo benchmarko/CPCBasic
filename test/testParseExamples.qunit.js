@@ -254,14 +254,14 @@ function testCheckMeta(sInput) {
 	if (sType === "T") { // tokenized basic?
 		sInput = cpcBasic.oBasicTokenizer.decode(sInput);
 	} else if (sType === "P") { // protected BASIC?
-		sInput = DiskImage.prototype.unOrProtectData(sInput); // TODO
+		sInput = DiskImage.prototype.unOrProtectData(sInput); 
 		sInput = cpcBasic.oBasicTokenizer.decode(sInput);
 	} else if (sType === "B") { // binary?
 	} else if (sType === "A") { // ASCII?
 		// remove EOF character(s) (0x1a) from the end of file
 		sInput = sInput.replace(/\x1a+$/, ""); // eslint-disable-line no-control-regex
 	} else if (sType === "G") { // Hisoft Devpac GENA3 Z80 Assember
-		sInput = asmGena3Convert(sInput); // TODO
+		sInput = asmGena3Convert(sInput);
 	}
 	return sInput;
 }
@@ -325,21 +325,12 @@ function fnExampleErrorUtils(sUrl) {
 
 function testLoadExample(oExample) {
 	var sExample = oExample.key,
-		//sUrl = cpcBasic.sRelativeDir + oExample.dir + "/" + sExample + ".js";
 		sFileOrUrl = cpcBasic.sDataBaseDirOrUrl + "/" + sExample + ".js";
 
 	if (cpcBasic.assert) {
 		cpcBasic.fnExampleDone1 = cpcBasic.assert.async();
 	}
 
-	/*
-	if (fs) {
-		sUrl = path.resolve(__dirname, sUrl); // to get it working also for "npm test" and not only for node ...
-		fs.readFile(sUrl, "utf8", fnExampleLoaded);
-	} else {
-		Utils.loadScript(sUrl, fnExampleLoadedUtils, fnExampleErrorUtils);
-	}
-	*/
 	if (bNodeJsAvail) {
 		if (isUrl(sFileOrUrl)) {
 			nodeReadUrl(sFileOrUrl, fnExampleLoaded);
@@ -437,23 +428,6 @@ function testLoadIndex(oExampeDb) {
 	} else {
 		Utils.loadScript(sFileOrUrl, fnIndexLoadedUtils, fnIndexErrorUtils, oExampeDb.text);
 	}
-
-	/*
-	var sUrl = cpcBasic.sRelativeDir + "./examples/0index.js";
-
-	Utils.console.log("testLoadIndex: bNodeJs:", bNodeJsAvail);
-
-	cpcBasic.model.setProperty("databaseDirs", "examples");
-	cpcBasic.model.setProperty("database", "examples");
-	cpcBasic.initDatabases();
-
-	if (fs) {
-		sUrl = path.resolve(__dirname, sUrl); // to get it working also for "npm test" and not only for node ...
-		fs.readFile(sUrl, "utf8", fnIndexLoaded);
-	} else {
-		Utils.loadScript(sUrl, fnIndexLoadedUtils, fnIndexErrorUtils);
-	}
-	*/
 }
 
 function testNextIndex() {
@@ -530,11 +504,6 @@ if (typeof oGlobalThis.QUnit !== "undefined") {
 	QUnit.module("testParseExamples: Tests", function (/* hooks */) {
 		QUnit.test("testParseExamples", function (assert) {
 			cpcBasic.assert = assert;
-
-			/*
-			cpcBasic.fnIndexDone1 = assert.async();
-			assert.expect(1);
-			*/
 			testStart();
 		});
 	});
@@ -548,28 +517,4 @@ if (typeof oGlobalThis.QUnit !== "undefined") {
 
 	testStart();
 }
-
-/*
-if (typeof QUnit !== "undefined") {
-	QUnit.config.testTimeout = 5 * 1000;
-	QUnit.module("testParseExamples: Tests", function (/ * hooks * /) {
-		QUnit.test("testParseExamples", function (assert) {
-			cpcBasic.assert = assert;
-
-			cpcBasic.fnIndexDone1 = assert.async();
-			assert.expect(1);
-			testLoadIndex();
-		});
-	});
-} else {
-	cpcBasic.fnIndexDone1 = function () {
-		// empty
-	};
-	cpcBasic.fnExampleDone1 = function () {
-		// empty
-	};
-	testLoadIndex();
-}
-*/
-
 // end

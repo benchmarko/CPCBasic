@@ -22,13 +22,6 @@ BasicTokenizer.prototype = {
 		// empty
 	},
 
-	/*
-	reset: function () {
-		this.iPos = 0;
-		this.iLine = 0;
-	},
-	*/
-
 	decode: function (sProgram) { // decode tokenized BASIC to ASCII
 		// based on lbas2ascii.pl, 28.06.2006
 		var that = this,

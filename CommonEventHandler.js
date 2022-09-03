@@ -301,7 +301,7 @@ CommonEventHandler.prototype = {
 		sExample = this.view.getSelectValue("exampleSelect");
 		oExample = this.model.getExample(sExample);
 		oInFile.sCommand = "run";
-		if (oExample && oExample.meta) { // TTT TODO: this is just a workaround, meta is in input now; should change command after loading!
+		if (oExample && oExample.meta) { // TODO: this is just a workaround, meta is in input now; should change command after loading!
 			sType = oExample.meta.charAt(0);
 			if (sType === "B" || sType === "D" || sType === "G") { // binary, data only, Gena Assembler?
 				oInFile.sCommand = "load";

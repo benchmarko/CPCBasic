@@ -94,7 +94,6 @@ DiskImage.prototype = {
 		oDiskInfo.sIdent = sIdent + this.readUtf(iPos + 8, 34 - 8); // read remaining ident
 
 		if (oDiskInfo.sIdent.substr(34 - 11, 9) !== "Disk-Info") { // some tools use "Disk-Info  " instead of "Disk-Info\r\n", so compare without "\r\n"
-			//throw this.composeError(Error(), "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos);
 			// "Disk-Info" string is optional
 			Utils.console.warn(this.composeError({}, "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos + 34 - 11).message);
 		}
@@ -130,7 +129,6 @@ DiskImage.prototype = {
 
 		oTrackInfo.sIdent = this.readUtf(iPos, 12);
 		if (oTrackInfo.sIdent.substr(0, 10) !== "Track-Info") { // some tools use ""Track-Info  " instead of ""Track-Info\r\n", so compare without "\r\n"
-			//throw this.composeError(Error(), "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos);
 			// "Track-Info" string is optional
 			Utils.console.warn(this.composeError({}, "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos).message);
 		}
@@ -324,7 +322,7 @@ DiskImage.prototype = {
 			sFormat = "data";
 		} else if (iFirstSector === 0x41) {
 			sFormat = "system";
-		} else if ((iFirstSector === 0x01) && (oDiskInfo.iTracks === 80)) { // big780k TTT
+		} else if ((iFirstSector === 0x01) && (oDiskInfo.iTracks === 80)) { // big780k
 			sFormat = "big780k";
 		} else {
 			throw this.composeError(Error(), "Unknown format with sector", String(iFirstSector));

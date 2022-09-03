@@ -43,17 +43,8 @@ CodeGeneratorJs.prototype = {
 
 		this.iLine = 0; // current line (label)
 
-		/*
-		this.oStack = {
-			forLabel: [],
-			forVarName: [],
-			whileLabel: []
-		};
-		*/
-
 		this.resetCountsPerLine();
 
-		//this.aData = []; // collected data from data lines
 		this.aData.length = 0;
 
 		this.oLabels = {}; // labels or line numbers
@@ -496,13 +487,24 @@ CodeGeneratorJs.prototype = {
 					return node.pv;
 				},
 				hexnumber: function (node) {
-					var sValue = node.value.slice(1); // remove &
+					var sValue = node.value.slice(1), // remove &
+						n;
 
 					if (sValue.charAt(0).toLowerCase() === "h") { // optional h
 						sValue = sValue.slice(1); // remove
 					}
 
-					sValue = "0x" + ((sValue.length) ? sValue : "0"); // &->0x
+					sValue = sValue || "0";
+
+					n = parseInt(sValue, 16);
+
+					if (n > 32767) { //	two's complement
+						n = 65536 - n;
+						sValue = "-0x" + n.toString(16);
+					} else {
+						sValue = "0x" + sValue;
+					}
+
 					node.pt = "I";
 					node.pv = sValue;
 					return node.pv;
@@ -1236,7 +1238,7 @@ CodeGeneratorJs.prototype = {
 				},
 				run: function (node) { // optional arg can be number or string
 					if (node.args.length) {
-						if (node.args[0].type === "linenumber" || node.args[0].type === "number") { // optional line number //TTT should be linenumber only
+						if (node.args[0].type === "linenumber" || node.args[0].type === "number") { // optional line number (should be linenumber only)
 							this.fnAddReferenceLabel(fnParseOneArg(node.args[0]), node.args[0]); // parse only one arg, args are parsed later
 						}
 					}

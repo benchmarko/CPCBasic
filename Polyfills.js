@@ -163,7 +163,7 @@ if (window.document) {
 						aElements = document.getElementsByTagName("select");
 						for (i = 0; i < aElements.length; i += 1) {
 							aElements[i].attachEvent("on" + sEvent, fnOnEvent);
-							eventListeners.push({ //TTT does this work?
+							eventListeners.push({ // TODO: does this work?
 								object: this,
 								sEvent: sEvent,
 								fnHandler: fnHandler,
@@ -232,10 +232,16 @@ if (!Function.prototype.bind) { // IE8
 	}());
 }
 
+if (!Math.log10) { // IE11
+	Utils.console.debug("Polyfill: Math.log10");
+	Math.log10 = function (x) {
+		return Math.log(x) * Math.LOG10E;
+	};
+}
+
 if (!Math.sign) { // IE11
 	Utils.console.debug("Polyfill: Math.sign");
 	Math.sign = function (x) {
-		//return ((x > 0) - (x < 0)) || +x; // eslint-disable-line no-implicit-coercion
 		return (Number(x > 0) - Number(x < 0)) || Number(x);
 	};
 }
