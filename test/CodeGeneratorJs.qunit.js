@@ -330,6 +330,8 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"a=max(1)": " v.a = o.vmAssign(\"a\", o.max(1));",
 			"a=max(1,5)": " v.a = o.vmAssign(\"a\", o.max(1, 5));",
 			"a=max(b,c,d)": " v.a = o.vmAssign(\"a\", o.max(v.b, v.c, v.d));",
+			'a$=max("abc")': ' v.a$ = o.vmAssign("a$", o.max("abc"));',
+			'1 a$=max("abc","d")': "CodeGeneratorJs: Type error in 1 at pos 4-5: =",
 			"memory &3fff": " o.memory(0x3fff);",
 			"memory adr": " o.memory(v.adr);",
 			"merge \"file\"": " o.merge(\"file\"); o.goto(\"NaNs0\"); break;\ncase \"NaNs0\":",
@@ -344,6 +346,8 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 			"a=min(1)": " v.a = o.vmAssign(\"a\", o.min(1));",
 			"a=min(1,5)": " v.a = o.vmAssign(\"a\", o.min(1, 5));",
 			"a=min(b,c,d)": " v.a = o.vmAssign(\"a\", o.min(v.b, v.c, v.d));",
+			'a$=min("abc")': ' v.a$ = o.vmAssign("a$", o.min("abc"));',
+			'1 a$=min("abc","d")': "CodeGeneratorJs: Type error in 1 at pos 4-5: =",
 			"a=10 mod 3": " v.a = o.vmAssign(\"a\", 10 % 3);",
 			"a=b mod -c": " v.a = o.vmAssign(\"a\", o.vmRound(v.b) % o.vmRound(-(v.c)));",
 			"mode 0": " o.mode(0);",
@@ -593,6 +597,7 @@ QUnit.module("CodeGeneratorJs: Tests", function (/* hooks */) {
 				bQuiet: true
 			},
 			oCodeGeneratorJs = new CodeGeneratorJs({
+				bQuiet: true,
 				lexer: new BasicLexer(oOptions),
 				parser: new BasicParser(oOptions),
 				tron: false,

@@ -23,6 +23,7 @@ DiskImage.prototype = {
 		this.oConfig = oConfig || {};
 
 		this.sData = oConfig.sData;
+		this.bQuiet = oConfig.bQuiet || false;
 		this.reset();
 	},
 
@@ -95,7 +96,9 @@ DiskImage.prototype = {
 
 		if (oDiskInfo.sIdent.substr(34 - 11, 9) !== "Disk-Info") { // some tools use "Disk-Info  " instead of "Disk-Info\r\n", so compare without "\r\n"
 			// "Disk-Info" string is optional
-			Utils.console.warn(this.composeError({}, "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos + 34 - 11).message);
+			if (!this.bQuiet) {
+				Utils.console.warn(this.composeError({}, "Disk ident not found", oDiskInfo.sIdent.substr(34 - 11, 9), iPos + 34 - 11).message);
+			}
 		}
 
 		oDiskInfo.sCreator = this.readUtf(iPos + 34, 14);
@@ -130,7 +133,9 @@ DiskImage.prototype = {
 		oTrackInfo.sIdent = this.readUtf(iPos, 12);
 		if (oTrackInfo.sIdent.substr(0, 10) !== "Track-Info") { // some tools use ""Track-Info  " instead of ""Track-Info\r\n", so compare without "\r\n"
 			// "Track-Info" string is optional
-			Utils.console.warn(this.composeError({}, "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos).message);
+			if (!this.bQuiet) {
+				Utils.console.warn(this.composeError({}, "Track ident not found", oTrackInfo.sIdent.substr(0, 10), iPos).message);
+			}
 		}
 		// 4 unused bytes
 		oTrackInfo.iTrack = this.readUInt8(iPos + 16);

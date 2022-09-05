@@ -446,7 +446,7 @@ Controller.prototype = {
 			switch (sKey) {
 			case "": // no key?
 				break;
-			case "\r": // cr (\x0c)
+			case "\r": // cr (\x0d)
 				break;
 			case "\x10": // DLE (clear character under cursor)
 				sKey = "\x07"; // currently ignore (BEL)
@@ -1381,7 +1381,10 @@ Controller.prototype = {
 	fnRun: function (oParas) {
 		var sScript = this.view.getAreaValue("outputText"),
 			iLine = oParas && oParas.iLine || 0,
-			oVm = this.oVm;
+			oVm = this.oVm,
+			that = this,
+			iTimeout = 1,
+			input;
 
 		iLine = iLine || 0;
 		if (iLine === 0) {
@@ -1409,10 +1412,12 @@ Controller.prototype = {
 			oVm.clear(); // we do a clear as well here
 		}
 		oVm.vmReset4Run();
+		/*
 		if (!this.bInputSet) {
 			this.bInputSet = true;
 			this.oKeyboard.putKeysInBuffer(this.model.getProperty("input"));
 		}
+		*/
 
 		if (this.fnScript) {
 			oVm.sOut = this.view.getAreaValue("resultText");
@@ -1424,6 +1429,19 @@ Controller.prototype = {
 			this.view.setDisabled("stopButton", false);
 			this.view.setDisabled("continueButton", true);
 		}
+
+		if (!this.bInputSet) {
+			this.bInputSet = true;
+			input = this.model.getProperty("input");
+
+			if (input !== "") {
+				this.view.setAreaValue("inp2Text", input);
+				setTimeout(function () {
+					that.startEnter();
+				}, iTimeout);
+			}
+		}
+
 		if (Utils.debug > 1) {
 			Utils.console.debug("End of fnRun");
 		}
@@ -1762,7 +1780,7 @@ Controller.prototype = {
 		var sInput = this.view.getAreaValue("inp2Text"),
 			i;
 
-		sInput = sInput.replace("\n", "\r"); // LF => CR
+		sInput = sInput.replace(/\n/g, "\r"); // LF => CR
 		if (!sInput.endsWith("\r")) {
 			sInput += "\r";
 		}

@@ -626,7 +626,7 @@ CpcVm.prototype = {
 		if (iTime >= this.iNextFrameTime) {
 			this.vmCheckNextFrame(iTime);
 			this.iStopCount += 1;
-			if (this.iStopCount >= 5) { // do not stop too often because of just timer resason because setTimeout is expensive
+			if (this.iStopCount >= 5) { // do not stop too often because of just timer reason because setTimeout is expensive
 				this.iStopCount = 0;
 				this.vmStop("timer", 20);
 			}
@@ -2091,6 +2091,13 @@ CpcVm.prototype = {
 	max: function () { // varargs
 		var i;
 
+		if (arguments.length === 1) { // if just one argument, return it, even if it is a string
+			if (typeof arguments[0] !== "number" && !this.quiet) {
+				Utils.console.warn("MAX: Not a number:", arguments[0]);
+			}
+			return arguments[0];
+		}
+
 		for (i = 0; i < arguments.length; i += 1) {
 			this.vmAssertNumber(arguments[i], "MAX");
 		}
@@ -2144,6 +2151,13 @@ CpcVm.prototype = {
 
 	min: function () { // varargs
 		var i;
+
+		if (arguments.length === 1) { // if just one argument, return it, even if it is a string
+			if (typeof arguments[0] !== "number" && !this.quiet) {
+				Utils.console.warn("MIN: Not a number:", arguments[0]);
+			}
+			return arguments[0];
+		}
 
 		for (i = 0; i < arguments.length; i += 1) {
 			this.vmAssertNumber(arguments[i], "MIN");

@@ -5,13 +5,13 @@ BASIC programs are compiled to JavaScript which can be run in the browser. A lib
 
 CPCBasic Links:
 [CPCBasic Demo](https://benchmarko.github.io/CPCBasic/index.html?example=cpcbasic),
-[Colors CPC Demo](https://benchmarko.github.io/CPCBasic/index.html?example=demo/colors),
+[Colors CPC Demo](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/colors),
 [Source code](https://github.com/benchmarko/CPCBasic/),
 [HTML Readme](https://github.com/benchmarko/CPCBasic/#readme),
 
 Please note:
 CpcBasic gets only bug fixes. Active development goes on with CpcBasicTS, the TypeScript implementation of CPCBasic:
-[CPCBasicTS Demo](https://benchmarko.github.io/CPCBasicTS/?example=cpcbasic),
+[CPCBasicTS Demo](https://benchmarko.github.io/CPCBasicTS/),
 [CPCBasicTS Source](https://github.com/benchmarko/CPCBasicTS/)
 
 ## Features
@@ -26,12 +26,12 @@ CpcBasic gets only bug fixes. Active development goes on with CpcBasicTS, the Ty
 
 [![A sample with cpcbasic](./img/cpcbasic.gif)](https://benchmarko.github.io/CPCBasic/index.html?example=cpcbasic)
 
-[![Art](./img/art.png)](https://benchmarko.github.io/CPCBasic/index.html?example=art)
-[![Graphics](./img/graphics.png)](https://benchmarko.github.io/CPCBasic/index.html?example=demo/graphics)
-[![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/index.html?example=labyrinth)
-[![Landscape](./img/landscape.png)](https://benchmarko.github.io/CPCBasic/index.html?example=landscape)
+[![Art](./img/art.png)](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/art)
+[![Graphics](./img/graphics.png)](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/graphics)
+[![Labyrinth](./img/labyrinth.png)](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/labyrinth)
+[![Landscape](./img/landscape.png)](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/landscape)
 
-More examples are in the sample library [CPCBasicApps](https://github.com/benchmarko/CPCBasicApps/#readme). They are included in CPCBasic as *apps*, example: [10print](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=demo/10print).
+More examples are in the sample library [CPCBasicApps](https://benchmarko.github.io/CPCBasicApps/), [CPCBasicApps source](https://github.com/benchmarko/CPCBasicApps/#readme). They are included in CPCBasic as *apps*, example: [10print](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=demo/10print).
 
 ## Why CPCBasic
 
@@ -63,7 +63,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   - The **Sound** button activates or deactivates sound.
     - If you use the *Reload* button with sound activated, the sound needs to be activated again. Just do a user action, e.g. click somewhere. This is a browser limitation.
 - The *Text View* window shows the text which is written in text mode.
-- The *Keyboard* window shows a virtual keyboard which can be also used with touch devices. You can test the functionality with the test program [keyboard](https://benchmarko.github.io/CPCBasic/index.html?example=test/keyboard&showKbd=true).
+- The *Keyboard* window shows a virtual keyboard which can be also used with touch devices. You can test the functionality with the test program [keyboard](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/keyboard&showKbd=true).
 - The *Input* window is an alternative way to send input to the CPC.
 - The *Console* window shows the textual output. This is useful for copying and pasting the output. It is cleared when the CPC screen is cleared (*MODE* or *CLS*).
 - The *Variables* window allows you to see the variables used by the program.
@@ -99,10 +99,10 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
   The next *INKEY$* will return it. This could be useful to select options presented on the screen.
   Another feature: After a MOVE 1000,1000, a mouse click does a *MOVE* at the click position.
   This can be detected by a BASIC program.
-  Example: [Mouse Painting](https://benchmarko.github.io/CPCBasic/index.html?example=test/mousepa)
+  Example: [Mouse Painting](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/mousepa)
 - *MODE 3*: High resolution mode with real 640x400 pixels, 16 colors and 8x8 pixels per character.
   This is different to the unofficial and not very useful Gate Array mode 3 on a real CPC: [CPC live: Graphics](http://cpctech.cpc-live.com/docs/graphics.html).
-Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CPCBasic/index.html?example=art), [Landscape](https://benchmarko.github.io/CPCBasic/index.html?example=landscape), [Rectangles](https://benchmarko.github.io/CPCBasic/index.html?example=test/rectangles).
+Several examples use CPCBasic mode 3, e.g. [Art](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/art), [Landscape](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/landscape), [Rectangles](https://benchmarko.github.io/CPCBasic/index.html?database=apps&example=test/rectangles).
 - *|MODE,n*: Change mode without *CLS*, including mode 3 (experimental)
 - *|RENUM,...*: similar to *RENUM* but with a 4th parameter to keep line numbers starting with this line
 - Computations with numbers are not limited to 16 bit

@@ -1317,12 +1317,22 @@ CodeGeneratorJs.prototype = {
 
 				if (fnIsInString(" asc cint derr eof erl err fix fre inkey inp instr int joy len memory peek pos remain sgn sq test testr unt vpos xpos ypos ", sTypeWithSpaces)) {
 					node.pt = "I";
-				} else if (fnIsInString(" abs atn cos creal exp log log10 max min pi rnd round sin sqr tan time val ", sTypeWithSpaces)) {
+				} else if (fnIsInString(" abs atn cos creal exp log log10 pi rnd round sin sqr tan time val ", sTypeWithSpaces)) {
 					node.pt = "R";
 				} else if (fnIsInString(" bin$ chr$ copychr$ dec$ hex$ inkey$ left$ lower$ mid$ right$ space$ str$ string$ upper$ ", sTypeWithSpaces)) {
 					node.pt = "$";
 				}
 
+				// Note: min and max usually return a number, but for a single string argument also the string!
+				if (node.type === "min" || node.type === "max") {
+					if (node.args.length === 1) {
+						if (node.args[0].type === "$") {
+							node.pt = "$";
+						}
+					} else if (node.args.length > 1) {
+						node.pt = "R";
+					}
+				}
 				return node.pv;
 			},
 
@@ -1467,7 +1477,9 @@ CodeGeneratorJs.prototype = {
 		} catch (e) {
 			oOut.error = e;
 			if ("pos" in e) {
-				Utils.console.warn(e); // our errors have "pos" defined => show as warning
+				if (!this.bQuiet) {
+					Utils.console.warn(e); // our errors have "pos" defined => show as warning
+				}
 			} else { // other errors
 				Utils.console.error(e);
 			}

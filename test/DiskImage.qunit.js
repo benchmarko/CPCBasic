@@ -111,7 +111,8 @@ QUnit.module("DiskImage: Tests", function () {
 				sUncompressed = oZip.readData(sFirstFileInZip);
 				oDisk = new DiskImage({
 					sData: sUncompressed,
-					sDiskName: "name"
+					sDiskName: "name",
+					bQuiet: true
 				});
 				sExpected = oTests[sKey];
 
