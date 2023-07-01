@@ -30,7 +30,8 @@ cpcBasic = {
 		showVariable: false,
 		showConsole: false,
 		sound: true,
-		tron: false // trace on
+		tron: false, // trace on
+		redirectExamples: {}
 	},
 	model: null,
 	view: null,
@@ -153,6 +154,16 @@ cpcBasic = {
 		Utils.console = oConsole;
 	},
 
+	fnRedirectExamples: function () {
+		var redirectExamples = this.model.getProperty("redirectExamples"),
+			name = this.model.getProperty("database") + "/" + this.model.getProperty("example");
+
+		if (redirectExamples[name]) {
+			this.model.setProperty("database", redirectExamples[name].database);
+			this.model.setProperty("example", redirectExamples[name].example);
+		}
+	},
+
 	fnDoStart: function () {
 		var that = this,
 			oStartConfig = this.config,
@@ -177,6 +188,8 @@ cpcBasic = {
 			Utils.console.log("CPCBasic log started at", Utils.dateFormat(new Date()));
 			Utils.console.changeLog(document.getElementById("consoleText"));
 		}
+
+		this.fnRedirectExamples();
 
 		that.controller = new Controller(this.model, this.view);
 	},
