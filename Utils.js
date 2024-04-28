@@ -160,7 +160,8 @@ var Utils = {
 		if (pos !== undefined) {
 			oError.pos = pos;
 		}
-		if (line !== undefined) {
+		// Safari: Some additional properties are already defined: line, column. Shall we use "cause" property now?
+		if (line !== oError.line) {
 			oError.line = line;
 		}
 		if (hidden !== undefined) {
