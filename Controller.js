@@ -561,26 +561,31 @@ Controller.prototype = {
 		}
 	},
 
+	// We simulate input.split(/^(\s*\d+)/m) here since it does not work with IE8
+	// (see also: https://blog.stevenlevithan.com/archives/cross-browser-split )
+	// This function also works for different line separators (IE8 textArea stores "\r\n" as line separator)
 	splitLines: function (input) {
-		var lines = [],
-			lineParts = input.split(/^(\s*\d+)/m), // get numbers starting at the beginning of a line
-			i, number, content;
+		var reFormat = new RegExp("\\r?\\n(\\d+)", "g"),
+			aOutput = [],
+			aMatch, iLastIndex, iLastLastIndex;
 
-		if (lineParts[0] === "") {
-			lineParts.shift(); // remove first empty item
-		}
-
-		for (i = 0; i < lineParts.length; i += 2) {
-			number = lineParts[i];
-			content = lineParts[i + 1];
-
-			if (content.endsWith("\n")) {
-				content = content.substring(0, content.length - 1);
+		input = "\n" + input;
+		while ((aMatch = reFormat.exec(input)) !== null) {
+			iLastIndex = aMatch.index + aMatch[0].length; // separator.lastIndex is not reliable cross-browser
+			if (iLastIndex > iLastLastIndex) {
+				aOutput[aOutput.length - 1] += input.slice(iLastLastIndex, aMatch.index);
 			}
-			lines.push(number + content);
+			aOutput.push(aMatch[1]);
+			iLastLastIndex = iLastIndex;
 		}
-
-		return lines;
+		if (iLastLastIndex < input.length) {
+			if (aOutput.length) {
+				aOutput[aOutput.length - 1] += input.slice(iLastLastIndex);
+			} else {
+				aOutput.push(input.slice(iLastLastIndex));
+			}
+		}
+		return aOutput;
 	},
 
 	// merge two scripts with sorted line numbers, lines from script2 overwrite lines from script1

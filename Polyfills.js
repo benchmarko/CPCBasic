@@ -42,6 +42,20 @@ if ((typeof globalThis !== "undefined") && !globalThis.window) { // nodeJS
 	globalThis.window = {};
 }
 
+if (!Array.prototype.filter) { // IE8
+	Array.prototype.filter = function (callbackFn) { // eslint-disable-line no-extend-native
+		var arr = [],
+			i;
+
+		for (i = 0; i < this.length; i += 1) {
+			if (callbackFn.call(this, this[i], i, this)) {
+				arr.push(this[i]);
+			}
+		}
+		return arr;
+	};
+}
+
 if (!Array.prototype.indexOf) { // IE8
 	Array.prototype.indexOf = function (element, iFrom) { // eslint-disable-line no-extend-native
 		var iLen = this.length >>> 0; // eslint-disable-line no-bitwise
