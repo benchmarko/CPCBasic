@@ -104,14 +104,19 @@ if (window.Element) {
 }
 
 if (window.Event) {
+	// https://stackoverflow.com/questions/17102300/prototype-event-stoppropagation-for-ie-8
 	if (!Event.prototype.preventDefault) { // IE8
 		Utils.console.debug("Polyfill: Event.prototype.preventDefault");
-		Event.prototype.preventDefault = function () {	}; // eslint-disable-line no-empty-function
+		Event.prototype.preventDefault = function () {
+			this.returnValue = false;
+		};
 	}
 
 	if (!Event.prototype.stopPropagation) { // IE8
 		Utils.console.debug("Polyfill: Event.prototype.stopPropagation");
-		Event.prototype.stopPropagation = function () {	}; // eslint-disable-line no-empty-function
+		Event.prototype.stopPropagation = function () {
+			this.cancelBubble = true;
+		};
 	}
 }
 

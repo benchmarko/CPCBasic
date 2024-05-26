@@ -91,7 +91,11 @@ View.prototype = {
 				option.value = oItem.value;
 				option.text = oItem.text;
 				option.title = oItem.title;
-				select.add(option, null); // null needed for old FF 3.x
+				try {
+					select.add(option, null); // null needed for old FF 3.x
+				} catch (e) {
+					select.add(option); // null must not be used for IE8
+				}
 			} else {
 				option = select.options[i];
 				if (option.value !== oItem.value) {

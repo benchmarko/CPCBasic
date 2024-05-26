@@ -1761,7 +1761,11 @@ Controller.prototype = {
 	},
 
 	startScreenshot: function () {
-		var image = this.oCanvas.canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you do not replace you will get a DOM 18 exception.
+		var image = "";
+
+		if (this.oCanvas.canvas.toDataURL) {
+			image = this.oCanvas.canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you do not replace you will get a DOM 18 exception.
+		}
 
 		return image;
 	},
@@ -2075,15 +2079,23 @@ Controller.prototype = {
 	},
 
 	initDropZone: function () {
-		var dropZone = document.getElementById("dropZone");
+		var dropZone = document.getElementById("dropZone"),
+			canvas = this.oCanvas.canvas,
+			fileInput = document.getElementById("fileInput");
 
-		dropZone.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
-		dropZone.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
+		if (dropZone.addEventListener) {
+			dropZone.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
+			dropZone.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
+		}
 
-		this.oCanvas.canvas.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
-		this.oCanvas.canvas.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
+		if (canvas.addEventListener) {
+			canvas.addEventListener("dragover", this.fnHandleDragOver.bind(this), false);
+			canvas.addEventListener("drop", this.fnHandleFileSelect.bind(this), false);
+		}
 
-		document.getElementById("fileInput").addEventListener("change", this.fnHandleFileSelect.bind(this), false);
+		if (fileInput.addEventListener) {
+			fileInput.addEventListener("change", this.fnHandleFileSelect.bind(this), false);
+		}
 	},
 
 	fnUpdateUndoRedoButtons: function () {

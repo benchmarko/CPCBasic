@@ -364,7 +364,7 @@ Canvas.prototype = {
 			aTextBufferRow = aTextBuffer[y];
 			if (aTextBufferRow) {
 				for (x = 0; x < aTextBufferRow.length; x += 1) {
-					sOut += this.sCpc2Unicode[aTextBufferRow[x] || 32];
+					sOut += this.sCpc2Unicode.charAt(aTextBufferRow[x] || 32); // works also on IE8, (not: this.sCpc2Unicode[...])
 				}
 			}
 			sOut += "\n";
@@ -441,7 +441,7 @@ Canvas.prototype = {
 
 	setFocusOnCanvas: function () {
 		this.cpcAreaBox.style.background = "#463c3c";
-		if (this.canvas) {
+		if (this.canvas && this.canvas.focus) {
 			this.canvas.focus();
 		}
 		this.bHasFocus = true;
@@ -501,7 +501,11 @@ Canvas.prototype = {
 		} else {
 			this.canvasClickAction2(event);
 		}
-		event.stopPropagation();
+		if (event.stopPropagation) {
+			event.stopPropagation();
+		} else {
+			// window.event.stopPropagation(); // howto on IE8?
+		}
 	},
 
 	onWindowClick: function () {

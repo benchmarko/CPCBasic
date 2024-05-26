@@ -209,8 +209,13 @@ Keyboard.prototype = {
 		this.bCodeStringsRemoved = false;
 
 		cpcArea = document.getElementById("cpcArea");
-		cpcArea.addEventListener("keydown", this.onCpcAreaKeydown.bind(this), false);
-		cpcArea.addEventListener("keyup", this.oncpcAreaKeyup.bind(this), false);
+		if (cpcArea.addEventListener) {
+			cpcArea.addEventListener("keydown", this.onCpcAreaKeydown.bind(this), false);
+			cpcArea.addEventListener("keyup", this.oncpcAreaKeyup.bind(this), false);
+		} else { // IE8?
+			cpcArea.attachEvent("onkeydown", this.onCpcAreaKeydown.bind(this));
+			cpcArea.attachEvent("onkeyup", this.oncpcAreaKeyup.bind(this));
+		}
 	},
 
 	reset: function () {

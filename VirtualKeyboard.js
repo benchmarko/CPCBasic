@@ -618,6 +618,12 @@ VirtualKeyboard.prototype = {
 			Utils.console.log("fnAttachPointerEvents: Using", oEventNames.type, "events");
 		}
 
+		if (!area.addEventListener) { // IE8
+			area.addEventListener = function (type, listener) {
+				area.attachEvent("on" + type, listener);
+			};
+		}
+
 		if (fnDown) {
 			area.addEventListener(oEventNames.down, fnDown, false); // +clicked for pointer, touch?
 		}
@@ -816,9 +822,15 @@ VirtualKeyboard.prototype = {
 		}
 
 		if (this.sPointerOutEvent) {
-			node.addEventListener(this.sPointerOutEvent, this.fnVirtualKeyout, false);
+			if (node.addEventListener) {
+				node.addEventListener(this.sPointerOutEvent, this.fnVirtualKeyout, false);
+			} else { // IE8
+				node.attachEvent("on" + this.sPointerOutEvent, this.fnVirtualKeyout);
+			}
 		}
-		event.preventDefault();
+		if (event.preventDefault) {
+			event.preventDefault();
+		}
 		return false;
 	},
 
@@ -857,9 +869,15 @@ VirtualKeyboard.prototype = {
 		this.fnVirtualKeyboardKeyupOrKeyout(event);
 
 		if (this.sPointerOutEvent && this.fnVirtualKeyout) {
-			node.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout); // do not need out event any more
+			if (node.removeEventListener) {
+				node.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout); // do not need out event any more
+			} else { // IE8
+				node.detachEvent("on" + this.sPointerOutEvent, this.fnVirtualKeyout);
+			}
 		}
-		event.preventDefault();
+		if (event.preventDefault) {
+			event.preventDefault();
+		}
 		return false;
 	},
 
@@ -873,7 +891,9 @@ VirtualKeyboard.prototype = {
 		if (this.sPointerOutEvent && this.fnVirtualKeyout) {
 			node.removeEventListener(this.sPointerOutEvent, this.fnVirtualKeyout);
 		}
-		event.preventDefault();
+		if (event.preventDefault) {
+			event.preventDefault();
+		}
 		return false;
 	},
 
