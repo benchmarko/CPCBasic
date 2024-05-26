@@ -2,6 +2,7 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
+/* globals ArrayBuffer, Uint8Array */
 
 "use strict";
 
@@ -144,6 +145,17 @@ var Utils = {
 
 	atob: typeof window !== "undefined" && window.atob && window.atob.bind ? window.atob.bind(window) : null, // we need bind: https://stackoverflow.com/questions/9677985/uncaught-typeerror-illegal-invocation-in-chrome
 	btoa: typeof window !== "undefined" && window.btoa && window.btoa.bind ? window.btoa.bind(window) : null,
+
+	string2Uint8Array: function (data) {
+		var buf = new ArrayBuffer(data.length),
+			view = new Uint8Array(buf),
+			i;
+
+		for (i = 0; i < data.length; i += 1) {
+			view[i] = data.charCodeAt(i);
+		}
+		return view;
+	},
 
 	composeError: function (name, oError, message, value, pos, line, hidden) {
 		var iEndPos;

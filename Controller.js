@@ -2,7 +2,7 @@
 // (c) Marco Vieth, 2019
 // https://benchmarko.github.io/CPCBasic/
 //
-/* globals cpcBasicCharset Uint8Array */
+/* globals cpcBasicCharset ArrayBuffer, Uint8Array */
 
 "use strict";
 
@@ -849,7 +849,7 @@ Controller.prototype = {
 			iStartLine = 0,
 			bPutInMemory = false,
 			oData,
-			sType;
+			sType, aImported;
 
 		if (sInput !== null && sInput !== undefined) {
 			oData = this.splitMeta(sInput);
@@ -871,6 +871,10 @@ Controller.prototype = {
 				sInput = sInput.replace(/\x1a+$/, ""); // eslint-disable-line no-control-regex
 			} else if (sType === "G") { // Hisoft Devpac GENA3 Z80 Assember
 				sInput = this.asmGena3Convert(sInput);
+			} else if (sType === "Z") { // ZIP file
+				aImported = [];
+				this.fnLoad2(sInput, oInFile.sName, sType, aImported);
+				sInput = "1 ' " + aImported.join(", "); // imported files
 			}
 		}
 
@@ -1906,15 +1910,147 @@ Controller.prototype = {
 		soundButton.innerText = sText;
 	},
 
+
+	processZipFile: function (uint8Array, name, aImported) {
+		var oZip, aZipDirectory, aEntries, i, sName2, sData2;
+
+		try {
+			oZip = new ZipFile(uint8Array, name);
+		} catch (e) {
+			Utils.console.error(e);
+			if (e instanceof Error) {
+				this.outputError(e, true);
+			}
+		}
+		if (oZip) {
+			aZipDirectory = oZip.getZipDirectory();
+			aEntries = Object.keys(aZipDirectory);
+
+			for (i = 0; i < aEntries.length; i += 1) {
+				sName2 = aEntries[i];
+
+				if (sName2.startsWith("__MACOSX/")) { // MacOS X creates some extra folder in ZIP files
+					Utils.console.log("processZipFile: Ignoring file:", sName2);
+				} else {
+					try {
+						sData2 = oZip.readData(sName2);
+					} catch (e) {
+						Utils.console.error(e);
+						if (e instanceof Error) { // eslint-disable-line max-depth
+							this.outputError(e, true);
+						}
+					}
+
+					if (sData2) {
+						this.fnLoad2(sData2, sName2, "", aImported, aImported); // type not known but without meta
+					}
+				}
+			}
+		}
+	},
+
+	processDskFile: function (data, sName, aImported) {
+		var oDsk, oDir, aDiskFiles, i, sFileName;
+
+		try {
+			oDsk = new DiskImage({
+				sData: data,
+				sDiskName: sName
+			});
+			oDir = oDsk.readDirectory();
+			aDiskFiles = Object.keys(oDir);
+			for (i = 0; i < aDiskFiles.length; i += 1) {
+				sFileName = aDiskFiles[i];
+				try { // eslint-disable-line max-depth
+					data = oDsk.readFile(oDir[sFileName]);
+					this.fnLoad2(data, sFileName, "cpcBasic/binary", aImported); // recursive
+				} catch (e) {
+					Utils.console.error(e);
+					this.outputError(e, true);
+				}
+			}
+		} catch (e) {
+			Utils.console.error(e);
+			this.outputError(e, true);
+		}
+	},
+
+	fnLoad2: function (data, sName, sType, aImported) { // eslint-disable-line complexity
+		var reRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x1a\x20-\x7e]*$/), // eslint-disable-line no-control-regex
+			// starting with (line) number, or 7 bit ASCII characters without control codes except \x1a=EOF
+			isStringData = typeof data === "string", // it is not: data instanceof Uint8Array or ArrayBuffer,
+			sStorageName, sMeta, iIndex, oHeader, sInfo1;
+
+		sStorageName = this.oVm.vmAdaptFilename(sName, "FILE");
+		sStorageName = this.fnLocalStorageName(sStorageName);
+
+		if (sType === "text/plain") {
+			oHeader = {
+				sType: "A",
+				iStart: 0,
+				iLength: data.length
+			};
+		} else {
+			if (sType === "application/x-zip-compressed" || sType === "cpcBasic/binary" || sType === "Z") { // are we a file inside zip?
+				// empty
+			} else if (isStringData && data.startsWith("data:application/octet-stream")) { // e.g. "data:application/octet-stream;base64,..."
+				iIndex = data.indexOf(",");
+				if (iIndex >= 0) {
+					sInfo1 = data.substr(0, iIndex);
+					data = data.substr(iIndex + 1); // remove meta prefix
+					if (sInfo1.indexOf("base64") >= 0) {
+						data = Utils.atob(data); // decode base64
+					}
+				}
+			}
+
+			oHeader = isStringData ? DiskImage.prototype.parseAmsdosHeader(data) : null;
+			if (oHeader) {
+				data = data.substr(0x80); // remove header
+			} else if (isStringData && DiskImage.prototype.testDiskIdent(data.substr(0, 8))) { // disk image file?
+				this.processDskFile(data, sName, aImported);
+				oHeader = null; // ignore dsk file
+			} else if (sType === "Z") {
+				this.processZipFile(isStringData ? Utils.string2Uint8Array(data) : data, sName, aImported);
+			} else if (reRegExpIsText.test(data)) {
+				oHeader = {
+					sType: "A",
+					iStart: 0,
+					iLength: data.length
+				};
+			} else { // binary
+				oHeader = {
+					sType: "B",
+					iStart: 0,
+					iLength: data.length
+				};
+			}
+		}
+
+		if (oHeader) {
+			sMeta = this.joinMeta(oHeader);
+			try {
+				Utils.localStorage.setItem(sStorageName, sMeta + "," + data);
+				this.updateStorageDatabase("set", sStorageName);
+				Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
+				aImported.push(sName);
+			} catch (e) { // maybe quota exceeded
+				Utils.console.error(e);
+				if (e.name === "QuotaExceededError") {
+					e.shortMessage = sStorageName + ": Quota exceeded";
+				}
+				this.outputError(e, true);
+			}
+		}
+	},
+
+
 	// https://stackoverflow.com/questions/10261989/html5-javascript-drag-and-drop-file-from-external-window-windows-explorer
 	// https://www.w3.org/TR/file-upload/#dfn-filereader
 	fnHandleFileSelect: function (event) {
 		var aFiles = event.dataTransfer ? event.dataTransfer.files : event.target.files, // dataTransfer for drag&drop, target.files for file input
 			iFile = 0,
-			oStorage = Utils.localStorage,
 			that = this,
-			reRegExpIsText = new RegExp(/^\d+ |^[\t\r\n\x1a\x20-\x7e]*$/), // eslint-disable-line no-control-regex
-			// starting with (line) number, or 7 bit ASCII characters without control codes except \x1a=EOF
 			aImported = [],
 			f, oReader;
 
@@ -1940,7 +2076,7 @@ Controller.prototype = {
 				Utils.console.log(sText);
 				if (f.type === "text/plain") {
 					oReader.readAsText(f);
-				} else if (f.type === "application/x-zip-compressed") {
+				} else if (f.type === "application/x-zip-compressed" || f.type === "application/zip") { // on Mac OS it is "application/zip"
 					oReader.readAsArrayBuffer(f);
 				} else {
 					oReader.readAsDataURL(f);
@@ -1966,121 +2102,18 @@ Controller.prototype = {
 			fnReadNextFile();
 		}
 
-		function fnLoad2(sData, sName, sType) {
-			var sStorageName, sMeta, iIndex, oHeader,
-				oDsk, oDir, aDiskFiles, i, sFileName, sInfo1;
-
-			sStorageName = that.oVm.vmAdaptFilename(sName, "FILE");
-			sStorageName = that.fnLocalStorageName(sStorageName);
-
-			if (sType === "text/plain") {
-				oHeader = {
-					sType: "A",
-					iStart: 0,
-					iLength: sData.length
-				};
-			} else {
-				if (sType === "application/x-zip-compressed" || sType === "cpcBasic/binary") { // are we a file inside zip?
-				} else { // e.g. "data:application/octet-stream;base64,..."
-					iIndex = sData.indexOf(",");
-					if (iIndex >= 0) {
-						sInfo1 = sData.substr(0, iIndex);
-						sData = sData.substr(iIndex + 1); // remove meta prefix
-						if (sInfo1.indexOf("base64") >= 0) {
-							sData = Utils.atob(sData); // decode base64
-						}
-					}
-				}
-
-				oHeader = DiskImage.prototype.parseAmsdosHeader(sData);
-				if (oHeader) {
-					sData = sData.substr(0x80); // remove header
-				} else if (reRegExpIsText.test(sData)) {
-					oHeader = {
-						sType: "A",
-						iStart: 0,
-						iLength: sData.length
-					};
-				} else if (DiskImage.prototype.testDiskIdent(sData.substr(0, 8))) { // disk image file?
-					try {
-						oDsk = new DiskImage({
-							sData: sData,
-							sDiskName: sName
-						});
-						oDir = oDsk.readDirectory();
-						aDiskFiles = Object.keys(oDir);
-						for (i = 0; i < aDiskFiles.length; i += 1) {
-							sFileName = aDiskFiles[i];
-							try { // eslint-disable-line max-depth
-								sData = oDsk.readFile(oDir[sFileName]);
-								fnLoad2(sData, sFileName, "cpcBasic/binary"); // recursive
-							} catch (e) {
-								Utils.console.error(e);
-								that.outputError(e, true);
-							}
-						}
-					} catch (e) {
-						Utils.console.error(e);
-						that.outputError(e, true);
-					}
-					oHeader = null; // ignore dsk file
-				} else { // binary
-					oHeader = {
-						sType: "B",
-						iStart: 0,
-						iLength: sData.length
-					};
-				}
-			}
-
-			if (oHeader) {
-				sMeta = that.joinMeta(oHeader);
-				try {
-					oStorage.setItem(sStorageName, sMeta + "," + sData);
-					that.updateStorageDatabase("set", sStorageName);
-					Utils.console.log("fnOnLoad: file: " + sStorageName + " meta: " + sMeta + " imported");
-					aImported.push(sName);
-				} catch (e) { // maybe quota exceeded
-					Utils.console.error(e);
-					if (e.name === "QuotaExceededError") {
-						e.shortMessage = sStorageName + ": Quota exceeded";
-					}
-					that.outputError(e, true);
-				}
-			}
-		}
-
 		function fnOnLoad(evt) {
-			var sData = evt.target.result,
+			var data = evt.target.result,
 				sName = f.name,
-				sType = f.type,
-				oZip, aEntries, i;
+				sType = f.type;
 
-			if (sType === "application/x-zip-compressed") {
-				try {
-					oZip = new ZipFile(new Uint8Array(sData), sName); // rather aData
-				} catch (e) {
-					Utils.console.error(e);
-					that.outputError(e, true);
-				}
-				if (oZip) {
-					aEntries = Object.keys(oZip.oEntryTable);
-					for (i = 0; i < aEntries.length; i += 1) {
-						sName = aEntries[i];
-						try {
-							sData = oZip.readData(sName);
-						} catch (e) {
-							Utils.console.error(e);
-							that.outputError(e, true);
-							sData = null;
-						}
-						if (sData) {
-							fnLoad2(sData, sName, sType);
-						}
-					}
-				}
+			if ((sType === "application/x-zip-compressed" || sType === "application/zip") && data instanceof ArrayBuffer) { // on Mac OS it is "application/zip"
+				sType = "Z";
+				that.fnLoad2(new Uint8Array(data), sName, sType, aImported);
+			} else if (typeof data === "string") {
+				that.fnLoad2(data, sName, sType, aImported);
 			} else {
-				fnLoad2(sData, sName, sType);
+				Utils.console.warn("Error loading file", sName, "with type", sType, " unexpected data:", data);
 			}
 
 			fnReadNextFile();
