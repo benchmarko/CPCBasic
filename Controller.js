@@ -561,10 +561,32 @@ Controller.prototype = {
 		}
 	},
 
+	splitLines: function (input) {
+		var lines = [],
+			lineParts = input.split(/^(\s*\d+)/m), // get numbers starting at the beginning of a line
+			i, number, content;
+
+		if (lineParts[0] === "") {
+			lineParts.shift(); // remove first empty item
+		}
+
+		for (i = 0; i < lineParts.length; i += 2) {
+			number = lineParts[i];
+			content = lineParts[i + 1];
+
+			if (content.endsWith("\n")) {
+				content = content.substring(0, content.length - 1);
+			}
+			lines.push(number + content);
+		}
+
+		return lines;
+	},
+
 	// merge two scripts with sorted line numbers, lines from script2 overwrite lines from script1
 	mergeScripts: function (sScript1, sScript2) {
-		var aLines1 = sScript1.trimEnd().split("\n"),
-			aLines2 = sScript2.trimEnd().split("\n"),
+		var aLines1 = this.splitLines(sScript1.trimEnd()),
+			aLines2 = this.splitLines(sScript2.trimEnd()),
 			aResult = [],
 			iLine1, sLine2, iLine2, sResult;
 
@@ -599,7 +621,7 @@ Controller.prototype = {
 
 	// get line range from a script with sorted line numbers
 	fnGetLinesInRange: function (sScript, iFirstLine, iLastLine) {
-		var aLines = sScript ? sScript.split("\n") : [];
+		var aLines = sScript ? this.splitLines(sScript) : [];
 
 		while (aLines.length && parseInt(aLines[0], 10) < iFirstLine) {
 			aLines.shift();
