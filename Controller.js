@@ -706,12 +706,12 @@ Controller.prototype = {
 			aDir.sort();
 		}
 
-		this.oVm.print(iStream, "\r\n");
+		this.oVm.print(iStream, "\r\nDrive A: user  0\r\n\r\n");
 		for (i = 0; i < aDir.length; i += 1) {
 			sKey = aDir[i] + "  ";
 			this.oVm.print(iStream, sKey);
 		}
-		this.oVm.print(iStream, "\r\n");
+		this.oVm.print(iStream, "\r\n\r\n999K free\r\n\r\n");
 	},
 
 	fnFileCat: function (oParas) {

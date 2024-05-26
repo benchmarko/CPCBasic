@@ -1500,6 +1500,26 @@ BasicParser.prototype = {
 			return fnCreateCmdCall(sName);
 		});
 
+		stmt("write", function () {
+			var oNode = oPreviousToken,
+				mCloseTokens = BasicParser.mCloseTokens,
+				oStream = fnGetOptionalStream();
+
+			if (oStream.len !== 0) { // not an inserted stream?
+				if (!mCloseTokens[oToken.type]) {
+					advance(",");
+				}
+			}
+
+			oNode.args = fnGetArgsSepByCommaSemi();
+			oNode.args.unshift(oStream);
+
+			if ((oPreviousToken.type === "," && oNode.args.length > 1) || oPreviousToken.type === ";") {
+				throw that.composeError(Error(), "Operand missing", oPreviousToken.type, oPreviousToken.pos);
+			}
+			return oNode;
+		});
+
 
 		// line
 		this.sLine = "0"; // for error messages

@@ -449,7 +449,7 @@ CodeGeneratorJs.prototype = {
 				},
 
 				"|": function (node) { // rsx
-					var sRsxName, bRsxAvailable, aNodeArgs, sLabel, oError;
+					var sRsxName, bRsxAvailable, aNodeArgs, sLabel;
 
 					sRsxName = node.value.substr(1).toLowerCase().replace(/\./g, "_");
 					bRsxAvailable = that.rsx && that.rsx.rsxIsAvailable(sRsxName);
@@ -458,10 +458,6 @@ CodeGeneratorJs.prototype = {
 					that.iStopCount += 1;
 
 					if (!bRsxAvailable) { // if RSX not available, we delay the error until it is executed (or catched by on error goto)
-						if (!that.bQuiet) {
-							oError = that.composeError(Error(), "Unknown RSX command", node.value, node.pos);
-							Utils.console.warn(oError);
-						}
 						aNodeArgs.unshift('"' + sRsxName + '"'); // put as first arg
 						sRsxName = "rsxExec"; // and call special handler which triggers error if not available
 					}

@@ -1864,13 +1864,20 @@ CpcVm.prototype = {
 	},
 
 	instr: function (p1, p2, p3) { // optional startpos as first parameter
-		this.vmAssertString(p2, "INSTR");
-		if (typeof p1 === "string") { // p1=string, p2=search string
-			return p1.indexOf(p2) + 1;
+		var startPos = typeof p1 === "number" ? this.vmInRangeRound(p1, 1, 255, "INSTR") - 1 : 0, // p1=startpos
+			str = typeof p1 === "number" ? p2 : p1,
+			search = typeof p1 === "number" ? p3 : p2;
+
+		this.vmAssertString(str, "INSTR");
+		this.vmAssertString(search, "INSTR");
+
+		if (startPos >= str.length) {
+			return 0; // not found
 		}
-		p1 = this.vmInRangeRound(p1, 1, 255, "INSTR"); // p1=startpos
-		this.vmAssertString(p3, "INSTR");
-		return p2.indexOf(p3, p1 - 1) + 1; // p2=string, p3=search string
+		if (!search.length) {
+			return startPos + 1;
+		}
+		return str.indexOf(search, startPos) + 1;
 	},
 
 	"int": function (n) {
@@ -3104,11 +3111,19 @@ CpcVm.prototype = {
 	},
 
 	round: function (n, iDecimals) {
+		var iMaxDecimals = 20 - Math.floor(Math.log10(n)); // limit for JS
+
 		this.vmAssertNumber(n, "ROUND");
 		iDecimals = this.vmInRangeRound(iDecimals || 0, -39, 39, "ROUND");
 
+		if (iDecimals >= 0 && iDecimals > iMaxDecimals) {
+			iDecimals = iMaxDecimals;
+		}
+
 		// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
-		return Number(Math.round(Number(n + "e" + iDecimals)) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
+		// Use Math.abs(n) and Math.sign(n) To round negative numbers to larger negative numbers
+		return Math.sign(n) * Number(Math.round(Number(Math.abs(n) + "e" + iDecimals)) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
+		//return Number(Math.round(Number(n + "e" + iDecimals)) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
 	},
 
 	vmRunCallback: function (sInput, oMeta) {
@@ -3470,22 +3485,44 @@ CpcVm.prototype = {
 	},
 
 	using: function (sFormat) { // varargs
-		var reFormat = /(!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?(?:#|,)+\.?#*(?:\^\^\^\^)?[+-]?)/g,
+		var reFormat = /(_|!|&|\\ *\\|(?:\*\*|\$\$|\*\*\$)?\+?(?:#|,)+\.?#*(?:\^\^\^\^)?[+-]?)/g,
 			s = "",
 			aFormat = [],
-			iIndex,	oMatch,	sFrmt, iFormat, i, arg;
+			iIndex,	aMatch,	sFrmt, iFormat, i, arg, nonFormChars, nonFormCharsEnd;
 
 		this.vmAssertString(sFormat, "USING");
 
 		// We simulate sFormat.split(reFormat) here since it does not work with IE8
 		iIndex = 0;
-		while ((oMatch = reFormat.exec(sFormat)) !== null) {
-			aFormat.push(sFormat.substring(iIndex, oMatch.index)); // non-format characters at the beginning
-			aFormat.push(oMatch[0]);
-			iIndex = oMatch.index + oMatch[0].length;
+		while ((aMatch = reFormat.exec(sFormat)) !== null) {
+			nonFormChars = sFormat.substring(iIndex, aMatch.index); // non-format characters at the beginning
+
+			if (aMatch[0] === "_") { // underscore "_" is escape character
+				nonFormChars += sFormat.charAt(aMatch.index + 1) || "_"; // add escaped character
+			}
+
+			if (aFormat.length % 2) { // odd?
+				aFormat[aFormat.length - 1] += nonFormChars;
+			} else {
+				aFormat.push(nonFormChars);
+			}
+
+			if (aMatch[0] === "_") { // underscore "_" is escape character
+				reFormat.lastIndex += 1;
+				iIndex = reFormat.lastIndex;
+			} else {
+				aFormat.push(aMatch[0]);
+				iIndex = aMatch.index + aMatch[0].length;
+			}
 		}
 		if (iIndex < sFormat.length) { // non-format characters at the end
-			aFormat.push(sFormat.substr(iIndex));
+			nonFormCharsEnd = sFormat.substring(iIndex);
+
+			if (aFormat.length % 2) { // odd?
+				aFormat[aFormat.length - 1] += nonFormCharsEnd;
+			} else {
+				aFormat.push(nonFormCharsEnd);
+			}
 		}
 
 		if (aFormat.length < 2) {
