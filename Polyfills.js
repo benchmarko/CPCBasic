@@ -613,8 +613,11 @@ if (!window.requestAnimationFrame) { // IE9, SliTaz tazweb browser
 
 if (!window.Uint8Array) { // IE9
 	Utils.console.debug("Polyfill: Uint8Array (fallback only)");
-	window.Uint8Array = function (oArrayBuffer) {
-		return oArrayBuffer; // we just return the ArrayBuffer as fallback; enough for our needs
+	window.Uint8Array = function (numberOrBuffer) {
+		if (typeof numberOrBuffer === "number") {
+			return new window.ArrayBuffer(numberOrBuffer);
+		}
+		return numberOrBuffer; // we just return the ArrayBuffer as fallback; enough for our needs
 	};
 	// A more complex solution would be: https://github.com/inexorabletash/polyfill/blob/master/typedarray.js
 }
