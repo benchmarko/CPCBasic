@@ -21,6 +21,10 @@ cpcBasic.addIndex("./examples", {
 			"key": "test/testpage.dat",
 			"title": "Test data for Test Page",
 			"meta": "D"
+		},
+		{
+			"key": "test/testsub",
+			"title": "Test Subroutines"
 		}
 	]
 });

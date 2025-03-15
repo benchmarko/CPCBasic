@@ -169,6 +169,23 @@ cpcBasic = {
 		}
 	},
 
+	addLineNumbers: function (input) {
+		var lineParts, lastLine, lineNum, i;
+		lineParts = input.split("\n");
+		lastLine = 0;
+
+		for (i = 0; i < lineParts.length; i += 1) {
+			lineNum = parseInt(lineParts[i], 10);
+
+			if (isNaN(lineNum)) {
+				lineNum = lastLine + 1;
+				lineParts[i] = String(lastLine + 1) + " " + lineParts[i];
+			}
+			lastLine = lineNum;
+		}
+		return lineParts.join("\n");
+	},
+
 	// Also called from example files xxxxx.js
 	addItem2: function (sKey, sInput) { // optional sKey
 		var oExample;
@@ -179,6 +196,10 @@ cpcBasic = {
 
 		sInput = sInput.replace(/^\n/, "").replace(/\n$/, ""); // remove preceding and trailing newlines
 		// beware of data files ending with newlines! (do not use trimEnd)
+
+		if (sInput.startsWith("REM ")) {
+			sInput = this.addLineNumbers(sInput);
+		}
 
 		oExample = this.model.getExample(sKey);
 		oExample.key = sKey; // maybe changed
