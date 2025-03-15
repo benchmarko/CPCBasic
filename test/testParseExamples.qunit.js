@@ -155,14 +155,17 @@ cpcBasic = {
 		return aDatabaseNames;
 	},
 
-	addIndex2: function (sDir, input) { // optional sDir
-		var sInput, aIndex, i;
+	addIndex2: function (_sDir, input) { // optional sDir
+		var sValue, aItem, i;
 
-		sInput = input.trim();
-		aIndex = JSON.parse(sInput);
-		for (i = 0; i < aIndex.length; i += 1) {
-			aIndex[i].dir = sDir;
-			this.model.setExample(aIndex[i]);
+		for (sValue in input) {
+			if (input.hasOwnProperty(sValue)) {
+				aItem = input[sValue] 
+				for (i = 0; i < aItem.length; i += 1) {
+					//aItem[i].dir = sDir;
+					this.model.setExample(aItem[i]);
+				}
+			}
 		}
 	},
 
@@ -191,8 +194,11 @@ cpcBasic = {
 	},
 
 	addIndex: function (sDir, input) {
-		if (typeof input !== "string") {
-			input = this.fnHereDoc(input);
+		var tmp;
+		if (typeof input === "function") {
+			tmp = JSON.parse(this.fnHereDoc(input).trim());
+			input = {};
+			input[sDir] = tmp;
 		}
 		return this.addIndex2(sDir, input);
 	},

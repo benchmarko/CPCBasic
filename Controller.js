@@ -161,14 +161,17 @@ Controller.prototype = {
 	},
 
 	// Also called from index file 0index.js
-	addIndex: function (sDir, input) { // optional sDir
-		var sInput, aIndex, i;
+	addIndex: function (_sDir, input) { // optional sDir
+		var sValue, aItem, i;
 
-		sInput = input.trim();
-		aIndex = JSON.parse(sInput);
-		for (i = 0; i < aIndex.length; i += 1) {
-			aIndex[i].dir = sDir;
-			this.model.setExample(aIndex[i]);
+		for (sValue in input) {
+			if (input.hasOwnProperty(sValue)) {
+				aItem = input[sValue] 
+				for (i = 0; i < aItem.length; i += 1) {
+					//aItem[i].dir = sDir;
+					this.model.setExample(aItem[i]);
+				}
+			}
 		}
 	},
 

@@ -3,9 +3,9 @@
 "use strict";
 
 var cpcconfig = { // eslint-disable-line no-unused-vars
-	databaseDirs: "examples,https://benchmarko.github.io/CPCBasicApps/apps,storage",
-	//databaseDirs: "examples,../CPCBasicApps/apps,storage", // use this, if CPCBasicApps is available locally
-	//databaseDirs: "https://benchmarko.github.io/CPCBasic/examples,https://benchmarko.github.io/CPCBasicApps/apps,storage", // all remote
+	databaseDirs: "examples,https://benchmarko.github.io/CPCBasicApps/apps,https://benchmarko.github.io/CPCBasicApps/rosetta,storage",
+	//databaseDirs: "examples,../CPCBasicApps/apps,../CPCBasicApps/rosetta,storage", // use this, if CPCBasicApps is available locally
+	//databaseDirs: "https://benchmarko.github.io/CPCBasic/examples,https://benchmarko.github.io/CPCBasicApps/apps,https://benchmarko.github.io/CPCBasicApps/rosetta,storage", // all remote
 
 	redirectExamples: { 
 		"examples/art": {

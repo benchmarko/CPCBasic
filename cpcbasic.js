@@ -44,8 +44,11 @@ cpcBasic = {
 	},
 
 	addIndex: function (sDir, input) {
-		if (typeof input !== "string") {
-			input = this.fnHereDoc(input);
+		var tmp;
+		if (typeof input === "function") {
+			tmp = JSON.parse(this.fnHereDoc(input).trim());
+			input = {};
+			input[sDir] = tmp;
 		}
 		return cpcBasic.controller.addIndex(sDir, input);
 	},
