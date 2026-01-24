@@ -208,6 +208,20 @@ cpcBasic = {
 		return sKey;
 	},
 
+	addRsx2(sKey, oRsxConstructor) {
+		var oExample;
+
+		if (!sKey) {
+			sKey = this.model.getProperty("example");
+		}
+
+		oExample = this.model.getExample(sKey);
+		oExample.key = sKey; // maybe changed
+		oExample.rsx = new oRsxConstructor();
+		oExample.loaded = true;
+		return sKey;
+	},
+
 	fnHereDoc: function (fn) {
 		return String(fn).
 			replace(/^[^/]+\/\*\S*/, "").
@@ -229,6 +243,10 @@ cpcBasic = {
 			input = this.fnHereDoc(input);
 		}
 		return this.addItem2(sKey, input);
+	},
+
+	addRsx(sKey, oRsxConstructor) {
+		return this.addRsx2(sKey, oRsxConstructor);
 	}
 };
 

@@ -18,18 +18,48 @@ function CpcVmRsx(oVm) {
 CpcVmRsx.prototype = {
 	rsxInit: function (oVm) {
 		this.oVm = oVm;
+		this.rsxTemporary = {}; // temporary/dynamic RSX registered at runtime
 	},
 
 	rsxIsAvailable: function (sName) {
-		return sName in this;
+		return (sName in this.rsxTemporary) || (sName in this); // check temporary first, then permanent
+	},
+
+	rsxRegister: function (oRsxConstructor) {
+		// Register temporary RSX from constructor
+		// Constructor should be a function that returns an object with getRsxCommands() method
+		var oRsxModule, oRsxCommands, sCommand;
+
+		oRsxModule = new oRsxConstructor();
+		if (oRsxModule.getRsxCommands) {
+			oRsxCommands = oRsxModule.getRsxCommands();
+			for (sCommand in oRsxCommands) {
+				if (oRsxCommands.hasOwnProperty(sCommand)) {
+					this.rsxTemporary[sCommand] = oRsxCommands[sCommand];
+				}
+			}
+		}
+	},
+
+	rsxReset: function () {
+		// Clear temporary RSX (called when loading new example)
+		this.rsxTemporary = {};
 	},
 
 	rsxExec: function (sName) { // varargs
-		var aArgs;
+		var aArgs, fnRsx;
 
-		if (this.rsxIsAvailable(sName)) {
+		// Check temporary RSX first, then permanent
+		if (sName in this.rsxTemporary) {
+			// Temporary RSX: call with this = CpcVm (the VM instance)
+			fnRsx = this.rsxTemporary[sName];
 			aArgs = Array.prototype.slice.call(arguments, 1);
-			this[sName].apply(this, aArgs);
+			fnRsx.apply(this.oVm, aArgs);
+		} else if (typeof this[sName] === "function") {
+			// Permanent RSX: call with this = CpcVmRsx
+			fnRsx = this[sName];
+			aArgs = Array.prototype.slice.call(arguments, 1);
+			fnRsx.apply(this, aArgs);
 		} else {
 			throw this.oVm.vmComposeError(Error(), 28, "|" + sName); // Unknown command
 		}

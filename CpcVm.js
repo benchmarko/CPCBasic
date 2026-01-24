@@ -353,6 +353,10 @@ CpcVm.prototype = {
 		return this.oVariables.getAllVariables();
 	},
 
+	vmGetVariableByIndex(index) { // also called from JS script
+		return this.oVariables.getVariableByIndex(index);
+	},
+
 	vmSetStartLine: function (iLine) {
 		this.iStartLine = iLine;
 	},
@@ -735,6 +739,10 @@ CpcVm.prototype = {
 
 	vmGetInFileObject: function () {
 		return this.oInFile;
+	},
+
+	vmGetKeyboard: function () {
+		return this.oKeyboard;
 	},
 
 	vmGetOutFileObject: function () {

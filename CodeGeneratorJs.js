@@ -457,9 +457,9 @@ CodeGeneratorJs.prototype = {
 					sLabel = that.iLine + "s" + that.iStopCount; // we use stopCount
 					that.iStopCount += 1;
 
-					if (!bRsxAvailable) { // if RSX not available, we delay the error until it is executed (or catched by on error goto)
+					if (!bRsxAvailable) { // if RSX not available at compile time, delay error until execution (supports dynamic/temporary RSX)
 						aNodeArgs.unshift('"' + sRsxName + '"'); // put as first arg
-						sRsxName = "rsxExec"; // and call special handler which triggers error if not available
+						sRsxName = "rsxExec"; // and call dispatcher which handles both temporary and permanent RSX
 					}
 
 					node.pv = "o.rsx." + sRsxName + "(" + aNodeArgs.join(", ") + "); o.goto(\"" + sLabel + "\"); break;\ncase \"" + sLabel + "\":"; // most RSX commands need goto (era, ren,...)

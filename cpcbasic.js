@@ -60,6 +60,10 @@ cpcBasic = {
 		return cpcBasic.controller.addItem(sKey, input);
 	},
 
+	addRsx(sKey, oRsxConstructor) {
+		return cpcBasic.controller.addRsx(sKey, oRsxConstructor);
+	},
+
 	// https://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
 	fnParseUri: function (oConfig) {
 		var aMatch,

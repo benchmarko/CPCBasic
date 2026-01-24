@@ -216,6 +216,23 @@ Controller.prototype = {
 		return sKey;
 	},
 
+	addRsx(sKey, oRsxConstructor) {
+		var oExample;
+
+		if (!sKey) { // maybe ""
+			sKey = (document.currentScript && document.currentScript.getAttribute("data-key")) || this.model.getProperty("example");
+			// on IE we can just get the current example
+		}
+
+		oExample = this.model.getExample(sKey);
+		oExample.key = sKey; // maybe changed
+		oExample.rsx = true; // mark that example has RSX
+		oExample.rsxConstructor = oRsxConstructor; // store constructor for later registration
+		oExample.loaded = true;
+		Utils.console.log("addRsx:", sKey);
+		return sKey;
+	},
+
 	setDatabaseSelectOptions: function () {
 		var sSelect = "databaseSelect",
 			aItems = [],
@@ -987,6 +1004,13 @@ Controller.prototype = {
 				if (!bSuppressLog) {
 					Utils.console.log("Example", sUrl, oExample.meta || "", "loaded");
 				}
+				
+				// Reset and register temporary RSX if available
+				that.oVm.rsx.rsxReset();
+				if (oExample.rsxConstructor) {
+					that.oVm.rsx.rsxRegister(oExample.rsxConstructor);
+				}
+				
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				that.oVm.vmStop("", 0, true);

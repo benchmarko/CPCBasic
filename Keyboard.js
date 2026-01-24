@@ -502,8 +502,12 @@ Keyboard.prototype = {
 		return sKey;
 	},
 
-	putKeyInBuffer: function (sKey) {
+	putKeyInBuffer: function (sKey, bTriggerOnKeyDown) {
 		this.aKeyBuffer.push(sKey);
+
+		if (bTriggerOnKeyDown && this.fnOnKeyDown) { // trigger handler for async events (e.g., speech synthesis)
+			this.fnOnKeyDown(this.aKeyBuffer);
+		}
 	},
 
 	putKeysInBuffer: function (sInput) {
