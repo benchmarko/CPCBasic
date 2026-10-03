@@ -166,9 +166,8 @@ Controller.prototype = {
 
 		for (sValue in input) {
 			if (input.hasOwnProperty(sValue)) {
-				aItem = input[sValue] 
+				aItem = input[sValue];
 				for (i = 0; i < aItem.length; i += 1) {
-					//aItem[i].dir = sDir;
 					this.model.setExample(aItem[i]);
 				}
 			}
@@ -177,6 +176,7 @@ Controller.prototype = {
 
 	addLineNumbers: function (input) {
 		var lineParts, lastLine, lineNum, i;
+
 		lineParts = input.split("\n");
 		lastLine = 0;
 
@@ -203,7 +203,7 @@ Controller.prototype = {
 
 		sInput = sInput.replace(/^\n/, "").replace(/\n$/, ""); // remove preceding and trailing newlines
 		// beware of data files ending with newlines! (do not use trimEnd)
-	
+
 		if (sInput.startsWith("REM ")) {
 			sInput = this.addLineNumbers(sInput);
 		}
@@ -216,7 +216,7 @@ Controller.prototype = {
 		return sKey;
 	},
 
-	addRsx(sKey, oRsxConstructor) {
+	addRsx: function (sKey, oRsxConstructor) {
 		var oExample;
 
 		if (!sKey) { // maybe ""
@@ -1004,13 +1004,13 @@ Controller.prototype = {
 				if (!bSuppressLog) {
 					Utils.console.log("Example", sUrl, oExample.meta || "", "loaded");
 				}
-				
+
 				// Reset and register temporary RSX if available
 				that.oVm.rsx.rsxReset();
 				if (oExample.rsxConstructor) {
 					that.oVm.rsx.rsxRegister(oExample.rsxConstructor);
 				}
-				
+
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
 				that.oVm.vmStop("", 0, true);

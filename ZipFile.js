@@ -229,7 +229,7 @@ ZipFile.prototype = {
 			},
 
 			fnConstruct = function (oCodes, aLens2, n) {
-				var aOffs = [/* undefined */, 0],
+				var aOffs = [/* undefined */, 0], // eslint-disable-line no-sparse-arrays
 					iLeft = 1,
 					i;
 

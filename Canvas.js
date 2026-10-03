@@ -159,7 +159,7 @@ Canvas.prototype = {
 				this.bUse32BitCopy = true;
 				Utils.console.log("Canvas: using optimized copy2Canvas32bit, littleEndian:", this.bLittleEndian);
 			} else {
-				this.fnCopy2Canvas = this.iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; // TODO
+				this.fnCopy2Canvas = this.iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; // old browsers: 8-bit copy with offset not implemented
 				this.setAlpha(255);
 				this.bUse32BitCopy = false;
 				Utils.console.log("Canvas: using copy2Canvas8bit");
@@ -348,7 +348,7 @@ Canvas.prototype = {
 			if (this.bUse32BitCopy) {
 				this.fnCopy2Canvas = iOffset ? this.copy2Canvas32bitWithOffset : this.copy2Canvas32bit;
 			} else {
-				this.fnCopy2Canvas = iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; // TODO: for older browsers
+				this.fnCopy2Canvas = iOffset ? this.copy2Canvas8bit : this.copy2Canvas8bit; // old browsers: 8-bit copy with offset not implemented
 			}
 
 			this.setNeedUpdate();

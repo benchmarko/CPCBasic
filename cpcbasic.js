@@ -45,6 +45,7 @@ cpcBasic = {
 
 	addIndex: function (sDir, input) {
 		var tmp;
+
 		if (typeof input === "function") {
 			tmp = JSON.parse(this.fnHereDoc(input).trim());
 			input = {};
@@ -60,7 +61,7 @@ cpcBasic = {
 		return cpcBasic.controller.addItem(sKey, input);
 	},
 
-	addRsx(sKey, oRsxConstructor) {
+	addRsx: function (sKey, oRsxConstructor) {
 		return cpcBasic.controller.addRsx(sKey, oRsxConstructor);
 	},
 

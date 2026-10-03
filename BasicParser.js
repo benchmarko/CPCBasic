@@ -950,7 +950,7 @@ BasicParser.prototype = {
 
 			if (oToken.type === "identifier") { // maybe simplify by separating in lexer
 				oToken.value = oPreviousToken.value + oToken.value; // "fn" + identifier
-				oToken.bSpace = true; //fast hack: set space for CodeGeneratorBasic
+				oToken.bSpace = true; // fast hack: set space for CodeGeneratorBasic
 				oValue.left = oToken;
 				advance("identifier");
 			} else {
@@ -1088,7 +1088,7 @@ BasicParser.prototype = {
 				advance("fn");
 				if (oToken.type === "identifier") {
 					oToken.value = oPreviousToken.value + oToken.value;
-					oToken.bSpace = true; //fast hack: set space for CodeGeneratorBasic
+					oToken.bSpace = true; // fast hack: set space for CodeGeneratorBasic
 					oValue.left = oToken;
 				} else {
 					throw that.composeError(Error(), "Invalid DEF", oToken.type, oToken.pos);

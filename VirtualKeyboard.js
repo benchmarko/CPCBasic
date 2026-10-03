@@ -121,7 +121,6 @@ VirtualKeyboard.prototype = {
 			key: "0",
 			text: "f0",
 			style: 1
-			//numLockCpcKey: 90 // Num lock
 		},
 		{
 			keys: "46Delete", // 16: clr

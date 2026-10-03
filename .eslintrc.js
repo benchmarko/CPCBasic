@@ -1,3 +1,14 @@
+/* eslint-disable array-element-newline */
+/* eslint-disable array-bracket-spacing */
+/* eslint-disable object-curly-newline */
+/* eslint-disable object-curly-spacing */
+/* eslint-disable object-property-newline */
+/* eslint-disable array-bracket-newline */
+/* eslint-disable quote-props */
+/* eslint-disable indent */
+
+"use strict";
+
 module.exports = {
     "env": {
         "browser": true,
@@ -118,7 +129,7 @@ module.exports = {
         "no-div-regex": "error",
         "no-dupe-args": "warn",
         "no-dupe-keys": "warn",
-        "no-duplicate-case" : "warn",
+        "no-duplicate-case": "warn",
         "no-duplicate-imports": "error",
         "no-else-return": "error",
         "no-empty-function": "warn",

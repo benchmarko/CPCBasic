@@ -353,7 +353,7 @@ CpcVm.prototype = {
 		return this.oVariables.getAllVariables();
 	},
 
-	vmGetVariableByIndex(index) { // also called from JS script
+	vmGetVariableByIndex: function (index) { // also called from JS script
 		return this.oVariables.getVariableByIndex(index);
 	},
 
@@ -3131,7 +3131,6 @@ CpcVm.prototype = {
 		// To avoid rounding errors: https://www.jacklmoore.com/notes/rounding-in-javascript
 		// Use Math.abs(n) and Math.sign(n) To round negative numbers to larger negative numbers
 		return Math.sign(n) * Number(Math.round(Number(Math.abs(n) + "e" + iDecimals)) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
-		//return Number(Math.round(Number(n + "e" + iDecimals)) + "e" + ((iDecimals >= 0) ? "-" + iDecimals : "+" + -iDecimals));
 	},
 
 	vmRunCallback: function (sInput, oMeta) {

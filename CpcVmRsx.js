@@ -25,12 +25,12 @@ CpcVmRsx.prototype = {
 		return (sName in this.rsxTemporary) || (sName in this); // check temporary first, then permanent
 	},
 
-	rsxRegister: function (oRsxConstructor) {
+	rsxRegister: function (RsxConstructor) {
 		// Register temporary RSX from constructor
 		// Constructor should be a function that returns an object with getRsxCommands() method
 		var oRsxModule, oRsxCommands, sCommand;
 
-		oRsxModule = new oRsxConstructor();
+		oRsxModule = new RsxConstructor();
 		if (oRsxModule.getRsxCommands) {
 			oRsxCommands = oRsxModule.getRsxCommands();
 			for (sCommand in oRsxCommands) {

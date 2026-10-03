@@ -160,9 +160,8 @@ cpcBasic = {
 
 		for (sValue in input) {
 			if (input.hasOwnProperty(sValue)) {
-				aItem = input[sValue] 
+				aItem = input[sValue];
 				for (i = 0; i < aItem.length; i += 1) {
-					//aItem[i].dir = sDir;
 					this.model.setExample(aItem[i]);
 				}
 			}
@@ -171,6 +170,7 @@ cpcBasic = {
 
 	addLineNumbers: function (input) {
 		var lineParts, lastLine, lineNum, i;
+
 		lineParts = input.split("\n");
 		lastLine = 0;
 
@@ -208,7 +208,7 @@ cpcBasic = {
 		return sKey;
 	},
 
-	addRsx2(sKey, oRsxConstructor) {
+	addRsx2: function (sKey, RsxConstructor) {
 		var oExample;
 
 		if (!sKey) {
@@ -217,7 +217,7 @@ cpcBasic = {
 
 		oExample = this.model.getExample(sKey);
 		oExample.key = sKey; // maybe changed
-		oExample.rsx = new oRsxConstructor();
+		oExample.rsx = new RsxConstructor();
 		oExample.loaded = true;
 		return sKey;
 	},
@@ -230,6 +230,7 @@ cpcBasic = {
 
 	addIndex: function (sDir, input) {
 		var tmp;
+
 		if (typeof input === "function") {
 			tmp = JSON.parse(this.fnHereDoc(input).trim());
 			input = {};
@@ -245,7 +246,7 @@ cpcBasic = {
 		return this.addItem2(sKey, input);
 	},
 
-	addRsx(sKey, oRsxConstructor) {
+	addRsx: function (sKey, oRsxConstructor) {
 		return this.addRsx2(sKey, oRsxConstructor);
 	}
 };
@@ -281,7 +282,6 @@ function splitMeta(sInput) {
 
 function asmGena3Convert(sInput) {
 	throw new Error("asmGena3Convert: not implemented for test: " + sInput);
-	//return sInput;
 }
 
 // taken from Controller.js
@@ -299,7 +299,7 @@ function testCheckMeta(sInput) {
 	if (sType === "T") { // tokenized basic?
 		sInput = cpcBasic.oBasicTokenizer.decode(sInput);
 	} else if (sType === "P") { // protected BASIC?
-		sInput = DiskImage.prototype.unOrProtectData(sInput); 
+		sInput = DiskImage.prototype.unOrProtectData(sInput);
 		sInput = cpcBasic.oBasicTokenizer.decode(sInput);
 	} else if (sType === "B") { // binary?
 	} else if (sType === "A") { // ASCII?
@@ -354,9 +354,7 @@ function fnExampleLoaded(oError, sCode) {
 	oOutput = testParseExample(oExample);
 
 	if (!oOutput.error) {
-		//if (cpcBasic.iTestIndex < cpcBasic.aTestExamples.length) {
 		testNextExample(); // eslint-disable-line no-use-before-define
-		//}
 	}
 }
 

@@ -15,8 +15,6 @@ function View(options) {
 	this.init(options);
 }
 
-//View.fnEventHandler = null;
-
 View.prototype = {
 	init: function (/* options */) {
 		this.bDirty = false;

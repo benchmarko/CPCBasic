@@ -1,3 +1,5 @@
+/* eslint-disable no-irregular-whitespace */
+/* eslint-disable no-trailing-spaces */
 /* globals cpcBasic */
 
 "use strict";

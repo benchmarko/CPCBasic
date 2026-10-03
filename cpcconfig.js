@@ -7,7 +7,7 @@ var cpcconfig = { // eslint-disable-line no-unused-vars
 	//databaseDirs: "examples,../CPCBasicApps/apps,../CPCBasicApps/rosetta,storage", // use this, if CPCBasicApps is available locally
 	//databaseDirs: "https://benchmarko.github.io/CPCBasic/examples,https://benchmarko.github.io/CPCBasicApps/apps,https://benchmarko.github.io/CPCBasicApps/rosetta,storage", // all remote
 
-	redirectExamples: { 
+	redirectExamples: {
 		"examples/art": {
 			database: "apps",
 			example: "demo/art"
@@ -91,11 +91,11 @@ var cpcconfig = { // eslint-disable-line no-unused-vars
 		"examples/animator/anibas": {
 			database: "apps",
 			example: "apps/animator/anibas"
-		},	
+		},
 		"examples/animator/animator": {
 			database: "apps",
 			example: "apps/animator/animator"
-		},	
+		},
 		"examples/archi/archidr": {
 			database: "apps",
 			example: "apps/archi/archidr"
@@ -111,10 +111,6 @@ var cpcconfig = { // eslint-disable-line no-unused-vars
 		"examples/demo/graphics": {
 			database: "apps",
 			example: "test/graphics"
-		},
-		"examples/games/energy0": {
-			database: "apps",
-			example: "test/energy0"
 		},
 		"examples/games/energy0": {
 			database: "apps",
@@ -195,10 +191,6 @@ var cpcconfig = { // eslint-disable-line no-unused-vars
 		"examples/math/regress": {
 			database: "apps",
 			example: "math/regress"
-		},
-		"examples/math/funcarea": {
-			database: "apps",
-			example: "test/funcarea"
 		},
 		"examples/test/basbankm": {
 			database: "apps",

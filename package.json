@@ -1,6 +1,6 @@
 {
   "name": "cpcbasic",
-  "version": "0.10.19",
+  "version": "0.10.20",
   "description": "# CPCBasic - Run CPC BASIC in a Browser",
   "main": "cpcbasic.js",
   "directories": {
@@ -8,10 +8,12 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "eslint": "^8.57.1",
     "qunit": "^2.6.1"
   },
   "scripts": {
-    "test": "qunit"
+    "test": "qunit",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
