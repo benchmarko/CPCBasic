@@ -142,6 +142,20 @@ Keyboard.prototype = {
 		"107NumpadAdd": 89
 	},
 
+	mNumPadOffKeyMap: {
+		"96Numpad0": "45Numpad0",
+		"97Numpad1": "35Numpad1",
+		"98Numpad2": "40Numpad2",
+		"99Numpad3": "34Numpad3",
+		"100Numpad4": "37Numpad4",
+		"101Numpad5": "12Numpad5",
+		"102Numpad6": "39Numpad6",
+		"103Numpad7": "36Numpad7",
+		"104Numpad8": "38Numpad8",
+		"105Numpad9": "33Numpad9",
+		"110NumpadDecimal": "46NumpadDecimal"
+	},
+
 	mSpecialKeys: {
 		Alt: String.fromCharCode(224), // Copy
 
@@ -222,6 +236,7 @@ Keyboard.prototype = {
 		this.fnOnKeyDown = undefined;
 		this.clearInput();
 		this.oPressedKeys = {}; // currently pressed browser keys
+		this.bSimulatedNumLock = undefined; // simulated num lock for Mac OS (undefined, true, false)
 		this.resetExpansionTokens();
 		this.resetCpcKeysExpansions();
 	},
@@ -414,7 +429,7 @@ Keyboard.prototype = {
 		var iKeyCode = event.which || event.keyCode,
 			sPressedKey = iKeyCode,
 			sKey = event.key || this.keyIdentifier2Char(event.keyIdentifier, event.shiftKey) || "", // SliTaz web browser has not key but keyIdentifier
-			iCpcKey;
+			sNumTabOffKey, iCpcKey;
 
 		if (event.code) { // available for e.g. Chrome, Firefox
 			sPressedKey += event.code;
@@ -428,6 +443,11 @@ Keyboard.prototype = {
 		}
 
 		if (sPressedKey in this.oKey2CpcKey) {
+			sNumTabOffKey = this.bSimulatedNumLock === false ? this.mNumPadOffKeyMap[sPressedKey] : undefined;
+
+			if (sNumTabOffKey) {
+				sPressedKey = sNumTabOffKey;
+			}
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
 			if (iCpcKey === 85) { // map virtual cpc key 85 to 22 (english keyboard)
 				iCpcKey = 22;
@@ -461,6 +481,11 @@ Keyboard.prototype = {
 		} else if (sKey.length === 1) { // put normal keys in buffer, ignore special keys with more than 1 character
 			this.putKeyInBuffer(sKey);
 			Utils.console.log("fnKeyboardKeydown: Partly unhandled key", sPressedKey + ":", sKey);
+		} else if (sPressedKey === "12NumLock") { // key = "Clear"; MacOS
+			this.bSimulatedNumLock = this.bSimulatedNumLock !== undefined ? !this.bSimulatedNumLock : false;
+			if (Utils.debug > 1) {
+				Utils.console.log("fnKeyboardKeydown: simulatedNumLock=" + this.bSimulatedNumLock);
+			}
 		} else {
 			Utils.console.log("fnKeyboardKeydown: Unhandled key", sPressedKey + ":", sKey);
 		}
@@ -468,24 +493,29 @@ Keyboard.prototype = {
 
 	fnKeyboardKeyup: function (event) {
 		var iKeyCode = event.which || event.keyCode,
-			sPressedKey = iKeyCode,
 			sKey = event.key || this.keyIdentifier2Char(event.keyIdentifier, event.shiftKey) || "", // SliTaz web browser has not key but keyIdentifier
-			iCpcKey;
-
-		if (event.code) { // available for e.g. Chrome, Firefox
-			sPressedKey += event.code;
-		}
+			sPressedKey = String(iKeyCode) + (event.code ? event.code : ""), // event.code available for e.g. Chrome, Firefox
+			sNumTabOffKey, iCpcKey;
 
 		if (Utils.debug > 1) {
 			Utils.console.log("fnKeyboardKeyup: keyCode=" + iKeyCode + " pressedKey=" + sPressedKey + " key='" + sKey + "' " + sKey.charCodeAt(0) + " loc=" + event.location + " ", event);
 		}
 
 		if (sPressedKey in this.oKey2CpcKey) {
+			sNumTabOffKey = this.bSimulatedNumLock === false ? this.mNumPadOffKeyMap[sPressedKey] : undefined;
+
+			if (sNumTabOffKey) {
+				sPressedKey = sNumTabOffKey;
+			}
 			iCpcKey = this.oKey2CpcKey[sPressedKey];
 			if (iCpcKey === 85) { // map virtual cpc key 85 to 22 (english keyboard)
 				iCpcKey = 22;
 			}
 			this.fnReleaseCpcKey(iCpcKey, sPressedKey, sKey, event.shiftKey, event.ctrlKey);
+		} else if (sPressedKey === "12NumLock") { // key = "Clear"; MacOS
+			if (Utils.debug > 1) {
+				Utils.console.log("fnKeyboardKeyup: simulatedNumLock=" + this.bSimulatedNumLock);
+			}
 		} else {
 			Utils.console.log("fnKeyboardKeyup: Unhandled key", sPressedKey + ":", sKey);
 		}
