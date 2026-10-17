@@ -102,7 +102,7 @@ CpcVm.prototype = {
 
 		this.rsx = new CpcVmRsx(this);
 
-		this.oRandom = new Random();
+		this.oRandom = this.options.random || new Random();
 
 		this.oStop = {
 			sReason: "", // stop reason
@@ -2904,24 +2904,6 @@ CpcVm.prototype = {
 		this.bDeg = false;
 	},
 
-	// https://en.wikipedia.org/wiki/Jenkins_hash_function
-	vmHashCode: function (s) {
-		var iHash = 0,
-			i;
-
-		/* eslint-disable no-bitwise */
-		for (i = 0; i < s.length; i += 1) {
-			iHash += s.charCodeAt(i);
-			iHash += iHash << 10;
-			iHash ^= iHash >> 6;
-		}
-		iHash += iHash << 3;
-		iHash ^= iHash >> 11;
-		iHash += iHash << 15;
-		/* eslint-enable no-bitwise */
-		return iHash;
-	},
-
 	vmRandomizeCallback: function () {
 		var oInput = this.vmGetStopObject().oParas,
 			sInput = oInput.sInput,
@@ -2941,8 +2923,7 @@ CpcVm.prototype = {
 	},
 
 	randomize: function (n) {
-		var iRndInit = 0x89656c07, // an arbitrary 32 bit number <> 0 (this one is used by the CPC)
-			iStream = 0,
+		var iStream = 0,
 			sMsg;
 
 		if (n === undefined) { // no arguments? input...
@@ -2955,12 +2936,8 @@ CpcVm.prototype = {
 				sInput: "",
 				iLine: this.iLine // to repeat in case of break
 			});
-		} else { // n can also be floating point, so compute a hash value of n
+		} else { // n can also be floating point; the RNG handles seed conversion
 			this.vmAssertNumber(n, "RANDOMIZE");
-			n = this.vmHashCode(String(n));
-			if (n === 0) {
-				n = iRndInit;
-			}
 			if (Utils.debug > 0) {
 				Utils.console.debug("randomize:", n);
 			}

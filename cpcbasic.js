@@ -19,6 +19,7 @@ cpcBasic = {
 		exampleIndex: "0index.js", // example index for every exampleDir
 		input: "", // keyboard input when starting the app
 		kbdLayout: "alphanum", // alphanum, alpha, num
+		random: "cpc", // cpc or minstd (legacy Park-Miller generator)
 		showInput: true,
 		showInp2: false,
 		showCpc: true,

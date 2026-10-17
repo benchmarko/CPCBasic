@@ -6,7 +6,7 @@
 
 "use strict";
 
-var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorBasic, CodeGeneratorJs, CommonEventHandler, CpcVm, Diff, DiskImage, InputStack, Keyboard, VirtualKeyboard, Sound, Variables, ZipFile;
+var Utils, BasicFormatter, BasicLexer, BasicParser, BasicTokenizer, Canvas, CodeGeneratorBasic, CodeGeneratorJs, CommonEventHandler, CpcVm, Diff, DiskImage, InputStack, Keyboard, VirtualKeyboard, Sound, Variables, ZipFile, Random;
 
 if (typeof require !== "undefined") {
 	/* eslint-disable global-require */
@@ -28,6 +28,7 @@ if (typeof require !== "undefined") {
 	Sound = require("./Sound.js");
 	Variables = require("./Variables.js");
 	ZipFile = require("./ZipFile.js");
+	Random = require("./Random.js");
 	/* eslint-enable global-require */
 }
 
@@ -38,7 +39,7 @@ function Controller(oModel, oView) {
 Controller.prototype = {
 
 	init: function (oModel, oView) {
-		var sExample, sKbdLayout;
+		var sExample, sKbdLayout, oRandom;
 
 		this.fnRunLoopHandler = this.fnRunLoop.bind(this);
 		this.fnWaitKeyHandler = this.fnWaitKey.bind(this);
@@ -96,12 +97,15 @@ Controller.prototype = {
 		this.oSound = new Sound();
 		this.commonEventHandler.fnActivateUserAction(this.onUserAction.bind(this)); // check first user action, also if sound is not yet on
 
+		oRandom = new Random(oModel.getProperty("random") === "cpc");
+
 		sExample = oModel.getProperty("example");
 		oView.setSelectValue("exampleSelect", sExample);
 
 		this.oVm = new CpcVm({
 			canvas: this.oCanvas,
 			keyboard: this.oKeyboard,
+			random: oRandom,
 			sound: this.oSound,
 			variables: this.oVariables,
 			tron: oModel.getProperty("tron")

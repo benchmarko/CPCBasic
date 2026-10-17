@@ -203,6 +203,7 @@ Did you know?
 - exampleIndex=0index.js (example index file in every entry of exampleDirs)
 - input= (keyboard input when starting the app, use %0D for return)
 - kbdLayout=alphanum (virtual keyboard layout: alphanum, alpha, num)
+- random=cpc (random numer generator: cpc, minstd)
 - showInput=true
 - showInp2=false
 - showCpc=true
