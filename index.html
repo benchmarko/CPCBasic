@@ -4,7 +4,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="cpcbasic.css" />
-<title id="title">CPC Basic v0.11.1</title>
+<title id="title">CPC Basic v0.11.2</title>
 </head>
 
 <body id="pageBody">
@@ -13,6 +13,7 @@
 			<button id="inputButton" class="legendButton" title="Show/Hide BASIC">CPC BASIC</button>
 			<button id="reloadButton" title="Reload page with URL parameter settings">Reload</button>
 			<button id="helpButton" title="Help">Help</button>
+			<button id="cpcBasicTsButton" title="Try the actively developed version with more features">Try CPCBasicTS</button>
 		</legend>
 		<div id="exampleSelectArea" class="area">
 			<div class="field">
@@ -165,5 +166,25 @@
 <script src="Controller.js"></script>
 <script src="cpcconfig.js"></script>
 <script src="cpcbasic.js"></script>
+<script>
+(function () {
+	var cpcBasicTsButton = document.getElementById("cpcBasicTsButton");
+	cpcBasicTsButton.onclick = function () {
+		var sQuery = window.location.search.substring(1),
+			rSearch = /(?:^|&)(database|example)=([^&]*)/g,
+			aMatch,
+			aParams = [];
+
+		while ((aMatch = rSearch.exec(sQuery)) !== null) {
+			aParams[aParams.length] = aMatch[1] + "=" + aMatch[2];
+		}
+		window.location.href = "https://benchmarko.github.io/CPCBasicTS/" +
+			(aParams.length ? "?" + aParams.join("&") : "");
+	};
+	window.setTimeout(function () {
+		cpcBasicTsButton.style.display = "none";
+	}, 10000);
+}());
+</script>
 </body>
 </html>
