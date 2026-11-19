@@ -240,7 +240,41 @@ cpcBasic = {
 	},
 
 	addItem: function (sKey, input) {
-		if (typeof input !== "string") {
+		var aImplementations, sImplementation, oImplementation, oExample;
+
+		if (typeof input === "object") {
+			if (!sKey) {
+				sKey = this.model.getProperty("example");
+			}
+			aImplementations = input.implementations.map(function (implementation) {
+				var sInput = typeof implementation.source === "function" ? this.fnHereDoc(implementation.source) : implementation.source;
+
+				sInput = sInput.replace(/^\n/, "").replace(/\n$/, "");
+				if (sInput.startsWith("REM ")) {
+					sInput = this.addLineNumbers(sInput);
+				}
+				return {
+					id: implementation.id,
+					title: implementation.title,
+					script: sInput
+				};
+			}, this);
+			sImplementation = this.model.getProperty("implementation") || input.defaultImplementation;
+			oImplementation = aImplementations.filter(function (implementation) {
+				return implementation.id === sImplementation;
+			})[0] || aImplementations[0];
+			if (!oImplementation) {
+				throw new Error("addItem: no implementations supplied or default implementation not found");
+			}
+			oExample = this.model.getExample(sKey);
+			oExample.key = sKey;
+			oExample.implementations = aImplementations;
+			oExample.implementation = oImplementation.id;
+			oExample.script = oImplementation.script;
+			oExample.loaded = true;
+			return sKey;
+		}
+		if (typeof input === "function") {
 			input = this.fnHereDoc(input);
 		}
 		return this.addItem2(sKey, input);

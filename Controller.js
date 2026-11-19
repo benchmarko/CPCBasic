@@ -196,25 +196,48 @@ Controller.prototype = {
 		return lineParts.join("\n");
 	},
 
-	// Also called from example files xxxxx.js
-	addItem: function (sKey, sInput) { // optional sKey
-		var oExample;
-
-		if (!sKey) { // maybe ""
-			sKey = (document.currentScript && document.currentScript.getAttribute("data-key")) || this.model.getProperty("example");
-			// on IE we can just get the current example
-		}
-
+	prepareInput: function (sInput) {
 		sInput = sInput.replace(/^\n/, "").replace(/\n$/, ""); // remove preceding and trailing newlines
 		// beware of data files ending with newlines! (do not use trimEnd)
 
 		if (sInput.startsWith("REM ")) {
 			sInput = this.addLineNumbers(sInput);
 		}
+		return sInput;
+	},
+
+	// Also called from example files xxxxx.js
+	addItem: function (sKey, input) { // optional sKey
+		var oExample, aImplementations, sImplementation, oImplementation;
+
+		if (!sKey) { // maybe ""
+			sKey = (document.currentScript && document.currentScript.getAttribute("data-key")) || this.model.getProperty("example");
+			// on IE we can just get the current example
+		}
 
 		oExample = this.model.getExample(sKey);
 		oExample.key = sKey; // maybe changed
-		oExample.script = sInput;
+		if (typeof input === "object") {
+			aImplementations = input.implementations.map(function (implementation) {
+				return {
+					id: implementation.id,
+					title: implementation.title,
+					script: this.prepareInput(implementation.source)
+				};
+			}, this);
+			sImplementation = this.model.getProperty("implementation") || input.defaultImplementation;
+			oImplementation = aImplementations.filter(function (implementation) {
+				return implementation.id === sImplementation;
+			})[0] || aImplementations[0];
+			if (!oImplementation) {
+				throw new Error("addItem: no implementations supplied or default implementation not found");
+			}
+			oExample.implementations = aImplementations;
+			oExample.implementation = oImplementation.id;
+			oExample.script = oImplementation.script;
+		} else {
+			oExample.script = this.prepareInput(typeof input === "function" ? this.fnHereDoc(input) : input);
+		}
 		oExample.loaded = true;
 		Utils.console.log("addItem:", sKey);
 		return sKey;
@@ -259,6 +282,49 @@ Controller.prototype = {
 			}
 		}
 		this.view.setSelectOptions(sSelect, aItems);
+	},
+
+	setImplementationSelectOptions: function () {
+		var oExample = this.model.getExample(this.model.getProperty("example")),
+			aImplementations = (oExample && oExample.implementations) || [],
+			sSelected = (oExample && oExample.implementation) || (aImplementations[0] && aImplementations[0].id) || "",
+			aItems = aImplementations.map(function (implementation) {
+				return {
+					value: implementation.id,
+					text: implementation.title,
+					title: implementation.title,
+					selected: implementation.id === sSelected
+				};
+			});
+
+		this.view.setSelectOptions("implementationSelect", aItems);
+		this.view.setDisabled("implementationSelect", aItems.length === 0);
+	},
+
+	onImplementationSelectChange: function () {
+		var sKey = this.model.getProperty("example"),
+			oExample = this.model.getExample(sKey),
+			sImplementation = this.view.getSelectValue("implementationSelect"),
+			oImplementation = oExample && oExample.implementations && oExample.implementations.filter(function (implementation) {
+				return implementation.id === sImplementation;
+			})[0],
+			oCurrentImplementation;
+
+		if (!oExample || !oImplementation) {
+			Utils.console.error("onImplementationSelectChange: implementation not available:", sImplementation);
+			return;
+		}
+		oCurrentImplementation = oExample.implementations.filter(function (implementation) {
+			return implementation.id === oExample.implementation;
+		})[0];
+		if (oCurrentImplementation) {
+			oCurrentImplementation.script = this.view.getAreaValue("inputText");
+		}
+		oExample.implementation = oImplementation.id;
+		this.model.setProperty("implementation", oImplementation.id);
+		oExample.script = oImplementation.script;
+		this.invalidateScript();
+		this.setInputText(oImplementation.script);
 	},
 
 	setExampleSelectOptions: function () {
@@ -1017,6 +1083,7 @@ Controller.prototype = {
 
 				sInput = oExample.script;
 				that.model.setProperty("example", oInFile.sMemorizedExample);
+				that.setImplementationSelectOptions();
 				that.oVm.vmStop("", 0, true);
 				that.loadFileContinue(sInput);
 			},

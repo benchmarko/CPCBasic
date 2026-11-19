@@ -321,6 +321,10 @@ CommonEventHandler.prototype = {
 		oController.startMainLoop();
 	},
 
+	onImplementationSelectChange: function () {
+		this.controller.onImplementationSelectChange();
+	},
+
 	onVarSelectChange: function () {
 		var sPar = this.view.getSelectValue("varSelect"),
 			oVariables = this.controller.oVariables,

@@ -17,6 +17,7 @@ cpcBasic = {
 		database: "examples", // examples, apps, saved
 		example: "cpcbasic",
 		exampleIndex: "0index.js", // example index for every exampleDir
+		implementation: "",
 		input: "", // keyboard input when starting the app
 		kbdLayout: "alphanum", // alphanum, alpha, num
 		random: "cpc", // cpc or minstd (legacy Park-Miller generator)
@@ -56,8 +57,16 @@ cpcBasic = {
 	},
 
 	addItem: function (sKey, input) {
-		if (typeof input !== "string") {
+		if (typeof input === "function") {
 			input = this.fnHereDoc(input);
+		} else if (typeof input === "object") {
+			input = Object.assign({}, input, {
+				implementations: input.implementations.map(function (implementation) {
+					return Object.assign({}, implementation, {
+						source: typeof implementation.source === "function" ? this.fnHereDoc(implementation.source) : implementation.source
+					});
+				}, this)
+			});
 		}
 		return cpcBasic.controller.addItem(sKey, input);
 	},

@@ -46,6 +46,7 @@ With CPC Basic we do not get that accuracy. But if we compile it to JavaScript, 
 - The *Input* window is used to input and modify the BASIC code.
   - Use the *first selection field* to select the example library: CPCBasic *examples* or CPCBasicApps *apps*.
   - Use the *second selection field* to select a sample program. It will reset the CPC, and run the program.
+  - Use the *third selection field* to select an implementation of the progam (if available).
   - The **Help** button opens the readme file in a browser.
   - The **Reload** button reloads the page with the current settings. (Please note that changes to the BASIC program are not saved.)
   - The **Check** button checks the syntax of the program. It compiles the program to JavaScript.
@@ -201,6 +202,7 @@ Did you know?
 - database=examples
 - example=cpcbasic
 - exampleIndex=0index.js (example index file in every entry of exampleDirs)
+- implementation= (selected implementation ID, if the example provides multiple implementations)
 - input= (keyboard input when starting the app, use %0D for return)
 - kbdLayout=alphanum (virtual keyboard layout: alphanum, alpha, num)
 - random=cpc (random numer generator: cpc, minstd)

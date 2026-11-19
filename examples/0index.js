@@ -23,6 +23,10 @@ cpcBasic.addIndex("./examples", {
 			"meta": "D"
 		},
 		{
+			"key": "test/testpimp",
+			"title": "Test Program Implementations"
+		},
+		{
 			"key": "test/testsub",
 			"title": "Test Subroutines"
 		}
